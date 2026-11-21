@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { planOffersJsonLd } from '#shared/marketing'
 // Die kinematische Startseite (Konzept §3.2 / §6.4). Szenen-Reihenfolge im DOM
 // = Reihenfolge der Beats.
 
@@ -19,6 +20,9 @@ useMarketingSeo({
 })
 
 // Strukturierte Daten — ehrlich (keine erfundenen Bewertungen/Preise, §5).
+// PREISE (Q11, GEO-002): die zwei Pläne als `offers`, aus DERSELBEN Quelle
+// wie die Preistabelle (`PLAN_PRICES_CENTS`). Kein Anbieter, keine Anschrift,
+// keine Steuer-Angabe — das wartet auf die rechtliche Klärung (OPEN-ITEMS).
 // KEIN FAQPage-Knoten hier (SEO-008, 2026-11-21): dieselben Fragen standen
 // als strukturierte Daten auf der Startseite UND auf /faq — zwei Seiten, die
 // um dasselbe Suchergebnis konkurrieren. Sie stehen nur noch auf /faq; die
@@ -40,6 +44,10 @@ const jsonLd = computed(() => ({
       'description': t('marketing.meta.description'),
       'url': baseUrl,
       'inLanguage': locale.value,
+      'offers': planOffersJsonLd({
+        personal: t('marketing.pricing.plans.personal.name'),
+        pro: t('marketing.pricing.plans.pro.name'),
+      }, `${baseUrl}/#preise`),
     },
   ],
 }))

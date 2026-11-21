@@ -1,3 +1,4 @@
+import { aiCrawlerPolicy, buildRobotsTxt } from '../../../../packages/core/shared/aiCrawlers'
 import { siteRequestOrigin } from '../utils/siteRequestOrigin'
 
 /**
@@ -12,11 +13,13 @@ import { siteRequestOrigin } from '../utils/siteRequestOrigin'
  * Origin-Rechnung ist wörtlich dieselbe (`siteRequestOrigin`, Schema aus der
  * Env, Host aus dem Request).
  *
- * Die AI-Crawler stehen EINZELN da, obwohl `User-agent: *` sie längst erlaubt:
- * das ist eine ausdrückliche Zusage (GEO). Mehrere dieser Bots — Google-
- * Extended, Applebot-Extended, CCBot — sind reine Opt-out-Namen, die man nur
- * dadurch bedient, dass man sie NICHT sperrt. Wer die Liste kürzt, ändert
- * nichts am Verhalten, verliert aber die Aussage.
+ * KI-Crawler (Q11, B2): die Liste stand bis 2026-11-21 HIER, als einzige
+ * Site mit einer Aussage. Sie steht jetzt für alle Sites in
+ * `packages/core/shared/aiCrawlers.ts`, nachgelesen bei den Anbietern und nach
+ * Zweck getrennt (Suche/Antworten, Training). Für diese Site gilt die Art
+ * `own`: alles erlaubt. Neu dabei: die KI-Gruppen tragen dieselben Sperren wie
+ * `*` — vorher stand bei ihnen ein leeres `Disallow:`, und weil ein Crawler mit
+ * eigener Gruppe nur diese liest, standen ihnen `/api/` und `/dashboard` offen.
  *
  * NEU gegenüber der Datei: `/api/` und `/dashboard` sind für alle gesperrt.
  * Die Health-/Telemetrie-Routen der Layer und der Anmeldebereich haben in
@@ -25,48 +28,18 @@ import { siteRequestOrigin } from '../utils/siteRequestOrigin'
  * Bitte, Crawl-Budget nicht zu verbrennen.
  */
 
-/**
- * Assistenten und Antwortmaschinen, die ausdrücklich erlaubt sind. Reihenfolge
- * wie in der bisherigen Datei — sie folgt den Anbietern, nicht dem Alphabet.
- */
-const AI_CRAWLERS = [
-  'GPTBot',
-  'OAI-SearchBot',
-  'ChatGPT-User',
-  'ClaudeBot',
-  'Claude-SearchBot',
-  'Claude-User',
-  'PerplexityBot',
-  'Perplexity-User',
-  'Google-Extended',
-  'Applebot',
-  'Applebot-Extended',
-  'Amazonbot',
-  'meta-externalagent',
-  'DuckAssistBot',
-  'CCBot',
-  'MistralAI-User',
-]
-
 export default defineEventHandler((event) => {
   const origin = siteRequestOrigin(event)
 
-  const body = [
-    '# pukalani.studio – robots.txt',
-    '# Klassische Suchmaschinen und AI-Crawler sind ausdrücklich erlaubt (SEO + GEO).',
-    `# Kompakte Inhaltsübersicht für LLMs: ${origin}/llms.txt`,
-    '',
-    'User-agent: *',
-    'Allow: /',
-    'Disallow: /api/',
-    'Disallow: /dashboard',
-    '',
-    '# --- AI-Assistenten & Answer Engines (explizit erlaubt) ---',
-    ...AI_CRAWLERS.flatMap(agent => ['', `User-agent: ${agent}`, 'Disallow:']),
-    '',
-    `Sitemap: ${origin}/sitemap.xml`,
-    '',
-  ].join('\n')
+  const body = buildRobotsTxt({
+    policy: aiCrawlerPolicy('own'),
+    comments: [
+      'pukalani.studio – robots.txt',
+      `Kompakte Inhaltsübersicht für LLMs: ${origin}/llms.txt`,
+    ],
+    rules: ['Allow: /', 'Disallow: /api/', 'Disallow: /dashboard'],
+    sitemap: `${origin}/sitemap.xml`,
+  })
 
   setHeader(event, 'content-type', 'text/plain; charset=utf-8')
   // Öffentlich + user-agnostisch → darf am Edge/Proxy liegen (wie sitemap.xml).

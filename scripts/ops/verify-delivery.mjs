@@ -23,6 +23,11 @@
  *                   Host-Namen, und die Sitemap antwortet 200 als XML
  *   3. `vorschau`   die Seite trägt genau ein `og:image` mit absoluter
  *                   Adresse, und die Adresse antwortet 200 mit einem Bild
+ *   5. `ki`         (Q11) die robots.txt sagt über KI-Crawler dasselbe wie die
+ *                   Entscheidung B2 für die Art des Hosts (`ai` in `HOSTS`):
+ *                   Content-Signal-Zeile, jeder Crawler aus
+ *                   `packages/core/shared/aiCrawlers.ts` in seiner Gruppe mit
+ *                   den Regeln seiner Art
  *   4. `symbole`    das HTML der Seite nennt den fremden Symbol-Dienst nicht,
  *                   und die Symbol-Route der App reicht eine Anfrage für ein
  *                   Paket, das sie nicht hat, NICHT an ihn weiter (sie
@@ -54,6 +59,7 @@ import { appendFileSync } from 'node:fs'
 import https from 'node:https'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { aiCrawlerPolicy, aiCrawlerRobotsProblems } from '../../packages/core/shared/aiCrawlers.ts'
 
 /**
  * Je Host die Seite, die ohne Anmeldung 200 antwortet, und was er schuldet.
@@ -61,13 +67,13 @@ import { fileURLToPath } from 'node:url'
  * keine, die jemand teilt (Anmeldung der Betreiber-Oberfläche).
  */
 export const HOSTS = [
-  { host: 'pukalani.app', page: '/', sitemap: true, ogImage: true },
-  { host: 'account.pukalani.app', page: '/login', sitemap: false, ogImage: true },
-  { host: 'demo.pukalani.app', page: '/', sitemap: true, ogImage: true },
-  { host: 'admin.pukalani.app', page: '/login', sitemap: false, ogImage: false },
-  { host: 'pukalani.studio', page: '/', sitemap: true, ogImage: true },
-  { host: 'branding.supply', page: '/', sitemap: true, ogImage: true },
-  { host: 'help.pukalani.app', page: '/', sitemap: true, ogImage: true },
+  { host: 'pukalani.app', page: '/', sitemap: true, ogImage: true, ai: 'own' },
+  { host: 'account.pukalani.app', page: '/login', sitemap: false, ogImage: true, ai: 'own' },
+  { host: 'demo.pukalani.app', page: '/', sitemap: true, ogImage: true, ai: 'community' },
+  { host: 'admin.pukalani.app', page: '/login', sitemap: false, ogImage: false, ai: 'own' },
+  { host: 'pukalani.studio', page: '/', sitemap: true, ogImage: true, ai: 'own' },
+  { host: 'branding.supply', page: '/', sitemap: true, ogImage: true, ai: 'own' },
+  { host: 'help.pukalani.app', page: '/', sitemap: true, ogImage: true, ai: 'own' },
 ]
 
 /** Der Name, den keine Seite nennen soll. */
@@ -133,6 +139,18 @@ export function checkRobots(entry, response) {
   })
   if (!own) problems.push('robots: /robots.txt nennt keine Sitemap auf dem eigenen Host')
   return { problems, sitemap: own ?? null }
+}
+
+/**
+ * Prüfung 5: sagt die robots.txt über KI-Crawler dasselbe wie die Entscheidung
+ * B2 für diese Art von Host (`entry.ai`: `own` | `community`)? Die Prüfung
+ * selbst steht neben der Regel (`aiCrawlerRobotsProblems`), damit Routen-Tests
+ * und dieser Blick dieselbe Frage stellen. Eine robots.txt, die schon in
+ * Prüfung 2 durchfällt, zählt hier nicht doppelt.
+ */
+export function checkAiCrawlers(entry, response) {
+  if (!entry.ai || !response || response.status !== 200) return []
+  return aiCrawlerRobotsProblems(response.body, aiCrawlerPolicy(entry.ai)).map(problem => `ki: ${problem}`)
 }
 
 /** Prüfung 2, zweiter Teil: die genannte Sitemap. */
@@ -243,6 +261,7 @@ async function inspect(entry, { drill = false } = {}) {
   if (robots && robots.status >= 500) return { conclusive: false, problems: [] }
   const robotsResult = checkRobots(entry, robots)
   problems.push(...robotsResult.problems)
+  problems.push(...checkAiCrawlers(entry, robots))
   if (robotsResult.sitemap) problems.push(...checkSitemap(await get(robotsResult.sitemap)))
 
   if (entry.ogImage) {
@@ -260,6 +279,7 @@ export function adviceFor(problems) {
   const advice = []
   if (problems.some(p => p.startsWith('gepackt:'))) advice.push('„gepackt": die App legt beim Bauen gepackte Dateien an (`nitro.compressPublicAssets` im Core) — letzten Stand prüfen; steht es dort, entfernt etwas davor die Kopfzeile.')
   if (problems.some(p => p.startsWith('robots:'))) advice.push('„robots": antwortet der Webserver selbst (eigener Block für /robots.txt in der nginx-Datei der Site — entfernen, reload) oder fehlt der App die Route?')
+  if (problems.some(p => p.startsWith('ki:'))) advice.push('„ki": die robots.txt weicht von der KI-Crawler-Regel ab (`packages/core/shared/aiCrawlers.ts`, DECISION-LOG 2026-11-21) — baut die Route der App mit `buildRobotsTxt()`, und ist der Stand ausgeliefert? Setzt ein Dienst davor (Cloudflare, „managed robots.txt") eigene Zeilen ein?')
   if (problems.some(p => p.startsWith('vorschau:'))) advice.push('„vorschau": das Bild trägt die `app.vue` der App über `useBrandOgImage()` ein; die Datei liegt unter `public/og/` oder kommt aus einer Route.')
   if (problems.some(p => p.startsWith('symbole:'))) advice.push('„symbole": `icon.fallbackToApi: false` im Core prüfen (`pnpm check:icons`).')
   return `Zu tun: ${advice.join(' ')} Runbook PRODUKTIONS-ALARM.md, Abschnitt „Auslieferung".`
@@ -274,7 +294,7 @@ async function main() {
   }
   const mode = process.env.PUKALANI_DELIVERY_MODE === 'alarm' ? 'alarm' : 'count'
   const drill = process.env.PUKALANI_DELIVERY_DRILL === '1'
-  console.log(`Kommt beim Browser an, was die App erzeugt? (gepackt · robots · vorschau · symbole — Modus ${mode === 'alarm' ? 'Alarm' : 'nur zählen'})\n`)
+  console.log(`Kommt beim Browser an, was die App erzeugt? (gepackt · robots · ki · vorschau · symbole — Modus ${mode === 'alarm' ? 'Alarm' : 'nur zählen'})\n`)
   if (drill) console.log('PROBEALARM: das Skript des ersten Hosts gilt als ungepackt.\n')
 
   const failures = []
@@ -290,7 +310,7 @@ async function main() {
       continue
     }
     if (result.problems.length === 0) {
-      const owes = ['gepackt', entry.sitemap ? 'robots mit Sitemap' : 'robots', ...(entry.ogImage ? ['vorschau'] : []), 'symbole']
+      const owes = ['gepackt', entry.sitemap ? 'robots mit Sitemap' : 'robots', ...(entry.ai ? [`ki (${entry.ai})`] : []), ...(entry.ogImage ? ['vorschau'] : []), 'symbole']
       console.log(`✔ ${entry.host.padEnd(24)} ${owes.join(' · ')}`)
       continue
     }

@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { aiCrawlerPolicy, aiCrawlerRobotsProblems, parseRobotsGroups } from '../../../packages/core/shared/aiCrawlers'
 import {
   BRANDING_ROUTES,
   brandingRobotsTxt,
@@ -159,7 +160,15 @@ describe('branding: robots.txt', () => {
     expect(body).toContain('Disallow: /api/')
     expect(body).toContain('Disallow: /dashboard/')
     expect(body).toContain('Disallow: /brand/')
-    expect(body.match(/^Disallow:/gm)).toHaveLength(3)
+    // Je Gruppe genau diese drei Sperren — `*` und die zwei KI-Gruppen (Q11).
+    const groups = parseRobotsGroups(body)
+    expect(groups).toHaveLength(3)
+    for (const group of groups) expect(group.rules.filter(rule => rule.startsWith('disallow:'))).toEqual(['disallow: /api/', 'disallow: /dashboard/', 'disallow: /brand/'])
+  })
+
+  it('KI-Crawler: eigene Seite, alles erlaubt (B2) — GEGENPROBE: die Community-Regel weicht ab', () => {
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('own'))).toEqual([])
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('community'))).not.toEqual([])
   })
 
   it('verweist mit ABSOLUTER Adresse auf die Sitemap', () => {

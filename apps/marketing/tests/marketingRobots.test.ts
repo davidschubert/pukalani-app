@@ -5,6 +5,7 @@
  * (nur die Funktion, das Skript zielt auf Production und läuft hier nicht).
  */
 import { describe, expect, it } from 'vitest'
+import { aiCrawlerPolicy, aiCrawlerRobotsProblems } from '../../../packages/core/shared/aiCrawlers'
 import { checkRobots, HOSTS } from '../../../scripts/ops/verify-delivery.mjs'
 import { marketingRobotsTxt } from '../server/utils/marketingRoutes'
 
@@ -33,5 +34,15 @@ describe('marketing: robots.txt', () => {
     const foreign = marketingRobotsTxt('https://example.test')
     const result = checkRobots(entry, { status: 200, headers: { 'content-type': 'text/plain' }, body: foreign })
     expect(result.problems).toContain('robots: /robots.txt nennt keine Sitemap auf dem eigenen Host')
+  })
+})
+
+describe('marketing: KI-Crawler (Q11, B2)', () => {
+  const body = marketingRobotsTxt('https://pukalani.app')
+  it('eigene Seite: Suche, Antworten und Training erlaubt', () => {
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('own'))).toEqual([])
+  })
+  it('GEGENPROBE: gegen die Community-Regel ist die Datei rot', () => {
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('community'))).not.toEqual([])
   })
 })

@@ -308,6 +308,59 @@ gefunden hat es erst der Test gegen die echte Vorlage von `apps/help`.
 
 ---
 
+### Q11 — KI-Crawler: eine Regel für alle Hosts; Preise in den strukturierten Daten; `llms.txt` für pukalani.app und branding.supply (GEO-001, GEO-002, GEO-003) ✅ 2026-11-21
+
+**Was.**
+
+- **Davids Entscheidung B2 (2026-11-21, DECISION-LOG):** eigene Seiten
+  erlauben Suche, Antworten und Training; öffentliche Kunden-Communities
+  Suche und Antworten, kein Training; geschlossene Communities nichts.
+- **Eine Regel (`packages/core/shared/aiCrawlers.ts`).** Tabelle je Art
+  (`own`, `community`, `closed`), Crawler-Liste nach Zweck (Suche und
+  Antworten / Training) mit der Quelle beim Anbieter je Eintrag,
+  `buildRobotsTxt()` für die Datei und `aiCrawlerRobotsProblems()` für die
+  Prüfung. Jede robots-Route baut damit: pukalani.app, Hilfe, Studio,
+  branding.supply, Konsole, Kundenbereich, Community (öffentlich und
+  geschlossen). Dazu je Host eine Zeile `Content-Signal`.
+- **Der spätere Owner-Schalter** ändert nur einen Wert:
+  `tenantRobotsTxt(origin, aiCrawlerPolicy('community', { training }))`
+  (offen als KC1).
+- **Preise in den strukturierten Daten.** pukalani.app: `SoftwareApplication`
+  trägt zwei `offers` (Personal, Pro; Monat und Jahr je Monat). Die Zahlen
+  zogen aus `PricingSection.vue` nach `packages/marketing/shared/pricing.ts`
+  (`PLAN_PRICES_CENTS`); Preistabelle, JSON-LD und `llms.txt` lesen dort.
+  branding.supply: die Produktübersicht nennt je Produkt einen `Service`, mit
+  `offers` wo die Seite einen Preis nennt (`PRODUCT_PRICE_EUR`: Brand-Check
+  und Foundation kostenlos, Marktvergleich mit dem Betrag der Ableitung).
+  Kein Anbieter, keine Anschrift, keine Steuer-Angabe (offen als KC2).
+- **`llms.txt`** für pukalani.app und branding.supply, englisch mit den
+  deutschen Adressen daneben; jeder Satz aus der Sprachdatei, Preise aus der
+  einen Quelle, Seiten aus der Sitemap-Liste.
+- **Täglicher Blick:** `verify-delivery.mjs` hat die Prüfung `ki` — jede
+  `robots.txt` sagt dasselbe wie die Regel ihrer Art (`ai` in `HOSTS`).
+
+**Beweis.** Tests je Art mit Gegenprobe: `packages/core/tests/aiCrawlers.test.ts`
+(auch: jede robots-Route der Apps baut mit `buildRobotsTxt`),
+`packages/core/tests/verifyDelivery.test.ts` (Prüfung `ki`), die
+robots-Tests von marketing, help, branding und platform,
+`apps/marketing/tests/pricingJsonLd.test.ts`,
+`apps/branding/tests/productPricing.test.ts`, `marketingLlms.test.ts`,
+`brandingLlms.test.ts` (Preise ausgeschrieben, jeder Satz aus der
+Sprachdatei, ein ergänzter Satz fällt auf). Gegenprobe live vor dem
+Ausliefern: der Blick meldete auf allen sieben Hosts `ki`-Befunde.
+
+**Bewusst nicht.** `llms.txt` für Hilfe, Communities, Kundenbereich und
+Konsole; Googlebot in der Liste; eine Sperre (robots.txt bleibt eine Bitte).
+
+**Gelernt:** Ein Crawler mit eigener Gruppe in der robots.txt liest NUR diese
+Gruppe. Die Studio-Datei erlaubte KI-Crawlern „ausdrücklich" mit einem leeren
+`Disallow:` — und gab ihnen damit genau die Bereiche frei, die `*` sperrte
+(`/api/`, `/dashboard`). Wer einem Crawler eine eigene Gruppe gibt, muss ihr
+die Regeln von `*` mitgeben; die Prüfung vergleicht deshalb die Regeln der
+Gruppe mit denen von `*`, nicht nur „steht der Name da".
+
+---
+
 ### Q10 — Community-Seiten für die Suche: Beschreibung, Hauptüberschrift, eine maßgebliche Adresse je Beitrag, Sitemap; Konto-Seiten und Betreiber-Oberfläche aus der Suche (SEO-002, SEO-003, SEO-004, SEO-007, Teile von SEO-008) ✅ 2026-11-21
 
 **Was.**
