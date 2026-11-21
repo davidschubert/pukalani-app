@@ -13,6 +13,10 @@
  * oder `abuse`-gesperrten Host antwortet jeder Pfad 404 — auch die Refetches
  * `/api/themes` und `/api/fonts`, die dieses Plugin auslöst. Regel + Messung:
  * `startWhenHostResolves` in core/app/utils/hostGate.ts.
+ *
+ * NUR FÜR ANGEMELDETE (PERF-012, Q23, `whileSignedIn` ebenda): ein Gast sieht
+ * eine neue Farbwelt beim nächsten Seitenaufbau. Für ihn allein öffnete
+ * dieses Abo auf den Marketing-Seiten der Silos eine Live-Verbindung.
  */
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()
@@ -28,10 +32,10 @@ export default defineNuxtPlugin((nuxtApp) => {
     }, 400)
   }
 
-  startWhenHostResolves(nuxtApp, () => scope.run(() => {
+  startWhenHostResolves(nuxtApp, () => scope.run(() => whileSignedIn(nuxtApp, () => {
     useRealtimeRows(config.public.appwriteDatabaseId, 'custom_themes', scheduleRefresh)
     useRealtimeRows(config.public.appwriteDatabaseId, 'custom_fonts', scheduleRefresh)
     // Instanz-Einstellungen (Default-Theme, Built-in-Overrides, Default-Variante)
     useRealtimeRows(config.public.appwriteDatabaseId, 'app_config', scheduleRefresh)
-  }))
+  })))
 })

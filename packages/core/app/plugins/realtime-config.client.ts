@@ -15,12 +15,16 @@ import { parseProductsColumn, type PublicAppConfig } from '../../shared/types/co
  * Mandanten, dessen Flags jemand lesen würde — und der Abonnent zöge über
  * `ensureRealtimeJwt()` einen `/api/auth/realtime-token` nach sich, der
  * garantiert 404 wird. Regel + Messung: `app/utils/hostGate.ts`.
+ *
+ * NUR FÜR ANGEMELDETE (PERF-012, Q23, `whileSignedIn`): ein Gast bekommt die
+ * Flags beim nächsten Seitenaufbau — für ihn allein öffnete dieses Abo auf
+ * einer Marketing-Seite sonst eine Live-Verbindung.
  */
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()
   const flags = useRuntimeFlags()
   const scope = effectScope(true)
-  startWhenHostResolves(nuxtApp, () => scope.run(() => {
+  startWhenHostResolves(nuxtApp, () => scope.run(() => whileSignedIn(nuxtApp, () => {
     useRealtimeRows<AppwriteRow & { products?: string } & Partial<Omit<PublicAppConfig, 'products'>>>(
       config.public.appwriteDatabaseId,
       'app_config',
@@ -39,5 +43,5 @@ export default defineNuxtPlugin((nuxtApp) => {
         }
       },
     )
-  }))
+  })))
 })

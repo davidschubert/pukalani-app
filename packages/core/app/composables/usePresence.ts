@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
-import type { Presences } from 'appwrite'
 import { presencePermissions } from '../../shared/presencePermissions'
+import { createSharedPoll, type SharedPollSource } from '../../shared/sharedPoll'
 
 export interface PresenceUser {
   userId: string
@@ -217,6 +217,69 @@ export function usePresenceState() {
 }
 
 // ════════════ Reader — ANDERE Presences, nach predicate gefiltert ════════════
+// EIN Abruf je Reiter (PERF-011, Q23): alle Leser teilen Liste, Abo und Takt
+// (`shared/sharedPoll.ts`). Der Stand enthält schon den Mandanten- und den
+// Frische-Filter; das Prädikat wendet jeder Leser selbst an.
+// Kurz entprellt (250 ms), um Event-Bursts (mehrere Tipp-Toggles) zu EINEM
+// list()-Call zu bündeln; 2 s Nachlauf überbrücken einen Seitenwechsel.
+const presenceFeed = createSharedPoll<PresenceUser[]>({ pollMs: POLL_MS, debounceMs: 250, lingerMs: 2_000 })
+
+/**
+ * Baut die Quelle des geteilten Stands — nur beim ERSTEN Leser eines Reiters.
+ * Realtime-Events sind nur der „etwas hat sich geändert"-Auslöser — den
+ * autoritativen Zustand holt list() (kennt $updatedAt für die
+ * Aktualitäts-Filterung, unabhängig vom Payload-Shape).
+ */
+async function connectPresenceSource(
+  clientsReady: ReturnType<typeof ensureRealtimeClients>,
+  tenantId: () => string | null,
+  myUserId: () => string | undefined,
+): Promise<SharedPollSource<PresenceUser[]> | null> {
+  // Direkt destrukturiert (Tree-Shaking, siehe useRealtimeClient.ts).
+  const [{ Channel, Presences, Query }, clients] = await Promise.all([import('appwrite'), clientsReady])
+  // `clients === null` = Config-Gate aus (F14) — der Guard in usePresence()
+  // hat das abgefangen; der nullable Typ verlangt die Zeile trotzdem.
+  if (!clients) return null
+  const presences = new Presences(clients.cookieClient)
+  await ensureRealtimeJwt() // WS authentifizieren, BEVOR er sich verbindet (sonst Gast)
+  /** Mein Eintrag im letzten Stand — Vergleich für das eigene Herzschlag-Ereignis. */
+  let mine: string | undefined
+  return {
+    async list() {
+      // Explizites Limit statt Default 25 → auch bei vielen Online-Usern vollständig.
+      const res = await presences.list({ queries: [Query.limit(200)] })
+      const users: PresenceUser[] = []
+      for (const p of (res.presences ?? []) as unknown as RawPresence[]) {
+        // Mandanten-Filter VOR dem predicate (B1): die meisten Prädikate
+        // vergleichen Row-Ids (global eindeutig), aber `page` ist auf JEDEM
+        // Mandanten derselbe String ('/dashboard/pages') — ohne diese Zeile
+        // zeigte useViewingPresence die Namen fremder Kunden.
+        if (!belongsToTenant(p, tenantId())) continue
+        if (p.status && isFresh(p)) users.push(toUser(p))
+      }
+      const me = myUserId()
+      const own = users.find(u => u.userId === me)
+      mine = own ? JSON.stringify(own) : undefined
+      return users
+    },
+    async subscribe(onChange) {
+      const sub = await clients.realtime.subscribe(Channel.presences(), (event) => {
+        // DER EIGENE HERZSCHLAG OHNE ÄNDERUNG (Q23): der WS-Upsert von
+        // usePresenceState() kommt alle 20 s als Ereignis zurück — im selben
+        // Takt wie der Rückhalt-Abruf, also zwei Abrufe je Takt. Ändert er an
+        // meinem Eintrag nichts außer der Zeit, gibt es nichts nachzuladen
+        // (das Frische-Fenster ist 180 s, der Takt hält die Zeit aktuell).
+        // Jede andere Form — fremde Person, geänderte Angabe, unbekannte
+        // Gestalt — lädt wie bisher nach.
+        const p = event.payload as RawPresence | undefined
+        if (mine && p && p.userId === myUserId() && p.status && JSON.stringify(toUser(p)) === mine) return
+        onChange()
+      })
+      return () => { void (sub.unsubscribe ?? sub.close)?.() }
+    },
+  }
+}
+
 /**
  * Liest die Presences anderer (via Channel.presences() + presences.list()),
  * gefiltert per `predicate` (z.B. `u => u.scope === scope` für einen Thread,
@@ -242,62 +305,26 @@ export function usePresence(predicate: (u: PresenceUser) => boolean = () => true
   const tenantId = useTenantId()
   // Web-SDK + Clients dynamisch (B4). SYNCHRON angestoßen, weil
   // ensureRealtimeClients() die Runtime-Config liest — nach dem ersten await
-  // gibt es keinen Nuxt-Kontext mehr. Aufgelöst wird in onMounted.
+  // gibt es keinen Nuxt-Kontext mehr. Aufgelöst wird erst beim ersten Leser.
   const clientsReady = ensureRealtimeClients()
-  // Direkt destrukturiert (Tree-Shaking, siehe useRealtimeClient.ts).
-  const sdkReady = import('appwrite').then(({ Channel, Presences, Query }) => ({ Channel, Presences, Query }))
-  let presences: Presences | undefined
 
   const others = computed(() => present.value.filter(u => u.userId !== auth.user?.$id))
   const typingOthers = computed(() => others.value.filter(u => u.typing))
   const viewerCount = computed(() => present.value.length)
 
-  let sub: { close?: () => void, unsubscribe?: () => void } | undefined
-  let pollTimer: ReturnType<typeof setInterval> | undefined
-  let refreshTimer: ReturnType<typeof setTimeout> | undefined
-
-  async function refresh() {
-    if (!presences) return // SDK noch nicht da → der Erst-refresh in onMounted holt es
-    try {
-      const { Query } = await sdkReady
-      // Explizites Limit statt Default 25 → auch bei vielen Online-Usern vollständig.
-      const res = await presences.list({ queries: [Query.limit(200)] })
-      const next = new Map<string, PresenceUser>()
-      for (const p of (res.presences ?? []) as unknown as RawPresence[]) {
-        // Mandanten-Filter VOR dem predicate (B1): die meisten Prädikate
-        // vergleichen Row-Ids (global eindeutig), aber `page` ist auf JEDEM
-        // Mandanten derselbe String ('/dashboard/pages') — ohne diese Zeile
-        // zeigte useViewingPresence die Namen fremder Kunden.
-        if (!belongsToTenant(p, tenantId.value)) continue
-        const u = toUser(p)
-        if (p.status && isFresh(p) && predicate(u)) next.set(u.userId, u)
-      }
-      map.value = next
-    }
-    catch {
-      // best effort
-    }
+  // Der geteilte Stand (PERF-011): EIN presences.list() je Takt und Reiter,
+  // EIN Abo — dieser Leser filtert nur mit seinem Prädikat.
+  const onFeed = (all: PresenceUser[]) => {
+    const next = new Map<string, PresenceUser>()
+    for (const u of all) if (predicate(u)) next.set(u.userId, u)
+    map.value = next
+    loaded.value = true
   }
 
-  // Realtime-Events sind nur der „etwas hat sich geändert"-Trigger — den
-  // autoritativen Zustand holt refresh() via list() (kennt $updatedAt für die
-  // Aktualitäts-Filterung, unabhängig vom Payload-Shape). Kurz entprellt, um
-  // Event-Bursts (mehrere Tipp-Toggles) zu einem list()-Call zu bündeln.
-  function scheduleRefresh() {
-    clearTimeout(refreshTimer)
-    refreshTimer = setTimeout(() => { void refresh() }, 250)
-  }
-
-  // disposed-Flag: onMounted ist async — wird die Komponente während eines
-  // awaits unmounted (schnelle Navigation), liefe onScopeDispose mit noch
-  // undefiniertem sub/pollTimer und der Rest des Setups würde DANACH einen
-  // ewigen 20s-Poll + eine tote Subscription starten (Leak).
+  let release: (() => void) | undefined
   let disposed = false
-  onMounted(async () => {
-    const [{ Channel, Presences }, clients] = await Promise.all([sdkReady, clientsReady])
-    // `clients === null` = Config-Gate aus (F14) — der Guard oben hat das
-    // abgefangen; der nullable Typ verlangt die Zeile trotzdem.
-    if (disposed || !clients) return
+  onMounted(() => {
+    if (disposed) return
     // GÄSTE LESEN KEINE ANWESENHEIT (gemessen 2026-08-14 auf demo.pukalani.app):
     // `presences.list()` läuft über den COOKIE-Client, ein Gast hat aber keine
     // Session — Appwrite antwortet 401, und zwar bei jedem Seitenaufruf eines
@@ -307,25 +334,11 @@ export function usePresence(predicate: (u: PresenceUser) => boolean = () => true
     // ohnehin niemanden: die Presence-Rows tragen `read(label:<communityId>)`
     // bzw. `read("users")` (A4/A5), also nichts für Gäste.
     if (!auth.user) { loaded.value = true; return }
-    presences = new Presences(clients.cookieClient)
-    await ensureRealtimeJwt() // WS authentifizieren, BEVOR er sich verbindet (sonst Gast)
-    if (disposed) return
-    await refresh()
-    if (disposed) return
-    loaded.value = true
-    try {
-      sub = await clients.realtime.subscribe(Channel.presences(), scheduleRefresh)
-      if (disposed) { void (sub.unsubscribe ?? sub.close)?.(); sub = undefined; return }
-    }
-    catch { /* Poll trägt die Anwesenheit */ }
-    pollTimer = setInterval(refresh, POLL_MS)
+    release = presenceFeed.acquire(onFeed, () => connectPresenceSource(clientsReady, () => tenantId.value, () => auth.user?.$id))
   })
   onScopeDispose(() => {
     disposed = true
-    clearInterval(pollTimer)
-    clearTimeout(refreshTimer)
-    try { (sub?.unsubscribe ?? sub?.close)?.() }
-    catch { /* ignore */ }
+    release?.()
   })
 
   return { present, others, typingOthers, viewerCount, loaded }

@@ -48,6 +48,12 @@ paths:
   `useError()` — auf einer Tippfehler-404 einer GESUNDEN Community läuft
   Realtime weiter, sonst fehlt dort die Sofort-Abmeldung bei Session-Widerruf.
   Nachgeholt wird, sobald `clearError()` räumt.
+- APP-WEITE ABOS (Laufzeit-Flags, Farbwelten) laufen NUR FÜR ANGEMELDETE
+  (Q23/PERF-012): `whileSignedIn` (`core/app/utils/hostGate.ts`) innerhalb
+  der Host-Klammer. Kein drittes Gate — es sagt nur, für WEN ein Abo etwas
+  meldet; Gäste öffnen eine Verbindung nur über einen Baustein mit
+  Live-Inhalt (Kommentare, Feed). Wächter:
+  `apps/portfolio/e2e/realtime-guest.spec.ts`.
 - DER AUTH-NACHTRAG HAT EINEN MINDESTABSTAND (`accountVerifyDue`, 30 s,
   `core/shared/realtimeGate.ts`) — er ist der Verstärker bei jedem flappenden
   Socket. Er darf aber NICHTS VERWERFEN: ein `sessions.*.delete`-Ereignis geht

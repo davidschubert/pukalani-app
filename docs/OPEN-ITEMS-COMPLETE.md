@@ -30,6 +30,70 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q23 — Anwesenheit und Live-Verbindung: ein Abruf je Reiter, Gäste ohne Verbindung auf den Marketing-Seiten (PERF-011, PERF-012) ✅ 2026-11-21
+
+**Was.** Zwei Ursachen, zwei Änderungen; Config-Gate (F14) und Host-Gate
+(G5) bleiben die einzigen Schalter, die Schreib-Autorität der Anwesenheit
+(`usePresenceState()`) ist unverändert.
+
+- **PERF-011 — jeder Leser fragte selbst.** Jeder `usePresence()`-Aufruf
+  legte eigenen Takt (20 s), eigenes Abo und eigenen Abruf nach jedem
+  Ereignis an; dazu kam das Ereignis des EIGENEN Herzschlags (WS-Upsert alle
+  20 s), auf das jeder Leser die Liste neu holte. Jetzt teilen alle Leser
+  eines Reiters EINEN Stand (`core/shared/sharedPoll.ts`): der erste startet
+  Quelle, Abo und Takt, jeder weitere bekommt sofort den letzten Stand, der
+  letzte räumt nach 2 s Nachlauf ab (ein Seitenwechsel übernimmt den Stand).
+  Der Takt ist Rückhalt: er feuert 20 s nach dem LETZTEN Abruf, und ein
+  Ereignis bricht ihn ab (ein fester Takt fiel sonst mit dem Abruf nach einem
+  Ereignis in dieselbe Sekunde); ein eigener Herzschlag, der an meinem Eintrag nichts außer der Zeit
+  ändert, lädt nichts nach. Konsumenten (admin, comments, events, messages)
+  blieben unverändert.
+- **PERF-012 — zwei app-weite Abos für alle.** `realtime-config` (Flags)
+  und `realtime-themes` (Farbwelten) abonnierten auch für Gäste; auf den
+  Marketing-Seiten von pukalani.studio und branding.supply öffneten sie
+  damit als Einzige eine Verbindung samt Web-SDK. Jetzt starten sie erst
+  nach der Anmeldung (`whileSignedIn`, `core/app/utils/hostGate.ts`, innerhalb
+  der Host-Klammer; beim Abmelden räumen sie ab). Davids Antwort im Audit:
+  Gäste auf Marketing-Seiten brauchen die Verbindung nicht.
+
+Gemessen lokal (Dev-Server aus dem Worktree, lokale Appwrite, Wegwerf-Konto
+mit Label `admin`, Abrufe `GET /v1/presences` in 45 s Ruhe nach dem Laden):
+
+| Seite | vorher | nachher |
+| --- | --- | --- |
+| Dashboard-Übersicht | 8 (je Takt 4, davon 2 gleichzeitig) | 2 (einer je 20 s) |
+| Beitrags-Seite mit Kommentaren | 4 (je Takt 2) | 2 (einer je 20 s) |
+| portfolio `/` und `/de`, Gast: Live-Verbindungen | 1 | 0 |
+
+Unverändert geprüft: zweites Konto erscheint beim anderen in derselben
+Sekunde und verschwindet eine Sekunde nach dem Schließen; die Verbindung
+bleibt 130 s offen (120-s-Regel); Sofort-Abmeldung beim Widerruf und
+Live-Kommentare (`session-revoke.spec.ts`, `realtime.spec.ts`) grün.
+Die 401 auf `/v1/presences`, die das Audit lokal sah, trat nicht mehr auf.
+
+Beweise: `core/tests/sharedPoll.test.ts` (Zahl der Abrufe je Zeitfenster,
+Gegenprobe mit getrennten Instanzen), `apps/comments/e2e/presence-shared-poll.spec.ts`
+(beide Seiten; gegen den Stand davor rot), `apps/portfolio/e2e/realtime-guest.spec.ts`
+(gegen den Stand davor rot: eine Verbindung).
+
+Selbst entschieden: auch ein Gast auf einer COMMUNITY-Seite sieht neue Flags
+(Wartung, Registrierung) und neue Farbwelten erst beim nächsten Seitenaufbau
+— seine Verbindung öffnet dort weiter ein Baustein mit Live-Inhalt. Ein
+gescheiterter Listen-Abruf lässt den Leser jetzt auf dem letzten (oder dem
+Server-)Stand, statt ihn leer als „geladen" zu melden. Nicht angefasst: die
+zwei bis vier Herzschläge beim Öffnen einer Seite (Teil der Empfehlung von
+PERF-011) und der feste 1-s-Neuversuch des SDK nach einer Ablehnung.
+
+**Gelernt:** Eine Zahl je Takt ist erst gemessen, wenn auch die Ereignisse
+mitzählen: der eigene Herzschlag kommt im selben Takt als Ereignis zurück und
+verdoppelte die Abrufe auch nach dem Zusammenlegen. Und zwei Browser-Fälle
+mit DEMSELBEN Konto dürfen nicht gleichzeitig laufen — zwei Reiter melden
+sich gegenseitig echte Änderungen, und der Test misst sich selbst.
+
+---
+
+---
+
 ### Q24 — Auftritt der Marken: ein Zeichen für Pukalani, drei Marken zeigen aufeinander (UI-001, SEO-009) ✅ 2026-11-21
 
 **Was.** Davids Ja zu R4 und R9 (DECISION-LOG 2026-11-21).
