@@ -36,9 +36,10 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 - **(a) Herzschläge beim Öffnen gebündelt** (`core/app/composables/usePresence.ts`).
   Anmeldung, `setPage`, `setScope` und `focus` schrieben je sofort (HTTP und
-  WS). Jetzt sammelt ein Fenster von 300 ms (`PRESENCE_BUNDLE_MS`) alle
-  Anlässe zu EINEM Schreiben mit dem Stand am Fensterende; Takt und
-  `pagehide` bleiben sofort.
+  WS). Jetzt wartet das Schreiben auf 300 ms Ruhe (`PRESENCE_BUNDLE_MS`,
+  höchstens 1 s ab dem ersten Anlass) und schreibt EINMAL; Takt und
+  `pagehide` bleiben sofort. Ein festes 300-ms-Fenster reichte in der
+  langsameren CI nicht (dort kam ein später Anlass danach: 2).
 - **(b) Neuversuch mit wachsenden Abständen** (`core/shared/realtimeReconnect.ts`,
   eingehängt in `useRealtimeClient.ts`). Das SDK nullt seinen Zähler beim
   Öffnen; eine angenommene und gleich geschlossene Verbindung kam so immer
@@ -61,7 +62,7 @@ Wegwerf-Konto mit Label `admin`; Fall `apps/comments/e2e/presence-open-and-recon
 
 | Messung | vorher | nachher |
 | --- | --- | --- |
-| `POST /api/presence/heartbeat` in 5 s nach dem Laden, Dashboard | 3 | 1 |
+| `POST /api/presence/heartbeat` in 5 s nach dem Laden, Dashboard (die CI-Grenze ist 2) | 3 | 1 |
 | dasselbe, Beitrags-Seite | 3 | 1 |
 | Verbindungsversuche in 20 s, wenn jede Verbindung angenommen und sofort geschlossen wird | 39 (zwei je Sekunde) | 5 bis 6 (bei 1, 2, 4, 9, 18 s) |
 
@@ -74,7 +75,8 @@ Render-Test der Werkstatt (Gegenprobe gegen den Stand davor: rot).
 **Nicht geprüft:** die 120-s-Regel nicht eigens neu gemessen (das SDK pingt
 weiter im Takt, der Code daran ist unverändert); das Erscheinen eines
 zweiten Kontos kommt bis zu 0,3 s später als vorher, nicht mit zwei Konten
-nachgemessen; die Schublade nur im Dev-Server, nicht im Production-Build.
+nachgemessen (mit der Obergrenze bis zu 1 s); die Schublade nur im
+Dev-Server, nicht im Production-Build.
 
 **Gelernt:** „Fester 1-s-Neuversuch" stand als FALLE des SDK in der Regel
 und galt damit als hinzunehmen. Die Staffelung des SDK ist da, sie wird nur
