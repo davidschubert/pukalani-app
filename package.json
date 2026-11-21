@@ -39,6 +39,7 @@
     "lint:typed": "node scripts/lint-typed.mjs",
     "lint:scripts": "pnpm check:nul-bytes && pnpm check:permissions && pnpm check:workflows && pnpm check:ai-routing && pnpm check:public-ips && pnpm check:icons && eslint scripts",
     "check:doc-links": "node scripts/ops/verify-doc-links.mjs",
+    "check:rules": "node scripts/check-rules.mjs",
     "ops:site-env": "node scripts/ops/verify-site-env.mjs",
     "ops:schema-parity": "node --experimental-strip-types scripts/ops/verify-schema-parity.mjs",
     "ops:stale-keys": "node scripts/ops/verify-stale-keys.mjs",

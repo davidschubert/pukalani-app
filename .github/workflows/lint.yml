@@ -59,6 +59,11 @@ jobs:
       # dem hier alle arbeiten. Läuft in ~1 s, reines Lesen.
       - run: pnpm check:doc-links
 
+      # Das Regelwerk der KI-Sitzungen (CLAUDE.md, .claude/rules, .claude/agents):
+      # Größen-Deckel je Datei, jeder Lade-Pfad trifft eine Datei, jeder
+      # genannte Pfad und jedes genannte pnpm-Skript existiert. Reines Lesen.
+      - run: pnpm check:rules
+
       # Zwei Kopien einer Kernabhängigkeit brechen Typen oder Build, und WELCHE
       # gewinnt, entscheidet pnpms Hoisting statt des Lockfiles — derselbe
       # Lockfile ist damit auf einer Maschine grün und auf der anderen rot
