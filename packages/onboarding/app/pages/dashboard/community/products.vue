@@ -56,7 +56,7 @@ const { plan, planAllows } = useTenantPlan()
 /** null = kein Pool-Mandant (Silo, Kontroll-Host) — dort gibt es keinen Tarif. */
 const isTenantHost = computed(() => plan.value !== null)
 
-const { data, status } = await useFetch<{ products: CommunityProductEntry[] }>('/api/community/products', {
+const { data, status, error, refresh } = await useFetch<{ products: CommunityProductEntry[] }>('/api/community/products', {
   // Auf einem Nicht-Mandanten-Host antwortet die Route 404 — kein Fehler,
   // sondern die richtige Antwort. Der Hinweis unten fängt den Fall ab.
   default: () => ({ products: [] }),
@@ -76,6 +76,11 @@ const locked = computed(() => (data.value?.products ?? []).filter(p => !planAllo
       :title="t('onboarding.communityProducts.noTenantTitle')"
       :description="t('onboarding.communityProducts.noTenantDesc')"
     />
+
+    <!-- Fehler statt „keine Produkte" (FE-004, LZ1) -->
+    <div v-else-if="error" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
 
     <template v-else>
       <UPageCard

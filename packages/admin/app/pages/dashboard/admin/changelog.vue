@@ -13,7 +13,7 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(locale.value, 
 
 useBrandTitle(() => t('admin.changelog.title'))
 
-const { data, refresh } = useFetch<ChangelogListResponse>('/api/admin/changelog', { lazy: true, server: false })
+const { data, error, refresh } = useFetch<ChangelogListResponse>('/api/admin/changelog', { lazy: true, server: false })
 const entries = computed(() => data.value?.entries ?? [])
 
 // Edit-Awareness: zeigt, wenn ein anderer Admin die Changelog-Verwaltung offen hat.
@@ -170,7 +170,12 @@ function rowActions(entry: ChangelogEntry): DropdownMenuItem[][] {
       :description="t('admin.presence.alsoEditingHint')"
     />
 
-    <UTable :data="entries" :columns="columns" data-changelog-table>
+    <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+    <div v-if="error && !data" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
+    <UTable v-else :data="entries" :columns="columns" data-changelog-table>
       <template #category-cell="{ row }">
         <UBadge :color="categoryColor(row.original.category)" variant="subtle" size="sm">
           {{ t(`admin.changelog.category.${row.original.category || 'feature'}`) }}

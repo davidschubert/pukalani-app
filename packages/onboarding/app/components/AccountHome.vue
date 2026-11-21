@@ -41,7 +41,7 @@ const { t } = useI18n()
 const localePath = useLocalePath()
 const auth = useAuthStore()
 
-const { data, status } = await useFetch<MyCommunitiesResponse>('/api/onboarding/communities', {
+const { data, status, error, refresh } = await useFetch<MyCommunitiesResponse>('/api/onboarding/communities', {
   default: () => ({ communities: [] as MyCommunityView[] }),
 })
 
@@ -80,7 +80,7 @@ useBrandTitle(() => t('onboarding.account.home.title'))
       />
 
       <UPageCard
-        v-else-if="status !== 'pending'"
+        v-else-if="status !== 'pending' && !error"
         :to="localePath('/start')"
         :title="t('onboarding.account.home.create.title')"
         :description="t('onboarding.account.home.create.description')"
@@ -88,6 +88,11 @@ useBrandTitle(() => t('onboarding.account.home.title'))
         variant="subtle"
         data-account-card="create"
       />
+
+      <!-- Fehler statt „Community anlegen" (FE-004, LZ1) -->
+      <div v-else-if="error" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
 
       <UPageCard
         :to="localePath('/profile')"
