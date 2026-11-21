@@ -30,6 +30,45 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q24 — Auftritt der Marken: ein Zeichen für Pukalani, drei Marken zeigen aufeinander (UI-001, SEO-009) ✅ 2026-11-21
+
+**Was.** Davids Ja zu R4 und R9 (DECISION-LOG 2026-11-21).
+
+1. **Ein Zeichen (R4).** `PukaMark` liegt jetzt im Core
+   (`packages/core/app/components/PukaMark.vue`) statt im Layer `marketing`;
+   Marketing-Site und Hilfe benutzen denselben Baustein wie vorher. Im
+   Kundenbereich ersetzt er die graue Sonne in der Kopfzeile des Layouts
+   `onboarding` und auf der Fertig-Seite des Wizards; über der Anmeldung und
+   Registrierung steht er im `AuthBrandHeader` über dem Namen, das
+   Personen-Symbol des Formulars fällt dort weg. Die Knöpfe bleiben neutral
+   (keine Farbwelt der Marketing-Site). Der Verlauf trägt jetzt eine Kennung
+   je Zeichen (`useId()`), damit ein ausgeblendetes zweites Zeichen die Sonne
+   nicht leer lässt.
+2. **Nur wo Pukalani spricht.** `pukalaniSpeaks()`
+   (`packages/core/shared/brandFamily.ts`, im Browser `usePukalaniSpeaks()`):
+   Kontroll-Host UND kein Mandant. Community im Pool und Silo-Sites: nein.
+3. **Drei Marken (R9).** `CoreBrandFamily` mit `current` in den Fußzeilen von
+   pukalani.app (auch Hilfe), pukalani.studio und branding.supply: „Auch von
+   uns:" plus die zwei anderen Namen mit zwei Wörtern Rolle, deutsche Leser
+   auf `/de`, normale Links. Wortlaut in `ui.brandFamily.*` (core).
+
+**Beweis.** Wächter `packages/core/tests/brandFamily.test.ts` (22 Fälle);
+Gegenprobe mit der alten Sonne im Layout und ohne Zeile im Fuß von
+branding.supply: 2 rot. Lokal auf der Bühne (`--suffix q24`, danach
+abgebaut, „nichts übrig"): Anmeldung auf dem Kontroll-Host mit Zeichen, beide
+Probe-Communities ohne Zeichen mit eigenem Namen; Kundenbereich nach der
+Anmeldung (Start, Einstellungen) mit Zeichen. Fotos 1440 und 375 px an David.
+
+**Nicht geprüft:** Mails (nicht im Auftrag), die Betreiber-Konsole, dunkles
+Schema nur am Code; Vorleseprogramm nicht, nur `aria-label` der Zeile.
+
+**Gelernt:** Ein Wächter über Quelltext darf Kommentare nicht mitlesen — der
+erste Lauf war rot, weil der Kommentar „kein `nofollow`" das verbotene Wort
+enthielt. Den Template-Teil ohne `<script>` und ohne HTML-Kommentare prüfen.
+Und: eine neue `:href`-Bindung im Core braucht eine begründete Zeile im
+Link-Wächter (`hrefBindingsGuard.test.ts`), auch wenn die Adresse eine
+Konstante ist.
+
 ### Q26-N — Wacklige Core-Tests im vollen `pnpm -r test` ✅ 2026-11-21
 
 **Was.** Beim Paket Q26 hatten zwei volle Läufe von `pnpm -r test` je einen

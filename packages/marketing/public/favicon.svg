@@ -1,5 +1,5 @@
 <!-- Das Marken-Zeichen als Favicon — dieselbe puka wie in PukaMark.vue
-     (app/components/PukaMark.vue), mit ZWEI bewussten Abweichungen:
+     (packages/core/app/components/PukaMark.vue), mit ZWEI bewussten Abweichungen:
      (1) Der Wolkenring ist dort `currentColor` — in einer eigenständigen
          Datei gibt es kein umgebendes Element, das die Farbe stellt; hier
          steht ein mittleres Grau, das auf hellen UND dunklen Tab-Leisten

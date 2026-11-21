@@ -336,6 +336,8 @@ const FOOTER_UI = {
             <p class="mt-3 text-[0.95rem] italic text-primary">
               {{ t('marketing.footer.refrain') }}
             </p>
+            <!-- Die zwei anderen Marken, ruhig (Q24, R9). -->
+            <CoreBrandFamily current="pukalani" class="mt-4 text-[0.85rem]/[1.6] text-inverted/75" />
           </div>
 
           <UFooterColumns
