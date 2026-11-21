@@ -150,7 +150,7 @@ async function addList() {
     <template #header>
       <UDashboardNavbar :title="t('tickets.board.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

@@ -258,7 +258,7 @@ function youtubeUrl(channel: InsightsChannel): string {
     <template #header>
       <UDashboardNavbar :title="t('insights.channels.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

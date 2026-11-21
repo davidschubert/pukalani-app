@@ -84,6 +84,7 @@
       "unavailableText": "Grant the runtime key the buckets.read, files.read + files.write scopes, then reload."
     },
     "analytics": {
+      "range": "Time range",
       "title": "Activity",
       "subtitle": "Last {days} days",
       "users": "Signups",
@@ -589,6 +590,12 @@
     "loadMore": "Load more"
   },
   "dashboard": {
+    "a11y": {
+      "sidebar": "Sidebar",
+      "skipToContent": "Skip to content",
+      "mainNav": "Main menu",
+      "secondaryNav": "Administration and settings"
+    },
     "search": {
       "label": "Go to",
       "settings": "Settings",

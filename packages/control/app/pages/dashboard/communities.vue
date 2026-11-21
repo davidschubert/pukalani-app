@@ -423,7 +423,7 @@ function rowActions(tenant: TenantDto): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('control.tenants.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton icon="i-ph-plus" data-tenants-create :label="t('control.tenants.new')" @click="openCreate" />

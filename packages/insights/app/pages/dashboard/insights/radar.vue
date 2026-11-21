@@ -255,7 +255,7 @@ async function runNow(): Promise<void> {
     <template #header>
       <UDashboardNavbar :title="t('insights.radar.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

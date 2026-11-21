@@ -78,10 +78,11 @@ const items = computed<DropdownMenuItem[]>(() => [
           size="sm"
           trailing-icon="i-ph-caret-down"
           class="max-w-[14rem]"
-          :aria-label="t('onboarding.layout.accountMenu')"
           :title="auth.user.email"
         >
+          <!-- Name = sichtbare Adresse + versteckter Zweck (UX-011, Q09). -->
           <span class="truncate">{{ auth.user.email }}</span>
+          <span class="sr-only">{{ t('onboarding.layout.accountMenu') }}</span>
         </UButton>
       </UDropdownMenu>
     </header>

@@ -171,7 +171,7 @@ function rowActions(row: EventRow): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('events.moderation.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
 

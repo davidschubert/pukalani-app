@@ -68,7 +68,7 @@ const columns = computed<TableColumn<CourseRow>[]>(() => [
     <template #header>
       <UDashboardNavbar :title="t('courses.admin.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton icon="i-ph-plus" size="sm" data-testid="course-create" @click="() => { modalOpen = true }">

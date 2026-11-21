@@ -123,7 +123,7 @@ function rowActions(post: CommunityPost): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('posts.mine.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

@@ -583,7 +583,7 @@ async function deletePage() {
             :aria-label="t('pages.admin.backToList')"
             @click="closeEditor"
           />
-          <UDashboardSidebarCollapse v-else />
+          <CoreSidebarCollapse v-else />
         </template>
         <template #right>
           <UButton v-if="!editing" icon="i-ph-plus" :label="t('pages.admin.new')" @click="newPage" />

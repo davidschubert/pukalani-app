@@ -405,7 +405,7 @@ function formulaFor(opportunity: InsightsOpportunity): string {
     <template #header>
       <UDashboardNavbar :title="t('insights.finds.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

@@ -527,7 +527,7 @@ async function createBrand(input: { name: string, homepage: string, industry: st
     <template #header>
       <UDashboardNavbar :title="t('insights.editor.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

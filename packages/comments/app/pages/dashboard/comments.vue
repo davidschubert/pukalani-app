@@ -373,7 +373,7 @@ function rowActions(comment: ModeratedComment): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="`${t('admin.nav.comments')} (${data?.total ?? 0})`">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
 

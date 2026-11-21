@@ -205,7 +205,7 @@ function rowActions(entry: BrandIntroRequestItem): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('brand.admin.introCalls.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

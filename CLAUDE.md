@@ -141,6 +141,12 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
   neue Seite im versteckten Container — leerer Seitenbereich nach dem ersten
   Klick, ohne Fehler, nur im Prod-Build. Übergänge je Route über
   `<NuxtPage :transition>` (portfolio: nur Layout `site`).
+- DASHBOARD-SEITE: `main` und Sprunglink setzt das Layout `dashboard` (UX-006,
+  seit 2026-11-21) — eine Seite mit diesem Layout bringt KEIN eigenes `<main>`
+  mit, und der Umschalter der Seitenleiste heißt `CoreSidebarCollapse` (setzt
+  `aria-expanded`), nie `UDashboardSidebarCollapse`. Wächter:
+  `core/tests/dashboardLandmarksGuard.test.ts`, im Browser
+  `apps/comments/e2e/dashboard-landmarks.spec.ts`.
 - <script setup lang="ts">, Nuxt UI Komponenten bevorzugen. EDITOR-FUNKTIONEN
   (UEditor gesetzt, Markdown-Kopplung, Erwähnungen/Handles): `.claude/rules/editor.md`.
 - Auth-Formulare:

@@ -308,14 +308,19 @@ function selectStep(layer: BwRailLayer, step: BwRailStep): void {
       :ui="{ content: 'bw-root bw-overlay w-(--reka-dropdown-menu-trigger-width)' }"
     >
       <button
+        type="button"
         class="bw-nav-switch flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left"
-        :aria-label="t('brand.workspace.sidebar.switchBrand')"
       >
+        <!-- Der Name beginnt mit dem, was dasteht (Marken-Name), der Zweck
+             folgt als versteckter Text — ein `aria-label` ohne den sichtbaren
+             Namen fand Sprachsteuerung nicht (UX-011). -->
         <span
           class="grid size-7 flex-none place-items-center rounded-lg text-xs font-semibold"
           style="background: var(--bw-ink); color: var(--bw-paper)"
+          aria-hidden="true"
         >{{ monogram(current?.title ?? '') }}</span>
         <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ current?.title ?? t('brand.brands.card.untitled') }}</span>
+        <span class="sr-only">{{ t('brand.workspace.sidebar.switchBrand') }}</span>
         <UIcon name="i-ph-caret-up-down" class="size-4 flex-none" style="color: var(--bw-muted)" />
       </button>
 

@@ -118,7 +118,7 @@ const badgeColor = (source: string) => (source === 'none' ? 'warning' : 'success
     <template #header>
       <UDashboardNavbar :title="t('admin.integrations.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
     </template>

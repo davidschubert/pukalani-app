@@ -41,7 +41,7 @@ const links = computed<NavigationMenuItem[]>(() => {
     <template #header>
       <UDashboardNavbar :title="t('admin.nav.admin')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
 

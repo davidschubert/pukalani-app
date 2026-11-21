@@ -106,7 +106,7 @@ const columns = computed<TableColumn<ReservedEntry>[]>(() => [
     <template #header>
       <UDashboardNavbar :title="t('control.reservedNames.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
     </template>

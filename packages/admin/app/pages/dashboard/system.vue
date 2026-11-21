@@ -208,7 +208,7 @@ async function createDepTicket(body: DepTicketBody) {
     <template #header>
       <UDashboardNavbar :title="t('dashboard.system.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

@@ -263,7 +263,7 @@ const columns = computed<TableColumn<BrandCheckCorrection>[]>(() => [
     <template #header>
       <UDashboardNavbar :title="t('brand.admin.checkCorrections.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

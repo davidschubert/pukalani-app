@@ -325,7 +325,7 @@ onScopeDispose(() => {
     <template #header>
       <UDashboardNavbar :title="t('admin.nav.overview')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
     </template>
@@ -334,7 +334,10 @@ onScopeDispose(() => {
       <div class="mx-auto flex w-full flex-col gap-4 sm:gap-6 lg:max-w-(--ui-container)">
         <!-- Begrüßung -->
         <div>
-          <h1 class="text-xl font-semibold">{{ greeting }}</h1>
+          <!-- Zweite Ebene: die Hauptüberschrift der Seite ist der Titel der
+               Kopfzeile („Übersicht") — zwei erste Ebenen waren eine zu viel
+               (UX-006). -->
+          <h2 class="text-xl font-semibold">{{ greeting }}</h2>
           <p class="text-sm text-muted">{{ today }}</p>
         </div>
 
@@ -392,7 +395,7 @@ onScopeDispose(() => {
           <template #header>
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 class="font-semibold">{{ t('admin.analytics.title') }}</h2>
-              <USelect v-model="days" :items="rangeItems" size="sm" class="w-40" />
+              <USelect v-model="days" :items="rangeItems" size="sm" class="w-40" :aria-label="t('admin.analytics.range')" />
             </div>
           </template>
 

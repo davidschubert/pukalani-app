@@ -253,28 +253,39 @@ const userMenu = computed(() => [[
     :ui="{ container: 'max-w-full px-6', title: 'flex items-center gap-2.5 text-sm font-semibold' }"
     style="background: color-mix(in srgb, var(--bw-paper) 88%, transparent); border-color: var(--bw-line)"
   >
-    <template #title>
+    <!-- `#left` STATT `#title` (UX-011, Q09): im `#title`-Slot liegt ALLES im
+         Link zur Startseite, und die Bibliothek baut dessen Namen aus dem Text
+         des Slots. Das Beta-Schildchen stand so im Link, ohne zu seinem Namen
+         zu gehören — der Name passte nicht zum sichtbaren Text (im Dev-Server
+         las die Bibliothek sogar die Kommentare des Slots als Namen mit).
+         Jetzt ist der Link nur Marke + Wortmarke und heißt, wie er aussieht;
+         das Schildchen steht daneben. -->
+    <template #left>
       <!-- Runde 181 (David, Referenz PLATSUPPLY): Kreis-Marke + Versal-
            Wortmarke, fette variable Geist mit weitem Tracking. -->
-      <span class="grid size-8 flex-none place-items-center rounded-full" style="background: var(--bw-ink); color: var(--bw-paper)">
-        <UIcon name="i-ph-fingerprint" class="size-5" />
-      </span>
-      <span class="whitespace-nowrap text-[18px]" style="color: var(--bw-ink); font-weight: 400; letter-spacing: -0.01em">Branding Supply</span>
+      <ULink
+        :to="localePath('/')" data-slot="title"
+        class="flex shrink-0 items-center gap-2.5 rounded-md text-sm font-semibold focus-visible:outline-2 focus-visible:outline-primary/25"
+      >
+        <span class="grid size-8 flex-none place-items-center rounded-full" style="background: var(--bw-ink); color: var(--bw-paper)" aria-hidden="true">
+          <UIcon name="i-ph-fingerprint" class="size-5" />
+        </span>
+        <span class="whitespace-nowrap text-[18px]" style="color: var(--bw-ink); font-weight: 400; letter-spacing: -0.01em">Branding Supply</span>
+      </ULink>
       <!-- DAS BETA-SCHILDCHEN (Davids Entscheidung 2026-11-12): die Anmeldung
            ist offen, das Produkt bleibt eine Beta — und das soll auf JEDER
            Seite stehen, nicht nur in einem Satz am Fuß der Startseite. Ein
            kleines Schildchen neben der Wortmarke ist die Form, die man von
-           anderen Produkten kennt; der Hinweistext hängt als Tooltip daran.
-           `@click.prevent`: das Schildchen sitzt IM Link zur Startseite, ein
-           Tippen darauf (Touch öffnet den Tooltip) soll nicht navigieren. -->
+           anderen Produkten kennt; der Hinweistext hängt als Tooltip daran
+           und steht für Vorleseprogramme als versteckter Text dahinter (ein
+           `span` darf keinen `aria-label` tragen). -->
       <UTooltip :text="t('brand.nav.betaHint')" :delay-duration="0">
         <UBadge
           :label="t('brand.nav.beta')" color="neutral" variant="outline" size="sm"
-          class="rounded-full uppercase tracking-wider" data-beta-badge
-          :aria-label="t('brand.nav.betaHint')"
-          @click.prevent
+          class="ml-1 rounded-full uppercase tracking-wider" data-beta-badge
         />
       </UTooltip>
+      <span class="sr-only">{{ t('brand.nav.betaHint') }}</span>
     </template>
 
     <!-- `unmount-on-hide=false` (2026-09-08): Reka rendert den Inhalt eines
@@ -312,7 +323,9 @@ const userMenu = computed(() => [[
       />
       <NotificationBell v-if="isLoggedIn && accountBell" />
       <UDropdownMenu v-if="isLoggedIn" :items="userMenu">
-        <button :aria-label="t('brand.nav.accountMenu')" class="grid place-items-center"><UAvatar :text="initials" size="md" /></button>
+        <!-- Name = sichtbare Initialen + versteckter Text: ein `aria-label`
+             ohne die Initialen passte nicht zum sichtbaren Text (UX-011). -->
+        <button type="button" class="grid place-items-center"><UAvatar :text="initials" size="md" /><span class="sr-only">{{ t('brand.nav.accountMenu') }}</span></button>
       </UDropdownMenu>
       <UButton
         v-else :to="localePath('/login')" color="neutral" variant="ghost" size="sm"

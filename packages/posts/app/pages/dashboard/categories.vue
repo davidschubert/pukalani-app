@@ -452,7 +452,7 @@ function categoryPath(category: PostCategory): string {
             :aria-label="t('posts.categories.cancel')"
             @click="closeEditor"
           />
-          <UDashboardSidebarCollapse v-else />
+          <CoreSidebarCollapse v-else />
         </template>
         <template #right>
           <UButton

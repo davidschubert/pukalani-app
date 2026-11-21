@@ -144,7 +144,7 @@ const containerWidth = 'lg:max-w-7xl'
     <template #header>
       <UDashboardNavbar :title="hullTitle">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
 

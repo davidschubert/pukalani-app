@@ -80,7 +80,7 @@ const navItems = computed<ContentNavigationItem[]>(() => {
     <template #header>
       <UDashboardNavbar :title="t('control.docs.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
     </template>

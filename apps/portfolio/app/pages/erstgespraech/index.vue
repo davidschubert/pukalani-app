@@ -63,6 +63,8 @@ type FieldKey =
 
 const step = ref(1)
 const sent = ref(false)
+/** Die Überschrift der Bestätigung — Fokus-Ziel nach dem Absenden. */
+const doneTitle = ref<HTMLElement | null>(null)
 const sending = ref(false)
 /**
  * Fehler stehen als SCHLÜSSEL im State, nicht als fertiger Satz: sonst bliebe
@@ -230,6 +232,12 @@ async function submit(): Promise<void> {
       timing,
     })
     sent.value = true
+    // FOKUS AUF DIE BESTÄTIGUNG (UX-005, Q09): das Formular samt Sende-Knopf
+    // verschwindet, der Fokus fiel damit auf die Seite, und ein
+    // Vorleseprogramm sagte nichts. Die Überschrift „Danke …" nimmt ihn
+    // (`tabindex="-1"`: Ziel, aber kein Tab-Schritt) und wird so vorgelesen.
+    await nextTick()
+    doneTitle.value?.focus()
   }
   catch (error) {
     // Ein Turnstile-Token ist EINMALIG: nach jedem Fehlschlag ein neuer.
@@ -335,7 +343,7 @@ usePortfolioSeo({
 
         <!-- ERFOLG: ersetzt den Wizard, buchen steht vorne. -->
         <div v-if="sent" class="wizard__main wizard__main--done">
-          <h2 id="wizard-step-title" class="section-title">{{ WIZARD_SUCCESS.title[lang] }}</h2>
+          <h2 id="wizard-step-title" ref="doneTitle" tabindex="-1" class="section-title wizard__done-title">{{ WIZARD_SUCCESS.title[lang] }}</h2>
           <p class="section-lead">{{ WIZARD_SUCCESS.lead[lang] }}</p>
           <div class="wizard__actions">
             <a
@@ -892,6 +900,10 @@ usePortfolioSeo({
   max-width: 44rem;
   resize: vertical;
   line-height: 1.6;
+}
+
+.wizard__done-title:focus {
+  outline: none;
 }
 
 .consent {

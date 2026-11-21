@@ -116,7 +116,7 @@ const columns = computed<TableColumn<FeedbackEntry>[]>(() => [
     <template #header>
       <UDashboardNavbar :title="t('feedback.list.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

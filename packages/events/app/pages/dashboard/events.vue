@@ -252,7 +252,7 @@ function rowActions(row: EventRow): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('events.admin.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton icon="i-ph-plus" size="sm" data-testid="event-create" @click="openCreate">

@@ -127,7 +127,7 @@ async function setLeader(entry: TrustLevelMember, leader: boolean) {
     <template #header>
       <UDashboardNavbar :title="t('posts.trustLevels.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
     </template>

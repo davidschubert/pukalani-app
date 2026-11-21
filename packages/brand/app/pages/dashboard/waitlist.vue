@@ -256,7 +256,7 @@ function rowActions(entry: BrandWaitlistAdminItem): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('brand.admin.waitlist.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

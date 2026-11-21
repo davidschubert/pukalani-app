@@ -389,7 +389,7 @@ async function createUser() {
     <template #header>
       <UDashboardNavbar :title="`${t(`admin.users.filter.${filter ?? 'all'}`)} (${data?.total ?? 0})`">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton icon="i-ph-file-csv" size="sm" color="neutral" variant="subtle" data-testid="export-csv" :loading="exportingCsv" @click="exportCsv">

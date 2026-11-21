@@ -65,7 +65,7 @@ const containerWidth = 'lg:max-w-7xl'
     <template #header>
       <UDashboardNavbar :title="t('dashboard.settings.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
 
