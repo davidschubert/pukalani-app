@@ -1,3 +1,4 @@
+import { aiCrawlerPolicy } from '../../../../packages/core/shared/aiCrawlers'
 import { communityContentIsPublic } from '../../../../packages/core/shared/communityAudience'
 import { controlHostRobotsTxt, membersOnlyRobotsTxt, tenantRobotsTxt } from '../utils/tenantSitemap'
 import { tenantRequestOrigin } from '../utils/tenantRequestOrigin'
@@ -28,5 +29,11 @@ export default defineEventHandler((event) => {
   if (event.context.controlCenter === true) return controlHostRobotsTxt()
   if (!communityContentIsPublic(useTenant(event))) return membersOnlyRobotsTxt()
 
-  return tenantRobotsTxt(tenantRequestOrigin(event))
+  // KI-Training (KC1): die Wahl des Owners; ohne sie die Vorgabe „nein". Die
+  // Regel selbst bleibt an EINER Stelle (core/shared/aiCrawlers.ts).
+  const tenant = useTenant(event)
+  return tenantRobotsTxt(
+    tenantRequestOrigin(event),
+    aiCrawlerPolicy('community', { training: tenant?.aiTraining === true }),
+  )
 })
