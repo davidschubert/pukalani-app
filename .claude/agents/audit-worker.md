@@ -25,8 +25,8 @@ These are intentional. Do NOT flag them, do NOT recommend "fixing" them:
 - Realtime EVENT-STRING matching uses the `databases.<DB>.tables.…` prefix while the
   SUBSCRIPTION CHANNEL uses `tablesdb.…`. Matching incoming events on the `databases.` prefix /
   the `.create|.update|.delete` suffix is correct — event strings keep the legacy prefix.
-- `useRealtimeAccount` subscribes the `account` channel on the SHARED realtime socket (since
-  RT2, 2026-11-08). Appwrite ≥ 2.7 closes JWT connections on session revoke too (401 frame →
+- `useRealtimeAccount` subscribes the `account` channel on the SHARED realtime socket (RT2).
+  Appwrite ≥ 2.7 closes JWT connections on session revoke too (401 frame →
   `onRealtimeAccessEnded`). A separate cookie-native `new WebSocket` would be a finding: in prod
   the host-only cookie never reaches `api.pukalani.app`, so it connects as a guest.
 - Login / Register / OTP are deliberately hand-rolled `UForm` implementations, NOT `UAuthForm`
@@ -37,32 +37,32 @@ These are intentional. Do NOT flag them, do NOT recommend "fixing" them:
 - Injected theme styles are intentionally unlayered and beat Tailwind `@layer` utilities
   (e.g. headingWeight vs. `font-bold`). Not a specificity bug.
 
-## §1 — Layer ownership & dependency direction (the contract — CONCEPT.md A14)
+## §1 — Layer ownership & dependency direction (the contract — `docs/CONCEPT.md` A14)
 Each layer is a contract; files inherit their layer's contract. Check your slice stays in it.
+Do NOT rely on a hand-kept layer list — read the sources:
+- WHICH LAYERS EXIST and which pot each is in: the lists `FOUNDATION`, `SEAM`, `PRODUCTS` at the
+  top of `eslint.config.mjs` (a layer on disk without a pot breaks the lint). What each layer
+  owns and requires: its `product.manifest.ts`; the ownership matrix: `docs/CONCEPT.md` A14.
 - `core`: owns Auth, Appwrite client factories, RBAC matrix, SSR session, base UI, shared
-  utils. MUST NOT own feature domain or ANY Appwrite Table. Depends on nothing.
-- `system` (if present): owns cross-cutting infra tables (`audit_logs`, `app_config`,
-  `notifications`, `presence`). Depends on core only.
-- `moderation`: owns the `reports` table, report capture/queue/status-lifecycle, generic
-  report UI (`useReport`, `<ReportButton>`). MUST NOT know comment/user internals or
-  consequence logic. Depends on core only; imports NOTHING from comments/admin.
-- `themes`: owns design tokens, CSS, theme switcher, color mode. MUST NOT touch Appwrite,
-  Auth, or business logic. Depends only on `@nuxt/ui`.
-- `comments`: owns `comments` / `comment_votes` tables, comment API/UI/store. MUST NOT hold
-  admin logic, foreign feature tables, or other domains' resolution. Depends on core, moderation.
-- `admin`: owns `changelog` table, dashboard / moderation-queue UI+API. MUST NOT import
-  feature-layer code or hold feature domain logic. Depends on core, moderation, (system).
-- FOUNDATION RULE: core (and moderation/system) NEVER depend on a feature layer. Graph stays
-  acyclic: comments/admin → moderation → core.
-- Cross-layer dependencies must be EXPLICIT contracts (a typed export the consumer imports),
-  not implicit auto-import or string coupling. Verify `eslint.config.mjs` carries the per-layer
-  `no-restricted-imports` backstop blocks (themes / feature-layers / foundation).
+  utils. MUST NOT own feature domain or ANY Appwrite Table. Depends on no other layer.
+- `system`: owns the cross-cutting infra tables (see `packages/system/scripts/migrations/`).
+  There is NO `presence` table (Presences API, §4).
+- FOUNDATION RULE: a foundation layer NEVER depends on a product layer. PRODUCTS do not know
+  each other. SEAM layers (`blueprint`, `onboarding`, `control`, `domains`) may know several
+  layers — that is their job; their own limits are in their ESLint blocks.
+- Product compositions (feed + comments, …) exist exactly once, in `packages/blueprint`.
+- Cross-layer dependencies must be EXPLICIT contracts (a typed export or a registry the
+  consumer uses), not implicit auto-import or string coupling. Verify `eslint.config.mjs`
+  still carries the per-pot `no-restricted-imports` backstop blocks.
+- The three sources (ESLint lists, manifests `tier`, CONCEPT A14) do not fully agree on
+  `admin`, `billing`, `themes`, `moderation` — that is KNOWN and awaits a decision. Report
+  an actual import that crosses a boundary, not the disagreement itself.
 
-## §2 — Known, tracked drift (report as KNOWN, not as a fresh Critical)
-- `core` reading/writing admin-owned tables (`audit_logs`, `app_config`, `notifications`,
-  `presence`) — the planned `system` layer is the fix. Confirm current state + cite.
-- admin→comments STRING coupling (`tableId: 'comments'`, historically 9×). Intended to become
-  an explicit contract via `moderation`. Report how many remain and where.
+## §2 — Known, tracked coupling (report as KNOWN, not as a fresh Critical)
+- `packages/admin` reads product tables BY NAME through the data door
+  (`tenantDb(event, …).list('comments', …)`). Grep `'comments'` under
+  `packages/admin/server`, report how many remain and where. A raw `.tablesDB` call there
+  would be a NEW finding (data door, `.claude/rules/tenant-isolation.md`).
 
 ## §3 — Appwrite (SSR-first, TablesDB)
 - Terminology: TablesDB / Tables / Rows. `Databases` / `Collection` / `Document` /
@@ -85,7 +85,8 @@ Each layer is a contract; files inherit their layer's contract. Check your slice
 - Migrations idempotent (409 → skip), run ONLY via `pnpm migrate --app <app>`
   (`scripts/migrate.mjs`; non-local endpoint needs `--prod`, the env file's
   project must be listed in the app's `site.manifest.ts` `appwriteProjects`);
-  every migration file starts with `import '../../../../scripts/lib/assert-target.mjs'`;
+  every migration file starts with `import '../../../../scripts/lib/assert-target.mjs'`
+  (reasoned exceptions are named in `packages/core/tests/scriptTargetGuard.test.ts`);
   poll column `available` before creating indexes.
 - Every script that holds a key checks its target first (`scripts/lib/target.mjs`,
   guard `packages/core/tests/scriptTargetGuard.test.ts`). A new script without
@@ -99,10 +100,13 @@ Each layer is a contract; files inherit their layer's contract. Check your slice
   JWT → Appwrite 403 = finding (RT1 cookie fallback in `shared/realtimeAuth.ts` is the one
   sanctioned switch).
 - Presence: ONE presence per user (`presenceId = userId`; metadata carries
-  scope/action/typing/page/replyingTo/near). NO `presence` table. Writes are SERVER-side via
-  `POST /api/presence/heartbeat` (admin client). A client-side presence write, or a presence
-  Table, = finding. `usePresenceState()` = single heartbeat authority per tab;
-  `usePresence(predicate)` = read-only.
+  scope/action/typing/page/replyingTo/near). NO `presence` table. It is written in TWO
+  places, BOTH intended: server-side `POST /api/presence/heartbeat` (admin client) and the
+  JWT-authenticated WS upsert (`realtime.upsertPresence`) inside `usePresenceState()` in
+  `core/app/composables/usePresence.ts` — the single heartbeat authority per tab. Do NOT flag
+  either. A finding is: a presence Table, a THIRD write site, a presence write outside
+  `usePresenceState()`, or a `PUT /presences` REST call from the browser.
+  `usePresence(predicate)` = read-only. Rules: `.claude/rules/appwrite-presence.md`.
 
 ## §5 — i18n, routing, forms, errors
 - i18n strategy `prefix_except_default`. Internal links/redirects ALWAYS via `localePath()` —
@@ -127,6 +131,8 @@ Each layer is a contract; files inherit their layer's contract. Check your slice
 
 ## §7 — Config gates & GDPR contracts (app.config.ts, `pukalani.*`)
 - `pukalani.analytics` / `pukalani.consent` / `pukalani.observability` default OFF in core; the app opts in.
+  `pukalani.realtime.enabled` defaults ON (the reasoned exception). PROTECTIONS (origin check, AI
+  provider binding) have no off-switch in core.
 - GDPR: every feature layer that stores user data MUST register a data contributor via
   `registerUserDataContributor` in a `server/plugins/user-data.ts` nitro plugin. A feature
   layer with user-data tables and NO contributor = Critical (breaks delete/export).

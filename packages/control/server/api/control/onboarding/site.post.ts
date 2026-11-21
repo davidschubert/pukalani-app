@@ -143,6 +143,10 @@ export default defineEventHandler(async (event) => {
           category: body.site.category,
           ...(body.site.goal ? { goal: body.site.goal } : {}),
           ...(body.site.description ? { description: body.site.description } : {}),
+          // Hauptsprache (Q10): die Sprache, in der der Owner den Wizard
+          // durchlaufen hat — seine Sprache ist die Vorgabe, ändern kann er
+          // sie im Dashboard (Name und Beschreibung).
+          ...(body.site.locale ? { locale: body.site.locale } : {}),
         },
         inviteCode: code,
       })

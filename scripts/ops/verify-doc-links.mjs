@@ -452,10 +452,6 @@ function checkMapCoverage(docFiles) {
 
 /** Durchgang 7: Pläne sagen ihren Stand; Einzelheiten gehören zu einem Kürzel. */
 const PLAN_STATUS = /^> \*\*Plan-Status \(\d{4}-\d{2}-\d{2}\):\*\* (nicht gebaut|teils gebaut — offen: \S|Unterlage zu \S|gebaut\b)/m
-/** Gebaute Pläne, die trotzdem (noch) in `plans/` liegen — mit Grund. */
-const BUILT_PLAN_STAYS = {
-  'BRANDING-SUPPLY-INFRA.md': 'CLAUDE.md nennt diesen Pfad; die Datei zieht mit dem Zeiger dort um',
-}
 function checkPlans() {
   const plansDir = join(ROOT, 'docs/plans')
   let names
@@ -465,7 +461,7 @@ function checkPlans() {
     const head = readFileSync(join(plansDir, name), 'utf8').split('\n').slice(0, 15).join('\n')
     const match = head.match(PLAN_STATUS)
     if (!match) rule(`docs/plans/${name}`, 1, 'Zeile „> **Plan-Status (JJJJ-MM-TT):** …" fehlt', 'plan-status')
-    else if (match[1] === 'gebaut' && !BUILT_PLAN_STAYS[name]) {
+    else if (match[1] === 'gebaut') {
       rule(`docs/plans/${name}`, 1, 'gebaut — gehört nach docs/archiv/', 'plan-status')
     }
   }

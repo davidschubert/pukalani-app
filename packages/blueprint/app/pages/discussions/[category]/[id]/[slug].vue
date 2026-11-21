@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { markdownExcerpt } from '../../../../../../core/shared/markdownExcerpt'
 import { resolveCanonicalTopicRoute } from '../../../../../../posts/shared/discussionUrl'
 import type { DiscussionTopicResponse } from '../../../../../../posts/shared/types/post'
 
@@ -54,8 +55,21 @@ const topicCategoryLabel = computed(() => categoryName(topic.value.category))
 
 useBrandTitle(
   () => topic.value.post.title || t('posts.discussions.title'),
-  { description: () => t('posts.discussions.inCategory', { category: topicCategoryLabel.value }) },
+  {
+    // BESCHREIBUNG AUS DEM BEITRAG (Q10, SEO-003): bis hierher stand bei jeder
+    // Diskussion derselben Kategorie derselbe Satz („in Praxis & Technik") —
+    // als Vorschau in der Suche und als Text jeder geteilten Karte. Jetzt der
+    // Anfang des Beitrags, dieselbe Regel wie beim Anriss der Startseite; nur
+    // ohne Text (geschwärzt, reine Umfrage) bleibt der alte Satz.
+    description: () => markdownExcerpt(topic.value.post.body)
+      || t('posts.discussions.inCategory', { category: topicCategoryLabel.value }),
+  },
 )
+
+// EINE MASSGEBLICHE ADRESSE (Q10, SEO-004): der Beitrag hat EINEN Text, aber
+// eine Adresse je Sprache der Oberfläche. Maßgeblich ist die in der
+// Hauptsprache der Community; der Kopf (core) zeigt von beiden dorthin.
+useCommunityContentSeo()
 
 const post = ref(topic.value.post)
 </script>
@@ -88,7 +102,12 @@ const post = ref(topic.value.post)
       <TopicStateActions :post="post" class="ms-auto" @updated="p => { post = p }" />
     </div>
 
-    <PostCard :post="post" default-comments-open @updated="p => { post = p }">
+    <!-- HAUPTÜBERSCHRIFT (Q10, SEO-003): die Karte setzt den Titel im Feed als
+         `h3` — dort ist er einer von vielen. Hier ist er DIE Überschrift der
+         Seite. Ein Beitrag ohne Titel bekommt eine unsichtbare, damit die
+         Seite für Vorleseprogramme und Suchmaschinen trotzdem eine hat. -->
+    <h1 v-if="!post.title" class="sr-only">{{ t('posts.discussions.title') }}</h1>
+    <PostCard :post="post" title-tag="h1" default-comments-open @updated="p => { post = p }">
       <template #comments="{ post: slotPost }">
         <!-- „Verlinkt von …" (F57) steht VOR den Kommentaren, nicht hinter
              ihnen: es gehört zum Beitrag, und hinter einer aufgeklappten

@@ -109,7 +109,6 @@ verlangt sie. Offene Punkte stehen trotzdem nur in [OPEN-ITEMS.md](OPEN-ITEMS.md
 | [plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) | branding.supply — Rechtstexte und Bezahlweg (BS1): entschieden 2026-09-07, teils gebaut; offen R2, R2c, R3, Z1 |
 | [plans/BRANDING-SUPPLY-FAKTENBLATT.md](plans/BRANDING-SUPPLY-FAKTENBLATT.md) | Unterlage zu BS1: Faktenblatt für den Rechtstext-Generator und den Anwalt |
 | [plans/BRANDING-SUPPLY-RECHTSTEXTE-ENTWURF.md](plans/BRANDING-SUPPLY-RECHTSTEXTE-ENTWURF.md) | Unterlage zu BS1: Erstfassung der Rechtstexte aus dem Generator — Entwurf, ungeprüft |
-| [plans/BRANDING-SUPPLY-INFRA.md](plans/BRANDING-SUPPLY-INFRA.md) | branding.supply als eigene Site: **gebaut und live seit 2026-09-01**. Liegt noch hier, weil `CLAUDE.md` auf diesen Pfad zeigt; zieht mit dem Zeiger um |
 | [plans/STUDIO-ERSTGESPRAECH-FUNNEL.md](plans/STUDIO-ERSTGESPRAECH-FUNNEL.md) | Studio-Funnel: der Erstgespräch-Wizard ist live; offen die Reste aus W2 bis W4 |
 | [plans/PRIVATE-NACHRICHTEN-KONZEPT.md](plans/PRIVATE-NACHRICHTEN-KONZEPT.md) | Private Nachrichten: Stufe 1 live; ungebaut der Rest von Stufe 2 und Stufe 3 — bewusst keine offenen Punkte |
 | [plans/F7-PAID-COMMUNITIES-KONZEPT.md](plans/F7-PAID-COMMUNITIES-KONZEPT.md) | Bezahlte Mitgliedschaften (F7): Konzept, vier Entscheidungen gefallen (2026-08-15), nichts gebaut |
@@ -141,7 +140,8 @@ Marken-Werkstatt wie [Brand-Wizard Phase 1](archiv/BRAND-WIZARD-PHASE-1.md),
 [Branding-Atome](archiv/BRAND-WIZARD-SESSIONS.md),
 [Marktvergleich](archiv/BRAND-MARKTVERGLEICH.md),
 [Brand Design](archiv/BRAND-DESIGN.md) und
-[Discover Brands](archiv/DISCOVER-BRANDS.md), dazu
+[Discover Brands](archiv/DISCOVER-BRANDS.md), den
+[Infra-Plan für branding.supply](archiv/BRANDING-SUPPLY-INFRA.md), dazu
 [AI-Runner](archiv/AI-RUNNER.md), [Analytics v2](archiv/ANALYTICS-V2.md) und die
 [Dashboard-Informationsarchitektur](archiv/DASHBOARD-IA.md), …). Die Karte zählt
 sie nicht einzeln auf — ins Archiv kommt man über einen Verweis, nicht über

@@ -8,6 +8,7 @@
     "build": "nuxi build",
     "lint": "eslint .",
     "preview": "nuxi preview",
+    "test": "nuxi prepare && vitest run",
     "typecheck": "nuxi typecheck"
   },
   "dependencies": {
@@ -50,6 +51,7 @@
     "@types/nodemailer": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "vue-tsc": "catalog:"
   }
 }

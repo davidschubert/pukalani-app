@@ -130,6 +130,11 @@ export default defineNuxtPlugin(() => {
   // Ansage auf noindex und blendet im Dashboard den gesetzten Zustand ein.
   // null = kein Tenant-Host (Silo, Kontroll-Host, Playground) — dort gibt es
   // keine Community-Grenze, es bleibt bei „öffentlich wie bisher".
+  // Hauptsprache (Q10): der Kopf einer Seite mit Nutzerinhalt braucht sie
+  // SSR-fest — Suchmaschinen lesen das canonical aus dem ausgelieferten HTML.
+  // `null` = keine eigene Wahl (oder kein Mandant); die Vorgabe rechnet
+  // `usePrimaryLocale()` (shared/primaryLocale.ts).
+  useState<string | null>('pukalani-tenant-primary-locale', () => tenant?.primaryLocale ?? null)
   useState<CommunityAudience | null>('pukalani-tenant-audience', () => (
     tenant ? communityAudienceFor(tenant) : null
   ))

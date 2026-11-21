@@ -7,7 +7,7 @@
 # z. B. ^/api/beispiel/(lang|laenger)$
 #
 # NEUE LANGE ROUTE? Erst prüfen, ob sie nicht aus der Anfrage gehört (Lauf-
-# Sperre, 202, Abfragen — .claude/rules/ki-mail-embed-moderation.md). Eine
+# Sperre, 202, Abfragen — .claude/rules/lange-laeufe.md). Eine
 # längere Frist ist die Ausnahme; mehr als 180s lässt der tägliche Blick nicht zu.
 #
 # KEIN BLOCK FÜR /robots.txt UND KEINE ZEILE ZUR KOMPRESSION (2026-11-20):
