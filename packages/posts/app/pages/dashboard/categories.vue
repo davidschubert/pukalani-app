@@ -487,7 +487,7 @@ function categoryPath(category: PostCategory): string {
             data-category-order-state
           >
             <UIcon
-              :name="orderState === 'saving' ? 'i-ph-spinner' : 'i-ph-check'"
+              :name="orderState === 'saving' ? 'i-ph-circle-notch' : 'i-ph-check'"
               :class="orderState === 'saving' ? 'size-4 animate-spin' : 'size-4 text-success'"
             />
             {{ orderState === 'saving' ? t('posts.categories.orderSaving') : t('posts.categories.orderSaved') }}
@@ -498,9 +498,7 @@ function categoryPath(category: PostCategory): string {
           {{ t('posts.categories.orderFilteredHint') }}
         </p>
 
-        <div v-if="isFetchLoading(status) && !data" class="flex justify-center py-16">
-          <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-        </div>
+        <CoreLoadingState v-if="isFetchLoading(status) && !data" />
 
         <!-- Fehler statt „keine Kategorien" (FE-004, LZ1) -->
         <div v-else-if="error && !data" role="alert">

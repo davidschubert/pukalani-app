@@ -96,7 +96,7 @@ async function signOutAll() {
     <ClientOnly>
       <template #fallback>
         <div class="flex justify-center py-8">
-          <UIcon name="i-ph-spinner" class="size-5 animate-spin text-muted" />
+          <UIcon name="i-ph-circle-notch" class="size-5 animate-spin text-muted" />
         </div>
       </template>
       <SessionsTable :sessions="data?.sessions ?? []">

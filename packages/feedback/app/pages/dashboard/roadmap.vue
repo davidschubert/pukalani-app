@@ -97,7 +97,7 @@ watch(detailOpen, (open) => { if (!open) void refresh() })
     <template #body>
       <ClientOnly>
         <template #fallback>
-          <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
+          <CoreLoadingState />
         </template>
 
         <CoreEmptyState
@@ -107,9 +107,7 @@ watch(detailOpen, (open) => { if (!open) void refresh() })
           :description="t('feedback.list.unavailableText')"
         />
 
-        <div v-else-if="fetchStatus === 'pending' && !data" class="flex justify-center py-16">
-          <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-        </div>
+        <CoreLoadingState v-else-if="fetchStatus === 'pending' && !data" />
         <!-- Fehler statt „keine Rückmeldungen" (FE-004, LZ1) -->
         <div v-else-if="error && !data" role="alert">
           <CoreLoadError :retry="refresh" />

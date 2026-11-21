@@ -484,7 +484,8 @@ async function createBrand(): Promise<void> {
           @click="filter = entry.value"
         >
           {{ entry.label }}
-          <UBadge color="neutral" variant="subtle" size="sm">{{ entry.count }}</UBadge>
+          <!-- Ohne Daten wäre „0" falsch: der Abruf fehlte, nicht die Marken. -->
+          <UBadge v-if="!(error && !data)" color="neutral" variant="subtle" size="sm">{{ entry.count }}</UBadge>
         </UButton>
       </div>
 
@@ -559,9 +560,7 @@ async function createBrand(): Promise<void> {
       >
         <template #body>
           <div class="bw-root">
-            <div v-if="loadingDetail" class="flex justify-center py-12">
-              <UIcon name="i-ph-circle-notch" class="size-6 animate-spin text-muted" />
-            </div>
+            <CoreLoadingState v-if="loadingDetail" />
 
             <UForm
               v-else

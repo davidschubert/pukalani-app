@@ -478,8 +478,15 @@ function formulaFor(opportunity: InsightsOpportunity): string {
         </p>
       </div>
 
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1). VOR den Leer-Zuständen:
+           ohne Daten ist die Liste leer, ein Fehlerzweig im Daten-Zweig käme
+           nie zum Zug (Bahn 4). -->
+      <div v-if="error && !data" role="alert" class="mt-6">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
       <CoreEmptyState
-        v-if="hydrated && !loading && allRows.length === 0"
+        v-else-if="hydrated && !loading && allRows.length === 0"
         class="mt-6" icon="i-ph-bookmark-simple"
         :title="t('insights.finds.title')" :description="t('insights.finds.empty')"
       />
@@ -491,12 +498,7 @@ function formulaFor(opportunity: InsightsOpportunity): string {
       />
 
       <div v-else-if="allRows.length > 0" class="mt-4 overflow-x-auto">
-        <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
-        <div v-if="error && !data" role="alert">
-          <CoreLoadError :retry="refresh" />
-        </div>
-
-        <UTable v-else :data="rows" :columns="columns" :loading="loading">
+        <UTable :data="rows" :columns="columns" :loading="loading">
           <template #title-cell="{ row }">
             <div class="flex flex-col">
               <span class="text-sm font-medium">
@@ -609,7 +611,7 @@ function formulaFor(opportunity: InsightsOpportunity): string {
               style="color: var(--ui-text-muted)"
               :title="briefHint(row.original)"
             >
-              <UIcon name="i-ph-spinner" class="animate-spin size-4" />
+              <UIcon name="i-ph-circle-notch" class="animate-spin size-4" />
               {{ t('insights.finds.briefRunning') }}
             </span>
             <UButton

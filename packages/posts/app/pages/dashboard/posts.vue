@@ -155,12 +155,10 @@ function rowActions(post: CommunityPost): DropdownMenuItem[][] {
     <template #body>
       <ClientOnly>
         <template #fallback>
-          <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
+          <CoreLoadingState />
         </template>
 
-        <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
-          <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-        </div>
+        <CoreLoadingState v-if="status === 'pending' && !data" />
 
         <!-- Fehler statt „keine Beiträge" (FE-004, LZ1) -->
         <div v-else-if="error && !data" role="alert">
