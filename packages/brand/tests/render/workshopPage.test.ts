@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import { flushPromises } from '@vue/test-utils'
-import { getQuery } from 'h3'
+import { getQuery, readBody } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { NuxtLayout, NuxtPage, UApp } from '#components'
@@ -12,6 +12,13 @@ import { useBrandWorkspaceStore } from '../../app/stores/brandWorkspace'
 import { BRAND_ADVISORS, BRAND_VOICE, advisorIsVoice } from '../../shared/brandAdvisors'
 import { slotsForStep } from '../../shared/slotRegistry'
 import {
+  DESIGN_PROFILE_ID,
+  DESIGN_STEP_KEY,
+  designMessages,
+  designProfileDetail,
+  designProfileList,
+  designSave,
+  designStepDetail,
   WORKSHOP_FIRST_DRAFT,
   WORKSHOP_FOREIGN_SLOT,
   WORKSHOP_FOREIGN_STEP,
@@ -63,6 +70,7 @@ import {
 // läuft immer im Paket-Ordner (`pnpm test`, CI).
 const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 'utf8')) as {
   brand: {
+    color: { base: Record<'title', string> }
     steps: Record<string, string>
     brands: { card: Record<'remaining', string> }
     labels: Record<string, unknown>
@@ -83,8 +91,28 @@ const site = de.brand.workspace.site
 const base = `/api/brand/profiles/${WORKSHOP_PROFILE_ID}`
 
 const calls = { analyze: 0, ai: 0, versions: 0, foreign: 0 }
+/** Erst der Farbwelt-Fall listet die zweite Marke (die Leiste der ersten Fälle bleibt gleich). */
+const designProfileListed = { on: false }
 
-registerEndpoint('/api/brand/profiles', () => workshopProfileList())
+const designBase = `/api/brand/profiles/${DESIGN_PROFILE_ID}`
+registerEndpoint(designBase, () => designProfileDetail())
+registerEndpoint(`${designBase}/steps/${DESIGN_STEP_KEY}`, {
+  method: 'GET',
+  handler: () => designStepDetail(),
+})
+registerEndpoint(`${designBase}/steps/${DESIGN_STEP_KEY}`, {
+  method: 'PATCH',
+  handler: async event => designSave(await readBody(event)),
+})
+registerEndpoint(`${designBase}/messages`, event => designMessages(String(getQuery(event).session ?? '')))
+for (const route of ['converse', 'generate']) {
+  registerEndpoint(`${designBase}/steps/${DESIGN_STEP_KEY}/${route}`, () => {
+    calls.ai += 1
+    throw new Error('KI im Rauch-Test aufgerufen')
+  })
+}
+
+registerEndpoint('/api/brand/profiles', () => (designProfileListed.on ? designProfileList() : workshopProfileList()))
 registerEndpoint(base, () => workshopProfileDetail())
 registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}`, () => workshopStepDetail())
 // Ein FREMDES Kapitel, das der Log beim Aufklappen lesend holt.
@@ -342,6 +370,41 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     expect(store.conflict).toBeNull()
     expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_FIRST_DRAFT)
     expect(bodyText()).not.toContain(ws.conflict.mineLabel)
+
+    expect(calls.ai).toBe(0)
+    expect(unexpected(warn)).toEqual([])
+    expect(unexpected(error)).toEqual([])
+  })
+  it('Farbwelt: das Werkzeug legt seine Werte selbst vor, eine Wahl geht in den Store (WS1 d)', async () => {
+    designProfileListed.on = true
+    const wrapper = await mountSuspended(Shell, { route: `/brand/${DESIGN_PROFILE_ID}/${DESIGN_STEP_KEY}` })
+    await flushPromises()
+    const store = useBrandWorkspaceStore()
+
+    expect(wrapper.find('main h1').text()).toBe(de.brand.steps[DESIGN_STEP_KEY])
+    expect(wrapper.findAll('h2').map(entry => entry.text().trim())).toContain(de.brand.color.base.title)
+
+    // Nach dem Mount belegt das Kapitel sich selbst vor: der gewählte
+    // Basis-Kandidat (aria-pressed) steht als Wert im Store.
+    // Nur der Abschnitt „Basis": die Karten unter seiner Überschrift.
+    const baseCards = () => {
+      const title = wrapper.findAll('h2').find(entry => entry.text().trim() === de.brand.color.base.title)!
+      const section = title.element.parentElement!.parentElement!
+      return [...section.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')]
+    }
+    const hexOf = (card: HTMLButtonElement) => card.querySelector('.font-mono')?.textContent?.trim() ?? ''
+    await vi.waitFor(() => expect(store.slotValue('h.base')).toMatch(/^#[0-9a-f]{6}$/i))
+    const pressed = baseCards().filter(card => card.getAttribute('aria-pressed') === 'true')
+    expect(pressed.map(hexOf)).toEqual([store.slotValue('h.base')])
+
+    // Eine andere Wahl geht denselben Weg wie jede Eingabe: Store, dann Autosave.
+    const other = baseCards().find(card => card.getAttribute('aria-pressed') !== 'true' && !card.disabled)
+    expect(other).toBeDefined()
+    const target = hexOf(other!)
+    other!.click()
+    await flushPromises()
+    expect(store.slotValue('h.base')).toBe(target)
+    expect(baseCards().filter(card => card.getAttribute('aria-pressed') === 'true').map(hexOf)).toEqual([target])
 
     expect(calls.ai).toBe(0)
     expect(unexpected(warn)).toEqual([])

@@ -1,7 +1,7 @@
 import { resolveBrandJourney, resolveSessionStates } from '../../../shared/brandJourney'
 import type { BrandProfileFacts } from '../../../shared/brandJourney'
 import { affectsView } from '../../../shared/brandSessions'
-import { type BrandStepKey, slotsForStep } from '../../../shared/slotRegistry'
+import { BRAND_DESIGN_STEP_KEYS, BRAND_FOUNDATION_STEP_KEYS, type BrandStepKey, slotsForStep } from '../../../shared/slotRegistry'
 import type {
   BrandGenerationVersionsResponse,
   BrandMessagesResponse,
@@ -10,7 +10,9 @@ import type {
   BrandProfileSummary,
   BrandSessionView,
   BrandSiteAnalyzeResponse,
+  BrandSlotView,
   BrandStepDetailResponse,
+  BrandStepSaveResponse,
 } from '../../../shared/types/brand'
 
 /**
@@ -223,4 +225,105 @@ export function workshopForeignStepDetail(): BrandStepDetailResponse {
       },
     },
   }
+}
+
+// ── Eine Marke in Brand Design (WS1, Kapitel d) ──────────────────────────
+
+/**
+ * ZWEITES PROBE-PROFIL: Foundation fertig, Brand Design freigeschaltet, das
+ * Moodboard abgeschlossen, die FARBWELT offen. Eigenes Profil statt eines
+ * Schalters am ersten, damit die Kontext-Fälle nichts davon sehen.
+ */
+export const DESIGN_PROFILE_ID = 'render-design'
+export const DESIGN_STEP_KEY: BrandStepKey = 'color'
+
+const DESIGN_FACTS: BrandProfileFacts = { ...FACTS, designUnlockedAt: NOW }
+
+function designStepFacts() {
+  const done = [...BRAND_FOUNDATION_STEP_KEYS, ...BRAND_DESIGN_STEP_KEYS.slice(0, BRAND_DESIGN_STEP_KEYS.indexOf(DESIGN_STEP_KEY as never))]
+  return [
+    ...done.map(stepKey => ({ stepKey, state: 'done' as const, confidence: null, slots: {} })),
+    { stepKey: DESIGN_STEP_KEY, state: 'active' as const, confidence: null, slots: {} },
+  ]
+}
+
+function designSummary(): BrandProfileSummary {
+  return { ...workshopProfileSummary(), id: DESIGN_PROFILE_ID, title: 'Render-Design GmbH', currentStepKey: DESIGN_STEP_KEY, designUnlockedAt: NOW }
+}
+
+export function designProfileDetail(): BrandProfileDetailResponse {
+  return {
+    ...workshopProfileDetail(),
+    profile: designSummary(),
+    journey: [...resolveBrandJourney(DESIGN_FACTS, designStepFacts())],
+    steps: designStepFacts().map(entry => ({
+      stepKey: entry.stepKey,
+      storedState: entry.state,
+      revision: 1,
+      confidence: null,
+      startedAt: NOW,
+      completedAt: entry.state === 'done' ? NOW : null,
+      activeSeconds: 0,
+    })),
+  }
+}
+
+export function designProfileList(): BrandProfileListResponse {
+  return { profiles: [workshopProfileSummary(), designSummary()] }
+}
+
+/** Was der gestellte Autosave zuletzt bekommen hat — er antwortet mit genau diesem Stand. */
+export const designSaved: { slots: Record<string, BrandSlotView>, revision: number, patches: number } = { slots: {}, revision: 1, patches: 0 }
+
+export function designStepDetail(): BrandStepDetailResponse {
+  const journey = resolveBrandJourney(DESIGN_FACTS, designStepFacts())
+  const step = journey.find(entry => entry.stepKey === DESIGN_STEP_KEY)!
+  const states = resolveSessionStates(DESIGN_FACTS, designStepFacts())
+  const sessions: Record<string, BrandSessionView> = {}
+  for (const session of slotsForStep(DESIGN_STEP_KEY)) {
+    sessions[session.id] = {
+      state: states[session.id] ?? 'locked',
+      kind: session.kind,
+      effort: session.effort,
+      sensitivity: session.sensitivity,
+      affects: affectsView(session.id, journey),
+      accepted: false,
+      deferred: false,
+      reviewed: false,
+    }
+  }
+  return {
+    ...workshopStepDetail(),
+    profileId: DESIGN_PROFILE_ID,
+    stepKey: DESIGN_STEP_KEY,
+    revision: designSaved.revision,
+    slots: { ...designSaved.slots },
+    sessions,
+    progress: step.progress,
+    missingRequired: [...step.missingRequired],
+    sourceValues: {},
+  }
+}
+
+/** Der gestellte Autosave (`PATCH …/steps/color`): übernimmt, was kommt, und meldet es zurück. */
+export function designSave(body: { revision: number, slots: Record<string, { value?: string, confirmed?: boolean }> }): BrandStepSaveResponse {
+  designSaved.patches += 1
+  for (const [slotId, patch] of Object.entries(body.slots ?? {})) {
+    const before = designSaved.slots[slotId]
+    const value = patch.value ?? before?.latestDraft ?? ''
+    designSaved.slots[slotId] = {
+      firstDraft: before?.firstDraft ?? value,
+      latestDraft: value,
+      confirmed: patch.confirmed ? value : (before?.confirmed ?? null),
+      confidence: null,
+      updatedAt: NOW,
+    }
+  }
+  designSaved.revision = body.revision + 1
+  return { revision: designSaved.revision, slots: { ...designSaved.slots } }
+}
+
+export function designMessages(sessionKey: string): BrandMessagesResponse {
+  const response = workshopMessages(sessionKey)
+  return { ...response, messages: response.messages.map(message => ({ ...message, stepKey: DESIGN_STEP_KEY })) }
 }

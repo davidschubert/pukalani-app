@@ -34,10 +34,14 @@ Rauch-Test (gestellte Antworten in `tests/render/support/workshopFixtures.ts`).
 - **(c) Das Antwort-Modul im Zug** — Vorlage der Züge 4117–4613 und die aktive
   Karte 4614–4722; Skript „Das Antwort-Modul im Zug" 2007–2212 und „Die drei
   Richtungen" 2213–2283.
-- **(d) Die Design-Werkzeuge** — Vorlage der Panels (DNA bis Pressekit) rund
-  um 3980–4116; Skript 3196–3700 (DNA, Farbwelt, Typografie, Zeichen,
-  Bildsprache, Bewegung, Book & Kit). Eher ein Composable je Werkzeug als neue
-  Vorlagen, die Panels sind schon Komponenten.
+- ~~**(d) Die Design-Werkzeuge**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
+  Farbwelt, Typografie, Zeichen, Bildsprache und Bewegung trugen denselben
+  Abgleich fünfmal wortgleich; er steht jetzt einmal in
+  `useBrandDesignToolSync` (kapitelspezifische Gründe bleiben an ihrer
+  Stelle). DNA-Vorschlag und Book & Kit haben eine andere Form (Mix-Quellen,
+  kein Abgleich) und bleiben in der Seite. Rauch-Test: zweites Probe-Profil
+  mit freigeschaltetem Brand Design, Farbwelt belegt sich vor, eine Wahl geht
+  in den Store. Seite 3.957 → 3.804 Zeilen.
 - **(e) Session, Verlauf, Eröffnungszug** — Skript 295–1504 (Stimme, nächste
   Frage, aktive Session, Verlauf und Auto-Weiter). Kein Template-Anteil; ein
   Composable, das der Store-Grenze folgt. Das heikelste Kapitel (SSR-Payload,

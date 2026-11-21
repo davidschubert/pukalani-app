@@ -100,6 +100,7 @@ import { useBrandAutosave } from '../../../composables/useBrandAutosave'
 import { useBrandFieldLabel } from '../../../composables/useBrandFieldLabel'
 import { useBrandConversation } from '../../../composables/useBrandConversation'
 import { useBrandGeneration } from '../../../composables/useBrandGeneration'
+import { useBrandDesignToolSync } from '../../../composables/useBrandDesignToolSync'
 import { useBrandWorkshopLayout } from '../../../composables/useBrandWorkshopLayout'
 import { useBrandWorkshopRail } from '../../../composables/useBrandWorkshopRail'
 
@@ -2618,110 +2619,32 @@ function applyMixSources(next: BrandDnaMixSources): void {
 // ── Die Farbwelt (D3, §2.3) ───────────────────────────────────────────────
 
 /**
- * DIESELBE ARBEITSTEILUNG WIE BEI DER DNA: `useBrandColorWorld()` rechnet,
- * die SEITE schreibt.
+ * Die fünf Design-Werkzeuge (Farbwelt, Typografie, Zeichen, Bildsprache,
+ * Bewegung) teilen EINE Mechanik: das Werkzeug rechnet, die Seite schreibt
+ * über `onInput`, bestätigte Felder bleiben unberührt, der Abgleich läuft erst
+ * nach dem Mount — `useBrandDesignToolSync` (WS1, Kapitel d), dort begründet.
  */
 const colorWorld = useBrandColorWorld()
-
-const showColorPanel = computed(() => stepKey.value === 'color')
-
-/** Die sechs Sessions des Kapitels — in Registry-Reihenfolge. */
-const COLOR_SLOTS = ['h.base', 'h.ramp', 'h.neutral', 'h.accent', 'h.roles', 'h.contrast'] as const
-
-/** Was der Mensch schon bestätigt hat — das Panel sperrt genau diese Abschnitte. */
-const confirmedColorSlots = computed(() =>
-  COLOR_SLOTS.filter(slotId => store.slotConfirmed(slotId)))
-
-/**
- * DAS KAPITEL BELEGT SICH SELBST VOR (H5: „jede Session muss als BESTÄTIGUNG
- * durchlaufbar sein") — dieselbe Mechanik wie `g.boards`/`g.mix` in D2c.
- *
- * DREI SICHERUNGEN, die man nicht „vereinfachen" darf:
- *  1. Die GLEICHHEITS-Prüfung. Ohne sie schriebe jeder Renderdurchlauf
- *     denselben Text und der Autosave liefe im Kreis.
- *  2. BESTÄTIGTES bleibt unberührt. Ein bestätigter Slot ist zu; ein Schreiber
- *     darauf holte sich `slot_confirmed` vom Server — für eine Änderung, die
- *     niemand ausgelöst hat. Wer eine Ableitung nach der Bestätigung ändern
- *     will, geht durch „Korrigieren" (und der Veraltet-Hinweis sagt es ihm).
- *  3. Ein FEHLENDER Wert LÖSCHT. `h.contrast` steht nur da, solange die
- *     Pflicht-Paare AA halten (§2.3) — reisst eine spätere Basisfarbe sie,
- *     muss die alte, grüne Tabelle weg und nicht stehen bleiben.
- *
- *  4. ERST NACH DEM MOUNT. Der Server rendert diese Seite mit; ein
- *     `immediate`-Watcher im Setup füllte die Karte im Browser eine Runde
- *     früher als auf dem Server — drei Hydration-Mismatches (s. den Zwilling
- *     im DNA-Kapitel oben).
- */
-onMounted(() => {
-  watch(colorWorld.slotValues, (values) => {
-    if (stepKey.value !== 'color') return
-    for (const slotId of COLOR_SLOTS) {
-      if (store.slotConfirmed(slotId)) continue
-      const value = values[slotId] ?? ''
-      if (store.slotValue(slotId) === value) continue
-      onInput(slotId, value)
-    }
-  }, { immediate: true })
+const { show: showColorPanel, confirmed: confirmedColorSlots, pick: applyColorPick } = useBrandDesignToolSync({
+  stepKey,
+  chapter: 'color',
+  slots: ['h.base', 'h.ramp', 'h.neutral', 'h.accent', 'h.roles', 'h.contrast'],
+  values: colorWorld.slotValues,
+  onInput,
 })
-
-/** Eine Wahl aus dem Farb-Panel — sie geht denselben Weg wie jede Eingabe. */
-function applyColorPick(slotId: string, value: string): void {
-  if (store.slotConfirmed(slotId)) return
-  onInput(slotId, value)
-}
 
 // ── Die Typografie (D4, §2.4) ─────────────────────────────────────────────
 
-/**
- * DIESELBE ARBEITSTEILUNG WIE BEI DER FARBWELT: `useBrandTypeWorld()`
- * rechnet, die SEITE schreibt.
- */
 const typeWorld = useBrandTypeWorld()
-
-const showTypePanel = computed(() => stepKey.value === 'type')
-
-/** Die drei Sessions des Kapitels — in Registry-Reihenfolge. */
-const TYPE_SLOTS = ['i.pair', 'i.scale', 'i.rules'] as const
-
-const confirmedTypeSlots = computed(() =>
-  TYPE_SLOTS.filter(slotId => store.slotConfirmed(slotId)))
-
-/**
- * DAS KAPITEL BELEGT SICH SELBST VOR (H5) — dieselbe Mechanik und dieselben
- * vier Sicherungen wie die Farbwelt darüber (Gleichheits-Prüfung, Bestätigtes
- * bleibt unberührt, ein fehlender Wert löscht, erst NACH dem Mount).
- *
- * Der `onMounted`-Teil ist hier so wichtig wie dort: ein `immediate`-Watcher
- * im Setup füllte die Karten im Browser eine Runde früher als auf dem Server
- * — Hydration-Mismatch, gefunden am eigenen Klick in D3.
- */
-onMounted(() => {
-  watch(typeWorld.slotValues, (values) => {
-    if (stepKey.value !== 'type') return
-    for (const slotId of TYPE_SLOTS) {
-      if (store.slotConfirmed(slotId)) continue
-      const value = values[slotId] ?? ''
-      if (store.slotValue(slotId) === value) continue
-      onInput(slotId, value)
-    }
-  }, { immediate: true })
+const { show: showTypePanel, confirmed: confirmedTypeSlots, pick: applyTypePick } = useBrandDesignToolSync({
+  stepKey,
+  chapter: 'type',
+  slots: ['i.pair', 'i.scale', 'i.rules'],
+  values: typeWorld.slotValues,
+  onInput,
 })
 
-/** Eine Wahl aus dem Typografie-Panel — derselbe Weg wie jede Eingabe. */
-function applyTypePick(slotId: string, value: string): void {
-  if (store.slotConfirmed(slotId)) return
-  onInput(slotId, value)
-}
-
 // ── Das Zeichen (D5a/D5b, §2.5) ───────────────────────────────────────────
-
-/**
- * DIESELBE ARBEITSTEILUNG WIE IN FARBWELT UND TYPOGRAFIE: `useBrandMarkWorld()`
- * rechnet, die SEITE schreibt.
- */
-const markWorld = useBrandMarkWorld()
-
-const showMarkPanel = computed(() => stepKey.value === 'mark')
 
 /**
  * DREI der vier Sessions belegt das Kapitel selbst vor — `j.brief` NICHT.
@@ -2733,127 +2656,51 @@ const showMarkPanel = computed(() => stepKey.value === 'mark')
  * `j.drafts` (Stufe 3, D5c) fehlt aus einem anderen Grund: der Wert dieser
  * Session beschreibt die BEHALTENEN Entwürfe und wird server-seitig
  * nachgezogen (`syncBrandMarkDraftsSlot`) — ein Autosave von hier schriebe ihn
- * bei jedem Rendern leer.
+ * bei jedem Rendern leer. Bestätigt sein kann auch `j.brief` — das Panel
+ * sperrt dann seinen Lauf (`panelSlots`).
  */
-const MARK_SLOTS = ['j.kind', 'j.examples', 'j.pick'] as const
-/** Bestätigt sein kann auch `j.brief` — das Panel sperrt dann seinen Lauf. */
-const MARK_PANEL_SLOTS = ['j.kind', 'j.brief', 'j.examples', 'j.pick'] as const
-
-const confirmedMarkSlots = computed(() =>
-  MARK_PANEL_SLOTS.filter(slotId => store.slotConfirmed(slotId)))
-
-/**
- * DAS KAPITEL BELEGT SICH SELBST VOR (H5) — dieselbe Mechanik und dieselben
- * vier Sicherungen wie Farbwelt und Typografie darüber (Gleichheits-Prüfung,
- * Bestätigtes bleibt unberührt, ein fehlender Wert löscht, erst NACH dem
- * Mount).
- */
-onMounted(() => {
-  watch(markWorld.slotValues, (values) => {
-    if (stepKey.value !== 'mark') return
-    for (const slotId of MARK_SLOTS) {
-      if (store.slotConfirmed(slotId)) continue
-      const value = values[slotId] ?? ''
-      if (store.slotValue(slotId) === value) continue
-      onInput(slotId, value)
-    }
-  }, { immediate: true })
+const markWorld = useBrandMarkWorld()
+const { show: showMarkPanel, confirmed: confirmedMarkSlots, pick: applyMarkPick } = useBrandDesignToolSync({
+  stepKey,
+  chapter: 'mark',
+  slots: ['j.kind', 'j.examples', 'j.pick'],
+  panelSlots: ['j.kind', 'j.brief', 'j.examples', 'j.pick'],
+  values: markWorld.slotValues,
+  onInput,
 })
 
-/** Eine Wahl aus dem Zeichen-Panel — derselbe Weg wie jede Eingabe. */
-function applyMarkPick(slotId: string, value: string): void {
-  if (store.slotConfirmed(slotId)) return
-  onInput(slotId, value)
-}
-
 // ── Die Bildsprache (D6, §2.6) ────────────────────────────────────────────
-
-/**
- * DIESELBE ARBEITSTEILUNG WIE IN DEN DREI KAPITELN DAVOR:
- * `useBrandImageryWorld()` rechnet, die SEITE schreibt.
- */
-const imageryWorld = useBrandImageryWorld()
-
-const showImageryPanel = computed(() => stepKey.value === 'imagery')
 
 /**
  * ALLE VIER Sessions belegt das Kapitel selbst vor — anders als beim Zeichen,
  * wo `j.brief` aus einem Lauf kommt. Hier gibt es keinen Modell-Text, den ein
  * Autosave überschreiben könnte (§1.4: „Regeln statt Bilder").
  */
-const IMAGERY_SLOTS = ['k.photo', 'k.illustration', 'k.icons', 'k.dodont'] as const
-
-const confirmedImagerySlots = computed(() =>
-  IMAGERY_SLOTS.filter(slotId => store.slotConfirmed(slotId)))
-
-/**
- * DAS KAPITEL BELEGT SICH SELBST VOR (H5) — dieselbe Mechanik und dieselben
- * vier Sicherungen wie Farbwelt, Typografie und Zeichen darüber
- * (Gleichheits-Prüfung, Bestätigtes bleibt unberührt, ein fehlender Wert
- * löscht, erst NACH dem Mount).
- */
-onMounted(() => {
-  watch(imageryWorld.slotValues, (values) => {
-    if (stepKey.value !== 'imagery') return
-    for (const slotId of IMAGERY_SLOTS) {
-      if (store.slotConfirmed(slotId)) continue
-      const value = values[slotId] ?? ''
-      if (store.slotValue(slotId) === value) continue
-      onInput(slotId, value)
-    }
-  }, { immediate: true })
+const imageryWorld = useBrandImageryWorld()
+const { show: showImageryPanel, confirmed: confirmedImagerySlots, pick: applyImageryPick } = useBrandDesignToolSync({
+  stepKey,
+  chapter: 'imagery',
+  slots: ['k.photo', 'k.illustration', 'k.icons', 'k.dodont'],
+  values: imageryWorld.slotValues,
+  onInput,
 })
 
-/** Eine Wahl aus dem Bildsprache-Panel — derselbe Weg wie jede Eingabe. */
-function applyImageryPick(slotId: string, value: string): void {
-  if (store.slotConfirmed(slotId)) return
-  onInput(slotId, value)
-}
-
 // ── Die Bewegung (D7, §2.7) ───────────────────────────────────────────────
-
-/**
- * DIESELBE ARBEITSTEILUNG WIE IN DEN VIER KAPITELN DAVOR:
- * `useBrandMotionWorld()` rechnet, die SEITE schreibt.
- */
-const motionWorld = useBrandMotionWorld()
-
-const showMotionPanel = computed(() => stepKey.value === 'motion')
 
 /**
  * ALLE VIER Sessions belegt das Kapitel selbst vor — wie in der Bildsprache
  * gibt es hier keinen Modell-Text, den ein Autosave überschreiben könnte
  * (§1.4). `l.rules` ist `stage-edit` und darf von Hand ergänzt werden: eine
- * BESTÄTIGTE Fassung rührt der Watcher unten nicht an (Sicherung 2).
+ * BESTÄTIGTE Fassung rührt der Abgleich nicht an (Sicherung 2).
  */
-const MOTION_SLOTS = ['l.tempo', 'l.transitions', 'l.logo', 'l.rules'] as const
-
-const confirmedMotionSlots = computed(() =>
-  MOTION_SLOTS.filter(slotId => store.slotConfirmed(slotId)))
-
-/**
- * DAS KAPITEL BELEGT SICH SELBST VOR (H5) — dieselbe Mechanik und dieselben
- * vier Sicherungen wie Farbwelt, Typografie, Zeichen und Bildsprache darüber
- * (Gleichheits-Prüfung, Bestätigtes bleibt unberührt, ein fehlender Wert
- * löscht, erst NACH dem Mount).
- */
-onMounted(() => {
-  watch(motionWorld.slotValues, (values) => {
-    if (stepKey.value !== 'motion') return
-    for (const slotId of MOTION_SLOTS) {
-      if (store.slotConfirmed(slotId)) continue
-      const value = values[slotId] ?? ''
-      if (store.slotValue(slotId) === value) continue
-      onInput(slotId, value)
-    }
-  }, { immediate: true })
+const motionWorld = useBrandMotionWorld()
+const { show: showMotionPanel, confirmed: confirmedMotionSlots, pick: applyMotionPick } = useBrandDesignToolSync({
+  stepKey,
+  chapter: 'motion',
+  slots: ['l.tempo', 'l.transitions', 'l.logo', 'l.rules'],
+  values: motionWorld.slotValues,
+  onInput,
 })
-
-/** Eine Wahl aus dem Bewegungs-Panel — derselbe Weg wie jede Eingabe. */
-function applyMotionPick(slotId: string, value: string): void {
-  if (store.slotConfirmed(slotId)) return
-  onInput(slotId, value)
-}
 
 // ── Die drei Kapitel von Book & Kit (K5, §2.2–§2.4) ───────────────────────
 
