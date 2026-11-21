@@ -7,6 +7,33 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-21 — Eine Marke, ein Zeichen; die drei Marken zeigen aufeinander (Q24, R4 und R9)
+
+**Anlass:** Marketing-Site und Hilfe trugen die puka, die Anmeldung ein
+Personen-Symbol, der Kundenbereich eine graue Sonne — drei Zeichen für
+Pukalani auf drei Klicks. Und die drei Sites nannten einander kaum.
+
+**Davids Entscheidung R4** (2026-11-21): Der Kundenbereich (Anmeldung,
+Einstellungen, Wizard) trägt DASSELBE Zeichen wie die Marketing-Site, überall;
+die Farbe bleibt zurückhaltend (keine Farbwelt der Marketing-Site, Knöpfe
+bleiben neutral). Umsetzung: EIN Baustein `PukaMark`
+(`packages/core/app/components/PukaMark.vue`), den Marketing-Site, Hilfe,
+Anmeldung und Kundenbereich nutzen. Er erscheint nur, wo Pukalani selbst
+spricht — Kontroll-Host ohne Mandant (`pukalaniSpeaks()` in
+`packages/core/shared/brandFamily.ts`); Communities im Pool und Silo-Sites
+behalten ihr eigenes Gesicht. Wo das Zeichen über der Anmeldung steht, entfällt
+das Formular-Symbol.
+
+**Davids Entscheidung R9** (2026-11-21): Pukalani, Pukalani Studio und
+Branding Supply verlinken einander sichtbar, ruhig in der Fußzeile: eine Zeile
+„Auch von uns:" mit den zwei anderen Namen und zwei, drei Wörtern Rolle
+(`CoreBrandFamily`, Schlüssel `ui.brandFamily.*`), normale Links ohne
+`nofollow`. Rechtstexte und Impressum bleiben unberührt.
+
+Wächter: `packages/core/tests/brandFamily.test.ts`.
+
+---
+
 ## 2026-11-21 — branding.supply bekommt eine eigene Seitenbreite: 1280 px (Q25, R10)
 
 **Davids Entscheidung** (2026-11-21, Frage R10): branding.supply darf schmaler
