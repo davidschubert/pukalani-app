@@ -212,7 +212,7 @@ function rowActions(entry: BrandIntroRequestItem): DropdownMenuItem[][] {
             icon="i-ph-arrows-clockwise"
             color="neutral"
             variant="ghost"
-            :loading="status === 'pending'"
+            :loading="isFetchLoading(status)"
             :aria-label="t('brand.admin.introCalls.refresh')"
             @click="refresh()"
           />

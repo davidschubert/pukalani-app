@@ -30,6 +30,87 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q15 — Dashboard: sechs Seiten weichen nicht mehr von der Server-Fassung ab, und ein Test hält das fest (FE-003) ✅ 2026-11-21
+
+**Was.** Auf sechs Dashboard-Seiten meldete der Browser „Hydration completed
+but contains mismatches": er übernahm die Seite vom Server nicht, sondern
+baute einen Teil neu. Gemessen wurde lokal auf der Bühne, als Owner einer
+Probe-Community, im Dev-Server (dort nennt Vue die Stelle) und im
+Production-Build. Es sind zwei Ursachen:
+
+| Seite | Was Vue meldete | Ursache | Änderung |
+| --- | --- | --- | --- |
+| Mitglieder (`onboarding`, `dashboard/members`) | Server: Kommentar, Browser: `UButtonGroup` | Den Baustein gibt es seit Nuxt UI 4 nicht mehr (er heißt `UFieldGroup`). Vue löst den Namen nicht auf: der Server schreibt nichts, der Browser ein unbekanntes Element. | `UFieldGroup` |
+| Statistik (`analytics`, `dashboard/community/statistics`) | dasselbe | dieselbe | `UFieldGroup` |
+| Kategorien (`posts`, `dashboard/categories`) | Server: Tabelle, Browser: Lade-Kreisel | Der Abruf läuft nur im Browser (`server: false`). Auf dem Server steht sein Zustand auf `idle`, im Browser beim Übernehmen schon auf `pending`; die Vorlage verzweigte nur auf `pending`. | `isFetchLoading(status)` |
+| Vertrauensstufen (`posts`, `dashboard/trust-levels`) | dasselbe | dieselbe | `isFetchLoading(status)` |
+| Nachrichten (`messages`, `dashboard/messages`) | Server: „Keine Gespräche", Browser: Lade-Platzhalter | dieselbe | `isFetchLoading(status)` |
+| Gemeldete Nachrichten (`messages`, `dashboard/message-reports`) | Server: „Nichts gemeldet", Browser: Tabelle im Ladezustand | dieselbe | `isFetchLoading(status)` |
+
+- **Neue Hilfe im Core:** `packages/core/app/utils/fetchLoading.ts` —
+  `isFetchLoading(status)` ist wahr bei `idle` und `pending`. Der Server
+  zeichnet damit denselben Lade-Zweig wie der Browser; vorher stand im
+  ausgelieferten HTML kurz „nichts da", obwohl noch gar nicht gefragt war.
+- **Dieselbe Ursache, weitere Seiten:** sieben Dashboard-Seiten der
+  Betreiber-App und von branding.supply hatten dasselbe Muster ohne
+  `ClientOnly` und haben dieselbe Korrektur bekommen (`requests`, `abuse`,
+  `market-signal`, `intro-calls`, `waitlist`, `brand-unlocks`,
+  `insights/radar`) — dort ohne Messung im Browser, siehe „Nicht geprüft".
+  Die übrigen Seiten mit Abruf nur im Browser stehen in `ClientOnly` oder
+  verzweigen nicht auf den Zustand; sie waren in der Messung unauffällig.
+- **Kein pauschales `ClientOnly`, kein abgeschaltetes Server-Rendern:** beide
+  Ursachen sind an der Stelle behoben.
+- **Der alte Eintrag „Such-Knopf der Bibliothek, auf JEDER Dashboard-Seite"**
+  (bewusst zurückgestellt seit 2026-09-08) ist gestrichen: auf 19
+  Dashboard-Seiten im Pool und auf allen Seiten der Seitenleiste in der
+  Einzel-Instanz meldet die Konsole nichts mehr, auch nicht am Such-Knopf.
+
+**Tests.**
+
+- `apps/comments/e2e/dashboard-landmarks.spec.ts`, neuer vierter Fall im
+  Seitenlauf von Q09 (Pflicht-Lauf E2E): lädt jede Seite der Seitenleiste und
+  die Statistik frisch vom Server und wird rot bei einer Warnung oder einem
+  Fehler mit „Hydration" oder „Failed to resolve component". Hilfe:
+  `e2e/support/hydration.ts`. Gegenprobe gegen die Seiten davor: rot mit fünf
+  Seiten (die sechste, Mitglieder, gibt es in der Einzel-Instanz nicht).
+- `apps/comments/e2e/dashboard-hydration-pool.spec.ts`, auf der Bühne
+  (`pnpm buehne e2e`, nachts): dasselbe im Pool als Owner, verlangt die
+  Mitglieder-Seite in der Liste. Gegenprobe: rot mit genau den sechs Seiten.
+- `packages/core/tests/nuxtUiComponentNamesGuard.test.ts`: jeder `<U…>`-Name
+  in einer Vorlage muss eine Datei der installierten Bibliothek sein — nach
+  einem Versions-Sprung mit Umbenennung wird er von selbst rot. Gegenprobe im
+  Test (`UButtonGroup` fällt auf).
+- `packages/core/tests/fetchLoading.test.ts`.
+- Der Rauchtest (`smoke.spec.ts`) überhört „Hydration completed" auf der
+  Startseite nicht mehr.
+
+**Gemessen (lokal, Probe-Community der Bühne, Owner).**
+
+| Lauf | vorher | nachher |
+| --- | --- | --- |
+| Dev-Server, 19 Dashboard-Seiten im Pool | Meldung auf genau den sechs Seiten | 0 auf allen |
+| Production-Build, die sechs Seiten | je einmal „Hydration completed but contains mismatches" | 0 |
+| Production-Build, 19 Dashboard-Seiten | — | 0 auf allen |
+
+**Nicht geprüft.** Live hinter der Anmeldung ist nichts geklickt. Die sieben
+mitgenommenen Seiten der Betreiber-App und von branding.supply sind nicht im
+Browser gemessen, und der Seitenlauf kennt diese zwei Dashboards nicht (offen
+als BT1 f). Die Probe-Community ist fast leer: eine Abweichung, die nur mit
+bestimmten Daten entsteht, sähe der Lauf nicht. Der Test fährt gegen den
+Dev-Server; der Production-Build ist einmal von Hand gemessen.
+
+**Gelernt:** Die Meldung galt zehn Wochen als „Fehler der Bibliothek, auf
+jeder Seite" — niemand hat sie je mit Einzelheiten gelesen, und so deckte ein
+angenommener Grund zwei echte zu. Eine Abweichungs-Meldung wird erst im
+Dev-Server gelesen (er nennt Knoten und beide Fassungen), bevor sie einen
+Grund bekommt. Zwei Regeln daraus: (1) Ein Abruf mit `server: false` ist auf
+dem Server `idle` und im Browser beim Übernehmen schon `pending` (Nuxt
+startet ihn in `onBeforeMount`); „lädt" fragt man deshalb mit
+`isFetchLoading(status)`, nie mit `status === 'pending'` allein. (2) Ein
+Baustein-Name, den es nicht gibt, fällt weder im Typecheck noch im Lint auf —
+nur als „Failed to resolve component" in der Browser-Konsole; nach einem
+Sprung der Bibliothek hält der Wächter die Namen.
+
 ### Q20 — Einstieg von null: das README führt vom Klon zur laufenden App mit lokaler Datenbank (DOC-005, DOC-006, DOC-013) ✅ 2026-11-21
 
 **Was.**

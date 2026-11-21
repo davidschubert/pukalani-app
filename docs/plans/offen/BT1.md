@@ -71,3 +71,21 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   `packages/admin/tests/route-roles-overview.test.ts` hält das so fest. Soll
   es anders sein, kommt die Rolle dort in die Abweisungs-Liste und die Wache
   wird angepasst.
+- **(f) Seitenlauf gegen Abweichungen: zwei Dashboards fehlen.** Seit dem
+  2026-11-21 (COMPLETE „Q15") lädt ein Browser-Test jede Seite der
+  Dashboard-Seitenleiste frisch vom Server und wird rot, wenn die Konsole eine
+  Abweichung zwischen Server- und Browser-Fassung meldet — für die
+  Einzel-Instanz im Pflicht-Lauf (`apps/comments/e2e/dashboard-landmarks.spec.ts`)
+  und für den Pool nachts auf der Bühne (`dashboard-hydration-pool.spec.ts`).
+  Nicht dabei: die Dashboards der Betreiber-App (`packages/control`) und von
+  branding.supply (`packages/brand`, `packages/insights`). Dort haben sieben
+  Seiten dasselbe Muster gehabt (Abruf nur im Browser, die Vorlage verzweigt
+  auf „lädt") und am 2026-11-21 dieselbe Korrektur bekommen
+  (`isFetchLoading`), ABER OHNE MESSUNG im Browser: `requests`, `abuse`,
+  `market-signal` (control), `intro-calls`, `waitlist`, `brand-unlocks`
+  (brand), `insights/radar` (insights). Zu tun: denselben Lauf
+  (`apps/comments/e2e/support/hydration.ts`) in die E2E-Datei der Betreiber-App
+  aufnehmen (braucht dort ein Betreiber-Konto) und für branding.supply
+  ergänzen, sobald dessen Server in den Browser-Tests steht (hängt an (a)).
+  Außerdem läuft der Test nur gegen den Dev-Server; der Production-Build ist
+  einmal von Hand gemessen.

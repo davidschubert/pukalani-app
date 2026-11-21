@@ -135,7 +135,7 @@ async function setLeader(entry: TrustLevelMember, leader: boolean) {
     <template #body>
       <p class="mb-6 max-w-3xl text-sm text-muted">{{ t('posts.trustLevels.description') }}</p>
 
-      <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
+      <div v-if="isFetchLoading(status) && !data" class="flex justify-center py-16">
         <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
       </div>
 
