@@ -30,6 +30,7 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { readFileSync } from 'node:fs'
 import { appwriteRest, createCleanup, createHttpCaller, login } from '../../../scripts/lib/probe-stage.mjs'
+import { parseRobotsGroups } from '../../../packages/core/shared/aiCrawlers.ts'
 
 const SCRIPT = 'verify-community-search-pages'
 const PORT = Number(process.env.PLATFORM_PORT)
@@ -235,7 +236,15 @@ async function main() {
     check(`${path}: genau ein robots-Tag mit noindex`, seen.robots.length === 1 && /\bnoindex\b/.test(seen.robots[0]), JSON.stringify(seen.robots))
   }
   const robots = await call(HOST, '/robots.txt')
-  check('robots.txt der Community sperrt die Konto-Seiten nicht', robots.status === 200 && !/^Disallow: \/(login|register)?$/m.test(robots.text), robots.text)
+  // Seit Q11 trägt die robots.txt eigene KI-Gruppen: die Training-Gruppe einer
+  // Community sagt `Disallow: /` (Davids Entscheidung B2). Gefragt wird deshalb
+  // je GRUPPE: `*` und die Such-Gruppe dürfen die Konto-Seiten nicht sperren.
+  const blocksAccountPages = group => (group?.rules ?? []).some(rule => /^disallow: \/(login|register)?$/.test(rule))
+  const groups = robots.status === 200 ? parseRobotsGroups(robots.text) : []
+  const groupOf = agent => groups.find(entry => entry.agents.includes(agent))
+  check('robots.txt der Community sperrt die Konto-Seiten nicht (Gruppe * und KI-Suche)',
+    robots.status === 200 && Boolean(groupOf('*')) && !blocksAccountPages(groupOf('*')) && !blocksAccountPages(groupOf('oai-searchbot')), robots.text)
+  check('Gegenprobe: die Training-Gruppe der Community sperrt alles (B2)', robots.status === 200 && blocksAccountPages(groupOf('gptbot')), robots.text)
   const controlLogin = await readHead('/login', CONTROL_HOST)
   check('Kontroll-Host /login: noindex', controlLogin.status === 200 && controlLogin.robots.length === 1 && /\bnoindex\b/.test(controlLogin.robots[0]), JSON.stringify(controlLogin.robots))
   const controlRobots = await call(CONTROL_HOST, '/robots.txt')

@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'posts',
   tier: 'optional',
+  kind: 'product',
   requires: ['moderation'],
   hasMigrations: true,
   userData: true,

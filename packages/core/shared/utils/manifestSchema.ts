@@ -27,6 +27,7 @@ export const productSchemaStateSchema = z.object({
 export const productManifestSchema = z.object({
   key: z.string().regex(keyPattern),
   tier: z.enum(['foundation', 'optional']),
+  kind: z.enum(['base', 'foundation', 'seam', 'product']),
   requires: z.array(z.string().regex(keyPattern)).optional(),
   hasMigrations: z.boolean(),
   schema: productSchemaStateSchema.optional(),

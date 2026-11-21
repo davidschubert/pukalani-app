@@ -43,3 +43,33 @@ export function formatDerivationPrice(locale: string): string {
     maximumFractionDigits: 0,
   }).format(DERIVATION_PRICE_EUR_NET)
 }
+
+/** Die fünf Produkte mit eigener Seite (Reihenfolge der Übersicht). */
+export type BrandingProductKey = 'brandCheck' | 'brandFoundation' | 'marketComparison' | 'brandDesign' | 'brandBookKit'
+
+/**
+ * WAS DIE PRODUKTSEITE ÜBER DEN PREIS SAGT, als Zahl für die strukturierten
+ * Daten (Q11, GEO-002) — `0` = „kostenlos", `null` = die Seite nennt keinen
+ * eigenen Preis (Brand Design: nach dem Erstgespräch; Book & Kit: im Preis der
+ * Ableitung enthalten). Der Betrag der Ableitung kommt aus der Konstante oben,
+ * keine zweite Zahl. Ein Test hält die Zeilen gegen die Preis-Texte der Seiten
+ * (`tests/productPricing.test.ts`).
+ */
+export const PRODUCT_PRICE_EUR: Readonly<Record<BrandingProductKey, number | null>> = {
+  brandCheck: 0,
+  brandFoundation: 0,
+  marketComparison: DERIVATION_PRICE_EUR_NET,
+  brandDesign: null,
+  brandBookKit: null,
+}
+
+/**
+ * Das schema.org-`Offer` eines Produkts, oder `null`. OHNE Steuer-Angabe und
+ * OHNE Anbieter: beides wartet auf die rechtliche Klärung (OPEN-ITEMS) — der
+ * sichtbare Text („netto") bleibt die Stelle, die das sagt.
+ */
+export function productOfferJsonLd(key: BrandingProductKey, url: string) {
+  const price = PRODUCT_PRICE_EUR[key]
+  if (price === null) return null
+  return { '@type': 'Offer' as const, 'price': price.toFixed(2), 'priceCurrency': 'EUR', 'url': url }
+}

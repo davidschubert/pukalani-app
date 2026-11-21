@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'activity',
   tier: 'optional',
+  kind: 'product',
   // Liest nur die system-eigene activities-Table (recordActivity im Core) —
   // keine harten Layer-Abhängigkeiten, ohne Content-Produkte nur leerer.
   hasMigrations: false,

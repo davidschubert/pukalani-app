@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'themes',
   tier: 'foundation',
+  kind: 'foundation',
   // Tables (custom_themes/custom_fonts) besitzt der system-Layer (A14).
   hasMigrations: false,
   userData: false,

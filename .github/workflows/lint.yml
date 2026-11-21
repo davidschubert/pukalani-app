@@ -32,73 +32,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm check:manifests
-
-      # Nennt die app.config einen i18n-Schlüssel, den die App nicht hat?
-      # vue-i18n gibt dann den SCHLÜSSEL zurück — Typecheck, Lint und Unit-
-      # Tests sehen davon nichts (ein labelKey ist für sie ein `string`).
-      # Vier Tage lang stand deshalb wörtlich „legal.imprint" im Fuß von
-      # comments.pukalani.app, am rechtlich wichtigsten Link des Hosts.
-      # Reines Lesen, keine Env, keine Dienste.
-      - run: pnpm check:i18n-keys
-
-      # Die Produkt-Bilanz (Pool=Silo, Davids Leitprinzip) wird seit dem
-      # 2026-08-02 ERZEUGT statt gepflegt — das committete Dokument muss also
-      # zum Code passen. Ohne dieses Gate veraltet es wieder, und genau daran
-      # ist die handgepflegte Vorgängerin gescheitert (7 von 12 Zeilen falsch).
-      - run: pnpm check:bilanz
-
-      # Die Liste der Beweis-Skripte in docs/referenz/LIVE-BEWEISE.md wird seit
-      # dem 2026-11-16 ERZEUGT (OPS-012): die handgeschriebene sprach von „zwei
-      # Dutzend" Skripten, im Repo lagen 81. Neues, gelöschtes oder
-      # umbenanntes Skript ohne neu erzeugte Liste ⇒ rot. Reines Lesen, <0,1 s.
-      - run: pnpm check:live-beweise
-
-      # Tote Verweise in der Doku: CLAUDE.md sprach an 14 Stellen von einer
-      # Tabelle, die es seit control-030 nicht mehr gibt — das Regelwerk, nach
-      # dem hier alle arbeiten. Läuft in ~1 s, reines Lesen.
-      - run: pnpm check:doc-links
-
-      # Das Regelwerk der KI-Sitzungen (CLAUDE.md, .claude/rules, .claude/agents):
-      # Größen-Deckel je Datei, jeder Lade-Pfad trifft eine Datei, jeder
-      # genannte Pfad und jedes genannte pnpm-Skript existiert. Reines Lesen.
-      - run: pnpm check:rules
-
-      # Zwei Kopien einer Kernabhängigkeit brechen Typen oder Build, und WELCHE
-      # gewinnt, entscheidet pnpms Hoisting statt des Lockfiles — derselbe
-      # Lockfile ist damit auf einer Maschine grün und auf der anderen rot
-      # (2026-07-30 genau so passiert: vue → ENAMETOOLONG im Build,
-      # h3 → 1102/944/1261 Typfehler).
-      - run: pnpm check:single-copy
-
-      # Ein gerades `"` in einem KI-Prompt ist eine Vorlage für genau das
-      # Zeichen, das die JSON-Antwort des Modells beendet (BI4: 4 von 52
-      # bezahlten Läufen). Typecheck, Lint und Tests sehen davon nichts.
-      - run: pnpm check:prompt-quotes
-
-      # 26×11-Theme-Katalog (E6a): committeter Generator-Output muss zum
-      # Katalog passen — Regenerieren darf kein Diff erzeugen.
-      - run: pnpm --filter @pukalani/themes check:themes
-
-      # Die typisierte Regel no-floating-promises (SEC-023) liest ihre Typen aus
-      # den generierten Server-tsconfigs der Apps (`apps/*/.nuxt/`) — die gibt
-      # es nach `pnpm install` noch nicht (kein postinstall). Ohne diesen
-      # Schritt bricht `pnpm lint:typed` mit „erst `pnpm lint:prepare`" ab,
-      # statt still nichts zu prüfen. Kalt gemessen ~7 s für alle Apps (2026-11-13).
-      - run: pnpm lint:prepare
-
-      - run: pnpm -r lint
-      # Die typisierte Regel läuft seit SI1 c als EIGENER Durchgang: ein
-      # ESLint-Prozess je App-Programm über alle Server-Ordner
-      # (eslint.typed.config.mjs) statt eines ganzen App-Programms in JEDEM
-      # Paket — `pnpm -r lint` fährt sie nicht mehr. Rot, sobald ein Prozess
-      # nicht mit 0 endet (auch Signal oder Muster ohne Treffer).
-      - run: pnpm lint:typed
-      # `pnpm -r lint` läuft NUR über die Workspace-Pakete — die 23 Dateien in
-      # scripts/ (Migrations-Runner, ops-Wächter, CI-Aufbau) sah bis 2026-08-19
-      # kein Linter. Genau dort liegt aber der Code, der Produktionsdaten
-      # anfasst. Kostet nichts: beim Einführen war ein einziger Fehler drin.
-      - run: pnpm lint:scripts
+      # DER GANZE LINT-LAUF IST EIN BEFEHL (Q18): `pnpm check` fährt die Liste
+      # aus scripts/lib/check-steps.mjs (Wächter, Lint, typisierter Lint,
+      # Skript-Lint) — lokal genau so. Die Begründung je Schritt steht dort.
+      # Hier KEINE einzelnen Schritte nachtragen: der Test
+      # packages/core/tests/checkSteps.test.ts hält diesen Job bei genau
+      # diesem einen Aufruf.
+      - run: pnpm check
 
   # Schlüssel-Suche (SEC-040/SEC-012). Das Repo ist öffentlich — ein einmal
   # gepushtes Geheimnis steht für immer in der Historie. GitHubs eigene Suche

@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'courses',
   tier: 'optional',
+  kind: 'product',
   // KEIN requires auf billing: der Layer kennt billing bewusst nicht —
   // die App registriert den Access-Guard (courseAccess-Vertrag).
   hasMigrations: true,

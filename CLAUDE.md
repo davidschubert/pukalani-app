@@ -18,10 +18,10 @@ Core Layer + Produkt-Layern. Vollständiges Konzept: `docs/CONCEPT.md`
 
 ## Architektur (3 Ebenen)
 - `packages/core` → Fundament-Layer. Besitzt KEINE Appwrite Tables.
-- `packages/*` → Layer in drei Töpfen: Fundament, Naht, Produkt. WER WOHIN
-  GEHÖRT, sagt nur die Liste in `eslint.config.mjs` (`FOUNDATION`, `SEAM`,
-  `PRODUCTS`); ein Layer ohne Topf bricht den Lint. Produkte kennen einander
-  nicht.
+- `packages/*` → Layer, eingeordnet NUR über `kind` im `product.manifest.ts`
+  (Q18): `base` (core, system), `foundation` (u. a. admin, billing, themes),
+  `seam`, `product`; Lint und `check:manifests` lesen es. Produkte kennen
+  einander nicht.
 - `apps/*` → dünne Apps, komponieren via extends: [produkt-layer..., core]
   (früher gelistet = höhere Priorität; App überschreibt alles)
 - SILO-REGEL (Davids Entscheidung, DECISION-LOG): Isolation im CODE und im
@@ -225,8 +225,8 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
 - useToast kommt aus Nuxt UI — nicht im Core re-exportieren (schattet Auto-Import)
 - EINE Version je Kernabhängigkeit, Dependencies über den pnpm-Katalog, Nitros
   Routen-Typisierung ist AUS (jeder `$fetch` nennt seinen Antworttyp selbst), und
-  der Lint-Lauf ist mehr als `lint` — davor fahren Wächter (die Liste IST
-  `.github/workflows/lint.yml`). Begründungen und die Bump-Kopplungen:
+  der ganze Lint-Lauf ist `pnpm check` (lokal = CI, Liste
+  `scripts/lib/check-steps.mjs`). Begründungen und die Bump-Kopplungen:
   `.claude/rules/deps-build.md`
 - pnpm, TypeScript strict (kein any), vollständige Dateien, keine Spekulation
 - pnpm Catalog: Versionen zentral in `pnpm-workspace.yaml`, package.json
