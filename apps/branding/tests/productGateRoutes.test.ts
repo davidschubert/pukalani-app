@@ -33,6 +33,7 @@ beforeEach(() => {
   vi.stubGlobal('createError', httpError)
   vi.stubGlobal('getRouterParam', (event: { slug: string }) => event.slug)
   vi.stubGlobal('setHeader', () => {})
+  vi.stubGlobal('getQuery', () => ({}))
   vi.stubGlobal('logEvent', () => {})
   vi.stubGlobal('useRuntimeConfig', () => ({ public: { i18n: { baseUrl: 'https://example.test' } } }))
   vi.stubGlobal('getRequestURL', () => new URL('https://example.test/'))
@@ -68,8 +69,8 @@ beforeEach(() => {
 
   // Das Bild selbst zeichnet ein eigener Test (`discoverOgImage.test.ts`).
   vi.doMock('../server/utils/discoverOgImage', () => ({
-    DISCOVER_OG_WORDMARK: 'test',
-    discoverOgCacheKey: (slug: string) => slug,
+    DISCOVER_OG_WORDMARKS: { en: 'test', de: 'test' },
+    discoverOgCacheKey: (slug: string, _u?: string, locale?: string) => `${slug}${locale ?? ''}`,
     discoverOgPng: async () => Buffer.from('png'),
   }))
 })

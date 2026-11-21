@@ -392,6 +392,28 @@ Ergebnis: delta-{{datum}}.md im Audit-Ordner, mit Scorecard im Vergleich zum ers
 | „Nur nach Rückfrage" als Schutz | Rechte-Modus bewusst wählen: ohne Bypass, oder Bypass mit Vorab-Liste in der Charter und „ungetan + Lücke notieren" | Im Bypass-Modus wirkt nur `deny` (gemessen 2026-11-09) |
 | allgemeiner Prüfkatalog | Projektregeln, §0 des audit-worker und frühere Audits als Maßstab | Bewusste Abweichungen sind sonst Fehlalarme; Bekanntes nicht neu melden |
 
+## Lehren aus dem Durchlauf 2026-11
+
+Nur Verfahren, keine Befunde (die liegen im privaten Ordner).
+
+- **Aufteilen:** Befunde zu Paketen bündeln, die je eine Sitzung in einem Zug
+  schafft und die an GENAU EINEM Ort landen; eine feste Nummer je Paket (Q01…)
+  und je Paket ein Eintrag in `OPEN-ITEMS-COMPLETE.md` mit „Gelernt:"-Zeile.
+- **Starten:** wer Pakete in einer Folge abarbeiten lässt, nennt die
+  Klick-Pflichten, die Dateien, die andere Bahnen besitzen, und das Modell für
+  Hilfs-Agenten gleich im ersten Auftrag. Vor jedem Paket `git fetch` und
+  `OPEN-ITEMS-COMPLETE.md` auf `origin/main` lesen — Erledigtes zieht dorthin um.
+- **Parallel:** Bahnen nach Dateibereichen schneiden (Seiten / Server / Doku),
+  nicht nach Themen; so gibt es nur selten Konflikte, und Konflikte in den
+  beiden Listen löst man, indem alle Einträge bleiben.
+- **Nachprüfen:** die Leitstand-Sitzung prüft Ergebnis und Merge, nicht die
+  Umsetzungs-Sitzung selbst; „Nicht geprüft" gehört in jeden Eintrag und sammelt
+  sich später zur Klick-Runde (KR1).
+- **Privater Ordner:** wer dort schreibt, legt nur die eine Datei an, committet
+  nur diesen Pfad und startet kein Bau-Skript.
+- **Regelwerk:** Verfahrens-Lehren kommen in eine Regel (kurz) und in den
+  Eintrag; die Regel nennt das Kürzel, nicht die Herleitung (Q17).
+
 ## Durchläufe
 
 | Durchlauf | Audit-Ordner | Stand |

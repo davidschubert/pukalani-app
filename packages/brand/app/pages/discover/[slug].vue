@@ -136,7 +136,7 @@ useSeoMeta({
 const ogImage = useBrandOgImage()
 const discoverOgImage = computed(() => {
   if (missing.value || isPreview.value) return null
-  const path = brandDiscoverOgPath(slug.value)
+  const path = brandDiscoverOgPath(slug.value, locale.value)
   return path ? { path, width: 1200, height: 630, type: 'image/png' } : null
 })
 ogImage.value = discoverOgImage.value
