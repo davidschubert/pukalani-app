@@ -7,16 +7,21 @@ import { getQuery } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { NuxtLayout, NuxtPage, UApp } from '#components'
+import { useRouter } from '#imports'
 import { useBrandWorkspaceStore } from '../../app/stores/brandWorkspace'
 import { BRAND_ADVISORS, BRAND_VOICE, advisorIsVoice } from '../../shared/brandAdvisors'
 import { slotsForStep } from '../../shared/slotRegistry'
 import {
   WORKSHOP_FIRST_DRAFT,
+  WORKSHOP_FOREIGN_SLOT,
+  WORKSHOP_FOREIGN_STEP,
+  WORKSHOP_FOREIGN_VALUE,
   WORKSHOP_GEORGE_LINE,
   WORKSHOP_OLDER_DRAFT,
   WORKSHOP_PROFILE_ID,
   WORKSHOP_STEP_KEY,
   WORKSHOP_VERSIONS_SLOT,
+  workshopForeignStepDetail,
   workshopMessages,
   workshopProfileDetail,
   workshopProfileList,
@@ -63,6 +68,8 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
       site: Record<'never' | 'start' | 'consent' | 'confirm' | 'done', string>
       regions: Record<'rail' | 'log', string>
       advisorInfo: Record<'open' | 'desc', string>
+      answerSlot: string
+      slotActionName: string
       versions: Record<'open' | 'title' | 'use' | 'first', string>
       conflict: Record<'title' | 'mineLabel' | 'serverLabel' | 'loadServer', string>
     }
@@ -71,11 +78,16 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
 const site = de.brand.workspace.site
 const base = `/api/brand/profiles/${WORKSHOP_PROFILE_ID}`
 
-const calls = { analyze: 0, ai: 0, versions: 0 }
+const calls = { analyze: 0, ai: 0, versions: 0, foreign: 0 }
 
 registerEndpoint('/api/brand/profiles', () => workshopProfileList())
 registerEndpoint(base, () => workshopProfileDetail())
 registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}`, () => workshopStepDetail())
+// Ein FREMDES Kapitel, das der Log beim Aufklappen lesend holt.
+registerEndpoint(`${base}/steps/${WORKSHOP_FOREIGN_STEP}`, () => {
+  calls.foreign += 1
+  return workshopForeignStepDetail()
+})
 registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}/generations`, (event) => {
   calls.versions += 1
   return workshopVersions(String(getQuery(event).slotId ?? ''))
@@ -153,6 +165,7 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     calls.analyze = 0
     calls.ai = 0
     calls.versions = 0
+    calls.foreign = 0
     warn = vi.spyOn(console, 'warn')
     error = vi.spyOn(console, 'error')
   })
@@ -196,6 +209,38 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     expect(calls.analyze).toBe(1)
     expect(wrapper.text()).toContain(site.done.replace('{chars}', '4321'))
     expect(wrapper.text()).not.toContain(site.consent)
+
+    // 4. Der Log: ein fremdes Kapitel aufklappen holt seine Felder EINMAL
+    // (lesend, ohne Knöpfe); zu und wieder auf holt nichts neu.
+    const foreignToggle = () => {
+      const button = wrapper.findAll('h2 button').find(entry => entry.text().includes(de.brand.steps[WORKSHOP_FOREIGN_STEP]!))
+      if (!button) throw new Error('Kapitel-Knopf im Log fehlt')
+      return button
+    }
+    expect(foreignToggle().attributes('aria-expanded')).toBe('false')
+    expect(wrapper.text()).not.toContain(WORKSHOP_FOREIGN_VALUE)
+    await foreignToggle().trigger('click')
+    await flushPromises()
+    expect(calls.foreign).toBe(1)
+    expect(foreignToggle().attributes('aria-expanded')).toBe('true')
+    expect(wrapper.text()).toContain(WORKSHOP_FOREIGN_VALUE)
+    expect(wrapper.findAll('h3').map(entry => entry.text().trim())).toContain(fieldLabel(WORKSHOP_FOREIGN_SLOT))
+    await foreignToggle().trigger('click')
+    expect(wrapper.text()).not.toContain(WORKSHOP_FOREIGN_VALUE)
+    await foreignToggle().trigger('click')
+    await flushPromises()
+    expect(calls.foreign).toBe(1)
+    expect(wrapper.text()).toContain(WORKSHOP_FOREIGN_VALUE)
+
+    // „Beantworten" an einer leeren Frage-Karte springt in ihre Session (eine
+    // andere als die offene `a.origin`); der Knopf nennt sein Feld (UX-011).
+    const praise = fieldLabel('a.customerPraise')!
+    const answer = wrapper.find(`button[aria-label="${de.brand.workspace.slotActionName
+      .replace('{action}', de.brand.workspace.answerSlot).replace('{field}', praise)}"]`)
+    expect(answer.exists()).toBe(true)
+    await answer.trigger('click')
+    await flushPromises()
+    await vi.waitFor(() => expect(useRouter().currentRoute.value.query.s).toBe('a.customerPraise'))
 
     // 1. ohne Fehler, ohne Vue-Warnung, ohne KI
     expect(calls.ai).toBe(0)
