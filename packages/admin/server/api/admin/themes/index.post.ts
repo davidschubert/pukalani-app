@@ -1,5 +1,6 @@
 import { ID, Query } from 'node-appwrite'
 import { z } from 'zod'
+import { forgetInstanceRead } from '../../../../../core/server/utils/instanceReadCache'
 
 const themeConfigSchema = z.object({
   mode: z.enum(['perceived', 'linear']).optional(),
@@ -74,6 +75,7 @@ export default defineEventHandler(async (event) => {
     },
   })
 
+  forgetInstanceRead('custom_themes') // Instanz-Merker (Q12): neue Besucher sehen es sofort
   await recordAudit(event, { action: 'theme.created', targetType: 'theme', targetId: row.$id, targetName: body.name })
 
   // Activity-Feed (Core-Vertrag, best-effort) — neue Themes propagieren live

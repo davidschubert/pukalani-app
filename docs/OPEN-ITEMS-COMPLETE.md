@@ -333,6 +333,11 @@ Deckel des Rechners. Gefunden bei der Klick-Probe auf der echten Seite
   die Zahl, die das Feld wirklich liefert, geht durch; negativ, über 100,
   Text ohne Zahl und falsche Typen scheitern mit der Budget-Meldung. Tests
   des Pakets, ESLint und der Typecheck der Betreiber-Konsole sind grün.
+- **Auf der echten Seite geklickt** (nach dem Ausliefern, `admin.pukalani.app`,
+  Formular an einem Ticket): mit `2.5` im Feld kein Fehler, der Knopf „Lauf
+  starten" ist frei. Gegenprobe: mit `150` steht darunter „Eine Zahl zwischen
+  0 und 100." Danach Feld geleert und Fenster geschlossen. Nicht gezeigt: ein
+  gestarteter Lauf mit gesetztem Budget — es wurde keiner gestartet.
 
 **Offen bleibt** RU1 (c): der Editor macht aus `README.md` einen Link.
 

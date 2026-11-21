@@ -6,6 +6,7 @@ import {
   type OnboardingGateState,
 } from '../../../core/shared/onboardingGate'
 import { softFail } from '../../../core/server/utils/softFail'
+import { forgetInstanceRead } from '../../../core/server/utils/instanceReadCache'
 
 /**
  * Das Early-Access-Tor als LAUFZEIT-Einstellung (U2, 2026-08-10).
@@ -60,5 +61,8 @@ export async function writeOnboardingGate(event: H3Event, inviteRequired: boolea
     else {
       throw toH3Error(error, 'Could not save the onboarding gate')
     }
+  }
+  finally {
+    forgetInstanceRead('app_config') // Instanz-Merker (Q12): gilt sofort
   }
 }

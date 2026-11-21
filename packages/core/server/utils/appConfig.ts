@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
+import { cachedInstanceRead } from './instanceReadCache'
 import { DEFAULT_APP_CONFIG, parseProductsColumn, type AppConfig } from '../../shared/types/config'
 
 /**
@@ -17,12 +18,13 @@ import { DEFAULT_APP_CONFIG, parseProductsColumn, type AppConfig } from '../../s
 export async function getAppConfig(event?: H3Event): Promise<AppConfig> {
   try {
     const config = useRuntimeConfig(event)
-    const admin = createAdminClient(event)
-    const row = await admin.tablesDB.getRow<Models.Row & { products?: string } & Partial<Omit<AppConfig, 'products'>>>({
-      databaseId: config.public.appwriteDatabaseId,
-      tableId: 'app_config',
-      rowId: 'global',
-    })
+    // Höchstens 15 s alt, jeder Schreiber räumt (Q12, `instanceReadCache.ts`).
+    const row = await cachedInstanceRead(event, 'app_config', () =>
+      createAdminClient(event).tablesDB.getRow<Models.Row & { products?: string } & Partial<Omit<AppConfig, 'products'>>>({
+        databaseId: config.public.appwriteDatabaseId,
+        tableId: 'app_config',
+        rowId: 'global',
+      }))
     return {
       registrationEnabled: row.registrationEnabled ?? DEFAULT_APP_CONFIG.registrationEnabled,
       commentsEnabled: row.commentsEnabled ?? DEFAULT_APP_CONFIG.commentsEnabled,
