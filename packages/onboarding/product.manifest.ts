@@ -5,6 +5,10 @@ export default {
   // foundation: kein zubuchbares Kunden-Produkt, sondern der Trichter der
   // Plattform selbst — er wird nie pro Site an- oder abgeschaltet.
   tier: 'foundation',
+  kind: 'seam',
+  // pages: Richtlinien-Seite beim Anlegen säen; themes: Farbwelt-Auswahl im
+  // Branding (Auto-Import, Q18).
+  requires: ['pages', 'themes'],
   hasMigrations: false,
   userData: true,
   // KEIN `apiPrefixes` (WL1 d, 2026-11-17): die Stufe `foundation` ist nicht

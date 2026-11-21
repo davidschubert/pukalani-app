@@ -10,6 +10,7 @@
     "dev:app": "pnpm --filter comments dev",
     "dev:docs": "pnpm --filter @pukalani/docs dev",
     "lint": "pnpm -r lint && pnpm lint:typed",
+    "check": "node scripts/check.mjs",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "migrate": "node --experimental-strip-types scripts/migrate.mjs",

@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'analytics',
   tier: 'optional',
+  kind: 'product',
   hasMigrations: true,
   userData: false,
   // Schema-Probe (OPS-008): analytics-002 legt analytics_settings.enabled an.

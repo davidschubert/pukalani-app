@@ -16,6 +16,8 @@ export interface ManifestText {
   de: string
 }
 
+export type LayerKind = 'base' | 'foundation' | 'seam' | 'product'
+
 export interface ProductManifest {
   /** Produkt-Key — MUSS dem Ordnernamen unter packages/ entsprechen. */
   key: string
@@ -24,6 +26,23 @@ export interface ProductManifest {
    * optional = zubuchbares Produkt. Baupflicht in Apps haben nur core+system.
    */
   tier: 'foundation' | 'optional'
+  /**
+   * WAS FÜR EIN LAYER IST DAS — die EINE Quelle für die Layer-Grenzen
+   * (CONCEPT.md A14). Eine ANDERE Frage als `tier`: `tier` sagt, ob sich der
+   * Layer abschalten lässt, `kind` sagt, wen er kennen darf.
+   *
+   *  - `base`        Fundament, Stufe 1 (`core`, `system`): in jeder App,
+   *                  kennen nur einander.
+   *  - `foundation`  Fundament, Stufe 2: kennt Stufe 1, nie ein Produkt oder
+   *                  eine Naht.
+   *  - `seam`        Naht: verdrahtet mehrere andere (blueprint, Control Plane).
+   *  - `product`     Produkt: kennt kein anderes Produkt.
+   *
+   * FESTE SCHREIBWEISE: `  kind: '<wert>',` allein in einer Zeile — die
+   * Lint-Konfiguration liest die Zeile als Text (scripts/lib/layer-kinds.mjs),
+   * `pnpm check:manifests` hält beides zusammen.
+   */
+  kind: LayerKind
   /** Harte Layer-Abhängigkeiten (Build bricht ohne sie) — Produkt-Keys. */
   requires?: string[]
   /** Hat der Layer eigene Appwrite-Migrationen (scripts/migrations/)? */
