@@ -123,7 +123,7 @@ const hasFilter = computed(() =>
 
 // ── Daten ──────────────────────────────────────────────────────────────────
 
-const { data } = await useFetch<BrandDiscoverListResponse>('/api/discover', {
+const { data, error, refresh } = await useFetch<BrandDiscoverListResponse>('/api/discover', {
   key: 'brand-discover',
   query: computed(() => ({
     path: path.value,
@@ -410,9 +410,14 @@ const startTarget = computed(() =>
         </div>
       </section>
 
+      <!-- Fehler statt „noch keine Marken" (FE-004, LZ1) -->
+      <div v-if="error && !items.length" role="alert" class="mt-10">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
       <!-- Galerie-Wand: die Farbwelt IST die Karte -->
       <section
-        v-if="items.length"
+        v-else-if="items.length"
         class="mt-10 grid gap-x-6 gap-y-20 @sm:grid-cols-2 @md:grid-cols-4"
         data-discover-wall
       >

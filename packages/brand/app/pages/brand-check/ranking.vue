@@ -119,7 +119,7 @@ function apply(patch: ViewPatch): void {
 
 // ── Daten ──────────────────────────────────────────────────────────────────
 
-const { data, status } = await useFetch<BrandCheckRankingResponse>('/api/brand/check/ranking', {
+const { data, status, error, refresh } = await useFetch<BrandCheckRankingResponse>('/api/brand/check/ranking', {
   key: 'brand-check-ranking',
   query: computed(() => ({
     industry: industry.value,
@@ -349,7 +349,12 @@ function rankOf(index: number): number {
 
       <!-- Die Tabelle (Davids B6-Regel: UTable ist der Standard) -->
       <section class="mt-6" data-ranking-table>
-        <UTable :data="items" :columns="columns" :loading="status === 'pending'">
+        <!-- Fehler statt „keine Marken" (FE-004, LZ1) -->
+        <div v-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
+        </div>
+
+        <UTable v-else :data="items" :columns="columns" :loading="status === 'pending'">
           <template #pick-cell="{ row }">
             <UCheckbox
               :model-value="isSelected(row.original.id)"
