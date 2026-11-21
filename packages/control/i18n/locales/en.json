@@ -121,7 +121,8 @@
         "cooldown": "Reminded less than 24 hours ago.",
         "limit": "Three reminders is the limit — reach out personally.",
         "not-assigned": "Assign first.",
-        "already-redeemed": "Already redeemed."
+        "already-redeemed": "Already redeemed.",
+        "code-unknown": "Code could not be read just now — please reload the page."
       },
       "defer": "Defer",
       "decline": "Decline",
