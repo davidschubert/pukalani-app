@@ -86,3 +86,26 @@ export function marketingBaseUrl(event: H3Event): string {
   const fallback = getRequestURL(event).origin
   return (configured || fallback).replace(/\/+$/, '')
 }
+
+/**
+ * robots.txt der Marketing-Site — alles erlaubt (sie SOLL gefunden werden),
+ * plus Sitemap-Verweis mit absoluter Adresse auf dem EIGENEN Host (das prüft
+ * `scripts/ops/verify-delivery.mjs` täglich). Zu sind nur:
+ *   `/api/`     Health-/Telemetrie-Routen der Layer gehören in keinen Index.
+ *   `/cdn-cgi/` (SEO-008, 2026-11-21) die Adressen, die Cloudflare vor
+ *               pukalani.app selbst einblendet (E-Mail-Schutz, Challenge-
+ *               Skripte) — keine Seiten dieser Site, also nichts für einen
+ *               Index (Befund des SEO-Audits).
+ * Pur, damit der Test sie ohne Server prüft (Muster: `helpRobotsTxt`).
+ */
+export function marketingRobotsTxt(origin: string): string {
+  return [
+    'User-agent: *',
+    'Allow: /',
+    'Disallow: /api/',
+    'Disallow: /cdn-cgi/',
+    '',
+    `Sitemap: ${origin.replace(/\/+$/, '')}/sitemap.xml`,
+    '',
+  ].join('\n')
+}

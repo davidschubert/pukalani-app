@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { markdownExcerpt } from '../../../../../core/shared/markdownExcerpt'
 import { COMMUNITY_SUSPENDED_CODE } from '../../../../../core/shared/communitySuspension'
 import { safeRedirectTarget } from '../../../../../core/shared/redirectTarget'
 import {
@@ -54,7 +55,14 @@ if (error.value || !course.value) {
   throw createError({ status: 404, statusText: 'Course not found' })
 }
 
-useBrandTitle(() => course.value?.title ?? '')
+// BESCHREIBUNG (Q10, SEO-003): der Anfang der Kurs-Beschreibung — die Seite
+// hatte keine.
+useBrandTitle(() => course.value?.title ?? '', {
+  description: () => markdownExcerpt(course.value?.description),
+})
+
+// EINE MASSGEBLICHE ADRESSE (Q10, SEO-004): die in der Hauptsprache der Community.
+useCommunityContentSeo()
 
 /**
  * „Kurs bearbeiten" (F58, 2026-08-16) — dieselbe fehlende Tür wie in der

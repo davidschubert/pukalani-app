@@ -2,9 +2,21 @@ import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
 import type { TenantContext } from '../../../../packages/core/shared/types/tenant'
 import { communityContentIsPublic } from '../../../../packages/core/shared/communityAudience'
+import { softFail } from '../../../../packages/core/server/utils/softFail'
+import { COURSES_TABLE, type CourseRow } from '../../../../packages/courses/shared/types/course'
+import { EVENTS_TABLE, type EventRow } from '../../../../packages/events/shared/types/event'
 import { PAGES_TABLE, type PageRow } from '../../../../packages/pages/shared/types/page'
+import { POST_CATEGORIES_TABLE, POSTS_TABLE, type CommunityPost, type PostCategory } from '../../../../packages/posts/shared/types/post'
 import { tenantRequestOrigin } from '../utils/tenantRequestOrigin'
-import { tenantSitemapEntries, tenantSitemapXml } from '../utils/tenantSitemap'
+import {
+  SITEMAP_CATEGORY_LIMIT,
+  SITEMAP_COURSE_LIMIT,
+  SITEMAP_EVENT_LIMIT,
+  SITEMAP_TOPIC_LIMIT,
+  tenantSitemapEntries,
+  tenantSitemapXml,
+  type TenantSitemapInput,
+} from '../utils/tenantSitemap'
 
 /**
  * sitemap.xml PRO MANDANTEN-HOST (Audit-Befund S6) — aus echten Daten, nicht
@@ -38,13 +50,13 @@ import { tenantSitemapEntries, tenantSitemapXml } from '../utils/tenantSitemap'
  *  Sicht auf dieselbe Entscheidung, die `requirePlanProduct(event, 'posts')`
  *  an `/api/posts` trifft — nur als Frage statt als Wurf. Ohne Pool-Kontext
  *  (Silo/Einzelbetrieb) ist alles erlaubt, genau wie dort. */
-function planAllowsFeed(tenant: TenantContext | null): boolean {
+function planAllows(tenant: TenantContext | null, product: string): boolean {
   if (tenant?.mode !== 'pool') return true
   const appConfig = useAppConfig() as {
     pukalani?: { tenancy?: { quota?: { plans?: Record<string, unknown> }, products?: Record<string, string | undefined> } }
   }
   const tenancy = appConfig.pukalani?.tenancy
-  return planAllowsProduct(Object.keys(tenancy?.quota?.plans ?? {}), tenancy?.products, tenant.plan, 'posts')
+  return planAllowsProduct(Object.keys(tenancy?.quota?.plans ?? {}), tenancy?.products, tenant.plan, product)
 }
 
 /** Slugs der veröffentlichten CMS-Seiten dieses Mandanten. Best-effort: fällt
@@ -69,6 +81,82 @@ async function publishedSlugs(event: H3Event): Promise<string[]> {
   }
 }
 
+/**
+ * DIE INHALTE DER COMMUNITY (Q10, SEO-003) — Diskussionen, Kurse, Termine.
+ *
+ * WAS „ÖFFENTLICH" HEISST, steht in jeder Abfrage selbst und ist dieselbe
+ * Bedingung, mit der die Listen-Routen der Produkte lesen:
+ *   · Themen: `status = published` (nicht geplant, nicht von der Moderation
+ *     verborgen, nicht gelöscht) UND in einer Kategorie, die aktiv ist;
+ *   · Kurse: `status = published` (kein Entwurf, nicht archiviert);
+ *   · Termine: `status = published`, nicht geschwärzt, und in der ZUKUNFT —
+ *     ein vergangener Termin ist kein Ziel für eine Suche.
+ * Eine geschlossene Community kommt hier gar nicht an (404 weiter unten).
+ *
+ * DIE MANDANTEN-GRENZE ist die Datentür: `tenantDb().list` scopt jede Abfrage
+ * auf die Community des Hosts. Operator-Klinke wie bei den Seiten darüber —
+ * die Antwort ist für alle gleich und wird eine Stunde gehalten, sie darf
+ * also nicht davon abhängen, wer zufällig fragt.
+ *
+ * VIER ABFRAGEN, JE EINE OBERGRENZE, nur die Spalten für Adresse und Datum.
+ * Ein Lesefehler lässt den Teil weg und wird gezählt (`softFail`) — die
+ * Sitemap bleibt gültig, nur kürzer.
+ */
+async function communityContent(event: H3Event, tenant: TenantContext | null): Promise<Pick<TenantSitemapInput, 'discussions' | 'courses' | 'events'>> {
+  const db = tenantDb(event, { as: 'operator' })
+  const content: Pick<TenantSitemapInput, 'discussions' | 'courses' | 'events'> = {}
+
+  if (planAllows(tenant, 'posts')) {
+    const [categories, topics] = await Promise.all([
+      db.list<PostCategory>(POST_CATEGORIES_TABLE, [
+        Query.equal('active', true),
+        Query.select(['$id', 'slug']),
+        Query.limit(SITEMAP_CATEGORY_LIMIT),
+      ]).catch(softFail('platform:routes/sitemap.xml:categories', { rows: [] as PostCategory[] })),
+      db.list<CommunityPost>(POSTS_TABLE, [
+        Query.equal('status', 'published'),
+        Query.notEqual('categoryId', ''),
+        Query.orderDesc('lastActivityAt'),
+        Query.select(['$id', 'title', 'categoryId', 'lastActivityAt', 'publishedAt']),
+        Query.limit(SITEMAP_TOPIC_LIMIT),
+      ]).catch(softFail('platform:routes/sitemap.xml:topics', { rows: [] as CommunityPost[] })),
+    ])
+    content.discussions = {
+      categories: categories.rows.map(row => ({ id: row.$id, slug: row.slug })),
+      topics: topics.rows.map(row => ({
+        id: row.$id,
+        categoryId: row.categoryId,
+        title: row.title,
+        lastmod: row.lastActivityAt ?? row.publishedAt,
+      })),
+    }
+  }
+
+  if (planAllows(tenant, 'courses')) {
+    const courses = await db.list<CourseRow>(COURSES_TABLE, [
+      Query.equal('status', 'published'),
+      Query.orderDesc('$createdAt'),
+      Query.select(['$id', 'slug', '$updatedAt']),
+      Query.limit(SITEMAP_COURSE_LIMIT),
+    ]).catch(softFail('platform:routes/sitemap.xml:courses', { rows: [] as CourseRow[] }))
+    content.courses = courses.rows.map(row => ({ slug: row.slug, lastmod: row.$updatedAt }))
+  }
+
+  if (planAllows(tenant, 'events')) {
+    const events = await db.list<EventRow>(EVENTS_TABLE, [
+      Query.equal('status', 'published'),
+      Query.isNull('redactedAt'),
+      Query.greaterThanEqual('startAt', new Date().toISOString()),
+      Query.orderAsc('startAt'),
+      Query.select(['$id', '$updatedAt']),
+      Query.limit(SITEMAP_EVENT_LIMIT),
+    ]).catch(softFail('platform:routes/sitemap.xml:events', { rows: [] as EventRow[] }))
+    content.events = events.rows.map(row => ({ id: row.$id, lastmod: row.$updatedAt }))
+  }
+
+  return content
+}
+
 export default defineEventHandler(async (event) => {
   if (event.context.controlCenter === true) {
     throw createError({ status: 404, statusText: 'Not found' })
@@ -77,9 +165,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 404, statusText: 'Not found' })
   }
 
+  const tenant = useTenant(event)
   const entries = tenantSitemapEntries({
     pageSlugs: await publishedSlugs(event),
-    feed: planAllowsFeed(useTenant(event)),
+    feed: planAllows(tenant, 'posts'),
+    primaryLocale: tenant?.primaryLocale,
+    ...await communityContent(event, tenant),
   })
 
   setHeader(event, 'content-type', 'application/xml; charset=utf-8')

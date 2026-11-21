@@ -8,7 +8,14 @@ export default defineAppConfig({
   //   auth: { providers: ['github'], termsUrl: '/agb', otp: true },
   // }
   pukalani: {
-    brand: { name: 'Pukalani Control' },
+    // `publicName` (Q10, SEO-007): die EINE öffentliche Seite dieses Hosts, das
+    // Changelog, nennt im Titel die Marke — nicht den Namen der Arbeitsfläche.
+    brand: { name: 'Pukalani Control', publicName: 'Pukalani' },
+    // NUR DAS CHANGELOG DARF IN DIE SUCHE (Q10, SEO-007): alles andere hier ist
+    // Arbeitsfläche des Betreibers und bekommt `noindex, follow`
+    // (core/shared/seoRobots.ts). Die robots.txt lässt die Seiten bewusst
+    // offen, sonst läse niemand das `noindex` (server/routes/robots.txt.get.ts).
+    seo: { indexOnly: ['/changelog'] },
     // FRISTEN-LAUF DER EIGENEN DOMAIN (BE-014): SCHARF seit 2026-11-17 —
     // Davids Ja nach der Zählung auf Production (eine eigene Domain,
     // freigegeben: nichts zu tun). `apply` stempelt die Frist, schaltet nach

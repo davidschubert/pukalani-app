@@ -14,6 +14,7 @@
  * einen aktiven Kauf-Knopf in einen 404 laufen lassen. Leeres Template = der
  * CTA bleibt fail-closed „Bald verfügbar" (EventDetail).
  */
+import { markdownExcerpt } from '../../../../core/shared/markdownExcerpt'
 import type { EventDetailResponse } from '../../../../events/shared/types/event'
 import { eventIsRedacted } from '../../../../events/shared/eventModerationPolicy'
 
@@ -61,7 +62,15 @@ if (error.value || !initial.value) {
  */
 useBrandTitle(() => eventIsRedacted(initial.value?.redactedAt)
   ? t('events.redacted.title')
-  : initial.value?.title ?? '')
+  : initial.value?.title ?? '', {
+  // BESCHREIBUNG (Q10, SEO-003): der Anfang der Termin-Beschreibung — die
+  // Seite hatte keine. Ein geschwärzter Termin liefert leeren Text und damit
+  // keine. Steht wie die Titel-Zeile in BEIDEN Fassungen dieser Seite.
+  description: () => eventIsRedacted(initial.value?.redactedAt) ? '' : markdownExcerpt(initial.value?.description),
+})
+
+// EINE MASSGEBLICHE ADRESSE (Q10, SEO-004): die in der Hauptsprache der Community.
+useCommunityContentSeo()
 
 // Cast wie im blueprint-Layout: die AppConfig-Typen entstehen erst im
 // Merge der jeweiligen App, der Layer liest sie bewusst defensiv.

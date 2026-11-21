@@ -1,7 +1,6 @@
 <script setup lang="ts">
 // Die kinematische Startseite (Konzept §3.2 / §6.4). Szenen-Reihenfolge im DOM
 // = Reihenfolge der Beats.
-import { FAQ_COUNT } from '#shared/marketing'
 
 definePageMeta({ layout: 'site' })
 useReveal()
@@ -20,9 +19,10 @@ useMarketingSeo({
 })
 
 // Strukturierte Daten — ehrlich (keine erfundenen Bewertungen/Preise, §5).
-// Die Anzahl der Fragen steht in shared/marketing.ts: dieses JSON-LD, das der
-// /faq-Seite und die sichtbare FaqSection müssen dieselbe Liste beschreiben.
-const faqIndices = Array.from({ length: FAQ_COUNT }, (_, i) => i)
+// KEIN FAQPage-Knoten hier (SEO-008, 2026-11-21): dieselben Fragen standen
+// als strukturierte Daten auf der Startseite UND auf /faq — zwei Seiten, die
+// um dasselbe Suchergebnis konkurrieren. Sie stehen nur noch auf /faq; die
+// sichtbare FaqSection bleibt hier. Wächter: tests/faqJsonLd.test.ts.
 const jsonLd = computed(() => ({
   '@context': 'https://schema.org',
   '@graph': [
@@ -40,14 +40,6 @@ const jsonLd = computed(() => ({
       'description': t('marketing.meta.description'),
       'url': baseUrl,
       'inLanguage': locale.value,
-    },
-    {
-      '@type': 'FAQPage',
-      'mainEntity': faqIndices.map(i => ({
-        '@type': 'Question',
-        'name': t(`marketing.faq.items.${i}.q`),
-        'acceptedAnswer': { '@type': 'Answer', 'text': t(`marketing.faq.items.${i}.a`) },
-      })),
     },
   ],
 }))
