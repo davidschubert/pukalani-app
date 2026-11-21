@@ -9,6 +9,10 @@
  *     Community A sieht nur noch die Hinweisseite (Pool, Platform-Server);
  *   - `apps/comments/e2e/narrow-screens-pool.spec.ts` — Handy und Tablet:
  *     eigene Menüpunkte, Unterpunkte und der Feedback-Knopf (Q01, Community B);
+ *   - `apps/comments/e2e/dashboard-hydration-pool.spec.ts` — jede Seite der
+ *     Dashboard-Seitenleiste, frisch geladen, ohne Abweichung zwischen Server-
+ *     und Browser-Fassung (Q15, Community B; die Mitglieder-Verwaltung gibt es
+ *     nur im Pool);
  *   - `apps/control/e2e/smoke.spec.ts` — die eine E2E-Datei der Betreiber-App.
  *
  * Die Variablen kommen aus dem Stand der Bühne (`.buehne/state.json`) und der
@@ -52,6 +56,7 @@ import { checkStageBaseline, RESOLVER_SETTLE_MS } from './baseline.mjs'
 export const E2E_AUF_DER_BUEHNE = [
   { app: 'comments', datei: 'e2e/community-removed.spec.ts', server: 'platform' },
   { app: 'comments', datei: 'e2e/narrow-screens-pool.spec.ts', server: 'platform' },
+  { app: 'comments', datei: 'e2e/dashboard-hydration-pool.spec.ts', server: 'platform' },
   { app: 'control', datei: 'e2e/smoke.spec.ts', server: 'control' },
 ]
 

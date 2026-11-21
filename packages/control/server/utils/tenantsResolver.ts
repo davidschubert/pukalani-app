@@ -119,6 +119,9 @@ export function mapTenantRowToContext(
      * `/api/community/profile`, die das Bearbeitungs-Formular füllt.
      */
     ...(description ? { description } : {}),
+    // Hauptsprache (Q10) — nur eine echte Wahl reist mit; ohne sie rechnet
+    // jeder Leser mit der Vorgabe (core/shared/primaryLocale.ts).
+    ...(siteProfile.locale ? { primaryLocale: siteProfile.locale } : {}),
   }
   /**
    * DIE KANONISCHE ADRESSE (control-035, Davids Entscheidung 2): aktive eigene

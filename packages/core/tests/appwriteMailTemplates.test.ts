@@ -74,9 +74,9 @@ describe('Gegenproben — die Prüfung sieht Fehler', () => {
     expect(() => desiredTemplate('recovery', 'de', 'photos-qgry' as never)).toThrow(/Unbekanntes Projekt/)
   })
 
-  it('brandFromAppConfig: mailName vor name, mehrzeiliger Block, kein Block', () => {
-    expect(brandFromAppConfig(`x\n    brand: { name: 'A Control', mailName: 'A' },\n`)).toBe('A')
-    expect(brandFromAppConfig(`  pukalani: {\n    brand: {\n      name: 'B',\n      // mailName: 'nicht im Block'\n    },\n    other: { mailName: 'falsch' },\n`)).toBe('B')
+  it('brandFromAppConfig: publicName vor name, mehrzeiliger Block, kein Block', () => {
+    expect(brandFromAppConfig(`x\n    brand: { name: 'A Control', publicName: 'A' },\n`)).toBe('A')
+    expect(brandFromAppConfig(`  pukalani: {\n    brand: {\n      name: 'B',\n      // publicName: 'nicht im Block'\n    },\n    other: { publicName: 'falsch' },\n`)).toBe('B')
     expect(brandFromAppConfig('export default {}')).toBeNull()
   })
 

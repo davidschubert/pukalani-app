@@ -22,11 +22,13 @@ export default defineAppConfig({
     brand: {
       name: 'Pukalani',
       /**
-       * Name in der Schluss-Zeile jeder eigenen Mail (Q06), wenn er vom
-       * Kopf-Namen abweicht — leer heißt `name`. Auf einem Community-Host
-       * gewinnt der Name der Community (`core/server/utils/mailBrand.ts`).
+       * Name der Marke VOR DER KUNDSCHAFT, wenn er vom Kopf-Namen abweicht
+       * (control: „Pukalani Control" im Kopf, „Pukalani" draußen) — leer heißt
+       * `name`. Leser: Titel des Changelogs (Q10) und die Schluss-Zeile jeder
+       * eigenen Mail (Q06, `core/server/utils/mailBrand.ts`; auf einem
+       * Community-Host gewinnt dort der Name der Community).
        */
-      mailName: '',
+      publicName: '',
       /**
        * Öffentliche Seite des Anbieters (absolute URL) — der EINZIGE Leser ist
        * heute die Fehlerseite eines unbekannten Hosts (C12b): wer sich
@@ -444,6 +446,16 @@ export default defineAppConfig({
        * Mandanten. Das Schema bleibt Sache der Env (shared/seoOrigin.ts).
        */
       originFromRequest: false,
+      /**
+       * NUR DAS DARF IN DIE SUCHE (Q10, SEO-007): Pfade ohne Sprach-Vorsatz
+       * (`['/changelog']`). Steht hier etwas, bekommt JEDE andere Seite der
+       * App `noindex, follow` — für Apps, die fast nur Arbeitsflächen sind
+       * (Betreiber-Oberfläche: öffentlich gewollt ist nur das Changelog).
+       * Core-Default LEER = keine Einschränkung. Regel:
+       * `shared/seoRobots.ts`. Die `robots.txt` der App darf die Seiten nicht
+       * sperren, sonst liest niemand das `noindex`.
+       */
+      indexOnly: [] as string[],
       /**
        * Bildmarke pro Mandant (Audit-Befund K2): `<link rel="icon">` auf die
        * serverseitig generierte `/favicon.svg` (Kreis in der Primärfarbe des

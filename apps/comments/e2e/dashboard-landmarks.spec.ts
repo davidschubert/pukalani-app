@@ -1,5 +1,6 @@
 import { test, expect, type BrowserContext } from '@playwright/test'
 import { Client, Users, ID } from 'node-appwrite'
+import { expectNoMismatchOnFreshLoad } from './support/hydration'
 
 /**
  * Aufbau des Dashboards für Tastatur und Vorleseprogramm (UX-006, UX-010; Q09,
@@ -16,6 +17,11 @@ import { Client, Users, ID } from 'node-appwrite'
  *  3. UMSCHALTER: der Knopf, der die Seitenleiste einklappt, sagt seinen
  *     Zustand (`aria-expanded`), und der wechselt mit.
  *
+ *  4. KEINE ABWEICHUNG (FE-003, Q15): jede Seite der Seitenleiste, FRISCH vom
+ *     Server geladen, lässt die Konsole ohne Abweichungs-Meldung — der
+ *     Browser übernimmt, was der Server gezeichnet hat, statt es neu zu bauen.
+ *     Einzelheiten und Grenzen: `support/hydration.ts`.
+ *
  * Die Erwartungen stehen fest im Test (Kennung des Bereichs, Testmarke des
  * Links); nichts davon kommt aus der Seite, die geprüft wird.
  *
@@ -26,11 +32,23 @@ import { Client, Users, ID } from 'node-appwrite'
  * GEGENPROBE (2026-11-21, gegen das Layout davor und den Umschalter ohne
  * Zustand): alle drei Fälle rot — der Seitenlauf zählt 0 statt 1 `main`, die
  * beiden anderen finden den Hauptbereich gar nicht erst.
+ *
+ * GEGENPROBE ZU 4 (2026-11-21, gegen die Seiten davor): rot mit fünf Seiten —
+ * Kategorien, Vertrauensstufen, Nachrichten, Gemeldete Nachrichten (der
+ * Server zeichnete „nichts da", der Browser „lädt") und Statistik (ein
+ * Baustein mit altem Namen). Die sechste Seite des Befunds, die Mitglieder-
+ * Verwaltung, gibt es nur im Pool: `dashboard-hydration-pool.spec.ts`.
  */
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const apiKey = process.env.NUXT_APPWRITE_KEY
 const configured = Boolean(endpoint && projectId && apiKey)
+
+/**
+ * Seiten OHNE eigenen Punkt in der Seitenleiste (Reiter einer Hülle), die
+ * trotzdem frisch geladen werden: die Statistik stand im Befund.
+ */
+const EXTRA_FRESH_LOADS = ['/dashboard/community/statistics']
 
 /** Die Seitenleiste des Dashboards — benannter Bereich aus dem Layout. */
 const SIDEBAR_LINKS = '[role="complementary"] nav a[href*="/dashboard"]'
@@ -95,6 +113,25 @@ test.describe('Dashboard: Hauptbereich, Sprunglink, Umschalter (Q09)', () => {
     await page.goto(hrefs[hrefs.length - 1]!)
     await expect(page.locator('main')).toHaveCount(1)
     await expect(page.locator('main#dashboard-main h1').first()).toBeVisible({ timeout: 60_000 })
+  })
+
+  test('Frisch vom Server: keine Seite der Seitenleiste meldet eine Abweichung zwischen Server und Browser', async ({ page, context, baseURL }) => {
+    // Jede Seite wird einzeln geladen; der Dev-Server bündelt sie beim ersten Zugriff.
+    test.setTimeout(900_000)
+    await signIn(context, baseURL!)
+    await page.goto('/dashboard')
+    await expect(page.locator('main#dashboard-main h1').first()).toBeVisible({ timeout: 60_000 })
+
+    // Mit Wiederholung: der Dev-Server lädt die Seite nach dem ersten Bündeln
+    // einmal neu, ein Auslesen genau dann verliert seinen Kontext.
+    let hrefs: string[] = []
+    await expect(async () => {
+      hrefs = await page.locator(SIDEBAR_LINKS).evaluateAll(links => [...new Set(links.map(link => link.getAttribute('href') ?? ''))].filter(Boolean))
+      // Ein leerer Lauf sähe grün aus (wie im Seitenlauf oben).
+      expect(hrefs.length, 'Punkte in der Seitenleiste').toBeGreaterThanOrEqual(8)
+    }).toPass({ timeout: 60_000 })
+
+    await expectNoMismatchOnFreshLoad(page, [...new Set([...hrefs, ...EXTRA_FRESH_LOADS])])
   })
 
   test('Sprunglink: ein Tab-Schritt, Enter, und der Fokus steht im Hauptbereich', async ({ page, context, baseURL }) => {

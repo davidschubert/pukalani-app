@@ -152,7 +152,7 @@ const STAT_KEYS = ['open', 'suspended', 'dismissed', 'total'] as const
             icon="i-ph-arrows-clockwise"
             color="neutral"
             variant="ghost"
-            :loading="status === 'pending'"
+            :loading="isFetchLoading(status)"
             :label="t('control.abuse.refresh')"
             @click="() => refresh()"
           />

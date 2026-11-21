@@ -63,7 +63,16 @@ function categoryColor(c: string) {
 // Wie jede andere Seite: „Changelog · Marke". useSeoMeta stand hier direkt und
 // setzte den Titel deshalb OHNE die Marke — im Tab stand nur „Changelog", und
 // auf einem Silo-Host verrät das nicht, wessen Changelog man liest.
-useBrandTitle(() => t('changelog.title'), { description: () => t('changelog.description') })
+//
+// `publicName` (Q10, SEO-007): das Changelog ist die eine ÖFFENTLICHE Seite der
+// Betreiber-Oberfläche, die Landing verlinkt es. Dort heißt die App nach ihrer
+// Arbeitsfläche („… Control") — eine App darf für diese Seite den Namen der
+// Marke nennen. Ohne Angabe bleibt der Name der App.
+const publicBrand = (useAppConfig() as { pukalani?: { brand?: { publicName?: string } } }).pukalani?.brand?.publicName
+useBrandTitle(() => t('changelog.title'), {
+  description: () => t('changelog.description'),
+  brand: () => publicBrand ?? '',
+})
 </script>
 
 <template>

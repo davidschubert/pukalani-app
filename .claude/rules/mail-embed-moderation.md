@@ -50,7 +50,7 @@ paths:
 - EIN RAHMEN JE MAIL (Q06, Davids Entscheidung R6): jeder Text für
   `sendMail()` entsteht über `frameMail()` (`core/shared/mailFrame.ts`):
   „Hallo {Name}," / „Hi {Name},", Schluss-Zeile mit der Marke aus
-  `resolveMailBrand(event)` (Community, sonst `pukalani.brand.mailName`/`name`;
+  `resolveMailBrand(event)` (Community, sonst `pukalani.brand.publicName`/`name`;
   nie ein Name im Code), Sprache über `resolveMailLocale` (Konto, sonst
   Anfrage, sonst en). Wächter: `packages/core/tests/mailFrame.test.ts`.
 - ANMELDE-MAILS VON APPWRITE: Vorlagen nur in `scripts/ops/appwrite-mail/`,

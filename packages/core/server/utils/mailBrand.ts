@@ -7,7 +7,7 @@ import { useTenant } from './tenant'
  * Dieselbe Kette wie `useBrandName()` im Browser, damit Seite und Mail
  * denselben Namen tragen:
  *   1. auf einem Community-Host der Name der Community (Mandant),
- *   2. sonst `pukalani.brand.mailName` der App — für Apps, deren Kopf-Name
+ *   2. sonst `pukalani.brand.publicName` der App — für Apps, deren Kopf-Name
  *      nicht der Name vor der Kundschaft ist (control: „Pukalani Control" im
  *      Dashboard, „Pukalani" in der Mail),
  *   3. sonst `pukalani.brand.name` der App.
@@ -21,8 +21,8 @@ export function resolveMailBrand(event?: H3Event): string {
   // daran trotzdem nicht.
   const tenantName = event?.context ? useTenant(event)?.name?.trim() : ''
   if (tenantName) return tenantName
-  const brand = (useAppConfig() as { pukalani?: { brand?: { name?: string, mailName?: string } } }).pukalani?.brand
-  const configured = brand?.mailName?.trim() || brand?.name?.trim()
+  const brand = (useAppConfig() as { pukalani?: { brand?: { name?: string, publicName?: string } } }).pukalani?.brand
+  const configured = brand?.publicName?.trim() || brand?.name?.trim()
   if (configured) return configured
   const host = (event?.node?.req?.headers?.host ?? '').split(':')[0]
   return host || 'noreply'

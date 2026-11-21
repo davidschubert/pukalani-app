@@ -15,7 +15,7 @@
  *   - `[[du-Form|ihr-Form]]` setzen WIR je Projekt (`anrede`), nur deutsch.
  *
  * WOHER DIE MARKE KOMMT: aus der `app.config.ts` der App, die das Projekt
- * benutzt (`pukalani.brand.mailName`, sonst `pukalani.brand.name`) — dieselbe
+ * benutzt (`pukalani.brand.publicName`, sonst `pukalani.brand.name`) — dieselbe
  * Quelle wie für die eigenen Mails (`core/server/utils/mailBrand.ts`). Hier
  * steht nur, WELCHE App zu welchem Projekt gehört (geprüft gegen
  * `appwriteProjects` im `site.manifest.ts`, Test
@@ -64,7 +64,7 @@ const SUBJECTS = {
 
 /**
  * Markenname aus dem Text einer `app.config.ts` (pur): der `brand`-Block der
- * App, darin `mailName` vor `name`. `null`, wenn keiner steht.
+ * App, darin `publicName` vor `name`. `null`, wenn keiner steht.
  */
 export function brandFromAppConfig(source) {
   const lines = String(source).split('\n')
@@ -82,7 +82,7 @@ export function brandFromAppConfig(source) {
   // Kommentare zählen nicht — im branding-Block stehen lange Erklärungen.
   block = block.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
   const pick = key => block.match(new RegExp(`\\b${key}:\\s*'([^']+)'`))?.[1]?.trim()
-  return pick('mailName') || pick('name') || null
+  return pick('publicName') || pick('name') || null
 }
 
 /** Markenname eines Projekts — aus der App, nie aus diesem Skript. */

@@ -154,7 +154,7 @@ async function afterChange(conversationId?: string) {
         <MessageInboxList
           :conversations="conversations"
           :selected-id="selectedId"
-          :loading="status === 'pending'"
+          :loading="isFetchLoading(status)"
           @select="select"
         />
       </template>

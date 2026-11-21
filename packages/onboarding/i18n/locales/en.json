@@ -10,6 +10,8 @@
         "nameHelp": "Shown in the menu header, the browser tab, the preview image and as the sender of every notification email.",
         "descriptionLabel": "Description",
         "descriptionHelp": "A sentence or two about what this community is for. May stay empty.",
+        "localeLabel": "Main language",
+        "localeHelp": "The language your community writes in. Discussions, courses and events count under it for search engines. The interface stays in each visitor’s own language.",
         "addressHint": "This does not change your community’s address — you manage that under “Custom domain”.",
         "submit": "Save"
       },

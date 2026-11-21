@@ -14,13 +14,51 @@
  * und Header, die Entscheidungen hier sind reine Zeichenketten-Arbeit.
  */
 
+import { primaryLocalePath, resolvePrimaryLocale, type PrimaryLocale } from '../../../../packages/core/shared/primaryLocale'
+import { discussionCategoryPath, discussionTopicPath, slugify, TOPIC_SLUG_FALLBACK } from '../../../../packages/posts/shared/discussionUrl'
+
 /** Ein Sitemap-Eintrag in der EN-Default-Locale (ohne Prefix). */
 export interface TenantSitemapEntry {
   /** Pfad wie ihn die Default-Locale (en) ausliefert: '/', '/feed', '/imprint'. */
   path: string
   /** Relative Priorität (0.0–1.0) — wie in der Marketing-Sitemap. */
   priority: number
+  /**
+   * NUTZERINHALT (Q10): der Eintrag hat EINEN Text und steht deshalb nur
+   * EINMAL in der Sitemap — unter der Adresse dieser Sprache (der Hauptsprache
+   * der Community), ohne Sprachfassungen. Fehlt das Feld, ist es eine Seite
+   * mit eigener Fassung je Sprache (wie bisher: zwei Adressen, verknüpft).
+   */
+  onlyLocale?: PrimaryLocale
+  /** Letzte Änderung (ISO-Datum) — nur, wo die Daten eines tragen. */
+  lastmod?: string
 }
+
+/**
+ * OBERGRENZEN (Q10, SEO-003). Eine Sitemap ist ein Wegweiser, kein Archiv:
+ * die jüngsten Themen reichen, ältere findet ein Crawler über die Kategorien.
+ * Jede Zahl ist zugleich das `limit` GENAU EINER Abfrage — es gibt keine
+ * Abfrage je Eintrag und kein Blättern.
+ */
+export const SITEMAP_TOPIC_LIMIT = 1000
+export const SITEMAP_CATEGORY_LIMIT = 100
+export const SITEMAP_COURSE_LIMIT = 200
+export const SITEMAP_EVENT_LIMIT = 200
+
+/** Kennungen (Row-Ids), die in eine Adresse dürfen — dieselbe Wache wie `SAFE_SLUG`. */
+const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]*$/
+
+/** Ein ISO-Zeitstempel als `lastmod` — alles andere fällt weg statt die Datei zu brechen. */
+function safeLastmod(value: string | null | undefined): string | undefined {
+  if (!value) return undefined
+  const time = Date.parse(value)
+  return Number.isFinite(time) ? new Date(time).toISOString() : undefined
+}
+
+export interface SitemapCategory { id: string, slug: string }
+export interface SitemapTopic { id: string, categoryId: string, title: string | null | undefined, lastmod?: string | null }
+export interface SitemapCourse { slug: string, lastmod?: string | null }
+export interface SitemapEvent { id: string, lastmod?: string | null }
 
 /**
  * Slugs, die in eine Sitemap dürfen. Identisch zur Validierung des
@@ -40,6 +78,21 @@ export interface TenantSitemapInput {
   pageSlugs: readonly string[]
   /** Darf der Plan dieses Mandanten das Produkt `posts`? Dann gibt es /feed. */
   feed: boolean
+  /**
+   * Hauptsprache der Community (Q10) — roh aus dem Mandanten-Kontext; ohne
+   * Wahl rechnet `resolvePrimaryLocale` die Vorgabe.
+   */
+  primaryLocale?: string | null
+  /**
+   * ÖFFENTLICHE Diskussionen (Q10): die Route liefert NUR veröffentlichte
+   * Themen in aktiven Kategorien. `undefined` = das Produkt gibt es hier nicht
+   * (Plan) — dann fehlt auch die Übersicht.
+   */
+  discussions?: { categories: readonly SitemapCategory[], topics: readonly SitemapTopic[] }
+  /** Veröffentlichte Kurse; `undefined` = Produkt nicht im Plan. */
+  courses?: readonly SitemapCourse[]
+  /** Veröffentlichte, KOMMENDE Termine; `undefined` = Produkt nicht im Plan. */
+  events?: readonly SitemapEvent[]
 }
 
 /**
@@ -58,6 +111,56 @@ export function tenantSitemapEntries(input: TenantSitemapInput): TenantSitemapEn
     .filter(slug => slug !== HOME_SLUG && SAFE_SLUG.test(slug))
     .sort()
   for (const slug of slugs) entries.push({ path: `/${slug}`, priority: 0.5 })
+
+  // ── Inhalte der Community (Q10, SEO-003) ────────────────────────────────
+  // ÜBERSICHTEN tragen übersetzte Überschriften und stehen wie bisher unter
+  // beiden Sprach-Adressen. EINZELNE Beiträge haben einen Text und stehen
+  // einmal, unter der Adresse der Hauptsprache — dieselbe Adresse, die ihr
+  // Kopf als `canonical` nennt (core: useCommunityContentSeo).
+  const onlyLocale = resolvePrimaryLocale(input.primaryLocale)
+
+  if (input.discussions) {
+    entries.push({ path: '/discussions', priority: 0.7 })
+    const categories = new Map<string, string>()
+    for (const category of input.discussions.categories) {
+      if (!SAFE_SLUG.test(category.slug) || categories.has(category.id)) continue
+      categories.set(category.id, category.slug)
+      entries.push({ path: discussionCategoryPath(category.slug), priority: 0.6 })
+    }
+    for (const topic of input.discussions.topics.slice(0, SITEMAP_TOPIC_LIMIT)) {
+      const categorySlug = categories.get(topic.categoryId)
+      // Ohne bekannte Kategorie keine Adresse — und ohne TITEL auch nicht:
+      // dessen Adress-Name entsteht dann aus dem Text des Beitrags, den diese
+      // Liste bewusst nicht lädt (bis 10.000 Zeichen je Zeile). Eine geratene
+      // Adresse antwortete mit 301 — in einer Sitemap ein Fehler.
+      const title = topic.title?.trim()
+      if (!categorySlug || !title || !SAFE_ID.test(topic.id)) continue
+      entries.push({
+        path: discussionTopicPath(categorySlug, topic.id, slugify(title) || TOPIC_SLUG_FALLBACK),
+        priority: 0.6,
+        onlyLocale,
+        lastmod: safeLastmod(topic.lastmod),
+      })
+    }
+  }
+
+  if (input.courses) {
+    entries.push({ path: '/courses', priority: 0.7 })
+    const seen = new Set<string>()
+    for (const course of input.courses.slice(0, SITEMAP_COURSE_LIMIT)) {
+      if (!SAFE_SLUG.test(course.slug) || seen.has(course.slug)) continue
+      seen.add(course.slug)
+      entries.push({ path: `/courses/${course.slug}`, priority: 0.6, onlyLocale, lastmod: safeLastmod(course.lastmod) })
+    }
+  }
+
+  if (input.events) {
+    entries.push({ path: '/events', priority: 0.7 })
+    for (const item of input.events.slice(0, SITEMAP_EVENT_LIMIT)) {
+      if (!SAFE_ID.test(item.id)) continue
+      entries.push({ path: `/events/${item.id}`, priority: 0.5, onlyLocale, lastmod: safeLastmod(item.lastmod) })
+    }
+  }
 
   return entries
 }
@@ -80,6 +183,17 @@ export function dePathFor(enPath: string): string {
  */
 export function tenantSitemapXml(origin: string, entries: readonly TenantSitemapEntry[]): string {
   const urls = entries.flatMap((entry) => {
+    const lastmod = entry.lastmod ? [`    <lastmod>${entry.lastmod}</lastmod>`] : []
+    // Nutzerinhalt (Q10): EINE Adresse, keine Sprachfassungen.
+    if (entry.onlyLocale) {
+      return [[
+        '  <url>',
+        `    <loc>${origin}${primaryLocalePath(entry.path, entry.onlyLocale)}</loc>`,
+        ...lastmod,
+        `    <priority>${entry.priority.toFixed(1)}</priority>`,
+        '  </url>',
+      ].join('\n')]
+    }
     const enUrl = `${origin}${entry.path === '/' ? '' : entry.path}`
     const deUrl = `${origin}${dePathFor(entry.path)}`
     const alternates = [
@@ -92,6 +206,7 @@ export function tenantSitemapXml(origin: string, entries: readonly TenantSitemap
       '  <url>',
       `    <loc>${loc}</loc>`,
       alternates,
+      ...lastmod,
       `    <priority>${entry.priority.toFixed(1)}</priority>`,
       '  </url>',
     ].join('\n'))
@@ -134,13 +249,23 @@ export function tenantRobotsTxt(origin: string): string {
  * Kundenbereich und Onboarding-Wizard sind kein SEO-Ziel: sie tragen keinen
  * öffentlichen Inhalt, führen hinter eine Anmeldung und würden als
  * Suchergebnis nur den Trichter verwässern (beworben wird der Kurz-Link).
- * Deshalb komplett zu — und ohne Sitemap-Zeile, weil es dort nichts zu
- * deklarieren gibt (sitemap.xml antwortet auf diesen Hosts 404).
+ * Ohne Sitemap-Zeile, weil es dort nichts zu deklarieren gibt (sitemap.xml
+ * antwortet auf diesen Hosts 404).
+ *
+ * NICHT MEHR `Disallow: /` (Q10, SEO-007): die Sperre hielt die Seiten nicht
+ * aus der Suche — die Landing verlinkt den Host auf jeder Seite, und eine
+ * gesperrte Adresse darf ohne Inhalt in der Trefferliste stehen. Aus der
+ * Suche nimmt sie nur `noindex`, und das stempelt der Kopf jetzt auf JEDE
+ * Seite eines Kontroll-Hosts (core/shared/seoRobots.ts). Lesen kann ein
+ * Crawler es aber nur, wenn die robots.txt ihn lässt — deshalb dieselbe
+ * schmale Form wie auf der Betreiber-Oberfläche (Q04).
  */
 export function controlHostRobotsTxt(): string {
   return [
     'User-agent: *',
-    'Disallow: /',
+    'Allow: /',
+    'Disallow: /api/',
+    'Disallow: /dashboard/',
     '',
   ].join('\n')
 }

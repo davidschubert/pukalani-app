@@ -4,6 +4,7 @@
  * #comments-Slot mit ihrem comments-Layer zu füllen (A14-Komposition,
  * siehe comments) — der Layer selbst kennt comments nicht.
  */
+import { markdownExcerpt } from '../../../../core/shared/markdownExcerpt'
 import type { EventDetailResponse } from '../../../shared/types/event'
 import { eventIsRedacted } from '../../../shared/eventModerationPolicy'
 
@@ -23,7 +24,15 @@ if (error.value || !initial.value) {
  */
 useBrandTitle(() => eventIsRedacted(initial.value?.redactedAt)
   ? t('events.redacted.title')
-  : initial.value?.title ?? '')
+  : initial.value?.title ?? '', {
+  // BESCHREIBUNG (Q10, SEO-003): der Anfang der Termin-Beschreibung — die
+  // Seite hatte keine. Ein geschwärzter Termin liefert leeren Text und damit
+  // keine. Steht wie die Titel-Zeile in BEIDEN Fassungen dieser Seite.
+  description: () => eventIsRedacted(initial.value?.redactedAt) ? '' : markdownExcerpt(initial.value?.description),
+})
+
+// EINE MASSGEBLICHE ADRESSE (Q10, SEO-004): die in der Hauptsprache der Community.
+useCommunityContentSeo()
 </script>
 
 <template>

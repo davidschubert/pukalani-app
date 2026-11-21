@@ -4,7 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 /**
  * Q06 — die Mails des Control Plane laufen durch den EINEN Rahmen
  * (`core/shared/mailFrame.ts`): Anrede vorne, Schluss-Zeile mit der Marke aus
- * `resolveMailBrand` (control: `pukalani.brand.mailName`), Sprache nach
+ * `resolveMailBrand` (control: `pukalani.brand.publicName`), Sprache nach
  * `resolveMailLocale` (ohne Angabe Englisch, nicht mehr Deutsch).
  */
 
@@ -21,7 +21,7 @@ let requests: RequestsMod
 let abuse: AbuseMod
 
 beforeAll(async () => {
-  vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Pukalani Control', mailName: 'Testmarke' } } }))
+  vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Pukalani Control', publicName: 'Testmarke' } } }))
   vi.stubGlobal('useRuntimeConfig', () => ({ onboardingStartUrl: 'https://start.example', alertEmail: 'ops@example.test', public: { appUrl: 'https://control.example' } }))
   vi.stubGlobal('sendMail', async (_event: unknown, input: { to: string, subject: string, text: string }) => {
     sent.push(input)

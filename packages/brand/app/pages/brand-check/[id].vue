@@ -75,15 +75,32 @@ const id = computed(() => String(route.params.id ?? ''))
  * Ein 404 ist hier kein Fehler, sondern ein Zustand: ein alter oder ein
  * getippter Link. `null` heisst „gibt es nicht (mehr)", die Seite zeigt dann
  * ihre ruhige Leerseite statt einer roten Fehlermeldung.
+ *
+ * Der HTTP-STATUS ist trotzdem 404 (SEO-008, 2026-11-21) — dasselbe Muster wie
+ * `discover/[slug].vue`: Seite ruhig, Antwort ehrlich, sonst führt ein
+ * Crawler jede erfundene Kennung als Seite mit 200. Nur bei einer 404 der
+ * Route: ein 503 (Datenbank weg) ist kein „gibt es nicht" und bleibt beim
+ * alten Verhalten. Einen „läuft noch"-Zustand gibt es unter dieser Adresse
+ * nicht — ein laufender Check wohnt unter seiner Lauf-Kennung
+ * (`/api/brand/check/runs/…`), hierher führt erst das fertige Ergebnis.
+ * `requestEvent` wird VOR dem Abruf gegriffen (nach einem `await` fehlt der
+ * Nuxt-Kontext); im Browser ist es leer, dort gibt es keinen Kopf mehr.
  */
+const requestEvent = useRequestEvent()
 const { data: result, status: loadStatus } = await useAsyncData<BrandCheckResult | null>(
   'brand-check',
   async () => {
-    if (!id.value) return null
+    if (!id.value) {
+      if (requestEvent) setResponseStatus(requestEvent, 404)
+      return null
+    }
     try {
       return await request<BrandCheckResult>(`/api/brand/check/${encodeURIComponent(id.value)}`)
     }
-    catch {
+    catch (error) {
+      const value = error as { status?: number, statusCode?: number, response?: { status?: number } } | null
+      const status = value?.status ?? value?.statusCode ?? value?.response?.status ?? 0
+      if (status === 404 && requestEvent) setResponseStatus(requestEvent, 404)
       return null
     }
   },

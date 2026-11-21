@@ -8,7 +8,8 @@ import type { CourseAccess, CourseListResponse, CourseRow } from '../../../share
 const { t } = useI18n()
 const localePath = useLocalePath()
 
-useBrandTitle(() => t('courses.list.title'))
+// Fester Satz als Beschreibung (Q10, SEO-003) — die Übersicht hatte keine.
+useBrandTitle(() => t('courses.list.title'), { description: () => t('courses.list.description') })
 
 const { data, status } = await useFetch<CourseListResponse>('/api/courses')
 
