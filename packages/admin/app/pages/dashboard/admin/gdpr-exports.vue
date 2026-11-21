@@ -22,7 +22,7 @@ const { formatDate } = useFormatDate()
 
 useBrandTitle(() => t('admin.gdprExports.title'))
 
-const { data, refresh } = await useFetch<{ total: number, files: GdprExportFile[] }>('/api/admin/gdpr-exports')
+const { data, error, refresh } = await useFetch<{ total: number, files: GdprExportFile[] }>('/api/admin/gdpr-exports')
 
 // Doppelklick-Schutz für den Download (der Löschweg sperrt im Dialog selbst)
 const downloading = ref('')
@@ -109,7 +109,12 @@ const columns = computed<TableColumn<GdprExportFile>[]>(() => [
   <div class="space-y-4">
     <p class="text-sm text-muted">{{ t('admin.gdprExports.hint') }}</p>
 
-    <UTable :data="data?.files ?? []" :columns="columns" data-gdpr-exports-table>
+    <!-- Fehler statt „keine Dateien" (FE-004, LZ1) -->
+    <div v-if="error && !data" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
+    <UTable v-else :data="data?.files ?? []" :columns="columns" data-gdpr-exports-table>
       <template #name-cell="{ row }">
         <span class="block max-w-xs truncate font-mono text-sm" :title="row.original.name">{{ row.original.name }}</span>
       </template>

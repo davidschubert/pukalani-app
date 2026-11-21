@@ -48,6 +48,8 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
       // Nur mitschicken, wenn gesetzt: eine ältere control-Fassung kennt das
       // Feld nicht und lehnte den ganzen Aufruf ab (Schema ist strikt).
       ...(body.locale ? { locale: body.locale } : {}),
+      // KI-Training (KC1): ebenso nur, wenn gesetzt.
+      ...(body.aiTraining !== undefined ? { aiTraining: body.aiTraining } : {}),
     },
   )
 })

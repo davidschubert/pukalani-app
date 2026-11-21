@@ -53,7 +53,7 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
   brand: {
     steps: Record<string, string>
     labels: Record<string, unknown>
-    workspace: { site: Record<'never' | 'start' | 'consent' | 'confirm' | 'done', string> }
+    workspace: { site: Record<'never' | 'start' | 'consent' | 'confirm' | 'done', string>, regions: Record<'rail' | 'log', string> }
   }
 }
 const site = de.brand.workspace.site
@@ -142,6 +142,12 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     expect(h1[0]!.text()).toBe(de.brand.steps.context)
     expect(wrapper.find('nav[aria-label="Fortschritt"]').exists()).toBe(true)
     expect(wrapper.find('main').text()).toContain(WORKSHOP_GEORGE_LINE)
+    // Q09-Rest: Kopfzeile der Bühne (mit der h1) und Eingabefeld liegen IN
+    // `main`; die zwei Seitenspalten tragen je einen eigenen Namen.
+    expect(wrapper.find('main h1').exists()).toBe(true)
+    expect(wrapper.find('main textarea').exists()).toBe(true)
+    const asides = wrapper.findAll('aside').map(entry => entry.attributes('aria-label'))
+    expect(asides).toEqual(expect.arrayContaining([de.brand.workspace.regions.rail, de.brand.workspace.regions.log]))
     const cardTitles = wrapper.findAll('h3').map(entry => entry.text().trim())
     const expectedCards = slotsForStep(WORKSHOP_STEP_KEY)
       .map(slot => fieldLabel(slot.id))

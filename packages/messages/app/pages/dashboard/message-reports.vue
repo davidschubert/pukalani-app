@@ -30,7 +30,7 @@ const { formatRelativeTime } = useFormatRelativeTime()
 
 useBrandTitle(() => t('messages.reports.title'))
 
-const { data, status } = await useFetch<{ messages: ReportedMessageView[] }>(
+const { data, status, error, refresh } = await useFetch<{ messages: ReportedMessageView[] }>(
   '/api/messages/moderation',
   { lazy: true, server: false, default: () => ({ messages: [] }) },
 )
@@ -64,8 +64,13 @@ const columns = computed<TableColumn<ReportedMessageView>[]>(() => ([
           :description="t('messages.reports.description')"
         />
 
+        <!-- Fehler statt „keine Meldungen" (FE-004, LZ1) -->
+        <div v-if="error && rows.length === 0" role="alert">
+          <CoreLoadError :retry="refresh" />
+        </div>
+
         <CoreEmptyState
-          v-if="!isFetchLoading(status) && rows.length === 0"
+          v-else-if="!isFetchLoading(status) && rows.length === 0"
           icon="i-ph-flag-banner"
           :title="t('messages.reports.empty')"
         />

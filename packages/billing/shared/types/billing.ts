@@ -16,6 +16,12 @@ export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number]
  */
 export const ENTITLED_STATUSES: readonly SubscriptionStatus[] = ['active', 'trialing', 'past_due']
 
+/**
+ * Grund im Fehler-Envelope, wenn das Abo gerade nicht gelesen werden konnte
+ * (503). Heißt „unbekannt", nie „kein Abo" — der Browser zeigt einen Fehler.
+ */
+export const BILLING_UNAVAILABLE_CODE = 'billing_unavailable'
+
 export type BillingInterval = 'monthly' | 'yearly'
 export const BILLING_INTERVALS: readonly BillingInterval[] = ['monthly', 'yearly']
 

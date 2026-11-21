@@ -56,7 +56,7 @@ type IntroFilter = typeof FILTERS[number]
 
 const filter = ref<IntroFilter>('new')
 
-const { data, refresh, status } = await useFetch<BrandIntroListResponse>(
+const { data, refresh, status, error } = await useFetch<BrandIntroListResponse>(
   '/api/brand/admin/intro-calls',
   {
     // Reaktive Query: ein Filterwechsel lädt neu, ohne eigenen Watcher.
@@ -241,7 +241,12 @@ function rowActions(entry: BrandIntroRequestItem): DropdownMenuItem[][] {
         <span class="text-sm text-dimmed">{{ t('brand.admin.introCalls.shown', { count: items.length }) }}</span>
       </div>
 
-      <UTable :data="items" :columns="columns" data-intro-list>
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="items" :columns="columns" data-intro-list>
         <template #name-cell="{ row }">
           <div class="min-w-0">
             <p class="font-medium">{{ row.original.name }}</p>

@@ -1135,6 +1135,10 @@
         "confirmed": "Done",
         "stale": "Being updated"
       },
+      "regions": {
+        "rail": "Chapters",
+        "log": "Your brand document"
+      },
       "rail": {
         "progressNav": "Progress",
         "overview": "Overview",

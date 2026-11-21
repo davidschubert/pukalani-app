@@ -4,7 +4,8 @@ import { createAdminClient } from '../../lib/appwrite'
 import { decoySecurityPhrase } from '../../utils/securityPhrase'
 import { recoverySchema } from '../../../schemas/auth'
 import { AUTH_METHOD_UNAVAILABLE_CODE, instanceAuthFeatureGap } from '../../../shared/authMethodAvailability'
-import { softFail } from '../../utils/softFail'
+import { shapeSoftFail } from '../../utils/softFail'
+import { AUTH_UNAVAILABLE_CODE } from '../../../shared/authFailure'
 
 /**
  * Email-OTP anfordern (passwortloser Login). Appwrite legt unbekannte
@@ -88,10 +89,27 @@ export default defineEventHandler(async (event) => {
    * sich weiter einlösen. `phrase` ist eine Attrappe (`securityPhrase.ts`).
    */
   if (!(await allowRecipientMail(event, 'auth:otp', email, AUTH_MAIL_RECIPIENT_LIMIT))) {
+    /**
+     * LESEFEHLER ⇒ 503 `auth_unavailable`, KEINE zufällige `userId` (Bahn 2,
+     * Q13-Stelle 6). Vorher bekam ein VORHANDENES Konto bei einem Lesefehler
+     * eine erfundene Kennung — sein schon zugestellter Code ließ sich damit
+     * nicht mehr einlösen. Die 503 verrät nichts über das Konto: ob die
+     * Abfrage scheitert, hängt am Zustand der Datenbank, nicht daran, ob es
+     * die Adresse gibt (`users.list` antwortet für eine unbekannte Adresse
+     * mit einer leeren Liste, nie mit einem Fehler). Die gleichförmige
+     * Antwort für „vorhanden" und „nicht vorhanden" bleibt damit, wie sie war.
+     */
     const existing = await createAdminClient(event).users
       .list({ queries: [Query.equal('email', email), Query.limit(1)] })
-      .catch(softFail('core:api/auth/otp.post:list', null))
-    return { ok: true, userId: existing?.users[0]?.$id ?? ID.unique(), phrase: decoySecurityPhrase() }
+      .catch((error: unknown) => {
+        logEvent('error', 'auth.otp_unavailable', { gap: 'account_lookup', ...shapeSoftFail(error) })
+        throw createError({
+          status: 503,
+          statusText: 'Sign-in is temporarily unavailable',
+          data: { code: AUTH_UNAVAILABLE_CODE },
+        })
+      })
+    return { ok: true, userId: existing.users[0]?.$id ?? ID.unique(), phrase: decoySecurityPhrase() }
   }
 
   // Admin-Client (s. Kopf). Appwrites eigene Bremse gilt für Aufrufe mit

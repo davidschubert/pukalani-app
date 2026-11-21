@@ -114,7 +114,11 @@ interface ResolvedTopic {
  * gemeldet (`logEvent`, wie in `applyMemberCounterEvents`) und die Auflösung
  * läuft weiter: der Leser verliert Verweise, nie den Beitrag.
  */
-async function resolveTopics(event: H3Event, ids: string[]): Promise<Map<string, ResolvedTopic>> {
+async function resolveTopics(
+  event: H3Event,
+  ids: string[],
+  options: { strict?: boolean } = {},
+): Promise<Map<string, ResolvedTopic>> {
   const resolved = new Map<string, ResolvedTopic>()
   if (ids.length === 0) return resolved
 
@@ -128,6 +132,7 @@ async function resolveTopics(event: H3Event, ids: string[]): Promise<Map<string,
       Query.equal('status', 'published'),
       Query.limit(batch.length),
     ]).catch((error: unknown) => {
+      if (options.strict) throw error
       logEvent('warn', 'posts.topic_links_resolve_failed', {
         ids: batch.length,
         message: error instanceof Error ? error.message : String(error),
@@ -140,7 +145,10 @@ async function resolveTopics(event: H3Event, ids: string[]): Promise<Map<string,
   const topics = rows.filter(row => Boolean(row.categoryId))
   if (topics.length === 0) return resolved
 
-  const categories = await listCategories(db).catch(softFail('posts:utils/topicLinks:listCategories', []))
+  const categories = await listCategories(db).catch((error: unknown) => {
+    if (options.strict) throw error
+    return softFail('posts:utils/topicLinks:listCategories', [] as Awaited<ReturnType<typeof listCategories>>)(error)
+  })
   const slugById = new Map(categories.map(category => [category.$id, category.slug]))
 
   for (const row of topics) {
@@ -234,13 +242,23 @@ export async function syncTopicLinks(
   const candidates = extractTopicLinkCandidates(source.body, MAX_TOPIC_LINKS_PER_CONTENT)
   const wanted = candidates.map(candidate => candidate.id).filter(id => id !== source.$id)
 
-  const topics = wanted.length > 0 ? await resolveTopics(event, wanted) : new Map<string, ResolvedTopic>()
+  /**
+   * STRENG LESEN, WEIL HIER GELÖSCHT WIRD (Bahn 2, Q13-Stelle 2). Beim
+   * ANZEIGEN darf ein Lesefehler Verweise kosten, nie den Beitrag. Hier aber
+   * wird der Index ERSETZT: ein leeres Ergebnis aus einem Lesefehler (Beiträge
+   * oder Kategorien) hieß „kein Ziel mehr gültig" — und JEDER vorhandene
+   * Rückverweis der Quelle wurde entfernt. Jetzt wirft die Auflösung, der
+   * Aufrufer fängt (fail-soft als Ganzes) und der alte Index bleibt stehen.
+   * Dasselbe für die Liste der vorhandenen Zeilen: ohne sie wüsste der Abgleich
+   * nicht, was schon steht.
+   */
+  const topics = wanted.length > 0 ? await resolveTopics(event, wanted, { strict: true }) : new Map<string, ResolvedTopic>()
   const targets = new Set([...topics.keys()])
 
   const { rows: existing } = await db.list<DiscussionLink>(DISCUSSION_LINKS_TABLE, [
     Query.equal('sourceId', source.$id),
     Query.limit(MAX_TOPIC_LINKS_PER_CONTENT * 2),
-  ]).catch(softFail('posts:utils/topicLinks:list', { rows: [] as DiscussionLink[] }))
+  ])
 
   const had = new Set(existing.map(row => row.targetId))
 

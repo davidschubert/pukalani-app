@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { isExpectedMiss, resetSoftFailThrottle, shapeSoftFail, softFail, softFailWith } from '../server/utils/softFail'
+import { isExpectedMiss, isMissingSchema, resetSoftFailThrottle, shapeSoftFail, softFail, softFailMissingSchema, softFailWith } from '../server/utils/softFail'
 
 /** Ein Fehler in der Form der Appwrite-SDK-Ausnahme (`code` Zahl, `type` Text). */
 function appwriteError(code: number, type: string, message = 'Row with the requested ID 6650aa could not be found.') {
@@ -127,5 +127,31 @@ describe('shapeSoftFail / isExpectedMiss', () => {
     expect(isExpectedMiss({ statusCode: 409 }, [409])).toBe(true)
     expect(isExpectedMiss({ statusCode: 409 })).toBe(false)
     expect(isExpectedMiss(new Error('x'), [0])).toBe(false)
+  })
+})
+
+describe('softFailMissingSchema — Läufe im Takt (Bahn 2)', () => {
+  beforeEach(() => {
+    resetSoftFailThrottle()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('fehlende Tabelle ⇒ Ersatzwert (der Layer ist da, die Migration nicht)', async () => {
+    const result = await Promise.reject(appwriteError(404, 'table_not_found')).catch(softFailMissingSchema('brand:utils/x:listRows', null))
+    expect(result).toBeNull()
+  })
+
+  it('jeder andere Fehler wird weitergeworfen — der Takt zählt dann als gescheitert', async () => {
+    const outage = appwriteError(500, 'general_unknown')
+    await expect(Promise.reject(outage).catch(softFailMissingSchema('brand:utils/x:listRows', null))).rejects.toBe(outage)
+    const missingRow = appwriteError(404, 'row_not_found')
+    await expect(Promise.reject(missingRow).catch(softFailMissingSchema('brand:utils/x:listRows', null))).rejects.toBe(missingRow)
+  })
+
+  it('isMissingSchema unterscheidet Schema von Zeile', () => {
+    expect(isMissingSchema(appwriteError(404, 'collection_not_found'))).toBe(true)
+    expect(isMissingSchema(appwriteError(404, 'row_not_found'))).toBe(false)
+    expect(isMissingSchema(new Error('boom'))).toBe(false)
   })
 })

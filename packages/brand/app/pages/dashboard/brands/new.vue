@@ -130,7 +130,7 @@ useBrandTitle(() => t('brand.new.title'))
     </NuxtLink>
 
     <p class="bw-label mt-4 uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('brand.new.eyebrow') }}</p>
-    <h1 class="mt-1 text-[28px] font-extralight leading-tight tracking-tight">{{ t('brand.new.title') }}</h1>
+    <h1 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">{{ t('brand.new.title') }}</h1>
     <!-- B7: solange nichts angenommen wird, steht das auch da. Der Satz
          verschwindet mit der Hydration und hinterlässt keine Lücke. -->
     <p v-if="!hydrated" class="bw-pending mt-2">{{ t('brand.new.preparing') }}</p>

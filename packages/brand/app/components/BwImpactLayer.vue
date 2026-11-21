@@ -88,7 +88,7 @@ function close(): void {
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-stale)">
           {{ t('brand.impact.eyebrow') }}
         </p>
-        <h2 class="mt-1 text-[24px] font-extralight leading-tight tracking-tight">
+        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">
           {{ t('brand.impact.title') }}
         </h2>
 

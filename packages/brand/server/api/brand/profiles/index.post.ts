@@ -14,7 +14,7 @@ import {
   toProfileSummary,
 } from '../../../utils/brandStore'
 import { recordBrandEvent } from '../../../utils/brandEvents'
-import { softFail } from '../../../../../core/server/utils/softFail'
+import { softFail, softFailStatus, softFailWith } from '../../../../../core/server/utils/softFail'
 
 /**
  * EIN NEUES BRANDING ANLEGEN — Profil-Kopf UND alle NEUN Baustein-Zeilen in
@@ -154,14 +154,30 @@ export default defineEventHandler(async (event): Promise<BrandProfileDetailRespo
     }
   }
   catch (error) {
-    for (const stepKey of BRAND_STEP_KEYS) {
-      await tablesDB.deleteRow({
-        databaseId, tableId: BRAND_STEPS_TABLE, rowId: brandStepRowId(profileId, stepKey),
-      }).catch(softFail('brand:api/brand/profiles/index.post:deleteRow', undefined))
-    }
-    await tablesDB.deleteRow({
+    /**
+     * DER RÜCKWEG SAGT, WENN ER SELBST SCHEITERT (Bahn 2, Q13-Stelle 5).
+     * Reihenfolge: ZUERST die Marken-Zeile — sie ist das, was der Mensch in
+     * seiner Liste sieht; verwaiste Kapitel-Zeilen ohne Marke zeigt niemand
+     * an. Was liegen bleibt, steht als EINE Zeile im Protokoll (nur Zahlen
+     * und die Kennung der Marke); die Antwort bleibt der ehrliche Fehler.
+     * Kein automatisches Aufräumen (es löschte ohne Klick) — was eines
+     * bräuchte, steht in OPEN-ITEMS-COMPLETE „Bahn 2".
+     */
+    const profileLeft = await tablesDB.deleteRow({
       databaseId, tableId: BRAND_PROFILES_TABLE, rowId: profileId,
-    }).catch(softFail('brand:api/brand/profiles/index.post:deleteRow#2', undefined))
+    }).then(() => false).catch(softFailWith('brand:api/brand/profiles/index.post:deleteRow#2', () => true))
+    let stepsLeft = 0
+    for (const stepKey of BRAND_STEP_KEYS) {
+      // 404 heißt: diese Kapitel-Zeile war noch gar nicht angelegt.
+      stepsLeft += await tablesDB.deleteRow({
+        databaseId, tableId: BRAND_STEPS_TABLE, rowId: brandStepRowId(profileId, stepKey),
+      }).then(() => 0).catch((failure: unknown) => softFailStatus(failure) === 404
+        ? 0
+        : softFail('brand:api/brand/profiles/index.post:deleteRow', 1)(failure))
+    }
+    if (profileLeft || stepsLeft > 0) {
+      logEvent('error', 'brand.profile_create_rollback_failed', { profileId, profileLeft, stepsLeft })
+    }
     throw toH3Error(error, 'Brand profile could not be created')
   }
 

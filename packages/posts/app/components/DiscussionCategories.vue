@@ -31,8 +31,15 @@ import type { CategoryListResponse, CategoryWithCount } from '../../shared/types
 const { t } = useI18n()
 const localePath = useLocalePath()
 
-const { data, status } = await useFetch<CategoryListResponse>('/api/posts/categories', {
+const { data, status, error, refresh } = await useFetch<CategoryListResponse>('/api/posts/categories', {
   query: { counts: '1' },
+})
+
+// Lädt / Fehler / Daten (FE-004, LZ1): ein Fehler heißt nicht „keine Einträge".
+// „Leer" zeichnet die Tabelle selbst (Filter ohne Treffer ist ein Zustand der Daten).
+const listing = computed(() => {
+  const state = listState({ status: status.value, error: error.value, empty: !data.value?.rows.length })
+  return state === 'empty' ? 'ready' : state
 })
 
 const { categoryName, categoryDescription } = useCategoryText()
@@ -115,11 +122,8 @@ const canManageCategories = computed(() =>
       />
     </div>
 
-    <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
-      <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-    </div>
-
-    <UTable v-else :data="rows" :columns="columns" data-discussion-categories>
+    <CoreListState :state="listing" :retry="refresh">
+    <UTable :data="rows" :columns="columns" data-discussion-categories>
       <!-- DIE BESCHREIBUNG MUSS GEBÄNDIGT WERDEN, und zwar je nach Schirm
            anders (Davids Wahl vom 2026-08-18).
            
@@ -193,5 +197,6 @@ const canManageCategories = computed(() =>
         />
       </template>
     </UTable>
+    </CoreListState>
   </div>
 </template>

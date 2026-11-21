@@ -122,6 +122,8 @@ export function mapTenantRowToContext(
     // Hauptsprache (Q10) — nur eine echte Wahl reist mit; ohne sie rechnet
     // jeder Leser mit der Vorgabe (core/shared/primaryLocale.ts).
     ...(siteProfile.locale ? { primaryLocale: siteProfile.locale } : {}),
+    // KI-Training (KC1) — nur die Wahl „ja" reist mit; ohne sie gilt „nein".
+    ...(siteProfile.aiTraining === true ? { aiTraining: true as const } : {}),
   }
   /**
    * DIE KANONISCHE ADRESSE (control-035, Davids Entscheidung 2): aktive eigene

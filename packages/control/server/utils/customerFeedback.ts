@@ -118,6 +118,16 @@ export async function setCommunityMuted(
   return { muted: false }
 }
 
+/** Breite eines Eintrags: die Community des Eintrags plus die der Stimmen. Pur, getestet. */
+export function distinctFeedbackCommunities(ownCommunityId: string, votes: ReadonlyArray<{ communityId?: string }>): number {
+  const communities = new Set<string>()
+  if (ownCommunityId) communities.add(ownCommunityId)
+  for (const vote of votes) {
+    if (vote.communityId) communities.add(vote.communityId)
+  }
+  return communities.size
+}
+
 // ── Lesen ──────────────────────────────────────────────────────────────────
 
 /** Die Stimmen DIESES Betrachters auf einer Menge von Einträgen — EINE Abfrage. */
@@ -336,12 +346,12 @@ export async function toggleFeedbackVote(
     databaseId: db, tableId: CUSTOMER_FEEDBACK_VOTES_TABLE,
     queries: [Query.equal('feedbackId', feedbackId), Query.limit(1000)],
   }).catch(softFail('control:utils/customerFeedback:listRows#3', null))
-  const communities = new Set<string>()
-  if (row.communityId) communities.add(row.communityId)
-  for (const vote of sample?.rows ?? []) {
-    if (vote.communityId) communities.add(vote.communityId)
-  }
-  const communityCount = communities.size
+  // OHNE STICHPROBE KEINE NEUE ZAHL (Bahn 2, Q13-Stelle 7): vorher wurde aus
+  // einer gescheiterten Abfrage „nur die Community des Eintrags" — und diese
+  // zu kleine Zahl in die Zeile GESCHRIEBEN. Jetzt bleibt der gespeicherte
+  // Wert stehen; die nächste Stimme rechnet ihn neu (ein Abgleich-Lauf ist
+  // nicht nötig: die Zahl wird bei jeder Stimme vollständig neu bestimmt).
+  const communityCount = sample ? distinctFeedbackCommunities(row.communityId, sample.rows) : row.communityCount
 
   await tablesDB.updateRow({
     databaseId: db, tableId: CUSTOMER_FEEDBACK_TABLE, rowId: feedbackId,

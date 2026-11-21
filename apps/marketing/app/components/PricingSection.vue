@@ -67,7 +67,7 @@ const intervalItems = computed(() => [
 // Reihenfolge entschiede. Jede Klasse steht bewusst AUSGESCHRIEBEN da —
 // zusammengesetzte Strings findet Tailwinds Scanner nicht.
 const TRIGGER_CLASS = [
-  'rounded-full px-4 py-[0.4rem] text-[0.9rem] font-bold',
+  'rounded-full px-4 py-[0.4rem] text-sm font-bold',
   'data-[state=inactive]:text-toned data-[state=active]:text-highlighted',
   'in-[[data-slot=list]:not(:has([data-slot=indicator]))]:data-[state=active]:before:bg-primary/25',
   'in-[[data-slot=list]:not(:has([data-slot=indicator]))]:data-[state=active]:before:rounded-full',

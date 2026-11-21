@@ -55,6 +55,155 @@ ihr Cache bleiben gültig.
 
 **Nicht geprüft:** das deutsche Bild live (erst nach dem Ausliefern).
 
+### Bahn 2 / Paket 3 — Reste aus Q23 und Q09: Herzschläge gebündelt, Neuversuch mit wachsenden Abständen, Schubladen-Knopf mit Zustand, Werkstatt-Bereiche ✅ 2026-11-21
+
+**Was.**
+
+- **(a) Herzschläge beim Öffnen gebündelt** (`core/app/composables/usePresence.ts`).
+  Anmeldung, `setPage`, `setScope` und `focus` schrieben je sofort (HTTP und
+  WS). Jetzt wartet das Schreiben auf 300 ms Ruhe (`PRESENCE_BUNDLE_MS`,
+  höchstens 1 s ab dem ersten Anlass) und schreibt EINMAL; Takt und
+  `pagehide` bleiben sofort. Ein festes 300-ms-Fenster reichte in der
+  langsameren CI nicht (dort kam ein später Anlass danach: 2).
+- **(b) Neuversuch mit wachsenden Abständen** (`core/shared/realtimeReconnect.ts`,
+  eingehängt in `useRealtimeClient.ts`). Das SDK nullt seinen Zähler beim
+  Öffnen; eine angenommene und gleich geschlossene Verbindung kam so immer
+  wieder. Unsere Instanz zählt die DAUER: unter 30 s offen = Fehlschlag;
+  Abstand 1, 2, 4 … 60 s. Die Regel-Zeile in `.claude/rules/realtime.md`
+  ist nachgezogen.
+- **(c) Schubladen-Knopf im schmalen Fenster mit `aria-expanded`** — ohne
+  eine Seite anzufassen: `CoreDashboardToggleState` sitzt im Dashboard-Layout
+  um den Seiten-Slot und gibt jeder `UDashboardNavbar` darunter über `UTheme`
+  die Vorgabe `toggle: { 'aria-expanded': offen }` (die Kopfzeile reicht das
+  Objekt als Attribute an ihren Knopf). Wächter: `dashboardLandmarksGuard.test.ts`
+  (Hülle um den Slot, keine Seite setzt `toggle` selbst).
+- **(d) Werkstatt** (`packages/brand/app/components/BwWorkspace.vue`, alle
+  vier Zweige): `main` umschließt jetzt Kopfzeile der Bühne, Bühne und
+  Eingabefeld; die zwei Seitenspalten heißen „Kapitel" und „Dein
+  Markendokument" (de+en). Q21 war schon auf `main`.
+
+**Gemessen** (lokal, Dev-Server aus dem Worktree, lokale Appwrite,
+Wegwerf-Konto mit Label `admin`; Fall `apps/comments/e2e/presence-open-and-reconnect.spec.ts`):
+
+| Messung | vorher | nachher |
+| --- | --- | --- |
+| `POST /api/presence/heartbeat` in 5 s nach dem Laden, Dashboard (die CI-Grenze ist 2) | 3 | 1 |
+| dasselbe, Beitrags-Seite | 3 | 1 |
+| Verbindungsversuche in 20 s, wenn jede Verbindung angenommen und sofort geschlossen wird | 39 (zwei je Sekunde) | 5 bis 6 (bei 1, 2, 4, 9, 18 s) |
+
+Unverändert grün im selben Lauf: `presence-shared-poll.spec.ts` (ein Abruf je
+20 s), `realtime.spec.ts` (Kommentar erscheint live), `session-revoke.spec.ts`
+(eigener Widerruf schickt den Tab sofort zur Anmeldung, fremder nicht),
+`dashboard-landmarks.spec.ts` inklusive neuem Fall „Schubladen-Knopf",
+Render-Test der Werkstatt (Gegenprobe gegen den Stand davor: rot).
+
+**Nicht geprüft:** die 120-s-Regel nicht eigens neu gemessen (das SDK pingt
+weiter im Takt, der Code daran ist unverändert); das Erscheinen eines
+zweiten Kontos kommt bis zu 1 s später als vorher, nicht mit zwei Konten
+nachgemessen (mit der Obergrenze bis zu 1 s); die Schublade nur im
+Dev-Server, nicht im Production-Build.
+
+**Gelernt:** „Fester 1-s-Neuversuch" stand als FALLE des SDK in der Regel
+und galt damit als hinzunehmen. Die Staffelung des SDK ist da, sie wird nur
+nie erreicht — eine eigene Zählung an der Dauer statt am `open` braucht
+keinen Eingriff ins SDK, nur das Überschreiben einer Methode der EINEN
+Instanz.
+
+### KC1 — KI-Training je Community als Schalter für den Owner (Bahn 2 / Paket 2) ✅ 2026-11-21
+
+**Was.** Bis heute galt für jede öffentliche Community fest: KI-Suche und
+-Antworten ja, Training nein (Q11, DECISION-LOG 2026-11-21). Jetzt wählt der
+Owner. Vorgabe bleibt „nein".
+
+- **Gespeichert** im vorhandenen `profile`-JSON der Community als
+  `aiTraining: true` — wie die Hauptsprache aus Q10, **ohne Migration**. Nur
+  `true` wird gespeichert, „nein" nimmt den Schlüssel heraus, ein Speichern
+  ohne das Feld lässt die Wahl stehen (`packages/control/shared/onboarding.ts`,
+  Schema `packages/control/schemas/communityProfile.ts`).
+- **Weg:** Dashboard → `PATCH /api/community/profile` (onboarding, reicht das
+  Feld nur mit, wenn gesetzt) → Naht `POST /api/control/community/profile`
+  (Rechte wie bei der Hauptsprache: `team.manage`, also Owner und Admin) →
+  Mandanten-Kontext `aiTraining` (`tenantsResolver.ts`) → `/robots.txt` der
+  Platform-App reicht `aiCrawlerPolicy('community', { training })`. Die Regel
+  bleibt an der einen Stelle `packages/core/shared/aiCrawlers.ts`.
+- **Schalter** im Dashboard „Community" unter „Sichtbarkeit", nur bei
+  öffentlicher Sichtbarkeit (bei „nur für Mitglieder" sperrt die robots.txt
+  ohnehin alles). Er speichert sofort, mit dem Satz, dass er eine Bitte an
+  Crawler ist und kein Schloss. Texte de+en.
+- **Täglicher Blick** `scripts/ops/verify-delivery.mjs`: prüft zuerst die
+  Vorgabe; passt sie nicht, ist die andere Wahl desselben Owners auch grün.
+  Rot bleibt, was zu keiner Wahl passt.
+- **Tests:** `apps/platform/tests/robotsAiTraining.test.ts` (Vorgabe nein,
+  Wahl ja nur für DIESE Community — Nachbar bleibt nein, „nur für Mitglieder"
+  sperrt weiter), `packages/control/tests/communityAiTraining.test.ts`
+  (Speichern, Zurücknehmen, Feld fehlt ⇒ Wahl bleibt, Nachbar-Community
+  unberührt), Rollen in `route-roles-seam-community-team.test.ts` (Moderator,
+  Editor, Viewer, Entfernte: 403, nichts geschrieben),
+  `packages/core/tests/verifyDeliveryAiTraining.test.ts`.
+
+**Entschieden (Bahn 2, klein und umkehrbar):** „Nur der Owner" heißt hier
+dieselbe Regel wie bei der Hauptsprache (Owner UND Admin), damit eine Karte
+nicht zwei Rechte-Stufen hat. Die Wahl wirkt nach dem Zwischenspeicher des
+Mandanten (bis 30 s) und dem Browser-Cache der robots.txt (1 h).
+
+**Nicht geprüft:** kein Klick im echten Dashboard mit einem Owner-Konto auf
+einer Bühne.
+
+**Gelernt:** Ein Schalter, der SOFORT speichert, darf nicht den Stand des
+Formulars daneben neu setzen — sonst wirft er dessen ungespeicherte
+Änderungen weg. Er bekommt einen eigenen Wert und schickt die Nachbar-Felder
+im GESPEICHERTEN Stand mit.
+
+### Bahn 2 / Paket 1 — Acht Stellen, an denen ein verschluckter Lesefehler den Ablauf verfälschte (Rest aus Q13, ARC-002) ✅ 2026-11-21
+
+**Was.** Q13 hatte 236 stille Lesefehler auf `softFail` umgestellt (Verhalten
+gleich, nur Protokoll) und acht Stellen gemeldet, an denen das Schlucken den
+Ablauf selbst trägt. Je Stelle entschieden: ehrlich scheitern, „unbekannt"
+statt „nein", oder bewusst beim Alten. Zwei Pull Requests: Geld und Anmeldung
+(#498) getrennt vom Rest.
+
+| # | Stelle | Entscheidung | Änderung |
+| --- | --- | --- | --- |
+| 1 | `control/…/websites/[id].delete.ts` | ehrlich scheitern | erst Entitlements lesen (Fehler ⇒ 503, nichts gelöscht), dann löschen (Rest ⇒ 503 `entitlements_left`, der Eintrag BLEIBT, derselbe Klick räumt nach), zuletzt der Eintrag. Die Seite sagt schon „steht weiter im Register". |
+| 2 | `posts/server/utils/topicLinks.ts` | beim Schreiben streng, beim Lesen fail-soft | Ja, `syncTopicLinks` ENTFERNTE bei einem Lesefehler (Beiträge oder Kategorien) jeden Rückverweis der Quelle. Jetzt `resolveTopics(…, { strict: true })` und die Liste der vorhandenen Zeilen werfen; der Aufrufer fängt, der alte Index bleibt. Die Anzeige verliert weiter nur Verweise. |
+| 3 | `control/…/invite-requests/index.get.ts` | „unbekannt" statt „nichts" | Liste bleibt sichtbar, `incomplete: ['codes' \| 'communities']`; eine Anfrage MIT Code ist dann nicht erinnerbar (`remindBlocked: code-unknown`, Satz de+en). Die Seite selbst zeigt `incomplete` noch nicht (sie steht in der LZ1-Liste von Bahn 1). |
+| 4 | `billing/server/utils/entitlements.ts` | „gerade nicht feststellbar" | 503 `billing_unavailable`, nichts gemerkt; der Kurs-Wächter reicht einen gescheiterten Guard als Fehler durch statt „Upgrade nötig"; `useBilling` schluckt nur noch 404, die Abo-Karte zeigt Fehler mit Neuversuch (PR #498). |
+| 5 | `brand/…/profiles/index.post.ts` | Fehler bleibt, Reste werden sichtbar | Rückweg löscht zuerst die Marken-Zeile (das Sichtbare), dann die Kapitel (404 = nie angelegt); scheitert etwas, EINE Zeile `brand.profile_create_rollback_failed` mit `profileLeft`/`stepsLeft`. |
+| 6 | `core/server/api/auth/otp.post.ts` | ehrlich scheitern, Gleichförmigkeit bleibt | Lesefehler über der Mail-Grenze ⇒ 503 `auth_unavailable` statt erfundener `userId`. `users.list` antwortet für unbekannte Adressen mit leerer Liste; ein Fehler hängt nur an der Datenbank. Test: Fehlerfall für vorhandene und unbekannte Adresse gleich (PR #498). |
+| 7 | brand-, comments-, insights- (2), market-Läufe; `control/…/customerFeedback.ts` | Takt `failed` statt `ok` | Neue Hilfe `softFailMissingSchema` (`core/server/utils/softFail.ts`): still nur bei fehlendem Schema, sonst weiterwerfen ⇒ `defineTimedJob` zählt `failed`. Der Newsletter-Lauf merkt den Fehler, lässt die zweite Regel laufen und wirft am Ende. `customerFeedback.ts` ist KEIN Lauf: dort schrieb eine gescheiterte Stichprobe eine zu kleine Breite („aus N Communities") in den Eintrag — jetzt bleibt der gespeicherte Wert. |
+| 8 | `posts/server/utils/memberCounters.ts` | bewusst beim Alten | Den Rückstand holt `ensureSeededCounters` beim Hinsehen (`counterFellBehind`); kein neuer Lauf. Begründung an der Stelle. Nicht geheilt: `upvotesReceived` und `edits` (kein Aggregat). |
+
+**Was ein Aufräumen der Reste bräuchte (nicht gebaut, löscht Daten):**
+(1) Entitlements ohne Register-Eintrag: `entitlements.siteProjectId` gegen
+`websites.projectId`, zählen, mit Davids Ja löschen — seit diesem Paket
+entsteht der Zustand nicht mehr (der Eintrag geht zuletzt). (5) Marken ohne
+Kapitel-Zeilen bzw. Kapitel ohne Marke: `brand_steps.profileId` gegen
+`brand_profiles.$id`, Anlass ist die Protokoll-Zeile
+`brand.profile_create_rollback_failed`. Beides gehört auf das Gerüst
+`rowRetention` (Vorgabe `off`, live mit `count`).
+
+**Tests** (Fehlerfall und Gegenprobe je Stelle):
+`control/tests/websiteDeregisterLeftovers.test.ts`,
+`posts/tests/topicLinksSyncReadFailure.test.ts`,
+`control/tests/inviteRequestsListReadFailure.test.ts`,
+`billing/tests/entitlements-read-failure.test.ts`,
+`courses/tests/course-paid-access.test.ts`,
+`brand/tests/route-roles-profiles.test.ts` (Rückweg),
+`core/tests/authMailRecipientLimit.test.ts`,
+`core/tests/softFail.test.ts`, je ein `*ReadFailure.test.ts` in brand,
+comments, insights, market, `insights/tests/insightsSubscribersSweep.test.ts`,
+`control/tests/customerFeedbackVoteReadFailure.test.ts`.
+
+**Nicht geprüft:** keine Laufzeitprobe gegen eine echte Datenbank mit
+erzwungenem Ausfall (nur gestellte Antworten); die Preistabelle zeigt bei
+einer 503 weiter die Kauf-Knöpfe (der Checkout antwortet dann selbst 503).
+
+**Gelernt:** Ein Ersatzwert ist nur dort harmlos, wo er nichts SCHREIBT. Alle
+acht echten Fälle hatten dieselbe Form: aus „nicht gelesen" wurde „leer", und
+danach wurde auf Grund von „leer" gelöscht (Rückverweise), gezählt (Breite),
+verkauft (zweites Abo) oder „gut" gemeldet (Takt). Beim Durchsehen eines
+`.catch` deshalb zuerst fragen: was tut der Code DANACH mit dem Ersatzwert?
+
 ### Q21 — Render-Test und erster Schnitt der Werkstatt (ARC-001) ✅ 2026-11-21
 
 **Was.** Die Werkstatt-Seite in `packages/brand` (`pages/brand/[profileId]/[stepKey].vue`)

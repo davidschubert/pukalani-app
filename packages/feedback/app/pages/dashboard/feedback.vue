@@ -64,7 +64,7 @@ const stateLinks = computed(() => [
   })),
 ])
 
-const { data, status: fetchStatus, refresh } = await useFetch<FeedbackListResponse>('/api/feedback', {
+const { data, status: fetchStatus, error, refresh } = await useFetch<FeedbackListResponse>('/api/feedback', {
   query: computed(() => ({ sort: sort.value, state: state.value, page: page.value })),
   lazy: true,
   server: false,
@@ -154,6 +154,11 @@ const columns = computed<TableColumn<FeedbackEntry>[]>(() => [
 
         <div v-else-if="fetchStatus === 'pending' && !data" class="flex justify-center py-16">
           <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
+        </div>
+
+        <!-- Fehler statt „keine Rückmeldungen" (FE-004, LZ1) -->
+        <div v-else-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
         </div>
 
         <template v-else>

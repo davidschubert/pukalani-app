@@ -21,12 +21,21 @@ export function useBilling() {
     }
   })
 
-  const { data, refresh } = useFetch<BillingSubscriptionResponse>('/api/billing/subscription', {
+  const { data, refresh, error } = useFetch<BillingSubscriptionResponse>('/api/billing/subscription', {
     key: 'billing:subscription',
     immediate: billingConfig.value.enabled,
-    // 404 (Gate aus) still schlucken — Zustand bleibt free
-    ignoreResponseError: true,
     default: () => ({ subscription: null, planId: null, products: [], entitled: false }),
+  })
+
+  /**
+   * „GERADE NICHT FESTSTELLBAR" IST KEIN „FREE" (Bahn 2, Q13-Stelle 4): der
+   * Server antwortet bei einem Lesefehler 503 `billing_unavailable`. Vorher
+   * schluckte `ignoreResponseError` jede Antwort, und die Seite zeigte einem
+   * Zahlenden den Basic-Plan. Nur 404 (Gate aus) bleibt still beim Free-Zustand.
+   */
+  const unavailable = computed(() => {
+    const status = error.value?.statusCode ?? (error.value as { status?: number } | null | undefined)?.status
+    return Boolean(error.value) && status !== 404
   })
 
   const subscription = computed(() => data.value?.subscription ?? null)
@@ -47,5 +56,5 @@ export function useBilling() {
   })
   onBeforeUnmount(() => stopRealtime?.())
 
-  return { config: billingConfig, subscription, planId, entitled, hasProduct, refresh }
+  return { config: billingConfig, subscription, planId, entitled, unavailable, hasProduct, refresh }
 }

@@ -22,6 +22,13 @@
       "timezone": "Timezone",
       "timezoneDesc": "The zone your events are planned in. Whoever creates an event types your local time — no matter where they are.",
       "timezoneAutomatic": "Automatic (device timezone)",
+      "aiTraining": {
+        "title": "Allow AI training",
+        "description": "Lets AI providers use your public content to train their models. Search and answers in AI assistants are not affected and stay allowed. Default: off.",
+        "note": "This is a request to crawlers in your robots.txt, not a lock: reputable providers respect it, but it cannot stop anyone.",
+        "on": "AI training is now allowed.",
+        "off": "AI training is now excluded."
+      },
       "audience": {
         "title": "Visibility",
         "description": "Who is allowed to read your posts, comments, events, media and pages.",

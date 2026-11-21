@@ -43,7 +43,7 @@ useBrandTitle(() => t('insights.editor.title'))
 
 const readerLocale = computed(() => (locale.value === 'de' ? 'de' : 'en') as 'de' | 'en')
 
-const { data, refresh, status } = await useFetch<InsightsPostsListResponse>('/api/insights/posts', {
+const { data, refresh, status, error } = await useFetch<InsightsPostsListResponse>('/api/insights/posts', {
   lazy: true,
   server: false,
 })
@@ -198,7 +198,13 @@ async function createPost(): Promise<void> {
     <template #body>
       <p class="text-sm leading-relaxed text-muted">{{ t('insights.editor.lead') }}</p>
 
+      <!-- Fehler statt „keine Beiträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
       <UTable
+        v-else
         :data="rows"
         :columns="columns"
         :loading="pending"

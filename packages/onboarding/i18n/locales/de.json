@@ -22,6 +22,13 @@
       "timezone": "Zeitzone",
       "timezoneDesc": "In dieser Zone plant ihr eure Termine. Wer einen Termin anlegt, tippt dann eure Uhrzeit — egal, wo er selbst gerade sitzt.",
       "timezoneAutomatic": "Automatisch (Zeitzone des Geräts)",
+      "aiTraining": {
+        "title": "KI-Training erlauben",
+        "description": "Erlaubt KI-Anbietern, eure öffentlichen Inhalte zum Trainieren ihrer Modelle zu nutzen. Suche und Antworten in KI-Assistenten sind davon nicht betroffen, die bleiben erlaubt. Vorgabe: aus.",
+        "note": "Das ist eine Bitte an die Crawler in eurer robots.txt, kein Schloss: seriöse Anbieter halten sich daran, aufhalten lässt sich damit niemand.",
+        "on": "KI-Training ist jetzt erlaubt.",
+        "off": "KI-Training ist jetzt ausgeschlossen."
+      },
       "audience": {
         "title": "Sichtbarkeit",
         "description": "Wer eure Beiträge, Kommentare, Termine, Medien und Seiten lesen darf.",

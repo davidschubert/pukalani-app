@@ -33,7 +33,7 @@ const body = ref('')
 const sending = ref(false)
 const blockOpen = ref(false)
 
-const { data, status, refresh } = await useFetch<ConversationThread>(
+const { data, status, error, refresh } = await useFetch<ConversationThread>(
   () => `/api/messages/${props.conversationId}`,
   { lazy: true, server: false },
 )
@@ -162,6 +162,11 @@ async function removeConversation() {
     <div class="flex-1 space-y-3 overflow-y-auto px-4 py-4">
       <div v-if="status === 'pending'" class="space-y-3">
         <USkeleton v-for="i in 4" :key="i" class="h-12 w-2/3" />
+      </div>
+
+      <!-- Fehler statt eines leeren Gesprächs (FE-004, LZ1) -->
+      <div v-else-if="status === 'error' || (error && !thread)" role="alert" data-thread-error>
+        <CoreLoadError :retry="refresh" />
       </div>
 
       <div

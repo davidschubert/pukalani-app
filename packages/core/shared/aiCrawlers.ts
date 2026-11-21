@@ -52,7 +52,7 @@ export const AI_CRAWLER_POLICY: Readonly<Record<CrawlerSiteKind, Readonly<AiCraw
   closed: { searchAnswers: false, training: false },
 }
 
-/** Die Regel einer Art — `override` ist der Platz für den späteren Owner-Schalter. */
+/** Die Regel einer Art — `override` trägt die Wahl des Owners (KC1: `training` je Community, Vorgabe nein). */
 export function aiCrawlerPolicy(kind: CrawlerSiteKind, override: Partial<AiCrawlerPolicy> = {}): AiCrawlerPolicy {
   return { ...AI_CRAWLER_POLICY[kind], ...override }
 }

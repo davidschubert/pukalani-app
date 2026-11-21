@@ -19,8 +19,8 @@ const { promptFreshSignIn } = useRecentAuthPrompt()
 useBrandTitle(() => t('control.websites.title'))
 
 type WebsiteWithEntitlements = WebsiteRow & { entitlements: string[], domain: SiteDomainState }
-const { data, refresh } = await useFetch<{ websites: WebsiteWithEntitlements[] }>('/api/control/websites')
-const { data: jobsData, refresh: refreshJobs } = await useFetch<{ jobs: JobRow[] }>('/api/control/jobs')
+const { data, error, refresh } = await useFetch<{ websites: WebsiteWithEntitlements[] }>('/api/control/websites')
+const { data: jobsData, error: jobsError, refresh: refreshJobs } = await useFetch<{ jobs: JobRow[] }>('/api/control/jobs')
 const { data: catalogData } = await useFetch<{ products: ProductCatalogEntry[] }>('/api/control/products')
 
 // Die Spalte „Workspace" (Zuordnung Site → abrechnender Workspace, M8-T2) ist
@@ -372,7 +372,12 @@ const appUrlPlaceholder = 'http://localhost:3003'
     </template>
 
     <template #body>
-      <UTable :data="data?.websites ?? []" :columns="websiteColumns" data-websites-list>
+      <!-- Fehler statt „keine Sites" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="data?.websites ?? []" :columns="websiteColumns" data-websites-list>
         <template #name-cell="{ row }">
           <div class="min-w-0" :data-site="row.original.slug">
             <p class="font-medium">{{ row.original.name }}</p>
@@ -460,7 +465,12 @@ const appUrlPlaceholder = 'http://localhost:3003'
       </UTable>
 
       <!-- Provisionierungs-Jobs (T2) -->
-      <template v-if="jobsData?.jobs.length">
+      <!-- Fehler statt „keine Aufträge" (FE-004, LZ1) -->
+      <div v-if="jobsError && !jobsData" role="alert">
+        <CoreLoadError :retry="refreshJobs" />
+      </div>
+
+      <template v-else-if="jobsData?.jobs.length">
         <h2 class="mt-10 mb-2 text-sm font-semibold text-highlighted">{{ t('control.jobs.title') }}</h2>
         <UTable :data="jobsData.jobs" :columns="jobColumns" data-jobs-list>
           <template #job-cell="{ row }">

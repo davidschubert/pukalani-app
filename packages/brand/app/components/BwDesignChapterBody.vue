@@ -134,7 +134,7 @@ const transitions = computed(() => props.preset.motion.transitions.map(token => 
         {{ t('brand.foundation.design.typografie') }}<template v-if="pair"> · {{ pairName }} ({{ pair.headingFamily }} · {{ pair.bodyFamily }})</template>
       </p>
       <div class="fd-box mt-3 rounded-2xl px-5 py-5" style="background: var(--bw-surface)">
-        <p class="text-[30px] leading-tight" :style="`font-family: ${headingStack}`">
+        <p class="text-3xl leading-tight" :style="`font-family: ${headingStack}`">
           {{ t('brand.type.specimen.heading') }}
         </p>
         <p class="mt-3 text-base leading-relaxed" :style="`font-family: ${bodyStack}`">

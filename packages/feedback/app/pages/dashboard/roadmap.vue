@@ -41,7 +41,7 @@ const STATE_ICON: Record<FeedbackState, string> = {
  * Antwort. Der Deckel ist bewusst sichtbar — was darunter nicht mehr passt,
  * findet man im Feedback-Bereich mit Filter.
  */
-const { data, status: fetchStatus, refresh } = await useFetch<FeedbackListResponse>('/api/feedback', {
+const { data, status: fetchStatus, error, refresh } = await useFetch<FeedbackListResponse>('/api/feedback', {
   query: { sort: 'top', page: 1 },
   lazy: true,
   server: false,
@@ -110,6 +110,11 @@ watch(detailOpen, (open) => { if (!open) void refresh() })
         <div v-else-if="fetchStatus === 'pending' && !data" class="flex justify-center py-16">
           <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
         </div>
+        <!-- Fehler statt „keine Rückmeldungen" (FE-004, LZ1) -->
+        <div v-else-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
+        </div>
+
 
         <!-- Vier Spalten nebeneinander; auf schmalen Schirmen untereinander. -->
         <!-- BEWUSST KEINE UTable (B6): eine Roadmap ist ein Brett, keine Liste —

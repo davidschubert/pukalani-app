@@ -39,7 +39,7 @@ definePageMeta({ layout: 'onboarding', middleware: 'auth' })
 const { t } = useI18n()
 const localePath = useLocalePath()
 
-const { data, status } = await useFetch<MyCommunitiesResponse>('/api/onboarding/communities', {
+const { data, status, error, refresh } = await useFetch<MyCommunitiesResponse>('/api/onboarding/communities', {
   default: () => ({ communities: [] as MyCommunityView[] }),
 })
 
@@ -126,6 +126,11 @@ useBrandTitle(() => t('onboarding.communities.title'))
 
     <div v-if="status === 'pending' && !communities.length" class="space-y-3">
       <USkeleton v-for="i in 2" :key="i" class="h-28 w-full rounded-xl" />
+    </div>
+
+    <!-- Fehler statt „du hast keine Community" (FE-004, LZ1) -->
+    <div v-else-if="status === 'error' || error" role="alert">
+      <CoreLoadError :retry="refresh" />
     </div>
 
     <!--

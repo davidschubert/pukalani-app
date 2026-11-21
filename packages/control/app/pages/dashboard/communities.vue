@@ -17,7 +17,7 @@ useBrandTitle(() => t('control.tenants.title'))
 
 interface TenantDto { id: string, name: string, host: string, mode: TenantMode, projectId: string, tenantId: string, status: TenantStatus, wave: TenantWave, plan: TenantPlan, openRegistration: boolean, suspension: CommunitySuspension, suspensionReason: string, suspendedAt: string | null, pastDueSince: string | null, customDomain: string, customDomainStatus: CustomDomainStatus, customDomainApproved: boolean, customDomainGraceEndsAt: string | null, customDomainPausedAt: string | null }
 
-const { data, refresh } = await useFetch<{ total: number, tenants: TenantDto[] }>('/api/control/tenants', { lazy: true, server: false })
+const { data, error, refresh } = await useFetch<{ total: number, tenants: TenantDto[] }>('/api/control/tenants', { lazy: true, server: false })
 const tenants = computed(() => data.value?.tenants ?? [])
 
 const showCreate = ref(false)
@@ -434,7 +434,12 @@ function rowActions(tenant: TenantDto): DropdownMenuItem[][] {
     <template #body>
       <p class="mb-4 text-sm text-muted">{{ t('control.tenants.subtitle') }}</p>
 
-      <UTable :data="tenants" :columns="columns" data-tenants-list>
+      <!-- Fehler statt „keine Communities" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="tenants" :columns="columns" data-tenants-list>
         <template #name-cell="{ row }">
           <div class="min-w-0" :data-tenant="row.original.host">
             <p class="font-medium">{{ row.original.name || row.original.host }}</p>

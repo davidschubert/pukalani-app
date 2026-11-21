@@ -231,9 +231,9 @@ export function tenantSitemapXml(origin: string, entries: readonly TenantSitemap
  * Grund, aus dem canonical/hreflang seit Befund B1 aus dem Request-Host kommen.
  */
 export function tenantRobotsTxt(origin: string, policy: AiCrawlerPolicy = aiCrawlerPolicy('community')): string {
-  // KI-Crawler (B2): Suche und Antworten ja, Training nein — die Texte gehören
-  // den Mitgliedern. `policy` ist der Platz für den späteren Owner-Schalter:
-  // die Route reicht dann `aiCrawlerPolicy('community', { training: … })`.
+  // KI-Crawler (B2): Suche und Antworten ja, Training nach Wahl des Owners
+  // (KC1, Vorgabe „nein" — die Texte gehören den Mitgliedern). Die Route
+  // reicht `aiCrawlerPolicy('community', { training })`.
   return buildRobotsTxt({
     policy,
     // Kein Index-Material: API-Antworten (Health/Telemetrie/Daten) und der

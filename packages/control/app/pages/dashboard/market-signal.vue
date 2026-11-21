@@ -27,7 +27,7 @@ definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCap
 const { t } = useI18n()
 useBrandTitle(() => t('control.marketSignal.title'))
 
-const { data, status } = await useFetch<MarketSignalReport & { truncated: boolean }>(
+const { data, status, error, refresh } = await useFetch<MarketSignalReport & { truncated: boolean }>(
   '/api/control/market-signal',
   { lazy: true, server: false },
 )
@@ -71,6 +71,11 @@ const participation = computed(() => {
           <USkeleton class="h-24 w-full" />
           <USkeleton class="h-64 w-full" />
         </div>
+        <!-- Fehler statt „keine Marktsignale" (FE-004, LZ1) -->
+        <div v-else-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
+        </div>
+
 
         <template v-else-if="report">
           <div class="grid gap-4 sm:grid-cols-3">

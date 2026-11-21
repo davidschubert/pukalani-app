@@ -30,6 +30,10 @@ beforeAll(() => {
     err.status = input.status
     return err
   }
+  // Nachbild von core/server/utils/appwriteError.ts: ein fertiger Fehler geht
+  // durch, alles andere wird 500 mit dem übergebenen Text (der Layer hat kein h3).
+  g.toH3Error = (error: unknown, message: string) =>
+    (error as { status?: number } | null)?.status ? error : (g.createError as (i: object) => Error)({ status: 500, statusText: message })
 
   /**
    * Modell der Datentür (tenantDb `as: 'operator'`): `find` filtert die
@@ -91,9 +95,15 @@ describe('Mit registriertem Guard entscheidet die App', () => {
     await expect(assertCourseAccess(poolEvent, paidCourse)).rejects.toMatchObject({ status: 403 })
   })
 
-  it('ein werfender Guard zählt als nein (nie fail-open)', async () => {
+  it('ein werfender Guard ist kein Nein, sondern 503 — und nie fail-open (Bahn 2)', async () => {
     registerCourseAccessGuard(async () => { throw new Error('billing down') })
-    await expect(assertCourseAccess(poolEvent, paidCourse)).rejects.toMatchObject({ status: 403 })
+    await expect(assertCourseAccess(poolEvent, paidCourse)).rejects.toMatchObject({ status: 500 })
+  })
+
+  it('der fertige Fehler des Guards (billing_unavailable) geht unverändert durch', async () => {
+    const unavailable = Object.assign(new Error('Subscription status is temporarily unavailable'), { status: 503, data: { code: 'billing_unavailable' } })
+    registerCourseAccessGuard(async () => { throw unavailable })
+    await expect(assertCourseAccess(poolEvent, paidCourse)).rejects.toBe(unavailable)
   })
 
   it('Guard sagt ja → frei (so verhält sich der Silo mit billing)', async () => {
