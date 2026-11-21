@@ -2,6 +2,8 @@ import { createHash, randomBytes } from 'node:crypto'
 import type { H3Event } from 'h3'
 import type { BrandWaitlistLocale } from '../../schemas/brandWaitlist'
 import { softFail } from '../../../core/server/utils/softFail'
+import { frameMail, resolveMailLocale } from '../../../core/shared/mailFrame'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * DAS DOUBLE-OPT-IN DER WARTELISTE — Token, Frist und die zwei Mails, an EINER
@@ -113,31 +115,30 @@ export async function sendBrandWaitlistConfirmMail(
   input: BrandWaitlistConfirmMailInput,
 ): Promise<boolean> {
   const link = brandWaitlistConfirmUrl(event, input.token, input.locale)
-  const german = input.locale === 'de'
+  const locale = resolveMailLocale({ request: input.locale })
+  const german = locale === 'de'
 
   const subject = german
     ? 'Bitte bestätigt eure Warteliste-Anfrage — Branding Supply'
     : 'Please confirm your waitlist request — Branding Supply'
 
-  const text = german
+  // Rahmen (Q06): Anrede und Schluss mit der Marke aus `core/shared/mailFrame.ts`,
+  // OHNE Namen — die Adresse tippt ein Fremder ein (kein Relais für freien Text).
+  // Die Anrede-Form „ihr" im Text bleibt (eigene Marken-Stimme).
+  const lines = german
     ? [
-        'fast geschafft: ein Klick, dann steht ihr auf der Warteliste von Branding Supply.',
-        '',
+        'Fast geschafft: ein Klick, dann steht ihr auf der Warteliste von Branding Supply.',
         `Anfrage bestätigen: ${link}`,
-        '',
         'Der Link ist 24 Stunden gültig.',
-        '',
         'Wenn ihr das nicht angefordert habt, ignoriert diese Mail einfach — ohne die Bestätigung passiert nichts.',
-      ].join('\n')
+      ]
     : [
-        'almost done: one click and you are on the Branding Supply waitlist.',
-        '',
+        'Almost done: one click and you are on the Branding Supply waitlist.',
         `Confirm your request: ${link}`,
-        '',
         'The link is valid for 24 hours.',
-        '',
         'If you did not request this, simply ignore this email — without the confirmation nothing happens.',
-      ].join('\n')
+      ]
+  const { text } = frameMail({ brand: resolveMailBrand(event), locale, lines })
 
   try {
     return await sendMail(event, { to: input.to, subject, text })
@@ -193,6 +194,11 @@ export async function notifyBrandWaitlistOperator(
   await sendMail(event, {
     to,
     subject: `Neue Warteliste-Anfrage: ${entry.company || entry.email}`,
-    text: `Jemand möchte Frühzugang zu branding.supply — Adresse bestätigt.\n\n${lines.join('\n')}\n`,
+    // Rahmen (Q06): Betreiber-Mail auf Deutsch, ohne Namen.
+    text: frameMail({
+      brand: resolveMailBrand(event),
+      locale: 'de',
+      lines: ['Jemand möchte Frühzugang zu branding.supply — Adresse bestätigt.', lines.join('\n')],
+    }).text,
   }).catch(softFail('brand:utils/brandWaitlist:sendMail', false))
 }

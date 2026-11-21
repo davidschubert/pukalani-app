@@ -85,7 +85,7 @@ vi.stubGlobal('useRuntimeConfig', () => ({
 vi.stubGlobal('trustedClientIp', () => '203.0.113.7')
 vi.stubGlobal('$fetch', siteverify)
 vi.stubGlobal('useRateLimitStore', () => ({ store: rateStore, prefix: 'rl:test:' }))
-vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { introCallNotify: notifyTo } } }))
+vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Testmarke', introCallNotify: notifyTo } } }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
@@ -216,6 +216,10 @@ describe('POST /api/brand/intro-call — der gute Weg', () => {
     body = { ...VALID, locale: 'en' }
     await handler(makeEvent())
     expect(mails[0]?.subject).toBe('Your request for an intro call')
+    // Rahmen (Q06): Anrede vorne, Schluss mit der Marke, keine feste Unterschrift.
+    expect(mails[0]?.text.startsWith('Hi ')).toBe(true)
+    expect(mails[0]?.text).toContain('Best regards\nTestmarke')
+    expect(mails[0]?.text).not.toContain('Pukalani Studio · branding.supply')
   })
 
   it('meldet den Funnel-Punkt OHNE Inhalt', async () => {

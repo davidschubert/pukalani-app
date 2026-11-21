@@ -4,6 +4,10 @@ import { communityIdsNeedingHost } from '../../shared/notificationLinks'
 import { normalizeTimezonePref } from '../../shared/timezone'
 import { resolveCommunityHosts } from './communityHost'
 import { resolveFormerMembersOfTenant } from './communityMembership'
+import { resolveMailBrand } from './mailBrand'
+// Ausdrücklich importiert (Q06): der Wächter `mailFrame.test.ts` folgt nur
+// relativen Importen bis zum `frameMail(`-Aufruf.
+import { buildDigestEmail, resolveEmailPrefs } from './notificationEmail'
 import { resolveSiteLinkBase } from './siteOrigin'
 import { softFail } from './softFail'
 
@@ -169,7 +173,13 @@ export async function runEmailDigestSweep(): Promise<DigestSweepResult> {
         // Zeitpunkte in SEINER Zone, wenn er eine gewählt hat (BE-018) — aus
         // denselben Prefs wie Modus und Sprache, kein zweiter Abruf.
         const timezone = normalizeTimezonePref((recipient.prefs as Record<string, unknown>).timezone)
-        const mail = buildDigestEmail({ appBase, hosts }, prefs.emailLocale, fresh.slice(0, DIGEST_MAX_ITEMS), { timezone })
+        const mail = buildDigestEmail({ appBase, hosts }, prefs.emailLocale, fresh.slice(0, DIGEST_MAX_ITEMS), {
+          timezone,
+          // Ohne Event: kein Mandant — die Marke der App unterschreibt (Q06).
+          // Der Lauf bündelt Communities, ein Community-Name wäre hier falsch.
+          brand: resolveMailBrand(),
+          name: recipient.name,
+        })
         await sendMail(undefined, { ...mail, to: recipient.email })
         // Marker NACH dem Versand — prefs mergen (updatePrefs ERSETZT alles)
         await admin.users.updatePrefs({

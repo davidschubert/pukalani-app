@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { InsightsPostHead } from './insightsPost'
 import { insightsPublicKopf } from './insightsPost'
+import { frameMail } from '../../core/shared/mailFrame'
 
 /**
  * DER NEWSLETTER-VERTRAG VON BRAND INSIGHTS (Paket I5a „Sammeln", Plan
@@ -444,36 +445,40 @@ export interface InsightsNewsletterMailCopy {
 export function insightsNewsletterConfirmMailCopy(
   locale: InsightsNewsletterLocale,
   links: InsightsNewsletterMailLinks,
+  /** Marke in der Schluss-Zeile (Q06, `resolveMailBrand(event)`). */
+  brand: string,
 ): InsightsNewsletterMailCopy {
+  // Rahmen (Q06): Anrede und Schluss aus `core/shared/mailFrame.ts`; der
+  // Abmelde-Hinweis steht als Fußzeile unter dem Gruß.
   if (locale === 'de') {
     return {
       subject: 'Bitte bestätige deinen Newsletter — Brand Insights',
-      text: [
-        'ein Klick fehlt noch, dann schicken wir dir Brand Insights.',
-        '',
-        `Eintrag bestätigen: ${links.confirmUrl}`,
-        '',
-        'Der Link ist 24 Stunden gültig.',
-        '',
-        'Wir schreiben, wenn ein neues Stück erscheint.',
-        '',
-        `Du warst das nicht? Dann trag dich hier wieder aus, und der Link oben ist sofort tot: ${links.unsubscribeUrl}`,
-      ].join('\n'),
+      text: frameMail({
+        brand,
+        locale: 'de',
+        lines: [
+          'Ein Klick fehlt noch, dann schicken wir dir Brand Insights.',
+          `Eintrag bestätigen: ${links.confirmUrl}`,
+          'Der Link ist 24 Stunden gültig.',
+          'Wir schreiben, wenn ein neues Stück erscheint.',
+        ],
+        footer: `Du warst das nicht? Dann trag dich hier wieder aus, und der Link oben ist sofort tot: ${links.unsubscribeUrl}`,
+      }).text,
     }
   }
   return {
     subject: 'Please confirm your newsletter — Brand Insights',
-    text: [
-      'one click is missing, then we will send you Brand Insights.',
-      '',
-      `Confirm your sign-up: ${links.confirmUrl}`,
-      '',
-      'The link is valid for 24 hours.',
-      '',
-      'We write when a new piece is out.',
-      '',
-      `Not you? Unsubscribe here and the link above dies right away: ${links.unsubscribeUrl}`,
-    ].join('\n'),
+    text: frameMail({
+      brand,
+      locale: 'en',
+      lines: [
+        'One click is missing, then we will send you Brand Insights.',
+        `Confirm your sign-up: ${links.confirmUrl}`,
+        'The link is valid for 24 hours.',
+        'We write when a new piece is out.',
+      ],
+      footer: `Not you? Unsubscribe here and the link above dies right away: ${links.unsubscribeUrl}`,
+    }).text,
   }
 }
 
@@ -762,6 +767,8 @@ export function insightsNewsletterIssueCopy(
   intros: InsightsNewsletterIntros,
   locale: InsightsNewsletterLocale,
   links: InsightsNewsletterIssueLinks,
+  /** Marke in der Schluss-Zeile (Q06, `resolveMailBrand(event)`). */
+  brand: string,
 ): InsightsNewsletterMailCopy {
   const kopf = insightsPublicKopf(post, locale)
   // Die Einleitung folgt der Fassung, die der Leser wirklich bekommt — nicht
@@ -769,27 +776,22 @@ export function insightsNewsletterIssueCopy(
   // zurück, täte ein Satz in der anderen Sprache darüber genau das, was der
   // Rückfall gerade vermeidet.
   const trimmedIntro = insightsNewsletterIntroFor(intros, kopf.locale)
-  const lines: string[] = []
+  const german = kopf.locale === 'de'
 
-  if (trimmedIntro) lines.push(trimmedIntro, '')
-  if (kopf.dek) lines.push(kopf.dek, '')
+  // Rahmen (Q06): Anrede und Schluss aus `core/shared/mailFrame.ts` in der
+  // Sprache der Fassung; der Abmelde-Hinweis wird Fußzeile.
+  const text = frameMail({
+    brand,
+    locale: german ? 'de' : 'en',
+    lines: [
+      trimmedIntro,
+      kopf.dek ?? '',
+      `${german ? 'Lesen:' : 'Read it:'}\n${links.postUrl}`,
+    ],
+    footer: german
+      ? `Du bekommst das, weil du dich eingetragen hast. Abmelden: ${links.unsubscribeUrl}`
+      : `You are getting this because you signed up. Unsubscribe: ${links.unsubscribeUrl}`,
+  }).text
 
-  if (kopf.locale === 'de') {
-    lines.push(
-      'Lesen:',
-      links.postUrl,
-      '',
-      `Du bekommst das, weil du dich eingetragen hast. Abmelden: ${links.unsubscribeUrl}`,
-    )
-  }
-  else {
-    lines.push(
-      'Read it:',
-      links.postUrl,
-      '',
-      `You are getting this because you signed up. Unsubscribe: ${links.unsubscribeUrl}`,
-    )
-  }
-
-  return { subject: kopf.title, text: lines.join('\n') }
+  return { subject: kopf.title, text }
 }

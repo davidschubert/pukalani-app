@@ -16,6 +16,8 @@ import {
   sanitizeRemovedContactMessage,
 } from '../../../shared/removedContact'
 import { callControlPlane } from '../../utils/controlPlane'
+import { resolveMailLocale } from '../../../../core/shared/mailFrame'
+import { resolveMailBrand } from '../../../../core/server/utils/mailBrand'
 import { removedContactRowId } from '../../utils/removedContact'
 
 /**
@@ -71,6 +73,7 @@ const bodySchema = z.object({
 
 interface RecipientAccount {
   $id: string
+  name: string
   email: string
   emailVerification: boolean
   prefs: Record<string, unknown>
@@ -129,6 +132,7 @@ export default defineEventHandler(async (event): Promise<{ ok: true }> => {
       for (const account of res.users) {
         accounts.set(account.$id, {
           $id: account.$id,
+          name: account.name,
           email: account.email,
           emailVerification: account.emailVerification,
           prefs: (account.prefs ?? {}) as Record<string, unknown>,
@@ -175,7 +179,11 @@ export default defineEventHandler(async (event): Promise<{ ok: true }> => {
     const account = accounts.get(recipientId)
     if (!mailer || !account?.email || !account.emailVerification) continue
     const mail = buildRemovedContactMail({
-      locale: account.prefs.emailLocale === 'de' ? 'de' : 'en',
+      // Die eine Sprach-Regel (Q06): Konto-Einstellung, sonst Englisch.
+      locale: resolveMailLocale({ account: account.prefs.emailLocale }),
+      // Auf dem Community-Host unterschreibt die Community (Q06).
+      brand: resolveMailBrand(event),
+      recipientName: account.name,
       communityName: tenant.name ?? '',
       senderName,
       senderEmail,

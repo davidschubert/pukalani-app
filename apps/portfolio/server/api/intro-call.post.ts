@@ -22,6 +22,8 @@ import {
   INTRO_TIMINGS,
   type IntroCallResponse,
 } from '#shared/types/introCall'
+import { frameMail } from '../../../../packages/core/shared/mailFrame'
+import { resolveMailBrand } from '../../../../packages/core/server/utils/mailBrand'
 
 /**
  * Die Anfrage aus dem Erstgespräch-Wizard (`/erstgespraech`, W1) — die einzige
@@ -105,15 +107,16 @@ type IntroCallBody = z.infer<typeof bodySchema>
  * `server/utils/siteRoutes.ts` schon mit `app/data/cases.ts`). Ohne das stünde
  * in der Mail „budget: 15to50k", und die Übersetzung säße im Kopf des Lesers.
  */
-function buildMailText(body: IntroCallBody, lang: Lang): string {
+function buildMailText(body: IntroCallBody, lang: Lang, brand: string): string {
   const q = WIZARD_QUESTIONS
   const goals = body.goals.map(goal => optionLabel(GOAL_OPTIONS, goal, lang)).join(', ')
-  const lines = [
+  const contact = [
     `${q.name.label[lang]}: ${body.name}`,
     `${q.company.label[lang]}: ${body.company}`,
     `${q.email.label[lang]}: ${body.email}`,
     `${q.phone.label[lang]}: ${body.phone || '—'}`,
-    '',
+  ]
+  const answers = [
     `${q.goals.label[lang]} ${goals}`,
     `${q.projectType.label[lang]} ${optionLabel(PROJECT_TYPE_OPTIONS, body.projectType, lang)}`,
     `${q.industry.label[lang]} ${body.industry || '—'}`,
@@ -122,11 +125,14 @@ function buildMailText(body: IntroCallBody, lang: Lang): string {
     `${q.market.label[lang]} ${body.market || '—'}`,
     `${q.currentSetup.label[lang]} ${optionLabel(SETUP_OPTIONS, body.currentSetup, lang)}`,
     `${q.timing.label[lang]} ${optionLabel(TIMING_OPTIONS, body.timing, lang)}`,
-    '',
-    `${q.note.label[lang]}`,
-    body.note || '—',
   ]
-  return lines.join('\n')
+  // Rahmen (Q06): Betreiber-Mail, Anrede und Gruß auf Deutsch, ohne Namen.
+  // Die Feld-Beschriftungen bleiben in der Sprache des Wizards.
+  return frameMail({
+    brand,
+    locale: 'de',
+    lines: [contact.join('\n'), answers.join('\n'), `${q.note.label[lang]}\n${body.note || '—'}`],
+  }).text
 }
 
 export default defineEventHandler(async (event): Promise<IntroCallResponse> => {
@@ -146,7 +152,7 @@ export default defineEventHandler(async (event): Promise<IntroCallResponse> => {
   const mailOk = await sendMail(event, {
     to: CONTACT.email,
     subject: `Erstgespräch-Anfrage: ${body.name} (${body.company})`,
-    text: buildMailText(body, lang),
+    text: buildMailText(body, lang, resolveMailBrand(event)),
   }).catch((error: unknown) => {
     console.error('[portfolio] intro-call mail failed:', error instanceof Error ? error.message : error)
     return false

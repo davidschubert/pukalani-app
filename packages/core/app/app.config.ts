@@ -22,6 +22,14 @@ export default defineAppConfig({
     brand: {
       name: 'Pukalani',
       /**
+       * Name der Marke VOR DER KUNDSCHAFT, wenn er vom Kopf-Namen abweicht
+       * (control: „Pukalani Control" im Kopf, „Pukalani" draußen) — leer heißt
+       * `name`. Leser: Titel des Changelogs (Q10) und die Schluss-Zeile jeder
+       * eigenen Mail (Q06, `core/server/utils/mailBrand.ts`; auf einem
+       * Community-Host gewinnt dort der Name der Community).
+       */
+      publicName: '',
+      /**
        * Öffentliche Seite des Anbieters (absolute URL) — der EINZIGE Leser ist
        * heute die Fehlerseite eines unbekannten Hosts (C12b): wer sich
        * vertippt hat, landet auf einer Adresse ohne Community, und „Zur

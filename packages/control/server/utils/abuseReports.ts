@@ -3,6 +3,8 @@ import type { H3Event } from 'h3'
 import { ABUSE_REPORTS_TABLE, type AbuseCategory, type AbuseReportRow } from '../../shared/abuseReports'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 import { softFail } from '../../../core/server/utils/softFail'
+import { frameMail } from '../../../core/shared/mailFrame'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * Missbrauchsmeldungen — die I/O-Seite (M13, Auslöser 3). Die Entscheidungen
@@ -87,15 +89,20 @@ export async function notifyOperatorsAboutAbuse(event: H3Event, report: AbuseRep
     await sendMail(event, {
       to: config.alertEmail,
       subject: `[pukalani] Missbrauchsmeldung zu ${report.host}`,
-      text: [
-        `Gemeldet: ${report.host}${report.communityName ? ` (${report.communityName})` : ' (keiner Community zugeordnet)'}`,
-        `Kategorie: ${report.category}`,
-        report.url ? `Link: ${report.url}` : '',
-        '',
-        report.message,
-        '',
-        `Sichten im Dashboard: ${appUrl}${link}`,
-      ].filter(Boolean).join('\n'),
+      // Rahmen (Q06): Betreiber-Mail auf Deutsch, ohne Namen.
+      text: frameMail({
+        brand: resolveMailBrand(event),
+        locale: 'de',
+        lines: [
+          [
+            `Gemeldet: ${report.host}${report.communityName ? ` (${report.communityName})` : ' (keiner Community zugeordnet)'}`,
+            `Kategorie: ${report.category}`,
+            report.url ? `Link: ${report.url}` : '',
+          ].filter(Boolean).join('\n'),
+          report.message,
+          `Sichten im Dashboard: ${appUrl}${link}`,
+        ],
+      }).text,
     }).catch(softFail('control:utils/abuseReports:sendMail', false))
   }
 

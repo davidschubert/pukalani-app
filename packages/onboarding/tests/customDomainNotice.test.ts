@@ -32,6 +32,7 @@ let mailBehaviour: (to: string) => Promise<boolean> = async () => true
 const logs: { level: string, name: string, detail: Record<string, unknown> }[] = []
 
 vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteDatabaseId: 'main', appwriteProjectId: 'account' } }))
+vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Testmarke' } } }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB: race.tablesDB, users }))
 vi.stubGlobal('notify', notify)
 vi.stubGlobal('sendMail', async (_event: unknown, input: { to: string, subject: string, text: string }) => {

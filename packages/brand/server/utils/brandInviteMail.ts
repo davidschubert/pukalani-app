@@ -1,4 +1,6 @@
 import type { H3Event } from 'h3'
+import { frameMail, resolveMailLocale } from '../../../core/shared/mailFrame'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * DIE EINLADUNGS-MAIL DER BETA — der einzige Weg, auf dem ein Beta-Code den
@@ -52,8 +54,9 @@ export async function sendBrandInviteMail(
   event: H3Event,
   input: BrandInviteMailInput,
 ): Promise<boolean> {
-  const german = input.locale === 'de'
-  const link = brandInviteUrl(event, input.code, input.locale)
+  const locale = resolveMailLocale({ request: input.locale })
+  const german = locale === 'de'
+  const link = brandInviteUrl(event, input.code, locale)
 
   const subject = german
     ? 'Euer Zugang zu Branding Supply'
@@ -61,29 +64,23 @@ export async function sendBrandInviteMail(
 
   // Die „Wir"-Stimme des Studios (docs: Pukalani Studio spricht als wir, die
   // Gegenseite als ihr) — dieselbe Anrede wie in der Warteliste-Mail.
-  const text = german
+  // Rahmen (Q06): Anrede und Schluss mit der Marke aus `core/shared/mailFrame.ts`.
+  const lines = german
     ? [
-        'ihr standet auf der Warteliste — jetzt ist euer Zugang bereit.',
-        '',
+        'Ihr standet auf der Warteliste — jetzt ist euer Zugang bereit.',
         `Direkt loslegen: ${link}`,
-        '',
         `Oder den Code selbst eintragen: ${input.code}`,
-        '',
         'Der Code gilt für diese E-Mail-Adresse und kann einmal eingelöst werden.',
-        '',
         'Wenn ihr das nicht wart, ignoriert diese Mail einfach — ohne den Code passiert nichts.',
-      ].join('\n')
+      ]
     : [
-        'you were on the waitlist — your access is ready.',
-        '',
+        'You were on the waitlist — your access is ready.',
         `Get started: ${link}`,
-        '',
         `Or enter the code yourself: ${input.code}`,
-        '',
         'The code is tied to this email address and can be redeemed once.',
-        '',
         'If this was not you, simply ignore this email — nothing happens without the code.',
-      ].join('\n')
+      ]
+  const { text } = frameMail({ brand: resolveMailBrand(event), locale, lines })
 
   try {
     return await sendMail(event, { to: input.to, subject, text })

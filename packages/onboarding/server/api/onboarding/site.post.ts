@@ -234,7 +234,8 @@ export default defineEventHandler(async (event) => {
         host: result.host,
         accountHost,
         trialEndsAt: result.trialEndsAt,
-        wizardLocale: site.locale ?? 'de',
+        wizardLocale: site.locale,
+        name: event.context.user.name,
         prefs: event.context.user.prefs as Record<string, unknown> | undefined,
       }).catch((error) => {
         logEvent('error', 'onboarding.ready_mail_failed', {
