@@ -16,6 +16,8 @@ const authStore = useAuthStore()
 // im Zustand 'working' und entscheidet erst in onMounted; ein Titel, der von
 // „Bestätige …" auf „E-Mail bestätigt" springt, flackert im Tab.
 useBrandTitle(() => t('auth.verification.pageTitle'))
+// Konto-Seite ohne das Layout `auth` — gehört trotzdem nicht in eine Suche (Q10, SEO-007).
+definePageMeta({ seoNoindex: true })
 
 const state = ref<'working' | 'success' | 'invalid'>('working')
 
