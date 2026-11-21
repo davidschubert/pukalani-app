@@ -2,7 +2,7 @@ import { Query } from 'node-appwrite'
 import type { InsightsCorrectionRow } from '../../shared/insightsRows'
 import { INSIGHTS_CORRECTIONS_TABLE } from '../../shared/insightsRows'
 import { insightsCorrectionSweepDue } from '../../shared/insightsCorrection'
-import { softFail } from '../../../core/server/utils/softFail'
+import { softFailMissingSchema } from '../../../core/server/utils/softFail'
 
 /**
  * DER FRISTEN-SWEEP DER KORREKTUR-ZEILEN (Plan §9.3 „Retention und
@@ -110,8 +110,11 @@ export async function runInsightsCorrectionsSweep(
         Query.orderAsc('retentionAt'),
         Query.limit(SWEEP_BATCH),
       ],
-    }).catch(softFail('insights:utils/insightsCorrectionsSweep:listRows', null))
+    }).catch(softFailMissingSchema('insights:utils/insightsCorrectionsSweep:listRows', null))
 
+    // NUR DAS FEHLENDE SCHEMA ENDET STILL (Bahn 2, Q13-Stelle 7): jeder andere
+    // Lesefehler wird weitergeworfen, und `defineTimedJob` zählt den Takt als
+    // `failed` — vorher meldete ein Lauf, der gar nicht lesen konnte, „ok".
     // FAIL-SOFT UND STILL: auf einer Instanz OHNE die insights-Migrationen
     // gibt es die Tabelle nicht, und der Layer kann trotzdem einkompiliert
     // sein (der Playground ist genau so). Ein täglicher Fehler-Stapel wäre

@@ -37,12 +37,14 @@ const NOW = new Date('2026-10-24T10:00:00.000Z')
 
 let rows: FakeRow[]
 let tableMissing: boolean
+let readBroken: 'pending' | null
 let updateBroken: boolean
 let logs: { level: string, name: string, data: Record<string, unknown> }[]
 
 const tablesDB = {
   listRows: vi.fn(async ({ queries }: { queries?: string[] }) => {
-    if (tableMissing) throw new AppwriteException('Table not found', 404)
+    if (tableMissing) throw new AppwriteException('Table not found', 404, 'table_not_found')
+    if (readBroken === 'pending' && (queries ?? []).some(q => q.includes('confirmedAt'))) throw new AppwriteException('down', 500, 'general_unknown')
     // Die Abfragen des SDK sind JSON-Zeichenketten — sie werden ausgepackt
     // statt mit einer Zeichenketten-Suche geraten, sonst prüfte der Test seine
     // eigene Heuristik (Muster: insightsRadarSweep.test.ts).
@@ -114,6 +116,7 @@ function sweep() {
 beforeEach(() => {
   rows = []
   tableMissing = false
+  readBroken = null
   updateBroken = false
   logs = []
   tablesDB.listRows.mockClear()
@@ -266,5 +269,14 @@ describe('runInsightsSubscribersSweep — was er NIE anfasst', () => {
       errors: 0,
     })
     expect(logs).toHaveLength(0)
+  })
+
+  it('ein Lesefehler ist kein „nichts zu tun": Regel 2 läuft, dann wirft der Lauf (Bahn 2)', async () => {
+    readBroken = 'pending'
+    rows = [subscriber({ $id: 'abgemeldet', unsubscribedAt: '2025-01-01T00:00:00.000Z', retentionAt: '2026-01-01T00:00:00.000Z' })]
+
+    await expect(sweep()).rejects.toMatchObject({ code: 500 })
+    // Die andere Regel hat trotzdem gearbeitet.
+    expect(tablesDB.updateRow).toHaveBeenCalledTimes(1)
   })
 })

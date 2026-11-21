@@ -7,7 +7,7 @@ import {
   type InviteRequestRow,
 } from '../../../../shared/types/inviteRequest'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../../../shared/types/tenantRecord'
-import { softFail } from '../../../../../core/server/utils/softFail'
+import { softFailWith } from '../../../../../core/server/utils/softFail'
 
 /**
  * Betreiber: die Warteschlange (sites.manage).
@@ -36,30 +36,49 @@ export default defineEventHandler(async (event) => {
   const codeIds = [...new Set(rows.map(row => row.inviteCodeId).filter(Boolean))]
   const communityIds = [...new Set(rows.map(row => row.communityId).filter(Boolean))]
 
+  /**
+   * NACHGESCHLAGENES DARF FEHLEN, ABER NICHT ALS „NICHTS" GELTEN (Bahn 2,
+   * Q13-Stelle 3). Vorher sah eine Anfrage nach einem Lesefehler aus wie
+   * „ohne Code" — und „Erinnern" blieb klickbar, ohne dass jemand wusste, ob
+   * der Code noch gilt. Die Liste selbst bleibt sichtbar (die Warteschlange
+   * ist wichtiger als ihre Zusatzangaben); `incomplete` nennt, was fehlt, und
+   * eine Anfrage MIT Code ist dann nicht erinnerbar (`code-unknown`).
+   */
+  const incomplete: Array<'codes' | 'communities'> = []
   const [codes, sites] = await Promise.all([
     codeIds.length
       ? admin.tablesDB.listRows<InviteCodeRow>({
           databaseId, tableId: INVITE_CODES_TABLE,
           queries: [Query.equal('$id', codeIds), Query.limit(100)],
-        }).then(res => res.rows).catch(softFail('control:api/control/invite-requests/index.get:listRows', []))
+        }).then(res => res.rows).catch(softFailWith('control:api/control/invite-requests/index.get:listRows', () => {
+          incomplete.push('codes')
+          return [] as InviteCodeRow[]
+        }))
       : Promise.resolve([] as InviteCodeRow[]),
     communityIds.length
       ? admin.tablesDB.listRows<TenantRow>({
           databaseId, tableId: COMMUNITIES_TABLE,
           queries: [Query.equal('$id', communityIds), Query.limit(100)],
-        }).then(res => res.rows).catch(softFail('control:api/control/invite-requests/index.get:listRows#2', []))
+        }).then(res => res.rows).catch(softFailWith('control:api/control/invite-requests/index.get:listRows#2', () => {
+          incomplete.push('communities')
+          return [] as TenantRow[]
+        }))
       : Promise.resolve([] as TenantRow[]),
   ])
 
   const codeById = new Map(codes.map(row => [row.$id, row]))
   const hostById = new Map(sites.map(row => [row.$id, row.host]))
 
+  const codesUnknown = incomplete.includes('codes')
+
   return {
     total,
+    incomplete,
     stats: summarizeRequests(rows),
     requests: rows.map((row) => {
       const code = row.inviteCodeId ? codeById.get(row.inviteCodeId) : undefined
       const reminder = evaluateReminder(row, now)
+      const codeUnknown = codesUnknown && Boolean(row.inviteCodeId)
       return {
         id: row.$id,
         email: row.email,
@@ -73,8 +92,8 @@ export default defineEventHandler(async (event) => {
         lastReminderAt: row.lastReminderAt,
         codeExpiresAt: code?.expiresAt ?? null,
         codeStatus: code?.status ?? '',
-        canRemind: reminder.allowed,
-        remindBlocked: reminder.reason ?? '',
+        canRemind: reminder.allowed && !codeUnknown,
+        remindBlocked: codeUnknown ? 'code-unknown' : reminder.reason ?? '',
         remindSuggested: reminder.suggested,
       }
     }),

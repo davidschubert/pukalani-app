@@ -222,6 +222,29 @@ describe('POST /api/brand/profiles (Anlage)', () => {
     })
   }
 
+  it('Kapitel scheitern ⇒ Fehler, die Marken-Zeile ist zurückgenommen, keine Rückweg-Zeile (Bahn 2)', async () => {
+    const db = brandWorld()
+    db.failOnCall.add('createRow:brand_steps')
+    const logged: string[] = []
+    const run = await callBrandRoute(createRoute, { who: 'owner', db, body, globals: { logEvent: (_l: string, name: string) => { logged.push(name) } } })
+    expect(run.status).toBe(500)
+    expect(db.rows.filter(row => row.$tableId === 'brand_profiles' && row.title === 'Neue Marke')).toHaveLength(0)
+    expect(logged).not.toContain('brand.profile_create_rollback_failed')
+  })
+
+  it('auch der Rückweg scheitert ⇒ derselbe Fehler, und die Reste stehen im Protokoll (Bahn 2)', async () => {
+    const db = brandWorld()
+    db.failOnCall.add('createRow:brand_steps')
+    db.failOnCall.add('deleteRow:brand_profiles')
+    const logged: Array<{ name: string, data: Record<string, unknown> }> = []
+    const run = await callBrandRoute(createRoute, {
+      who: 'owner', db, body,
+      globals: { logEvent: (_l: string, name: string, data: Record<string, unknown>) => { logged.push({ name, data }) } },
+    })
+    expect(run.status).toBe(500)
+    expect(logged.find(entry => entry.name === 'brand.profile_create_rollback_failed')?.data).toMatchObject({ profileLeft: true, stepsLeft: 0 })
+  })
+
   it('ein Besitzer im Rumpf wird abgelehnt (400) — nichts geschrieben', async () => {
     const db = brandWorld()
     const run = await callBrandRoute(createRoute, { who: 'stranger', db, body: { ...body, ownerId: USER_IDS.owner } })

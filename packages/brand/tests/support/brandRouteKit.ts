@@ -128,6 +128,8 @@ export interface FakeBrandAppwrite {
   contentTouches: () => FakeCall[]
   /** Wirft beim nächsten Zugriff auf diese Tabelle (Lesefehler erzwingen). */
   failOn: Set<string>
+  /** Wirft nur bei dieser Methode an dieser Tabelle: `'<methode>:<tabelle>'`. */
+  failOnCall: Set<string>
 }
 
 const GUARD_READS = new Set(['brand_access', 'app_config', 'brand_profiles'])
@@ -137,11 +139,12 @@ export function fakeBrandAppwrite(seed: FakeRow[] = [], files: Record<string, Bu
   const store = new Map(Object.entries(files))
   const calls: FakeCall[] = []
   const failOn = new Set<string>()
+  const failOnCall = new Set<string>()
   let opened = 0
 
   const note = (call: FakeCall) => {
     calls.push(call)
-    if (failOn.has(call.target)) throw new AppwriteException('Server error', 500)
+    if (failOn.has(call.target) || failOnCall.has(`${call.method}:${call.target}`)) throw new AppwriteException('Server error', 500)
   }
   const find = (tableId: string, rowId: string) => rows.find(row => row.$tableId === tableId && row.$id === rowId)
 
@@ -249,6 +252,7 @@ export function fakeBrandAppwrite(seed: FakeRow[] = [], files: Record<string, Bu
     writes: () => calls.filter(call => call.kind === 'write'),
     contentTouches: () => calls.filter(call => !(call.kind === 'read' && GUARD_READS.has(call.target))),
     failOn,
+    failOnCall,
     open: () => {
       opened += 1
     },

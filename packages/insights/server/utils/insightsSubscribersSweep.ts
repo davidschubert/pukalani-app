@@ -6,7 +6,7 @@ import {
   insightsNewsletterPendingPurgeDue,
   insightsNewsletterPiiSweepDue,
 } from '../../shared/insightsNewsletter'
-import { softFail } from '../../../core/server/utils/softFail'
+import { softFailMissingSchema } from '../../../core/server/utils/softFail'
 
 /**
  * DER FRISTEN-SWEEP DER NEWSLETTER-LISTE (BI1 I5a; Muster:
@@ -134,6 +134,18 @@ export async function runInsightsSubscribersSweep(
     const tablesDB = deps.tablesDB ?? (createAdminClient().tablesDB as unknown as TablesDbLike)
     const databaseId = deps.databaseId ?? useRuntimeConfig().public.appwriteDatabaseId
 
+    /**
+     * EIN LESEFEHLER IST KEIN „NICHTS ZU TUN" (Bahn 2, Q13-Stelle 7): still
+     * bleibt nur das fehlende Schema (`softFailMissingSchema`). Jeder andere
+     * Lesefehler wird gemerkt, die ANDERE Regel läuft trotzdem, und am Ende
+     * wirft der Lauf — `defineTimedJob` zählt den Takt dann als `failed`.
+     */
+    let readFailure: unknown = null
+    const keepReadFailure = (error: unknown): null => {
+      readFailure ??= error
+      return null
+    }
+
     // ── Regel 1: unbestätigte Zeilen, deren Link 30 Tage her ist ──────────
     const pending = await tablesDB.listRows<InsightsSubscriberRow>({
       databaseId,
@@ -148,7 +160,8 @@ export async function runInsightsSubscribersSweep(
       // Tabelle nicht, und der Layer kann trotzdem einkompiliert sein (der
       // Playground ist genau so). Ein täglicher Fehler-Stapel wäre dort kein
       // Hinweis, sondern Rauschen.
-    }).catch(softFail('insights:utils/insightsSubscribersSweep:listRows', null))
+    }).catch(softFailMissingSchema('insights:utils/insightsSubscribersSweep:listRows', null))
+      .catch(keepReadFailure)
 
     if (pending) {
       result.checkedPending = pending.rows.length
@@ -178,7 +191,8 @@ export async function runInsightsSubscribersSweep(
         Query.orderAsc('retentionAt'),
         Query.limit(SWEEP_BATCH),
       ],
-    }).catch(softFail('insights:utils/insightsSubscribersSweep:listRows#2', null))
+    }).catch(softFailMissingSchema('insights:utils/insightsSubscribersSweep:listRows#2', null))
+      .catch(keepReadFailure)
 
     if (expired) {
       result.checkedUnsubscribed = expired.rows.length
@@ -217,6 +231,7 @@ export async function runInsightsSubscribersSweep(
       }
     }
 
+    if (readFailure) throw readFailure
     return result
   }
   finally {

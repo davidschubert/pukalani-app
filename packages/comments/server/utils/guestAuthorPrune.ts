@@ -1,7 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { GUEST_AUTHORS_TABLE } from '../../shared/types/comment'
-import { softFail } from '../../../core/server/utils/softFail'
+import { softFailMissingSchema } from '../../../core/server/utils/softFail'
 
 /**
  * Gast-Kontaktdaten verfallen (Audit-Befund 2026-08-01, Muster
@@ -88,8 +88,11 @@ export async function pruneGuestAuthors(now: number = Date.now()): Promise<Guest
       Query.orderAsc('$createdAt'),
       Query.limit(100),
     ],
-  }).catch(softFail('comments:utils/guestAuthorPrune:listRows', null))
+  }).catch(softFailMissingSchema('comments:utils/guestAuthorPrune:listRows', null))
 
+  // NUR DAS FEHLENDE SCHEMA ENDET STILL (Bahn 2, Q13-Stelle 7): jeder andere
+  // Lesefehler wird weitergeworfen, und `defineTimedJob` zählt den Takt als
+  // `failed` — vorher meldete ein Lauf, der gar nicht lesen konnte, „ok".
   // Fail-soft und STILL: die Tabelle entsteht erst mit Migration comments-013,
   // und Gast-Kommentare sind ein Gate, das die meisten Deployments nie
   // einschalten. Ein stündlicher Stapel Fehler wäre in so einem Projekt kein
