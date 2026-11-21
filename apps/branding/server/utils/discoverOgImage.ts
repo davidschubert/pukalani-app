@@ -79,6 +79,12 @@ export const DISCOVER_OG_FALLBACK_GRADIENT: BrandGradient = ['#e7e5e1', '#8e8a84
 /** Die Herkunftszeile unter dem Strich. NUR Zeichen, die der Atlas kennt. */
 export const DISCOVER_OG_WORDMARK = 'Discover Brands · branding.supply'
 
+/** Je Sprache der Seitentitel (= `brand.nav.discover`, vom Test gegen die Sprachdateien gehalten). */
+export const DISCOVER_OG_WORDMARKS: Readonly<Record<'en' | 'de', string>> = {
+  en: DISCOVER_OG_WORDMARK,
+  de: 'Marken entdecken · branding.supply',
+}
+
 /** Der Dreiklang zu einer Farbwelt-Id — unbekannt ⇒ neutraler Rückfall. */
 export function discoverOgGradient(paletteId: string | null | undefined): BrandGradient {
   const id = String(paletteId ?? '').trim().toLowerCase()
@@ -248,8 +254,10 @@ const memory = new Map<string, Buffer>()
  * freigegebener Snapshot ein neues Bild bekommt, ohne dass jemand aufräumen
  * muss.
  */
-export function discoverOgCacheKey(slug: string, updatedAt: string): string {
-  return brandMarkKey(DISCOVER_OG_VERSION, slug, updatedAt)
+export function discoverOgCacheKey(slug: string, updatedAt: string, locale: 'en' | 'de' = 'en'): string {
+  return locale === 'de'
+    ? brandMarkKey(DISCOVER_OG_VERSION, slug, updatedAt, 'de')
+    : brandMarkKey(DISCOVER_OG_VERSION, slug, updatedAt)
 }
 
 function remember(name: string, png: Buffer): void {

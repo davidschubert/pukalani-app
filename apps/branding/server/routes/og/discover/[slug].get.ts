@@ -1,5 +1,5 @@
 import {
-  DISCOVER_OG_WORDMARK,
+  DISCOVER_OG_WORDMARKS,
   discoverOgCacheKey,
   discoverOgPng,
 } from '../../../utils/discoverOgImage'
@@ -57,10 +57,12 @@ export default defineEventHandler(async (event) => {
   const row = await loadPublishedBrandPublication(event, slug)
   if (!row) throw createError({ status: 404, statusText: 'Not found' })
 
-  const png = await discoverOgPng(discoverOgCacheKey(row.slug, row.$updatedAt), {
+  // Sprache: nur `?l=de` wählt Deutsch, alles andere ist Englisch.
+  const locale = getQuery(event).l === 'de' ? 'de' : 'en'
+  const png = await discoverOgPng(discoverOgCacheKey(row.slug, row.$updatedAt, locale), {
     title: row.title ?? '',
     paletteId: row.paletteId ?? '',
-    wordmark: DISCOVER_OG_WORDMARK,
+    wordmark: DISCOVER_OG_WORDMARKS[locale],
   })
 
   setHeader(event, 'content-type', 'image/png')

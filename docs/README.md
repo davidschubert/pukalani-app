@@ -39,6 +39,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | Datei | Thema |
 | --- | --- |
 | [referenz/WORKFLOW.md](referenz/WORKFLOW.md) | **Arbeitsablauf je Vorhaben** — Strategie→Konzeption→Prototyp→Umsetzung→Audit→Testing→Deploy→Docs; gilt für ALLE Projekte |
+| [referenz/SICHERHEITSMODELL.md](referenz/SICHERHEITSMODELL.md) | **Sicherheitsmodell** — die Schutzschichten auf einer Seite, mit Verweisen auf Code und Regelwerk |
 | [referenz/SESSION-HYGIENE.md](referenz/SESSION-HYGIENE.md) | **Sitzungs-Hygiene** — Kontext, Nutzungslimit, Modell/Effort je Rolle, Ausgaben deckeln; 24 Video-Tipps bewertet, MCP-gegen-CLI-Vorschlag, MCP-Rechte (Sperrliste Ploi/Resend) |
 | [referenz/MULTI-SITE-PLATFORM-STRATEGIE.md](referenz/MULTI-SITE-PLATFORM-STRATEGIE.md) | Produkt-Manifeste, Layer/App-Komposition |
 | [referenz/PRODUKT-BILANZ.md](referenz/PRODUKT-BILANZ.md) | „Ein Konzept pro Produkt" — welche App welches Produkt montiert, wer durch die Datentür geht (ERZEUGT: `node scripts/produkt-bilanz.mjs`) |

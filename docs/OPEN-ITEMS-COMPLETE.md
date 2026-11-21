@@ -30,6 +30,32 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Sammelpaket kleine Reste (Bahn 3, Paket 1) ✅ 2026-11-21
+
+**Was.**
+
+- **Vorschaubild „Marken entdecken":** die Herkunftszeile im Bild je Anatomie
+  folgt der Sprache der Seite (de „Marken entdecken · branding.supply", en
+  unverändert). Deutsch hängt `?l=de` an die Bild-Adresse
+  (`brandDiscoverOgPath(slug, locale)`), hat einen eigenen Ablage-Namen; ein Test
+  hält beide Zeilen gleich `brand.nav.discover` der Sprachdateien.
+- **`llms.txt`:** die Überschrift „## Products" bleibt — die ganze Datei ist
+  englisch. Nur genannt.
+- **Regelwerk:** `isFetchLoading` in `deps-build.md`, der Vertrag von Q10 in
+  `i18n-seo.md`.
+- **Zwei veraltete Stellen** (Presence-Kommentar „~120 s", Hinweis „JWT bleibt"):
+  schon berichtigt, nichts zu tun.
+- **Doku:** `docs/referenz/SICHERHEITSMODELL.md` (nur Verweise), Abschnitt
+  „Lehren aus dem Durchlauf 2026-11" in `GESAMTAUDIT.md`, Karte ergänzt, GA1 auf
+  den heutigen Stand.
+
+**Gelernt:** ein Bild, das eine Adresse ohne Sprache hat, bekommt die Sprache
+am billigsten als Zusatz NUR für die neue Sprache — die bestehende Adresse und
+ihr Cache bleiben gültig.
+
+**Nicht geprüft:** das deutsche Bild live (erst nach dem Ausliefern).
+
+
 ### TY1 — Schriftgrößen als Stufen statt von Hand (UI-007) ✅ 2026-11-21
 
 **Was.** Klassen wie `text-[26px]` und `text-[0.95rem]` in `app/`-Code sind

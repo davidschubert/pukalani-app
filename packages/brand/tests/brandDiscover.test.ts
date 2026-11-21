@@ -224,6 +224,11 @@ describe('Discover: der Pfad des Vorschaubilds (D4)', () => {
     expect(brandDiscoverOgPath('  Kailua-Coffee-Co ')).toBe('/og/discover/kailua-coffee-co.png')
   })
 
+  it('Deutsch hängt die Sprache an, Englisch bleibt unverändert', () => {
+    expect(brandDiscoverOgPath('kailua', 'de')).toBe('/og/discover/kailua.png?l=de')
+    expect(brandDiscoverOgPath('kailua', 'en')).toBe('/og/discover/kailua.png')
+  })
+
   it('was nicht wie ein Slug aussieht, bekommt KEINEN Pfad', () => {
     // Der Dateiname der Ablage darf nie aus roher Eingabe entstehen — deshalb
     // hört die Kette schon hier auf, nicht erst beim Escapen.
