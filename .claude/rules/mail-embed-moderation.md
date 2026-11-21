@@ -23,6 +23,8 @@ paths:
   - "packages/moderation/**"
   - "packages/messages/server/**"
   - "packages/core/server/utils/microcache.ts"
+  - "packages/core/**/pageCache.ts"
+  - "packages/core/server/*/*page-cache.ts"
   - "packages/core/server/utils/frameAncestors.ts"
   - "packages/core/server/utils/auditView.ts"
   - "packages/core/server/api/auth/*.post.ts"
@@ -170,3 +172,8 @@ Drei Dinge, immer zusammen:
   Seite 1, öffentlicher Changelog — beim Schreiben invalidiert —, `/api/stats`
   nur ohne Mandant, mit Mandant 404, BE-023). NIE Antworten
   mit Session-Daten; kein SSR-Seiten-SWR (Session-State steckt im HTML).
+- AUSNAHME SEITEN FERTIG HALTEN (Q22, Davids Entscheidung R3): NUR Sites
+  ohne Konten (`marketing`, `help`, `portfolio` nur Layout `site`) halten
+  Seiten 60 s, eingeschaltet über `pukalani.pageCache` (Core AUS), Regeln in
+  `core/shared/pageCache.ts` — nie für Communities, Kundenbereich, Konsole
+  oder branding.supply; Formulare mit Bot-Prüfung bleiben frisch.

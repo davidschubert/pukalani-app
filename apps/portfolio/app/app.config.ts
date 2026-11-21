@@ -8,6 +8,16 @@ export default defineAppConfig({
   //   auth: { providers: ['github'], termsUrl: '/agb', otp: true },
   // }
   pukalani: {
+    /**
+     * SEITEN 60 s FERTIG HALTEN (Q22, Davids Entscheidung R3 vom 2026-11-21,
+     * DECISION-LOG): NUR die öffentlichen Seiten (Layout `site`) — Anmeldung und Dashboard
+     * dieser App tragen Konten und bleiben frisch; das Erstgespräch meldet sich
+     * per `definePageMeta` ab. Regeln und Grenzen: `packages/core/shared/pageCache.ts`.
+     */
+    pageCache: {
+      enabled: true,
+      layouts: ['site'],
+    },
     // STRUKTURIERTE FEHLERZEILEN (OPS-011, 2026-11-16): 5xx-Zeilen am
     // zentralen Fehler-Hook UND die Browser-Fehler-Annahme
     // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
