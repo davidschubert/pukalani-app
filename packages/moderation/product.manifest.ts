@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'moderation',
   tier: 'optional',
+  kind: 'foundation',
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): moderation-003 legt reports.communityId an; 004 löscht nur tenantId (nicht ablesbar).

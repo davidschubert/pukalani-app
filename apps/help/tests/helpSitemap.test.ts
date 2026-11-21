@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { aiCrawlerPolicy, aiCrawlerRobotsProblems } from '../../../packages/core/shared/aiCrawlers'
 import { helpRobotsTxt, helpSitemapPairs, helpSitemapXml } from '../server/utils/helpSitemap'
 
 /**
@@ -75,5 +76,15 @@ describe('Hilfe: robots.txt', () => {
     expect(lines).toContain('User-agent: *')
     expect(lines).toContain('Disallow: /api/')
     expect(lines).toContain('Sitemap: https://example.test/sitemap.xml')
+  })
+})
+
+describe('help: KI-Crawler (Q11, B2)', () => {
+  const body = helpRobotsTxt('https://help.pukalani.app')
+  it('eigene Seite: Suche, Antworten und Training erlaubt', () => {
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('own'))).toEqual([])
+  })
+  it('GEGENPROBE: gegen die Community-Regel ist die Datei rot', () => {
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('community'))).not.toEqual([])
   })
 })

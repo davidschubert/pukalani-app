@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'messages',
   tier: 'optional',
+  kind: 'product',
   /**
    * ZWEI ECHTE ABHÄNGIGKEITEN, keine Höflichkeit (Konzept § 4):
    *  - `moderation` trägt den Melde-Weg (`registerReportTarget`,

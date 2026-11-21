@@ -24,7 +24,7 @@
  * Die Nuxt-UI-Bauteile bleiben, wo sie ohnehin schon stehen: Knöpfe, Icons.
  */
 import { jsonLdScript } from '../../utils/jsonLd'
-import { formatDerivationPrice } from '../../utils/productPricing'
+import { formatDerivationPrice, productOfferJsonLd } from '../../utils/productPricing'
 
 defineI18nRoute({
   paths: {
@@ -77,12 +77,24 @@ useHead({
     '@type': 'ItemList',
     'name': t('products.overview.title'),
     'inLanguage': locale.value,
-    'itemListElement': products.map((product, index) => ({
-      '@type': 'ListItem',
-      'position': index + 1,
-      'name': t(`products.${product.key}.title`),
-      'url': `https://branding.supply${localePath(product.to)}`,
-    })),
+    'itemListElement': products.map((product, index) => {
+      const url = `https://branding.supply${localePath(product.to)}`
+      const offer = productOfferJsonLd(product.key, url)
+      return {
+        '@type': 'ListItem',
+        'position': index + 1,
+        'name': t(`products.${product.key}.title`),
+        'url': url,
+        // Q11 (GEO-002): das Produkt mit seinem Preis, wie ihn die Seite
+        // nennt (`PRODUCT_PRICE_EUR`) — ohne eigenen Preis kein `offers`.
+        'item': {
+          '@type': 'Service',
+          'name': t(`products.${product.key}.title`),
+          'url': url,
+          ...(offer ? { offers: offer } : {}),
+        },
+      }
+    }),
   })]),
 })
 </script>

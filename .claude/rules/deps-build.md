@@ -72,11 +72,14 @@ paths:
   `**/public`) — sonst sähe der Durchgang andere Dateien.
 
 ### Der Lint-Lauf
-- DER LINT-LAUF IST MEHR ALS `lint`: vor den drei Lint-Schritten
-  (`pnpm -r lint`, `pnpm lint:typed`, `pnpm lint:scripts`) fährt er eine Reihe
-  Wächter — DIE LISTE IST `.github/workflows/lint.yml` (u. a.
-  `check:manifests`, `check:i18n-keys`, `check:bilanz`, `check:single-copy`,
-  `check:themes` im Paket `@pukalani/themes`). Dazu:
+- DER LINT-LAUF IST `pnpm check` (Q18): lokal und in der CI dieselbe Liste,
+  `scripts/lib/check-steps.mjs` — Wächter, dann `pnpm -r lint`,
+  `pnpm lint:typed`, `pnpm lint:scripts`. Der Job `lint` ruft nur
+  `pnpm check`; neuer Wächter ⇒ dort eintragen (Test
+  `packages/core/tests/checkSteps.test.ts`: jedes `check:*`-Skript läuft
+  irgendwo oder steht mit Grund in `NOT_IN_CHECK`). EINE DATEI aus dem
+  Hauptordner prüfen geht (`pnpm exec eslint <pfad>`), auch unter `server/`.
+  Einzelne Wächter:
   - `pnpm check:doc-links`: jeder Pfad und Link in `docs/` und im README; ein
     Pfad ins Leere ist ROT. Geduldet (nur Hinweis) sind Pfad-Angaben in
     Protokollen und Plänen: `docs/archiv/`, `docs/OPEN-ITEMS-COMPLETE.md`,
@@ -131,6 +134,12 @@ paths:
     Datei oder im Core eingetragen, der Core überschreibt jedes
     Standard-Symbol von Nuxt UI, `icon.fallbackToApi` bleibt `false`.
     Zusammengesetzte Namen (`i-circle-flags-${code}`) sieht er nicht.
+- LAYER-GRENZEN (Q18): Einordnung = `kind` im Manifest
+  (`scripts/lib/layer-kinds.mjs`, feste Zeile `  kind: '<wert>',`); Stufe 1
+  kennt nur sich, Stufe 2 nur Stufe 1. `check:manifests` Prüfung 11 hält
+  Manifest, Text-Leser und die Tabelle in `docs/CONCEPT.md` A14 zusammen,
+  Prüfung 12 jede Nutzung per Auto-Import gegen `requires`
+  (`scripts/lib/autoimport-coupling.mjs`).
 - WÄCHTER LESEN IHRE LISTEN AUS DEM CODE (GA1 P20, Davids Entscheidung): eine
   Liste, die jemand nachtragen muss, macht ihren Wächter blind für das Neue.
   `pnpm check:manifests` (Prüfungen nummeriert im Kopf von

@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { aiCrawlerPolicy, buildRobotsTxt } from '../../../../packages/core/shared/aiCrawlers'
 
 /**
  * DIE ÖFFENTLICHEN ADRESSEN VON branding.supply — PURE Bausteine für
@@ -272,16 +273,13 @@ export function brandingSitemapXml(origin: string, entries: readonly BrandingSit
  */
 export function brandingRobotsTxt(origin: string): string {
   const base = origin.replace(/\/+$/, '')
-  return [
-    'User-agent: *',
-    'Allow: /',
-    'Disallow: /api/',
-    'Disallow: /dashboard/',
-    'Disallow: /brand/',
-    '',
-    `Sitemap: ${base}/sitemap.xml`,
-    '',
-  ].join('\n')
+  // KI-Crawler: eigene Seite, alles erlaubt (B2) — Regel in `aiCrawlers.ts`.
+  return buildRobotsTxt({
+    policy: aiCrawlerPolicy('own'),
+    comments: [`Overview for language models: ${base}/llms.txt`],
+    rules: ['Allow: /', 'Disallow: /api/', 'Disallow: /dashboard/', 'Disallow: /brand/'],
+    sitemap: `${base}/sitemap.xml`,
+  })
 }
 
 /**

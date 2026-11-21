@@ -40,15 +40,17 @@ These are intentional. Do NOT flag them, do NOT recommend "fixing" them:
 ## §1 — Layer ownership & dependency direction (the contract — `docs/CONCEPT.md` A14)
 Each layer is a contract; files inherit their layer's contract. Check your slice stays in it.
 Do NOT rely on a hand-kept layer list — read the sources:
-- WHICH LAYERS EXIST and which pot each is in: the lists `FOUNDATION`, `SEAM`, `PRODUCTS` at the
-  top of `eslint.config.mjs` (a layer on disk without a pot breaks the lint). What each layer
-  owns and requires: its `product.manifest.ts`; the ownership matrix: `docs/CONCEPT.md` A14.
+- WHICH LAYERS EXIST and what kind each is: the field `kind` in each `product.manifest.ts`
+  (`base` = core+system, `foundation`, `seam`, `product`); `eslint.config.mjs` reads it via
+  `scripts/lib/layer-kinds.mjs`. What each layer requires: `requires` in the same manifest
+  (`pnpm check:manifests` checks auto-import use against it); the ownership matrix:
+  `docs/CONCEPT.md` A14 (checked against `kind`).
 - `core`: owns Auth, Appwrite client factories, RBAC matrix, SSR session, base UI, shared
   utils. MUST NOT own feature domain or ANY Appwrite Table. Depends on no other layer.
 - `system`: owns the cross-cutting infra tables (see `packages/system/scripts/migrations/`).
   There is NO `presence` table (Presences API, §4).
-- FOUNDATION RULE: a foundation layer NEVER depends on a product layer. PRODUCTS do not know
-  each other. SEAM layers (`blueprint`, `onboarding`, `control`, `domains`) may know several
+- FOUNDATION RULE: `base` knows only `base`; `foundation` knows only `base`, never a product,
+  a seam or a neighbour of its own kind. PRODUCTS do not know each other. SEAM layers (`blueprint`, `onboarding`, `control`, `domains`) may know several
   layers — that is their job; their own limits are in their ESLint blocks.
 - Product compositions (feed + comments, …) exist exactly once, in `packages/blueprint`.
 - Cross-layer dependencies must be EXPLICIT contracts (a typed export or a registry the

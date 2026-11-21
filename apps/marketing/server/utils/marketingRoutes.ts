@@ -12,6 +12,7 @@
  * shared/marketing.ts + die routeRules-Redirects) fällt sonst auf.
  */
 import type { H3Event } from 'h3'
+import { aiCrawlerPolicy, buildRobotsTxt } from '../../../../packages/core/shared/aiCrawlers'
 import { AUDIENCE_KEYS, audienceSlugForLocale, PRODUCT_KEYS, slugForLocale, VS_SLUGS } from '#shared/marketing'
 
 export interface MarketingRoute {
@@ -99,13 +100,11 @@ export function marketingBaseUrl(event: H3Event): string {
  * Pur, damit der Test sie ohne Server prüft (Muster: `helpRobotsTxt`).
  */
 export function marketingRobotsTxt(origin: string): string {
-  return [
-    'User-agent: *',
-    'Allow: /',
-    'Disallow: /api/',
-    'Disallow: /cdn-cgi/',
-    '',
-    `Sitemap: ${origin.replace(/\/+$/, '')}/sitemap.xml`,
-    '',
-  ].join('\n')
+  // KI-Crawler: eigene Seite, alles erlaubt (B2) — Regel in `aiCrawlers.ts`.
+  return buildRobotsTxt({
+    policy: aiCrawlerPolicy('own'),
+    comments: [`Overview for language models: ${origin.replace(/\/+$/, '')}/llms.txt`],
+    rules: ['Allow: /', 'Disallow: /api/', 'Disallow: /cdn-cgi/'],
+    sitemap: `${origin.replace(/\/+$/, '')}/sitemap.xml`,
+  })
 }

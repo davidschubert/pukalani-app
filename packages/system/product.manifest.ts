@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'system',
   tier: 'foundation',
+  kind: 'base',
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): system-038 legt app_config.brandAiEnabled an; 039 ändert nur einen Bucket (nicht ablesbar).

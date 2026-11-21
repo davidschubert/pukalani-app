@@ -3,6 +3,10 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'control',
   tier: 'optional',
+  kind: 'seam',
+  // admin: `recordAudit`; feedback: das Plugin registriert das Backend der
+  // Rückmeldungen (Auto-Import, Q18 — ohne feedback startet der Server nicht).
+  requires: ['admin', 'feedback'],
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): control-039 legt trial_claims an (BE-015).
