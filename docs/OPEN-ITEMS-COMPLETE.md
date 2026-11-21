@@ -264,6 +264,19 @@ danach wurde auf Grund von „leer" gelöscht (Rückverweise), gezählt (Breite)
 verkauft (zweites Abo) oder „gut" gemeldet (Takt). Beim Durchsehen eines
 `.catch` deshalb zuerst fragen: was tut der Code DANACH mit dem Ersatzwert?
 
+### Klick-Liste für Davids Runde (Bahn 3, Paket 2) ✅ 2026-11-21
+
+`docs/plans/offen/KR1.md` ist eine durchnummerierte Liste mit Adresse, Konto
+(Rolle), Klicks, Erwartung und Gegenmaßnahme je Probe, nach Anmeldung in Blöcke
+sortiert (Gast, Wegwerf-Konto, Owner, Betreiber), dazu der Block „Neu seit den
+Paketen" mit zwölf Proben. Wortlaute stammen aus den Sprachdateien; was nicht
+am Bildschirm gesehen wurde, trägt „Wortlaut kann abweichen".
+
+**Gelernt:** eine Klick-Liste nach Konto statt nach Eintrag zu ordnen spart die
+Wechsel der Anmeldung; die Kürzel bleiben als Verweis an jeder Probe.
+
+**Nicht geprüft:** keine Probe wurde auf den echten Seiten ausgeführt.
+
 ### Q21 — Render-Test und erster Schnitt der Werkstatt (ARC-001) ✅ 2026-11-21
 
 **Was.** Die Werkstatt-Seite in `packages/brand` (`pages/brand/[profileId]/[stepKey].vue`)
