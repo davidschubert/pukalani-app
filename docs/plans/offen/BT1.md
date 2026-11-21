@@ -71,3 +71,41 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   `packages/admin/tests/route-roles-overview.test.ts` hält das so fest. Soll
   es anders sein, kommt die Rolle dort in die Abweisungs-Liste und die Wache
   wird angepasst.
+- **(f) Reste aus dem roten Nacht-Lauf vom 2026-11-21** (COMPLETE „N21": ein
+  Beweis-Skript ließ beide Probe-Communities ohne Plan zurück; behoben, und
+  der Läufer prüft seitdem nach jedem Skript den Soll-Stand der Bühne).
+  Offen geblieben:
+  - **Die Browser-Tests der Bühne laufen nur nachts.** Eine neue oder
+    geänderte Datei dort (`E2E_AUF_DER_BUEHNE` in `scripts/buehne/e2e.mjs`)
+    zeigt sich am Pull Request nicht — so kam `narrow-screens-pool.spec.ts`
+    ungeprüft nach `main` und war in ihrer ersten Nacht rot. Zwei Wege:
+    (1) der Lauf am Pull Request fährt die Browser-Tests mit, wenn der Zweig
+    eine dieser Dateien, `apps/comments/e2e/support/`, `scripts/buehne/` oder
+    das Community-Layout berührt (kostet dort Chromium und rund zwei Minuten);
+    (2) nur eine Regel: wer dort etwas ändert, startet den Nacht-Lauf einmal
+    von Hand auf dem Zweig (`gh workflow run buehne.yml --ref <zweig> -f
+    lauf=nacht`, rund 30 Minuten, öffnet kein Alarm-Issue). Empfehlung: (1),
+    zusammen mit der Entscheidung in (c).
+  - **Der Soll-Stand umfasst fünf Felder** (Status, Plan, Publikum,
+    Registrierung, Sperre — `scripts/buehne/baseline.mjs`). Testphase
+    (`trialEndsAt`), Zahlungsstand (`billingStatus`, `pastDueSince`) und die
+    eigene Domain an der Zeile prüft er nicht; ein Skript, das dort etwas
+    stehen lässt, fiele weiter erst später auf. Erweitern, sobald ein Skript
+    diese Felder an den zwei geteilten Communities anfasst (heute nehmen die
+    Skripte dafür eigene Communities).
+  - **Die Spalte `plan` im Control Plane hat als Vorgabe noch den Altnamen
+    `free`** (control-013). Eine geleerte Spalte wird damit `free`; das
+    Programm liest das als `basic` (`normalizeTenantPlan`), es ist also kein
+    Fehler, aber im Protokoll und in der Datenbank steht ein Name, den es
+    sonst nicht mehr gibt. Vorgabe mit einer kleinen Migration auf `basic`
+    ziehen.
+  - **Warnungen der Betreiber-App im Bühnen-Lauf** (im Protokoll des roten
+    Laufs gesehen, nicht nachgestellt): die Symbol-Sammlungen `simple-icons`
+    und `vscode-icons` seien lokal nicht da, einzelne `lucide`-Symbole ließen
+    sich nicht laden. Ansehen, welche Seite sie verlangt und ob sie im
+    gebauten Stand ebenfalls fehlen (`pnpm check:icons` sieht es nicht).
+  - **Der erste geplante Nacht-Lauf auf `main` mit der neuen Prüfung** ist
+    der vom 2026-11-22. Auf dem Zweig war derselbe Lauf grün (67 von 67,
+    Browser-Tests 3 von 3). Zu tun ist nur etwas, wenn er rot ist — dann
+    öffnet er das Alarm-Issue von selbst; „Bühne verändert: …" in der
+    Tabelle nennt das Skript.
