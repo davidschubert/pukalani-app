@@ -50,7 +50,7 @@ Where do you want to go?
   First steps
 
   #description
-  From invitation code to finished community: what the setup assistant asks you and what happens afterwards.
+  From invite code to finished community: what the setup assistant asks you and what happens afterwards.
   :::
 
   :::u-page-feature

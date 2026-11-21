@@ -12,5 +12,9 @@ export default {
     en: 'Serve this site under its own domain: enter it, the system proves ownership over DNS, orders the certificate and switches over. The Pukalani address stays as a fallback.',
     de: 'Diese Site unter einer eigenen Domain betreiben: eintragen, das System weist den Besitz über DNS nach, bestellt das Zertifikat und schaltet um. Die Pukalani-Adresse bleibt als Rückfall.',
   },
+  customerDescription: {
+    en: 'Your community under its own domain; the Pukalani address stays as a fallback.',
+    de: 'Deine Community unter einer eigenen Domain; die Pukalani-Adresse bleibt als Rückfall.',
+  },
   icon: 'i-ph-globe-hemisphere-west',
 } satisfies ProductManifest

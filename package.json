@@ -29,6 +29,7 @@
     "check:live-beweise": "node scripts/live-beweise.mjs --check",
     "check:single-copy": "node scripts/check-single-copy.mjs",
     "check:prompt-quotes": "node scripts/check-prompt-quotes.mjs",
+    "check:customer-words": "node scripts/check-customer-words.mjs",
     "check:nul-bytes": "node scripts/check-nul-bytes.mjs",
     "check:permissions": "node scripts/check-permissions.mjs",
     "check:workflows": "node scripts/check-workflows.mjs",

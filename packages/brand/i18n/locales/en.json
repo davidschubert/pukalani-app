@@ -198,7 +198,7 @@
       "unlocks": {
         "nav": "Unlocks",
         "title": "Unlocks",
-        "subtitle": "Two gates per brand: Brand Design (layer 2) and the derivation — one field that opens Brand Book & Kit and the market comparison at once. Both are studio-guided: a brand gets them once the intro call has happened. Beta accounts have the derivation for free, permanently, even without an entry.",
+        "subtitle": "Two gates per brand: Brand Design and the derivation — one field that opens Brand Book & Kit and the market comparison at once. Both are studio-guided: a brand gets them once the intro call has happened. Beta accounts have the derivation for free, permanently, even without an entry.",
         "refresh": "Reload",
         "rowActions": "Actions for this branding",
         "emptyTitle": "No branding yet",
@@ -378,7 +378,7 @@
       "about": "About",
       "team": "Team",
       "product": {
-        "wizard": "Your brand takes shape in conversation with your brand consultant.",
+        "wizard": "Your brand takes shape in conversation with your brand advisor.",
         "design": "Three moodboards from your visual DNA.",
         "book": "Book, tokens, brand.json + strategy playbook.",
         "experience": "Assets and plans along the 90-day plan.",
@@ -1163,7 +1163,7 @@
       "noAccess": {
         "title": "No access yet",
         "description": "This account has no access to the brand wizard yet. If you have an invitation link, open it — otherwise we'll get in touch once your access is ready.",
-        "action": "Redeem invitation code"
+        "action": "Redeem invite code"
       },
       "stepLocked": {
         "title": "This chapter isn't open yet",
@@ -1411,10 +1411,10 @@
     },
     "invite": {
       "title": "Redeem your invitation",
-      "description": "An invitation code unlocks your access to the beta.",
+      "description": "An invite code unlocks your access to the beta.",
       "betaTitle": "Invitation only",
       "betaText": "Branding Supply is in closed beta. If you received a code, paste it here.",
-      "codeLabel": "Invitation code",
+      "codeLabel": "Invite code",
       "codePlaceholder": "Paste your code",
       "submit": "Continue",
       "checking": "One moment, we are checking.",
@@ -1424,12 +1424,12 @@
       "verifyTitle": "Confirm your email address first",
       "verifyText": "The code is bound to your address. Once it is confirmed, come back to this page and we will redeem it.",
       "redeeming": "Unlocking your access.",
-      "deniedHint": "An invitation code only works for the address it was sent to. Are you signed in with the right account?",
+      "deniedHint": "An invite code only works for the address it was sent to. Are you signed in with the right account?",
       "retry": "Try again",
       "noCodeTitle": "No code yet?",
       "noCodeText": "Join the waitlist — we open access in waves and will get in touch as soon as your spot is ready.",
       "openTitle": "No code needed",
-      "openText": "The beta is open. If you received an invitation code, paste it here — it unlocks a beta account.",
+      "openText": "The beta is open. If you received an invite code, paste it here — it unlocks a beta account.",
       "openNoCodeTitle": "Start without a code",
       "openNoCodeText": "An account is all it takes: create it, confirm your email address, get going. The foundation is free.",
       "openCta": "Create account"
@@ -1804,8 +1804,8 @@
         "all": "All brand scores",
         "title": "Brand Scores",
         "subtitle": "All your brands with their two numbers — measured from the outside and graded in the foundation.",
-        "summary": "{count} brands · avg. website score {avg}",
-        "summaryEmpty": "{count} brands · no website score yet",
+        "summary": "{count} brand · avg. website score {avg} | {count} brands · avg. website score {avg}",
+        "summaryEmpty": "{count} brand · no website score yet | {count} brands · no website score yet",
         "col": {
           "brand": "Brand",
           "website": "Website",
@@ -3015,7 +3015,7 @@
         "relaunch": "Relaunch",
         "preview": "Preview — awaiting approval"
       },
-      "total": "{count} brands",
+      "total": "{count} brand | {count} brands",
       "emptyTitle": "No published brand yet — the first one could be yours.",
       "emptyCta": "Start your own",
       "note": "Every brand here is public by choice and released by the team.",
@@ -3185,7 +3185,7 @@
       "limits": "Up to {max} runs per brand and day",
       "remaining": "{count} of {max} runs left today",
       "error": {
-        "unavailable": "Reading images is not set up on this instance right now. The chapter carries on regardless — Frida proposes the direction from your foundation.",
+        "unavailable": "Reading images is not set up here right now. The chapter carries on regardless — Frida proposes the direction from your foundation.",
         "noImages": "There is no reference to read.",
         "rateLimited": "That was too quick. Wait a moment and try again.",
         "notFound": "This brand no longer exists.",

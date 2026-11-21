@@ -58,7 +58,7 @@
         }
       },
       "noTenantTitle": "No community on this host",
-      "noTenantText": "These settings apply to a single community. On this instance, registration is governed by the operator configuration.",
+      "noTenantText": "These settings apply to a single community. On this site, registration is governed by the operator configuration.",
       "appearance": {
         "title": "Appearance",
         "description": "The colour world of this community — everyone visiting your pages sees it.",
@@ -207,7 +207,7 @@
       "fallbackNote": "Your Pukalani address {host} stays and redirects to the custom domain.",
       "noTenantTitle": "No custom domain here",
       "noTenantDesc": "This page belongs to a community. Open it on your community address.",
-      "planTitle": "Custom domains are a Pro feature",
+      "planTitle": "Custom domains come with Pro",
       "planDesc": "With Pro your community is reachable at your own address — certificate, www and redirect included.",
       "planCta": "See plans",
       "caaTitle": "Your domain blocks Let's Encrypt",
@@ -280,7 +280,7 @@
         "domain_not_a_domain": "That is not a full domain. It needs at least one dot, for example example.com.",
         "domain_operator_domain": "Addresses under pukalani.app cannot be added here — your community already has its Pukalani address.",
         "domain_taken": "This domain already belongs to another community.",
-        "plan_required": "Custom domains are a Pro feature.",
+        "plan_required": "Custom domains come with Pro.",
         "domain_missing": "Add a domain first.",
         "domain_not_ready": "The status changed. Reload the page and check again.",
         "generic": "That did not work just now. Please try again.",
@@ -424,7 +424,7 @@
       },
       "other": {
         "label": "Something else",
-        "hint": "Tell us in the next step."
+        "hint": "If no category fits."
       }
     },
     "vibes": {
@@ -663,7 +663,7 @@
       "title": "Plan & billing",
       "help": "Which plan applies to your community, what it costs, and where to find invoices and payment details.",
       "noTenantTitle": "No subscription here",
-      "noTenantText": "This page belongs to a community. On a dedicated instance the operator handles billing, not an individual community.",
+      "noTenantText": "This page belongs to a community. On a dedicated site the operator handles billing, not an individual community.",
       "currentPlan": "Current plan",
       "currentPlanNote": "Your current plan.",
       "trialLabel": "Trial ({plan}) – 1 day left | Trial ({plan}) – {n} days left",
@@ -761,7 +761,7 @@
   },
   "branding": {
     "navLabel": "Appearance",
-    "noTenantText": "This page sets the colour world of ONE community. On this instance the look belongs to the operator — it is set under \"Themes\"."
+    "noTenantText": "This page sets the colour world of ONE community. On this site the look belongs to the operator — it is set under \"Themes\"."
   },
   "favicon": {
     "title": "Favicon & app icon",

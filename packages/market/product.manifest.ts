@@ -53,5 +53,9 @@ export default {
     en: 'Puts your brand foundation next to what competitors publicly say — field by field, every statement with a quote and its source.',
     de: 'Stellt eure Brand Foundation neben das, was Wettbewerber öffentlich sagen — Feld für Feld, jede Aussage mit Zitat und Quelle.',
   },
+  customerDescription: {
+    en: 'Your brand foundation next to what competitors publicly say — with quote and source.',
+    de: 'Eure Brand Foundation neben dem, was Wettbewerber öffentlich sagen — mit Zitat und Quelle.',
+  },
   icon: 'i-ph-compass',
 } satisfies ProductManifest

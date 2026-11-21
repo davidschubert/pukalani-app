@@ -691,7 +691,7 @@
         "enterprise": {
           "name": "Enterprise",
           "tag": "Pukalani Studio",
-          "desc": "Your own instance, your own domain – with consultation, strategy, concept, design, and technical implementation from one hand.",
+          "desc": "Your own platform, your own domain – with consultation, strategy, concept, design, and technical implementation from one hand.",
           "cta": "Register interest"
         }
       },
@@ -768,7 +768,7 @@
     "contact": {
       "kicker": "Contact",
       "title": "A project built to fit",
-      "lead": "Pukalani Studio is the route for everything a plan cannot cover: your own instance, your own domain, your own concept — consulting, strategy, design and the technical build from one hand. Write two sentences about your plan; you get an honest read on whether it fits.",
+      "lead": "Pukalani Studio is the route for everything a plan cannot cover: your own platform, your own domain, your own concept — consulting, strategy, design and the technical build from one hand. Write two sentences about your plan; you get an honest read on whether it fits.",
       "cta": "Ask by email",
       "mailSubject": "Pukalani Studio - interest",
       "addressLabel": "Or write directly to",

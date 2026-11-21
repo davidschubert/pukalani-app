@@ -82,6 +82,41 @@ oder Browser-Sprache, `redirectOn: 'all'`) für den nächsten Besucher
 und deren Kopie braucht einen Test gegen das Original. Und: ein Test, der die
 Konstante liest, die er prüft, blieb bei 10 statt 60 Minuten grün — die
 Zahl gehört ausgeschrieben in den Test (Beweis-Regel 1).
+### Q16 — Wörter und Anrede: ein Wort je Sache, keine Entwickler-Wörter vor Kundschaft (BRD-007, BRD-008, BRD-012, UX-013) ✅ 2026-11-21
+
+**Was.** Davids Ja zu R5 (Menü der deutschen Seite von branding.supply
+deutsch).
+
+1. **Wortliste** (`scripts/lib/customer-words.mjs`, Kurzfassung in
+   `.claude/rules/i18n-seo.md`): Konto statt Account, Einladungscode, brand
+   advisor statt brand consultant, invite code, Marke und „Marken entdecken“
+   statt Brand(s) und „Discover Brands“ auf Deutsch, Brand Score ohne
+   Bindestrich, Upvote/Downvote statt Hochvoten, „hier · diese Site · eigene
+   Plattform“ statt Instanz, ß statt ss, keine Schicht-Nummern. 180 Werte in
+   den Sprachdateien geändert, dazu Hilfe-Seiten.
+2. **Menü (R5)**: Produkte · Brand-Check · Marken entdecken · Brand Insights ·
+   Über uns · Team.
+3. **Anrede**: Knöpfe auf Werbeseiten ohne Anrede („Branding starten“,
+   „Eigene Marke starten“); im Wizard-Abschluss und in „Die ersten Schritte“
+   kein „ihr“ mehr an die eine Person.
+4. **Kundentext im Manifest** (`customerDescription`, Pflicht für
+   `tier: 'optional'`): der Reiter „Produkte“ der Community zeigt ihn statt
+   des Entwickler-Texts.
+5. **Kleines aus UX-013**: Mehrzahl („1 Zusage“, „1 Lektion“, „1 Meldung“,
+   „1 Marke“) mit `t(key, { count }, count)`; die Teilnehmerliste füllt sich
+   nach der Zusage ohne Neuladen; Sitzungen zeigen „E-Mail“, „Passwort“,
+   „Authenticator-App“ statt der rohen Werte, die Zeitpunkte tragen ihr Wort;
+   die Wizard-Karte „Etwas anderes“ verspricht keinen Schritt mehr.
+
+**Beweis.** `pnpm check:customer-words` (in `pnpm check`) und
+`packages/core/tests/customerWords.test.ts`: echter Stand sauber, je Regel
+eine Gegenprobe rot, erlaubte Formen grün, jede Ausnahme nimmt noch etwas aus.
+Gegenprobe am echten Stand („Noch keinen Account?“ zurück): rot, Exit 1.
+
+**Gelernt:** Ein Text hat zwei Leserschaften, sobald eine zweite Seite
+dasselbe Feld anzeigt — der Entwickler-Text im Manifest stand ungeprüft vor
+zahlenden Kunden. Wörter halten nur mit einer Liste, die ein Wächter liest;
+einzelne Entscheidungen ohne Liste liefen über Monate auseinander.
 
 ### Q23 — Anwesenheit und Live-Verbindung: ein Abruf je Reiter, Gäste ohne Verbindung auf den Marketing-Seiten (PERF-011, PERF-012) ✅ 2026-11-21
 

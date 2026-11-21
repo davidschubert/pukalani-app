@@ -2,6 +2,7 @@
 import type { Map as LeafletMap } from 'leaflet'
 import type { SessionRow } from '../../shared/types/session'
 import { formatSessionLocation } from '../../shared/sessionLocation'
+import { sessionMethodLabel } from '../../shared/sessionMethod'
 
 /**
  * Alles, was zu EINER Sitzung bekannt ist — inklusive Karte.
@@ -210,14 +211,14 @@ const dbIpUrl = 'https://db-ip.com'
             <dt class="text-xs text-dimmed">{{ t('account.sessions.auth') }}</dt>
             <dd class="flex flex-wrap items-center gap-1.5">
               <UIcon :name="session.provider === 'email' ? 'i-ph-envelope-simple' : 'i-ph-plugs-connected'" class="size-4 shrink-0 text-muted" />
-              <span class="truncate">{{ session.provider }}</span>
+              <span class="truncate">{{ sessionMethodLabel(session.provider, t) }}</span>
             </dd>
           </div>
           <div v-if="session.factors.length" class="min-w-0">
             <dt class="text-xs text-dimmed">{{ t('account.sessions.mfa') }}</dt>
             <dd class="flex items-center gap-1.5">
               <UIcon name="i-ph-shield-check" class="size-4 shrink-0 text-muted" />
-              <span class="truncate">{{ session.factors.join(', ') }}</span>
+              <span class="truncate">{{ session.factors.map(f => sessionMethodLabel(f, t)).join(', ') }}</span>
             </dd>
           </div>
           <div class="min-w-0">

@@ -14,5 +14,9 @@ export default {
     en: 'Managed image gallery: upload, captions, ordering and publish state — the content source for photo and portfolio pages.',
     de: 'Verwaltete Bild-Galerie: Upload, Bildunterschriften, Sortierung und Publish-Status — die Inhalts-Quelle für Foto- und Portfolio-Seiten.',
   },
+  customerDescription: {
+    en: 'An image gallery with captions and your own order; only published images are visible.',
+    de: 'Eine Bildergalerie mit Bildunterschriften und eigener Reihenfolge; sichtbar ist nur, was freigegeben ist.',
+  },
   icon: 'i-ph-images',
 } satisfies ProductManifest

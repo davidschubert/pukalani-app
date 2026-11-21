@@ -35,6 +35,7 @@ export const productManifestSchema = z.object({
   entitlementKey: z.string().regex(keyPattern).optional(),
   title: manifestTextSchema,
   description: manifestTextSchema,
+  customerDescription: manifestTextSchema.optional(),
   icon: z.string().min(1).optional(),
   apiPrefixes: z.array(z.string().regex(/^\/api\/[a-z0-9/-]+$/)).optional(),
 }).strict()

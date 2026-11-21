@@ -16,5 +16,9 @@ export default {
     en: 'Courses with lessons, progress tracking and AI translation; paid access plugs in via the app-level access guard.',
     de: 'Kurse mit Lektionen, Fortschritt und KI-Übersetzung; Bezahl-Zugang dockt über den App-seitigen Access-Guard an.',
   },
+  customerDescription: {
+    en: 'Courses with lessons and learning progress, translated on request.',
+    de: 'Kurse mit Lektionen und Lernfortschritt, auf Wunsch übersetzt.',
+  },
   icon: 'i-ph-graduation-cap',
 } satisfies ProductManifest

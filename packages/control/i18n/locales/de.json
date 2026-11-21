@@ -138,14 +138,14 @@
       }
     },
     "invites": {
-      "title": "Einladungs-Codes",
+      "title": "Einladungscodes",
       "subtitle": "Wer eine Community anlegen will, braucht im Early Access einen Code. Der Klartext erscheint genau EINMAL — beim Ausstellen.",
       "gate": {
-        "label": "Für eine eigene Community ist ein Einladungs-Code nötig",
+        "label": "Für eine eigene Community ist ein Einladungscode nötig",
         "onHint": "Early Access: gründen kann nur, wer einen Code hat. Ein Konto anlegen und bei fremden Communities mitmachen kann weiterhin jeder.",
         "offHint": "Aus: jeder mit Konto kann sofort eine eigene Community gründen. Die Codes unten bleiben liegen und wirken erst wieder, wenn du den Schalter anmachst.",
         "savedOn": "Tor geschlossen",
-        "savedOnHint": "Gründen braucht ab sofort wieder einen Einladungs-Code.",
+        "savedOnHint": "Gründen braucht ab sofort wieder einen Einladungscode.",
         "savedOff": "Tor offen",
         "savedOffHint": "Jeder mit Konto kann ab sofort eine eigene Community gründen.",
         "saveFailed": "Schalter konnte nicht gespeichert werden",

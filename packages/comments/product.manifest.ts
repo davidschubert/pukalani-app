@@ -20,5 +20,9 @@ export default {
     en: 'Threaded comments with realtime updates, votes, mentions, markdown, guest reading, AI translation and an embeddable widget.',
     de: 'Verschachtelte Kommentare mit Realtime, Votes, @-Mentions, Markdown, Gast-Lesezugriff, KI-Übersetzung und Embed-Widget.',
   },
+  customerDescription: {
+    en: 'Comments with replies, upvotes and mentions — live, translatable and embeddable on any website.',
+    de: 'Kommentare mit Antworten, Upvotes und Erwähnungen — live, übersetzbar und auf jeder Website einbettbar.',
+  },
   icon: 'i-ph-chat-circle',
 } satisfies ProductManifest

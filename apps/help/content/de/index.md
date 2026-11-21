@@ -50,7 +50,7 @@ Wo willst du hin?
   Erste Schritte
 
   #description
-  Vom Einladungs-Code bis zur fertigen Community: was der Einrichtungs-Assistent von dir wissen will und was danach passiert.
+  Vom Einladungscode bis zur fertigen Community: was der Einrichtungs-Assistent von dir wissen will und was danach passiert.
   :::
 
   :::u-page-feature

@@ -14,5 +14,9 @@ export default {
     en: 'Support ticket board with assignment, notifications and optional AI triage.',
     de: 'Support-Ticket-Board mit Zuweisung, Benachrichtigungen und optionaler KI-Triage.',
   },
+  customerDescription: {
+    en: 'Collect, assign and answer requests to the team.',
+    de: 'Anfragen an das Team sammeln, zuweisen und beantworten.',
+  },
   icon: 'i-ph-lifebuoy',
 } satisfies ProductManifest

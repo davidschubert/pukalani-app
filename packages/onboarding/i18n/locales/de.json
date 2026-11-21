@@ -58,7 +58,7 @@
         }
       },
       "noTenantTitle": "Keine Community auf diesem Host",
-      "noTenantText": "Diese Einstellungen gelten für eine einzelne Community. Auf dieser Instanz regelt die Registrierung die Betreiber-Konfiguration.",
+      "noTenantText": "Diese Einstellungen gelten für eine einzelne Community. Auf dieser Site regelt die Registrierung die Betreiber-Konfiguration.",
       "appearance": {
         "title": "Erscheinungsbild",
         "description": "Farbwelt dieser Community — sie gilt für alle, die eure Seiten besuchen.",
@@ -330,8 +330,8 @@
       "title": "Community einrichten",
       "heading": "Willkommen, {name}.",
       "fallbackName": "schön, dass du da bist",
-      "intro": "Pukalani ist im Early Access — du brauchst einen Einladungs-Code. Danach richten wir deine Community in wenigen Schritten gemeinsam ein.",
-      "codeLabel": "Einladungs-Code",
+      "intro": "Pukalani ist im Early Access — du brauchst einen Einladungscode. Danach richten wir deine Community in wenigen Schritten gemeinsam ein.",
+      "codeLabel": "Einladungscode",
       "codeHint": "Steht in deiner Einladungs-E-Mail. Groß- und Kleinschreibung ist egal.",
       "codePlaceholder": "PUKA-XXXX-XXXX",
       "submit": "Weiter",
@@ -342,7 +342,7 @@
     },
     "request": {
       "title": "Early Access anfragen",
-      "intro": "Pukalani ist noch im Early Access. Hinterlass deine Adresse — wir melden uns mit einem Einladungs-Code, sobald ein Platz frei ist.",
+      "intro": "Pukalani ist noch im Early Access. Hinterlass deine Adresse — wir melden uns mit einem Einladungscode, sobald ein Platz frei ist.",
       "emailLabel": "E-Mail-Adresse",
       "emailHint": "An diese Adresse geht der Code. Er gilt nur für sie.",
       "noteLabel": "Wofür willst du Pukalani nutzen?",
@@ -354,7 +354,7 @@
       "hasCode": "Du hast schon einen Code?",
       "hasCodeLink": "Hier einlösen",
       "doneTitle": "Angekommen.",
-      "doneBody": "Wir haben deine Anfrage. Sobald ein Platz frei ist, bekommst du einen Einladungs-Code per E-Mail.",
+      "doneBody": "Wir haben deine Anfrage. Sobald ein Platz frei ist, bekommst du einen Einladungscode per E-Mail.",
       "doneHint": "Schau auch im Spam-Ordner nach — und wenn die Mail nicht ankommt, schreib uns einfach noch einmal."
     },
     "progress": "Schritt {step} von {total}",
@@ -424,7 +424,7 @@
       },
       "other": {
         "label": "Etwas anderes",
-        "hint": "Erzähl es uns im nächsten Schritt."
+        "hint": "Wenn keine Kategorie passt."
       }
     },
     "vibes": {
@@ -474,7 +474,7 @@
     },
     "errors": {
       "hostTaken": "Diese Adresse wurde gerade belegt. Geh einen Schritt zurück und wähle eine andere.",
-      "notAllowed": "Das ging nicht: entweder gilt der Einladungs-Code nicht mehr, oder du hast bereits eine Community in der Testphase.",
+      "notAllowed": "Das ging nicht: entweder gilt der Einladungscode nicht mehr, oder du hast bereits eine Community in der Testphase.",
       "invalid": "Eine Angabe passt nicht. Geh die Schritte noch einmal durch.",
       "unavailable": "Wir konnten die Community gerade nicht anlegen. Versuch es in einer Minute noch einmal — deine Antworten bleiben erhalten.",
       "operatorTermsRequired": "Bitte bestätige zuerst die Bedingungen für Community-Betreiber — das Kästchen steht direkt über dem Knopf."
@@ -482,11 +482,11 @@
     "done": {
       "title": "Deine Community steht",
       "heading": "{name} steht.",
-      "intro": "Du bist Owner. Die Community ist öffentlich lesbar — jeder kann eure Inhalte sehen und finden.",
+      "intro": "Du bist Owner. Deine Community ist öffentlich lesbar — jeder kann ihre Inhalte sehen und finden.",
       "addressLabel": "Deine Adresse",
       "open": "Community öffnen",
       "hints": {
-        "visibility": "Öffentlich gestartet: eure Inhalte sind für alle lesbar und werden von Suchmaschinen gefunden. „Nur für Mitglieder\" ist ein Schalter in den Einstellungen — er nimmt auch alles Bisherige aus der Öffentlichkeit.",
+        "visibility": "Öffentlich gestartet: die Inhalte deiner Community sind für alle lesbar und werden von Suchmaschinen gefunden. „Nur für Mitglieder\" ist ein Schalter in den Einstellungen — er nimmt auch alles Bisherige aus der Öffentlichkeit.",
         "trial": "Die Testphase läuft 14 Tage, mit allem was Pro kann. Danach ist deine Community nur noch zum Lesen, bis du einen Plan wählst — gelöscht wird nichts.",
         "settings": "Name, Adresse, Farben und Startseite änderst du jederzeit im Dashboard deiner Community.",
         "noTrial": "Ohne Testphase: die Testphase gibt es einmal je Konto. Bis zu einem Abo (Personal oder Pro) ist die Community nur zum Lesen — den Plan wählst du im Dashboard unter Community → Plan."
@@ -633,8 +633,8 @@
           "hint": "Sag hallo und erklär in drei Sätzen, worum es hier geht."
         },
         "branding": {
-          "label": "Wähl eure Farbwelt",
-          "hint": "Farbe und Schrift machen aus der Adresse euren Ort."
+          "label": "Wähl die Farbwelt",
+          "hint": "Farbe und Schrift machen aus der Adresse den Ort deiner Community."
         },
         "invite": {
           "label": "Lad das erste Mitglied ein",
@@ -663,7 +663,7 @@
       "title": "Plan & Rechnung",
       "help": "Welcher Plan für deine Community gilt, was er kostet und wo du Rechnungen und Zahlungsmethode findest.",
       "noTenantTitle": "Hier gibt es kein Abo",
-      "noTenantText": "Diese Seite gehört zu einer Community. Auf einer eigenen Instanz rechnet der Betreiber ab, nicht die einzelne Community.",
+      "noTenantText": "Diese Seite gehört zu einer Community. Auf einer eigenen Site rechnet der Betreiber ab, nicht die einzelne Community.",
       "currentPlan": "Aktueller Plan",
       "currentPlanNote": "Dein aktueller Plan.",
       "trialLabel": "Testphase ({plan}) – noch 1 Tag übrig | Testphase ({plan}) – noch {n} Tage übrig",
@@ -761,7 +761,7 @@
   },
   "branding": {
     "navLabel": "Erscheinungsbild",
-    "noTenantText": "Diese Seite stellt die Farbwelt EINER Community ein. Auf dieser Instanz gehört die Optik dem Betreiber — sie wird unter „Themes\" gesetzt."
+    "noTenantText": "Diese Seite stellt die Farbwelt EINER Community ein. Auf dieser Site gehört die Optik dem Betreiber — sie wird unter „Themes\" gesetzt."
   },
   "favicon": {
     "title": "Favicon & App-Icon",

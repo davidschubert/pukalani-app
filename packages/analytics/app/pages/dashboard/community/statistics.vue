@@ -63,9 +63,15 @@ const { data: stats, status, error, refresh } = await useFetch<AnalyticsStatsRes
   immediate: false,
 })
 
-watch(planOk, (ok) => { if (ok) refresh() }, { immediate: true })
+// Erst NACH dem Einhängen fragen: lief die Abfrage schon im Aufbau und kam
+// die Antwort vor dem Hydrieren, zeigte der Browser „nicht erreichbar“, wo der
+// Server das Gerüst gezeichnet hatte (Abweichung, e2e `dashboard-landmarks`).
+onMounted(() => {
+  watch(planOk, (ok) => { if (ok) refresh() }, { immediate: true })
+})
 
-const loading = computed(() => status.value === 'pending')
+/** `idle` = noch nicht gefragt — Server und erstes Bild zeigen dasselbe Gerüst. */
+const loading = computed(() => status.value === 'pending' || (planOk.value && status.value === 'idle'))
 /** Ein Fehler an dieser Stelle ist dasselbe wie „gerade nicht erreichbar". */
 const unavailable = computed(() => Boolean(error.value) || stats.value?.unavailable === true)
 const active = computed(() => stats.value?.active === true)

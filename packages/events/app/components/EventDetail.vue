@@ -117,9 +117,16 @@ const { count: viewerCount } = useViewingPresence()
 
 // Beide Antworten tragen NUR Zähler (SEC-031, 2026-11-13) — sie werden in den
 // Termin übernommen, alles andere stammt weiter aus der Leseroute.
+const attendees = ref<EventDetailResponse['attendees']>(props.initial.attendees)
 function onRsvpUpdated(res: RsvpResponse) {
   event.value = { ...event.value, ...res.event }
   myRsvp.value = res.myRsvp
+  // Die Antwort trägt nur Zähler (SEC-031) — die Liste der Zusagen holt die
+  // Leseroute nach, sonst steht „Teilnehmer (1)“ über „Noch keine Zusagen“
+  // (UX-013). Schlägt das fehl, bleibt die alte Liste stehen.
+  void $fetch<EventDetailResponse>(`/api/events/${props.initial.$id}`)
+    .then((fresh) => { attendees.value = fresh.attendees })
+    .catch(() => {})
 }
 function onVoted(res: EventVoteResponse) {
   event.value = { ...event.value, ...res.event }
@@ -477,7 +484,7 @@ const startDayNumber = computed(() => formatDayNumber(event.value.startAt))
               <span data-testid="event-attendees">
                 {{ event.capacity !== null
                   ? t('events.card.attendeesOfCapacity', { count: event.attendeeCount, capacity: event.capacity })
-                  : t('events.card.attendees', { count: event.attendeeCount }) }}
+                  : t('events.card.attendees', { count: event.attendeeCount }, event.attendeeCount) }}
                 <template v-if="isFull && event.status === 'published'"> · {{ t('events.card.full') }}</template>
               </span>
               <span v-if="spotsLeft" class="font-medium text-warning" data-testid="event-scarcity">
@@ -632,9 +639,9 @@ const startDayNumber = computed(() => formatDayNumber(event.value.startAt))
         <h2 class="mt-8 mb-2 font-semibold" data-testid="event-attendees-title">
           {{ t('events.detail.attendeesTitle', { count: event.attendeeCount }) }}
         </h2>
-        <div v-if="isLoggedIn && initial.attendees.length > 0" class="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="event-attendee-list">
+        <div v-if="isLoggedIn && attendees.length > 0" class="grid grid-cols-2 gap-2 sm:grid-cols-3" data-testid="event-attendee-list">
           <div
-            v-for="attendee in initial.attendees"
+            v-for="attendee in attendees"
             :key="attendee.userId"
             class="flex items-center gap-2 rounded-lg border border-default p-2"
           >

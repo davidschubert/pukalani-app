@@ -68,9 +68,9 @@
     "cta": {
       "brands": "Your brandings",
       "login": "Sign in",
-      "invite": "Redeem invitation code"
+      "invite": "Redeem invite code"
     },
-    "beta": "Branding Supply is in closed beta. For your own branding you need an invitation code — or a spot on the waitlist.",
+    "beta": "Branding Supply is in closed beta. For your own branding you need an invite code — or a spot on the waitlist.",
     "betaOpen": "Branding Supply is in open beta: anyone can create an account and work out the foundation for free. Some things will still change — tell us what is missing."
   },
   "about": {
@@ -174,7 +174,7 @@
     "open": {
       "eyebrow": "Open beta",
       "title": "Start right away.",
-      "body": "The beta is open: create an account, pick a working title — your brand consultant takes it from there. The foundation is free. Have an invitation code? Redeem it.",
+      "body": "The beta is open: create an account, pick a working title — your brand advisor takes it from there. The foundation is free. Have an invite code? Redeem it.",
       "cta": "Create account"
     }
   },
@@ -235,12 +235,12 @@
     },
     "brandFoundation": {
       "seoTitle": "Brand Foundation — your brand fundamentals in about 45 minutes",
-      "seoDescription": "Purpose, values, archetype, voice and manifesto: your brand consultant walks you through every decision, with reasoning. Free in the beta.",
+      "seoDescription": "Purpose, values, archetype, voice and manifesto: your brand advisor walks you through every decision, with reasoning. Free in the beta.",
       "level": "Build",
       "title": "Brand Foundation",
       "short": "Purpose, values, archetype, voice, manifesto — decided in conversation and written down with reasons.",
       "priceShort": "Free in the beta.",
-      "lead": "The fundamentals of your brand. Your brand consultant asks the questions, you confirm field by field — in about 45 minutes it stands.",
+      "lead": "The fundamentals of your brand. Your brand advisor asks the questions, you confirm field by field — in about 45 minutes it stands.",
       "cta": "Start a branding",
       "get1Title": "A document, not a slide deck",
       "get1Body": "Every chapter as a reading view, printable — from positioning to the rules for AI-written copy.",
@@ -251,7 +251,7 @@
       "get4Title": "The base for everything after it",
       "get4Body": "Market Comparison and Brand Design build on it. The Foundation is the part that stays free.",
       "how1Title": "Give the context",
-      "how1Body": "Industry, goals, competitors — your brand consultant reads up before asking.",
+      "how1Body": "Industry, goals, competitors — your brand advisor reads up before asking.",
       "how2Title": "Decide chapter by chapter",
       "how2Body": "Questions first, conclusions after. You confirm, correct, or ask for a new proposal.",
       "how3Title": "Read it, print it, work with it",

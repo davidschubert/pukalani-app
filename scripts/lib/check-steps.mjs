@@ -30,6 +30,8 @@ export const CHECK_STEPS = [
     why: 'Zwei Kopien einer Kernabhängigkeit brechen Typen oder Build, je nach Hoisting.' },
   { name: 'check:prompt-quotes', run: ['check:prompt-quotes'],
     why: 'Ein gerades Anführungszeichen im KI-Prompt beendet die JSON-Antwort des Modells (BI4).' },
+  { name: 'check:customer-words', run: ['check:customer-words'],
+    why: 'Ein Wort je Sache in Kundentexten, keine Entwickler-Wörter, Kundentext je optionalem Produkt (Q16).' },
   { name: 'check:themes', run: ['--filter', '@pukalani/themes', 'check:themes'],
     why: 'Der erzeugte Theme-Katalog muss zum Generator passen (E6a).' },
   { name: 'lint:prepare', run: ['lint:prepare'],
