@@ -45,7 +45,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Zehn Proben aus AB1, PB1, MM1, SI1, SR1, KI1, RU1, SV1, zwei aus P29 (Anmelde-Mail, gestohlenes Passwort) und seit dem 2026-11-18 das Erstgespräch auf pukalani.studio. Die Einzel-Einträge verweisen hierher. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](#kr1) |
+| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Die Proben aus AB1, PB1, MM1, SI1, SR1, SV1, zwei aus P29 (Anmelde-Mail, gestohlenes Passwort) und seit dem 2026-11-18 das Erstgespräch auf pukalani.studio. Die Einzel-Einträge verweisen hierher. KI-Einschätzung und Runner-Lauf sind seit dem 2026-11-21 geklickt (COMPLETE „KR1 — Teil 1"); der Rest braucht Passwort, Mail-Code oder die Bot-Prüfung und damit David selbst. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](#kr1) |
 
 ### Schritt 3 — Baut Claude allein
 
@@ -73,7 +73,7 @@ am 2026-11-18, COMPLETE „N11").
 | --- | --- | --- | --- | --- | --- |
 | EL1 | **Export und Löschung: Rest.** (b) Datenschutztexte: DT1. Die alten Textauszüge sind seit dem 2026-11-18 geleert (COMPLETE „N11"). **Wartet auf:** Davids Freigabe der Texte. | Niedrig | S | **Ja** | [Einzelheiten](#el1) |
 | WH1 | **Gelöschte Marke zurückholen (Papierkorb)** auf branding.supply: Knopf „Marke löschen", 90 Tage unter „Gelöschte Marken", danach endgültig weg. Konten bleiben vorerst nicht zurückholbar (kommt mit PK1). **Wartet auf:** Davids Freigabe des Prototyps. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
-| RU1 | **Runner: Reste.** Offen ist nur noch die Klick-Probe (a): KR1 — dabei auch die neue Vorschau „Auftrag ansehen" im Formular. Den Auftragstext baut seit dem 2026-11-18 der Server (COMPLETE „N14"), der Lauf für nie beendete Läufe ist seit dem 2026-11-18 scharf (COMPLETE „N11"). **Wartet auf:** Davids Zeit. | Niedrig | S | (a) Ja: selbst klicken | [Einzelheiten](#ru1) |
+| RU1 | **Runner: Reste nach der Klick-Probe.** Der echte Lauf über das Formular ist seit dem 2026-11-21 gelaufen (COMPLETE „KR1 — Teil 1"). Dabei gefunden: (b) das Budget-Feld lehnt jede Zahl ab — ein Lauf startet nur mit leerem Feld; (c) der Editor macht aus einem Dateinamen wie `README.md` einen Link. **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](#ru1) |
 
 **Umsetzung der Entscheidungen aus Schritt 1:**
 
@@ -96,7 +96,7 @@ am 2026-11-18, COMPLETE „N11").
 | PD1 | **Plan, Testphase und eigene Domain: Reste.** (a) Den Stripe-Endpunkt beim Wechsel auf echtes Geld neu anlegen, (b) Klicks auf den echten Seiten, (c) drei Grundsatzfragen mit Empfehlung und Kleinigkeiten. Namen der Alt-Pläne und „Mail erneut senden" im Wizard sind seit 2026-11-17 gebaut (COMPLETE „N06"). **Wartet auf:** (a) auf A2, (b) auf Davids Zeit. | Niedrig | S je Teil | **Ja: (b) selbst klicken** | [Einzelheiten](#pd1) |
 | KK1 | **Kleine Korrekturen in Events, Seiten, Statistik: Reste.** (b) Die Statistik an einer echten Community mit eigener Zähl-Seite klicken; schon gespeicherte Kennungen sind nie geprüft worden. (c) Die Zahlen des Seiten-Kontingents stehen nicht im Katalog des Control Plane (bewertet: braucht einen Umbau der Plan-Route und Zahlen in der echten Datenbank), ein halb gescheitertes Ausblenden lässt sich in der Oberfläche nicht nachholen. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N03" und „N08"). **Wartet auf:** (b) Davids Zeit, (c) ein Ja, falls die Zahlen in den Katalog sollen. | Niedrig | S je Teil | Nein | [Einzelheiten](#kk1) |
 | SI1 | **Sicherungen: Reste.** (b) Eine aktive Zeile in einer stillgelegten Community stellt der Label-Abgleich nicht selbst um — bewertet am 2026-11-18, mit Empfehlung (COMPLETE „N14"). Klick-Probe (a): KR1. Eine 503 trägt seit dem 2026-11-18 einen eigenen Code (COMPLETE „N15"). **Wartet auf:** (b) eine Entscheidung, ob es den zweiten Lauf geben soll. | Niedrig | S je Teil | Nein | [Einzelheiten](#si1) |
-| KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (englische Hinweise hinter der Anmeldung nicht im Browser gesehen, Kosten je Lauf im Protokoll). Klick-Probe (a): KR1; Datenschutztexte (b): DT1. Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
+| KI1 | **KI-Schutz: Nacharbeiten.** (d) Kleinigkeiten (englische Hinweise hinter der Anmeldung nicht im Browser gesehen, Kosten je Lauf im Protokoll). Datenschutztexte (b): DT1. Die Klick-Probe ist seit dem 2026-11-21 erledigt (COMPLETE „KR1 — Teil 1"). Der Klick auf der Config-Seite ist seit dem 2026-11-18 lokal gezeigt (COMPLETE „N15"). **Wartet auf:** nichts. | Niedrig | S je Teil | Nein | [Einzelheiten](#ki1) |
 | KM1 | **Günstigeres Textmodell ansehen (Rest der Vorschläge nach dem KI-Alarm vom 2026-11-18).** Das neuere Textmodell kostet in Europa ein Zehntel. David will die Proben vorbereitet sehen (Klick 2026-11-19); gewechselt wird erst nach einem weiteren Ja. Erledigt: der Modell-Blick läuft alle 30 Minuten (COMPLETE „KM1 a"), der Alarmweg (COMPLETE „KM1 e"). Entschieden: kein täglicher echter Probe-Aufruf (Davids Nein, 2026-11-19). Die Aufstellung liegt vor: [Plan](plans/KI-TEXTMODELL-WECHSEL.md). **Wartet auf:** David sieht beim Anbieter nach, was die KI im Monat kostet, und sagt dann Ja oder Nein zur ersten Probe. | Niedrig | S bis M | Ja: Monatssumme ansehen, dann Ja oder Nein | [Einzelheiten](#km1) |
 | AR1 | **Aufräumen: Reste.** (a) Die Adresse `changelog.pukalani.app` bei Cloudflare löschen — am 2026-11-18 von David auf später gelegt (Cloudflare war in keinem Browser angemeldet), (d) Kleinigkeiten, (e) Abhängigkeiten: drei Hinweise und vier kleine Updates bleiben offen (Stand 2026-11-20, COMPLETE „N19"). **Wartet auf:** (a) David; (e) auf neue Ausgaben fremder Pakete und auf zwei Fristen (Issues 356, 359, 373, 374). | Niedrig | S | **Ja: (a) ein Klick bei Cloudflare** | [Einzelheiten](#ar1) |
 | BT1 | **Tests über den echten Kundenpfad: Nacharbeiten.** Von den Beweis-Skripten laufen 73 von 84 von selbst; nachts steht auch branding.supply als vierter Server, elf seiner zwölf Skripte laufen mit (COMPLETE „N16" und „N17"). Offen: (a) die fünf E2E-Dateien der Studio-Site und ein Skript brauchen einen fünften Server, (c) ab dem 2026-12-01 neu entscheiden, ob der Bühnen-Lauf Pflicht wird, (d) Kleinigkeiten, (e) eine Frage an David. **Wartet auf:** (c) zwei Wochen Beobachtung; (e) Davids Antwort. | Niedrig | S bis M je Teil | Ja: (c) im Dezember eine Entscheidung, (e) eine Antwort | [Einzelheiten](#bt1) |
@@ -146,7 +146,6 @@ den ersten zahlenden Kunden, also vor A2.
 | W2–W4 | **Studio-Funnel ausbauen.** (a) Die fünf `studio_*`-Goals in Plausible anlegen (nur David), (b) W3 Startseiten-Ausbau (Problem-Spiegel, Vergleichstabelle, Selbst-Selektion), (c) W4 echte Kennzahlen in die Cases. **Wartet auf:** David (Goals, Zahlen). | Mittel | S–M je Paket | **Ja: Goals, Texte, Zahlen** | [STUDIO-ERSTGESPRAECH-FUNNEL.md](plans/STUDIO-ERSTGESPRAECH-FUNNEL.md) |
 | RS1 | **Resend besser nutzen.** Die Newsletter-Adresse `mail.branding.supply` steht. Offen: ein eigener Sende-Schlüssel dafür und die Adresse in der Config (erst nötig, wenn der Newsletter aufgeht), DMARC für `branding.supply` (ein Klick bei Cloudflare), später DMARC auf `p=quarantine`. Rechtstext-Satz: DT1. **Wartet auf:** David (Klick, Schlüssel). | Mittel | S | **Ja: Cloudflare, Schlüssel** | [Notiz RS1](#rs1) |
 | DS1 | **Backup des Docker-Servers: Nacharbeiten.** Das tägliche Backup läuft seit dem 2026-11-20, mit Ablage außer Haus (Runbook `DOCKER-APPS-WIEDERHERSTELLUNG.md`). Offen: (a) kein Wächter liest den Stand — ein roter oder ausgebliebener Lauf fällt erst beim Nachsehen auf; (b) ein Lauf mit dem echten privaten Schlüssel öffnen und Chatwoot, Umami, Shlink einmal zurückspielen (zusammen mit der Übung aus BU1 c). **Wartet auf:** (b) Davids privaten Schlüssel. | Mittel | je Teil S | (b) Ja | [Runbook](runbooks/DOCKER-APPS-WIEDERHERSTELLUNG.md) |
-| NS1 | **Die übrigen vier Server warten auf einen Neustart.** Der App-Server ist seit dem 2026-11-20 neu gestartet (39 Sekunden Ausfall, alles kam von selbst). Appwrite-Server, Docker-Server, Maui und hawaiifromthesky melden in Ploi weiter „Neustart nötig". Der Appwrite-Server braucht dafür einen eigenen Plan: einige Container starten dort nicht von selbst. **Wartet auf:** Davids Ja je Server. | Mittel | S je Server | **Ja: Freigabe, Zeitpunkt** | [DEPLOYMENT.md A5](runbooks/DEPLOYMENT.md) · [Appwrite-Handgriffe](runbooks/PRODUKTIONS-ALARM.md) |
 
 ## ⏸️ Geparkt / wartet
 
@@ -254,20 +253,18 @@ Test-Konto. Was genau zu klicken ist, steht beim jeweiligen Eintrag:
    auf der echten Seite laden Widget und Skript wie bei „Passwort vergessen",
    ein Mensch hat dort aber noch nicht abgeschickt. Erwartet: im letzten
    Schritt wird der Knopf nach einem Augenblick frei, die Anfrage kommt an.
-6. **KI-Einschätzung** — als Moderator die Einschätzung zu einer Meldung
-   holen ([KI1 a](#ki1)).
-7. **Runner** — ein echter Lauf über das Formular mit einem Testbefehl aus
-   der Auswahl ([RU1 a](#ru1)).
-8. **Anmelde-Mail und gestohlenes Passwort** — Sprache und Adresse der Mail
+6. **Anmelde-Mail und gestohlenes Passwort** — Sprache und Adresse der Mail
    ansehen; dazu einmal bei einer Registrierung ein Passwort versuchen, das
    in einem bekannten Datenleck steht. Erwartet: die Seite lehnt es mit einem
    eigenen Satz ab, es entsteht kein Konto. Die Prüfung ist seit dem
    2026-11-18 am Server eingeschaltet; gesehen hat die Ablehnung auf einer
    echten Seite noch niemand (P29,
    [ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)).
-9. **Anmeldung per Code und neue Community** — auf `account.pukalani.app`
+7. **Anmeldung per Code und neue Community** — auf `account.pukalani.app`
    einen Code anfordern und damit anmelden; beim Anlegen einer Community das
-   Kästchen der Betreiber-Bedingungen ansehen ([SV1 a](#sv1)).
+   Kästchen der Betreiber-Bedingungen ansehen ([SV1 a](#sv1)). Der Assistent
+   fragt zuerst nach einem Einladungs-Code (gesehen am 2026-11-21) — vorher
+   im Betreiber-Dashboard einen anlegen.
 
 Nicht Teil der Runde, weil sie auf den ersten Artikel warten: die Proben aus
 BI2 und IN1 (b), siehe BI5.
@@ -350,19 +347,19 @@ und „N08"). Übrig:
 
 <a id="ru1"></a>
 
-**RU1 — Runner: Nacharbeiten (aus dem Gesamtaudit, Paket P03).**
+**RU1 — Runner: Reste nach der Klick-Probe vom 2026-11-21.**
 
-- **(a) Ein echter Lauf über das Formular.** Geprüft ist lokal mit einer
-  Test-Instanz und einer Agenten-Attrappe, auf Production die Ablehnung am
-  echten Dienst. Noch nicht gelaufen: ein Lauf mit echtem Agenten, gestartet im
-  Formular, mit einem Testbefehl aus der Auswahl. Dabei auch ansehen: ein
-  älteres Ticket zeigt „Ungeprüfter Auftrag" und bietet nur zwei Arbeitsweisen.
-  Seit dem 2026-11-18 (COMPLETE „N14") gehört dazu: im Formular „Auftrag
-  ansehen" aufklappen — der Text muss dem Ticket entsprechen (ohne erledigte
-  Punkte, ohne den KI-Triage-Abschnitt) — und den Lauf über den Knopf starten.
-  Lokal ist die Vorschau gesehen und der Weg bis zum Abholen durch einen
-  Rechner mit einem Beweis-Skript gefahren; den Knopf hat noch niemand
-  gedrückt.
+- **(b) Das Budget-Feld lehnt jede Zahl ab.** Im Formular „Lauf starten" zeigt
+  das Feld „Budget (USD)" bei jeder Eingabe „Invalid input: expected string,
+  received number" und sperrt den Knopf. Ursache: `RunnerRunForm.vue` bindet
+  ein Zahlenfeld an `maxBudgetText`, das Schema
+  (`packages/runner/schemas/runStart.ts`) erwartet dort Text. Heute startet
+  ein Lauf deshalb nur mit leerem Feld und bekommt den Deckel des Rechners.
+  Dazu: der Satz ist die rohe englische Meldung, kein Text aus den
+  Sprachdateien.
+- **(c) Dateiname wird zum Link.** Der Editor der Ticket-Beschreibung macht
+  aus `README.md` den Link `[README.md](http://README.md)`; so steht es dann
+  auch im Auftrag an den Agenten. Der Lauf kam damit zurecht.
 
 <a id="mm1"></a>
 
@@ -806,7 +803,7 @@ Schalter „JWT" ist in allen vier Projekten aus. Die lokale Datenbank und die
 der CI haben alle Schalter AN — Tests laufen dort unter anderen Bedingungen
 als Production.
 
-- **(a) Eine Klick-Probe** (KR1, Nummer 9). Auf den echten Seiten ist am
+- **(a) Eine Klick-Probe** (KR1, „Anmeldung per Code und neue Community"). Auf den echten Seiten ist am
   2026-11-16 gezeigt: Beitrag, Kommentar und Stimme anlegen, ändern und
   löschen und die Glocke als gelesen markieren (über die Routen der Seite, in
   Davids angemeldetem Browser, als Owner); die Anmeldung per Code auf
@@ -878,10 +875,6 @@ Speichern geprüft (Admin-Config-Seite und Ticket-Einstellungen), und
 Markenberater und Marktvergleich zeigen den genauen Satz, wenn das Modell
 keinen Europa-Endpunkt hat.
 
-- **(a) Klick-Probe auf Live, zweiter Teil.** Das Übersetzen eines Kommentars
-  ist am 2026-11-15 auf einer Community geklickt und ging (echter Aufruf).
-  Offen: als Moderator die KI-Einschätzung zu einer Meldung holen. Erwartet:
-  geht wie vorher.
 - **(b) Datenschutztexte.** Übersetzung, Moderations-Hilfe, Ticket-Einordnung
   und Seiten-Übersetzung laufen jetzt wie der Markenberater: der Anbieter
   speichert nichts, trainiert nicht damit, und gerechnet wird in Europa
