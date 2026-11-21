@@ -1,6 +1,6 @@
 # Offene Punkte
 
-**Stand: 43 offen · 2 geparkt/wartend · 15 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
+**Stand: 44 offen · 2 geparkt/wartend · 15 bewusst zurückgestellt** (Zahlen bei JEDEM Umzug nach COMPLETE mitführen)
 
 Stand: **2026-11-21**. Hier steht **nur, was noch offen ist** — in der
 Reihenfolge, in der es abgearbeitet wird. Alles Erledigte (mit Begründung,
@@ -143,6 +143,7 @@ den ersten zahlenden Kunden, also vor A2.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
+| Q12M | **Zwei Index-Migrationen auf Production (Q12).** `control-041` (Index auf `communities.tenantId`, nur Control Plane) und `system-042` (Index für ungelesene Benachrichtigungen, auf jeder Instanz). Nur Indizes, der Code läuft ohne sie richtig, nur langsamer; `/api/health` bleibt ohne sie `ok`. Befehle in den Köpfen der Migrationen. **Wartet auf:** Davids Ja. | Niedrig | S | **Ja: Freigabe** | COMPLETE „Q12" |
 | GA1 | **Gesamtaudit 2026-11 läuft.** Die Audit-Sessions arbeiten im privaten Ordner außerhalb des Repos (das Repo ist öffentlich). Danach Synthese, Review mit David, Umsetzung paketweise. **Wartet auf:** Davids Review je Paket. | Mittel | L (viele Sessions) | **Ja: Review der Pakete** | [GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md) |
 | BW1 | **Brand-Wizard Phase 1 „Fundament".** Gebaut und live auf branding.supply. Offen: Davids eigener Durchgang (ein Solo-Branding in der Werkstatt), sein Gegenlesen der Solo-Fassungen, und eine Liste kleinerer Reste. **Wartet auf:** David. | Mittel | M (Reste) | **Ja: Durchgang, Gegenlesen** | [BRAND-WIZARD-PHASE-1.md](archiv/BRAND-WIZARD-PHASE-1.md) · [Reste](plans/offen/BW1.md) |
 | W2–W4 | **Studio-Funnel ausbauen.** (a) Die fünf `studio_*`-Goals in Plausible anlegen (nur David), (b) W3 Startseiten-Ausbau (Problem-Spiegel, Vergleichstabelle, Selbst-Selektion), (c) W4 echte Kennzahlen in die Cases. **Wartet auf:** David (Goals, Zahlen). | Mittel | S–M je Paket | **Ja: Goals, Texte, Zahlen** | [STUDIO-ERSTGESPRAECH-FUNNEL.md](plans/STUDIO-ERSTGESPRAECH-FUNNEL.md) |
