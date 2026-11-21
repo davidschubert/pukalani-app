@@ -32,8 +32,9 @@ Seit SI1 b (2026-11-17) zwei weitere Fälle:
   prüft auch, ob die Community noch stillgelegt ist; ist sie wieder an, bleibt
   das Label. Die Zeile selbst bleibt `active` — die Platform-App liest das
   Control Plane nur. **Woran man sie erkennt:** `disabledCandidates` im Log.
-  Die Zahl bleibt über 0, bis die Zeilen im Control Plane von Hand auf
-  `removed` stehen. `disabledStale` sagt nur, ob in diesem Lauf noch ein Label
+  Die Zahl bleibt über 0, bis die Zeilen im Control Plane auf `removed`
+  stehen. Dafür gibt es seit dem 2026-11-22 einen ZWEITEN Lauf in der
+  Betreiber-App (siehe unten, „Der zweite Lauf"); er zählt heute nur. `disabledStale` sagt nur, ob in diesem Lauf noch ein Label
   hing — nach dem ersten Entzug steht es auf 0, obwohl die Zeile unverändert
   ist (bis 2026-11-18 nannte dieses Runbook die falsche der zwei Zahlen).
 - **Herabgestuft.** Wird ein Mitglied aus dem Moderations-Team zu einer Rolle
@@ -135,6 +136,31 @@ der Platform-App, angemeldet mit Betreiber-Recht `system.manage`.
 
 Lokaler Beweis: Abschnitt 10 c in
 `packages/onboarding/scripts/verify-site-authz.mjs`.
+
+## Der zweite Lauf (Betreiber-App, SI1 b)
+
+Zeit-Lauf `disabled-member-sweep` in `apps/control`
+(`packages/control/server/utils/disabledMembershipSweep.ts`, stündlich, im
+Takt der Testphasen-Läufe). Er liest die stillgelegten Communities und deren
+`active`-Zeilen. Schalter `pukalani.control.disabledMembershipSweep`:
+
+| Wert | Wirkung |
+| --- | --- |
+| `off` | meldet sich nicht an (dann die Zeile in `ops/timed-jobs.conf` löschen) |
+| `dry-run` | **Vorgabe, so läuft er live:** zählt und schreibt eine Zeile, ändert nichts |
+| `apply` | stellt jede Zeile auf `removed` (mit `removedAt`), nach frischem Lesen von Zeile und Community |
+
+Log-Zeile `community_members.disabled_sweep_dry_run` (bzw. `…_applied`):
+`disabledCommunities`, `affectedCommunities`, `activeRows`, `removed`,
+`skipped`, `failed`, `truncated`; `warn`, sobald `activeRows` über 0 ist.
+
+**Scharf schalten** (nur mit Davids Ja zur gezählten Zahl): in
+`apps/control/app/app.config.ts` unter `control` die Zeile
+`disabledMembershipSweep: 'apply'`, ausliefern, im nächsten Takt
+`…_applied` mit `removed` = gezählter Zahl lesen; danach fällt
+`disabledCandidates` des ersten Laufs auf 0. **Zurück:** Zeile entfernen
+(dann zählt er wieder nur). Eine umgestellte Zeile kommt nur über eine neue
+Einladung zurück — dieselbe Semantik wie das Stilllegen.
 
 ## Rückweg
 
