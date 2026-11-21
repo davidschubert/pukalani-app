@@ -384,15 +384,3 @@ export function decideModerate(actor: FeedbackActor): FeedbackDecision {
   if (!actor.isOperator) return deny('operator_only')
   return ALLOW
 }
-
-export function isFeedbackState(value: unknown): value is FeedbackState {
-  return typeof value === 'string' && (FEEDBACK_STATES as readonly string[]).includes(value)
-}
-
-export function isFeedbackArea(value: unknown): value is FeedbackArea {
-  return typeof value === 'string' && (FEEDBACK_AREAS as readonly string[]).includes(value)
-}
-
-export function isFeedbackSort(value: unknown): value is FeedbackSort {
-  return typeof value === 'string' && (FEEDBACK_SORTS as readonly string[]).includes(value)
-}

@@ -112,24 +112,6 @@ export async function loadMarketBrandChecks(
 }
 
 /**
- * DIE ID DES CHECKS AN DER KANDIDATEN-ZEILE FESTHALTEN
- * (`market_competitors.brandCheckId`, Anhang B: „Adresse des Ergebnisses —
- * **nicht** der Score").
- *
- * Die ZAHL wird bewusst nicht mitgeschrieben: sie ändert sich, wenn jemand den
- * Check neu ermittelt, und eine Kopie daneben wäre ab dann eine zweite
- * Wahrheit. Die Id dagegen ist stabil und beantwortet die einzige Frage, die
- * ohne zweiten Lesevorgang nicht zu beantworten wäre: „auf welches Ergebnis
- * zeigt der Link?".
- */
-export function marketBrandCheckIdOf(
-  checks: ReadonlyMap<string, MarketBrandCheck>,
-  competitorId: string,
-): string {
-  return checks.get(competitorId)?.checkId ?? ''
-}
-
-/**
  * DIESELBE FRAGE FÜR ALLE KANDIDATEN — die Adressen ohne die Zahlen.
  *
  * Der Stempel braucht NUR die Id, und ein frisch angestossener Check hat im

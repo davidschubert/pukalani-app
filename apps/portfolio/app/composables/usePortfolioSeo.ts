@@ -1,4 +1,3 @@
-import { jsonLdScript } from '../utils/jsonLd'
 import { PERSON_NAME, SITE_NAME, personId, websiteId, type JsonLdNode } from '../utils/schema'
 
 /**

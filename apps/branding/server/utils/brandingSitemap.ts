@@ -65,7 +65,8 @@ export interface BrandingSitemapEntry {
 export const BRANDING_SITEMAP_LOCALES: readonly ('en' | 'de')[] = ['en', 'de']
 
 /**
- * DIE FESTEN SEITEN — alle ohne `noindex` (nachgesehen 2026-09-08).
+ * DIE FESTEN SEITEN — alle ohne `noindex`. Dass keine Seite fehlt, hält der
+ * Vergleich mit dem Seiten-Ordner (`tests/brandingSitemap.test.ts`).
  *
  * NICHT DABEI, mit Grund:
  *  · `/invite` — persönlicher Einlöse-Link, kein Inhalt ohne Token.

@@ -25,8 +25,10 @@
  * - `staff`      ein Konsolen-Konto OHNE diese Rolle (heute: `moderator`, trägt
  *                `tickets.manage`) hat das Ticket angelegt oder seinen Text
  *                bearbeitet.
- * - `feedback`   aus einer Rückmeldung übernommen (`createTicketFromFeedback`)
- *                — Rückmeldungen nimmt die Plattform auch von Gästen an.
+ * - `feedback`   aus einer Rückmeldung übernommen — Rückmeldungen nimmt die
+ *                Plattform auch von Gästen an. Heute legt kein Weg so ein
+ *                Ticket an (Q26 hat den Weg ohne Aufrufer entfernt); der Wert
+ *                bleibt, damit ein neuer Weg nicht als `operator` gilt.
  * - `dependency` maschinell erzeugtes Update-Ticket (`createTicketFromDependency`).
  */
 export const TICKET_ORIGINS = ['operator', 'staff', 'feedback', 'dependency'] as const

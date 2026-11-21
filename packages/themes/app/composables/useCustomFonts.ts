@@ -18,9 +18,3 @@ export async function refreshCustomFonts(): Promise<void> {
   }
   catch { /* Anzeige behält den letzten Stand */ }
 }
-
-/** Öffentliche View-URL einer Font-Datei im 'fonts'-Bucket */
-export function fontFileUrl(fileId: string): string {
-  const config = useRuntimeConfig()
-  return `${config.public.appwriteEndpoint}/storage/buckets/fonts/files/${fileId}/view?project=${config.public.appwriteProjectId}`
-}
