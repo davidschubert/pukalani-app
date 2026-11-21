@@ -205,6 +205,12 @@
     "confirm": {
       "confirm": "Confirm"
     },
+    "listState": {
+      "loading": "Loading …",
+      "errorTitle": "Could not be loaded",
+      "errorText": "The data could not be fetched just now. Try again; if it still fails, reload the page.",
+      "retry": "Try again"
+    },
     "empty": {
       "noResultsTitle": "No results",
       "noResultsText": "Nothing matches your filters right now.",
