@@ -140,7 +140,8 @@ Wächter und Alarm: `.claude/rules/ops-waechter.md`.
 - ZWEI SHELL-FALLEN: `docker compose exec -T` liest die Standard-Eingabe leer
   (in einem Skript, das selbst von dort kommt ⇒ `</dev/null`); `… | head -1`
   oder `… | grep -q` schließt die Pipe früh — mit `pipefail` ein
-  Scheinfehler (Exit 141), nur manchmal.
+  Scheinfehler (Exit 141), nur manchmal. Auch tar endet an der Ende-Marke:
+  der Leser liest den Rest leer (`untar` in `ops/app-release.sh`, Q26-N).
 - Runbook: `docs/runbooks/APPWRITE-WIEDERHERSTELLUNG.md`.
 
 ## Backup des Docker-Servers
