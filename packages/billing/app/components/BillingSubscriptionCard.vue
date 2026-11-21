@@ -10,7 +10,7 @@ const { t, locale } = useI18n()
 const toast = useToast()
 const localePath = useLocalePath()
 const { formatDate } = useFormatDate()
-const { config, subscription, planId } = useBilling()
+const { config, subscription, planId, unavailable, refresh } = useBilling()
 
 const planLabelKey = computed(() => {
   const plan = config.value.plans.find(p => p.id === planId.value)
@@ -49,6 +49,18 @@ async function openPortal() {
           <p class="font-medium">{{ t('billing.account.confirmingTitle') }}</p>
           <p class="text-sm text-muted">{{ t('billing.account.confirmingText') }}</p>
         </div>
+      </div>
+    </template>
+
+    <template v-else-if="unavailable">
+      <div class="flex flex-wrap items-center justify-between gap-3" role="alert" data-testid="subscription-unavailable">
+        <div>
+          <p class="font-semibold">{{ t('billing.account.unavailableTitle') }}</p>
+          <p class="mt-1 text-sm text-muted">{{ t('billing.account.unavailableText') }}</p>
+        </div>
+        <UButton color="neutral" variant="outline" icon="i-ph-arrow-clockwise" @click="refresh()">
+          {{ t('billing.account.retry') }}
+        </UButton>
       </div>
     </template>
 

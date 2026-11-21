@@ -1,7 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { H3Event } from 'h3'
-import { BILLING_SUBSCRIPTIONS_TABLE, ENTITLED_STATUSES, type BillingSubscriptionRow } from '../../shared/types/billing'
-import { softFail } from '../../../core/server/utils/softFail'
+import { BILLING_SUBSCRIPTIONS_TABLE, BILLING_UNAVAILABLE_CODE, ENTITLED_STATUSES, type BillingSubscriptionRow } from '../../shared/types/billing'
+import { shapeSoftFail } from '../../../core/server/utils/softFail'
 
 /**
  * Entitlement-Fundament (B6): EINE indizierte Query nach userId, pro Request
@@ -17,11 +17,25 @@ export async function getActiveSubscription(event: H3Event): Promise<BillingSubs
 
   const config = useRuntimeConfig(event)
   const admin = createAdminClient(event)
+  /**
+   * LESEFEHLER HEISST „GERADE NICHT FESTSTELLBAR", NIE „KEIN ABO" (Bahn 2,
+   * Q13-Stelle 4). Vorher wurde daraus eine leere Liste: der Kurs-Wächter nahm
+   * Zahlenden für diese Anfrage ihr Bezahltes, und der Checkout hätte ein
+   * ZWEITES Abo verkauft. Jetzt 503 mit Grund `billing_unavailable` — schenkt
+   * nichts und nimmt nichts; gemerkt wird nichts, die nächste Anfrage fragt neu.
+   */
   const res = await admin.tablesDB.listRows<BillingSubscriptionRow>({
     databaseId: config.public.appwriteDatabaseId,
     tableId: BILLING_SUBSCRIPTIONS_TABLE,
     queries: [Query.equal('userId', user.$id), Query.orderDesc('$updatedAt'), Query.limit(5)],
-  }).catch(softFail('billing:utils/entitlements:listRows', { rows: [] as BillingSubscriptionRow[] }))
+  }).catch((error: unknown) => {
+    logEvent('error', 'billing.subscription_read_failed', shapeSoftFail(error))
+    throw createError({
+      status: 503,
+      statusText: 'Subscription status is temporarily unavailable',
+      data: { code: BILLING_UNAVAILABLE_CODE },
+    })
+  })
 
   const active = res.rows.find(row => (ENTITLED_STATUSES as readonly string[]).includes(row.status)) ?? null
   ctx._billingSubscription = active

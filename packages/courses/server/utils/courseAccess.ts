@@ -75,7 +75,14 @@ export async function assertCourseAccess(event: H3Event, course: CourseRow): Pro
       data: { code: COURSE_PAID_UNAVAILABLE_CODE },
     })
   }
-  const allowed = await accessGuard(event, course).catch(softFail('courses:utils/courseAccess:accessGuard', false))
+  // EIN GESCHEITERTER WÄCHTER IST KEIN „NEIN" (Bahn 2): konnte er das Abo
+  // nicht lesen, wäre 403 „Upgrade nötig" für Zahlende falsch — und für alle
+  // anderen ein Kaufangebot auf Verdacht. Er antwortet ehrlich 503; ein
+  // fertiger Fehler des Wächters (billing: `billing_unavailable`) geht
+  // unverändert durch.
+  const allowed = await accessGuard(event, course).catch((error: unknown) => {
+    throw toH3Error(error, 'Course access is temporarily unavailable')
+  })
   if (!allowed) {
     throw createError({
       status: 403,
