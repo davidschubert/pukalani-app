@@ -314,7 +314,7 @@ usePortfolioSeo({
   list-style: none;
 }
 .toc__link {
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   color: var(--text-soft);
   transition: color 0.3s var(--ease);
 }
@@ -366,7 +366,7 @@ usePortfolioSeo({
   flex-direction: column;
   gap: 0.6rem;
   margin-top: 1.6rem;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
 }
 .source-links {
   margin-top: 1.2rem;

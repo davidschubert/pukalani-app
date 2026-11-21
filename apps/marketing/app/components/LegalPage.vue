@@ -160,11 +160,11 @@ useSeoMeta({
   margin-top: 0.25rem;
 }
 .legal-version {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: hsl(var(--puka-ink-soft));
 }
 .legal-h2 {
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   font-weight: 800;
   color: hsl(var(--puka-ink));
   margin-bottom: 0.35rem;

@@ -203,7 +203,7 @@ const trust = computed(() => [
   border-bottom: 1px solid var(--puka-card-edge);
   background: hsl(var(--puka-cloud) / 0.6);
 }
-.mock-name { font-size: 0.85rem; font-weight: 600; color: hsl(var(--puka-ink-soft)); }
+.mock-name { font-size: var(--text-sm); font-weight: 600; color: hsl(var(--puka-ink-soft)); }
 .mock-body { display: flex; flex-direction: column; gap: 0.7rem; padding: 0.9rem; }
 .mock-card {
   display: flex;
@@ -233,7 +233,7 @@ const trust = computed(() => [
   background: hsl(var(--puka-dawn)); color: var(--ui-color-primary-600);
   line-height: 1;
 }
-.mock-date b { font-size: 0.95rem; }
+.mock-date b { font-size: var(--text-base); }
 .mock-date small { font-size: 0.55rem; letter-spacing: 0.05em; }
 .mock-lines { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
 .mock-lines span {

@@ -734,7 +734,7 @@ usePortfolioSeo({
   align-items: center;
   gap: 0.75rem;
   color: var(--metal-text);
-  font-size: 0.86rem;
+  font-size: var(--text-sm);
   font-weight: 700;
 }
 .stepper__index {
