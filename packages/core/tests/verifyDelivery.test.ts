@@ -6,6 +6,7 @@ import {
   HOSTS,
   ICON_PROBE_PATH,
   adviceFor,
+  checkAiCrawlers,
   checkCompressed,
   checkForeignIcons,
   checkOgResponse,
@@ -20,6 +21,7 @@ import {
 } from '../../../scripts/ops/verify-delivery.mjs'
 // @ts-expect-error — reines .mjs ohne Typen (Betriebs-Skript)
 import { HOSTS as HEADER_HOSTS } from '../../../scripts/ops/verify-security-headers.mjs'
+import { aiCrawlerPolicy, buildRobotsTxt } from '../shared/aiCrawlers'
 
 /**
  * Der tägliche Blick „Kommt beim Browser an, was die App erzeugt?" (PERF-001,
@@ -46,6 +48,33 @@ describe('1 · gepackt', () => {
   it('findet das erste Skript der Seite', () => {
     expect(firstScriptPath('<link rel="modulepreload" href="/_nuxt/Ab_c-1.js"><script src="/_nuxt/x.js">')).toBe('/_nuxt/Ab_c-1.js')
     expect(firstScriptPath('<p>ohne Skript</p>')).toBeNull()
+  })
+})
+
+describe('5 · ki (Q11)', () => {
+  const rules = ['Allow: /', 'Disallow: /api/']
+  const community = buildRobotsTxt({ policy: aiCrawlerPolicy('community'), rules })
+
+  it('eine robots.txt nach der Regel ihrer Art besteht', () => {
+    expect(checkAiCrawlers({ ...site, ai: 'community' }, { status: 200, headers: text, body: community })).toEqual([])
+  })
+
+  it('GEGENPROBE: die Community-Datei auf einem eigenen Host und die alte Datei ohne KI-Gruppen sind Befunde', () => {
+    expect(checkAiCrawlers({ ...site, ai: 'own' }, { status: 200, headers: text, body: community })).toContain('ki: GPTBot: nicht dieselben Regeln wie *')
+    const old = 'User-agent: *\nAllow: /\nDisallow: /api/\n'
+    expect(checkAiCrawlers({ ...site, ai: 'community' }, { status: 200, headers: text, body: old }).length).toBeGreaterThan(1)
+    expect(adviceFor(['ki: x'])).toContain('aiCrawlers.ts')
+  })
+
+  it('ohne Art oder ohne 200 keine doppelte Meldung', () => {
+    expect(checkAiCrawlers(site, { status: 200, headers: text, body: 'x' })).toEqual([])
+    expect(checkAiCrawlers({ ...site, ai: 'own' }, { status: 404, headers: text, body: '' })).toEqual([])
+  })
+
+  it('jeder Host nennt seine Art; Communities sind community, alle anderen own', () => {
+    for (const entry of HOSTS as Array<{ host: string, ai?: string }>) {
+      expect(entry.ai, entry.host).toBe(entry.host === 'demo.pukalani.app' ? 'community' : 'own')
+    }
   })
 })
 

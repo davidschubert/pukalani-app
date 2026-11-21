@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { PLAN_PRICES_CENTS, type PricedPlanKey } from '#shared/marketing'
+
 // Szene 11 — die Schwelle (§6.4): schmerzlos, 14 Tage kostenlos. P4-Pricing
 // (Davids Entscheid 2026-07-26): Personal 29 € / Pro 149 € / Enterprise
 // individuell (Pukalani Studio), jährlich −25 %. Die Zahlen sind ECHT
@@ -72,7 +74,8 @@ const TRIGGER_CLASS = [
   'in-[[data-slot=list]:not(:has([data-slot=indicator]))]:data-[state=active]:before:shadow-none',
 ].join(' ')
 
-// Cent-Beträge = Stripe-Katalog (scripts/stripe/ensure-prices.mjs).
+// Cent-Beträge: `PLAN_PRICES_CENTS` (packages/marketing/shared/pricing.ts) —
+// dieselbe Zahl lesen die strukturierten Daten und /llms.txt (Q11).
 // yearlyMonthly = Jahrespreis / 12 (exakt −25 %), Anzeige pro Monat.
 //
 // BRUTTO (Davids Entscheid 2026-07-29, OPEN-ITEMS A3): die Beträge sind
@@ -87,10 +90,8 @@ const TRIGGER_CLASS = [
 // wäre genau das Kleingedruckte, das die Pflichtangabe nicht sein darf.
 // `billingCycle` ist die zweite Zeile im Preis-Block und steht damit direkt am
 // Betrag. Die Gewichtung der beiden Zeilen dreht der `pricingPlan`-Vertrag.
-const PRICES = { personal: { monthly: 2900, yearly: 26100 }, pro: { monthly: 14900, yearly: 134100 } } as const
-
-function perMonth(key: keyof typeof PRICES): number {
-  return yearly.value ? PRICES[key].yearly / 12 / 100 : PRICES[key].monthly / 100
+function perMonth(key: PricedPlanKey): number {
+  return yearly.value ? PLAN_PRICES_CENTS[key].yearly / 12 / 100 : PLAN_PRICES_CENTS[key].monthly / 100
 }
 
 // NUR die zwei kaufbaren Pakete stehen im Raster. Enterprise/Studio ist KEIN

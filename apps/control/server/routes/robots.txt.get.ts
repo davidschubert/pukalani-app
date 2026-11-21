@@ -1,3 +1,5 @@
+import { aiCrawlerPolicy, buildRobotsTxt } from '../../../../packages/core/shared/aiCrawlers'
+
 /**
  * robots.txt der Betreiber-Oberfläche (SEO-001, 2026-11-20).
  *
@@ -14,15 +16,15 @@
  * eine gesperrte Seite nicht liest und ihr `noindex` nie sieht.
  *
  * KEINE Sitemap-Zeile: dieser Host hat keine Sitemap.
+ *
+ * KI-Crawler: unsere eigene Seite, alles erlaubt (B2, Q11) — Regel und
+ * Crawler-Liste in `packages/core/shared/aiCrawlers.ts`.
  */
 export default defineEventHandler((event) => {
   setHeader(event, 'content-type', 'text/plain; charset=utf-8')
   setHeader(event, 'cache-control', 'public, max-age=3600')
-  return [
-    'User-agent: *',
-    'Allow: /',
-    'Disallow: /api/',
-    'Disallow: /dashboard/',
-    '',
-  ].join('\n')
+  return buildRobotsTxt({
+    policy: aiCrawlerPolicy('own'),
+    rules: ['Allow: /', 'Disallow: /api/', 'Disallow: /dashboard/'],
+  })
 })

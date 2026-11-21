@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { aiCrawlerPolicy, aiCrawlerRobotsProblems } from '../../../packages/core/shared/aiCrawlers'
 import {
   controlHostRobotsTxt,
   membersOnlyRobotsTxt,
   SITEMAP_TOPIC_LIMIT,
+  tenantRobotsTxt,
   tenantSitemapEntries,
   tenantSitemapXml,
 } from '../server/utils/tenantSitemap'
@@ -121,5 +123,29 @@ describe('robots.txt der besonderen Hosts', () => {
 
   it('Gegenprobe: eine geschlossene Community bleibt ganz gesperrt', () => {
     expect(membersOnlyRobotsTxt()).toMatch(/^Disallow: \/$/m)
+  })
+})
+
+describe('KI-Crawler je Art von Host (Q11, B2)', () => {
+  it('öffentliche Community: Suche und Antworten ja, Training nein', () => {
+    const body = tenantRobotsTxt('https://kunde.pukalani.app')
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('community'))).toEqual([])
+    // GEGENPROBE: die Regel der eigenen Seiten (Training erlaubt) passt nicht.
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('own'))).toContain('GPTBot: nicht dieselben Regeln wie *')
+  })
+
+  it('der spätere Owner-Schalter: ein Wert, und Training ist erlaubt', () => {
+    const body = tenantRobotsTxt('https://kunde.pukalani.app', aiCrawlerPolicy('community', { training: true }))
+    expect(aiCrawlerRobotsProblems(body, aiCrawlerPolicy('own'))).toEqual([])
+  })
+
+  it('geschlossene Community: auch die KI-Gruppen sagen Disallow: /', () => {
+    expect(aiCrawlerRobotsProblems(membersOnlyRobotsTxt(), aiCrawlerPolicy('closed'))).toEqual([])
+    expect(aiCrawlerRobotsProblems(membersOnlyRobotsTxt(), aiCrawlerPolicy('community'))).not.toEqual([])
+  })
+
+  it('Kontroll-Host (Kundenbereich): eigene Seite', () => {
+    expect(aiCrawlerRobotsProblems(controlHostRobotsTxt(), aiCrawlerPolicy('own'))).toEqual([])
+    expect(aiCrawlerRobotsProblems(controlHostRobotsTxt(), aiCrawlerPolicy('community'))).not.toEqual([])
   })
 })

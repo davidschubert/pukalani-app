@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { aiCrawlerPolicy, buildRobotsTxt } from '../../../../packages/core/shared/aiCrawlers'
 
 /**
  * SITEMAP UND robots.txt DER HILFE (SEO-006, 2026-11-20). Bis dahin
@@ -114,12 +115,10 @@ export function helpSitemapXml(origin: string, pairs: readonly HelpSitemapPair[]
  * und Telemetrie der Fundament-Layer); dieselbe Form wie auf pukalani.app.
  */
 export function helpRobotsTxt(origin: string): string {
-  return [
-    'User-agent: *',
-    'Allow: /',
-    'Disallow: /api/',
-    '',
-    `Sitemap: ${origin.replace(/\/+$/, '')}/sitemap.xml`,
-    '',
-  ].join('\n')
+  // KI-Crawler: eigene Seite, alles erlaubt (B2) — Regel in `aiCrawlers.ts`.
+  return buildRobotsTxt({
+    policy: aiCrawlerPolicy('own'),
+    rules: ['Allow: /', 'Disallow: /api/'],
+    sitemap: `${origin.replace(/\/+$/, '')}/sitemap.xml`,
+  })
 }

@@ -377,3 +377,6 @@ export const FEE_PUKALANI_MONTHLY = 149
 export function monthlyFee(revenue: number, rate: number): number {
   return revenue * rate
 }
+
+// Die Preise der Pool-Pläne (Q11): eigene Datei, hier mit durchgereicht.
+export * from './pricing'
