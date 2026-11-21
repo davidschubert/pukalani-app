@@ -30,6 +30,60 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### N20 — Ein wackelnder Test und ein Ausliefern, das rückwärts lief ✅ 2026-11-21
+
+**Was geschah (2026-11-20).** Auf einem `main`-Commit war die Prüfung `Test`
+rot. Sie wurde neu gestartet und grün — zu einem Zeitpunkt, als `main` schon
+einen Commit weiter war und dieser neuere Stand lief. Der Neustart löste von
+selbst ein Ausliefern aus, und zwar für den ÄLTEREN Commit: rund zehn Minuten
+lief der ältere Stand, bis der neueste von Hand nachgeliefert war.
+
+**1 · Der Test.** `packages/core/tests/probeStage.test.ts`, „der Lauf-Stempel
+taugt als Teil einer Zeilen-Id …": er zog 20 Stempel hintereinander und
+verlangte 20 verschiedene. Ein Stempel ist die Millisekunde plus zwei
+Zufalls-Bytes. Fallen alle 20 in dieselbe Millisekunde, sind zwei davon
+rechnerisch in einem von rund 350 Läufen gleich — die Meldung im roten Lauf
+war genau das („expected 19 to be 20"). Der Test stellt jetzt die Uhr und
+prüft, was wirklich gilt: verschiedene Zeitpunkte geben verschiedene Stempel
+(Commit `8f37191b`). Am Programm war nichts falsch — ein Lauf zieht den
+Stempel einmal.
+
+**2 · Das Ausliefern.** Belegt an den Läufen des Abends: der Auslöser
+`workflow_run` feuert auch nach einem Neustart einer Prüfung, mit dem Commit
+DIESER Prüfung. Der Schritt „Deploy nötig?" verglich ihn mit dem Stand, der
+lief (dem neueren), fand Unterschiede — rückwärts gelesen — und lieferte aus.
+Zwei Sperren stehen jetzt in diesem Schritt:
+
+- Läuft auf jeder App schon ein Nachfahre des Commits, wird er übersprungen
+  (grün, „Überholt"; Commit `e0986b92`).
+- Läuft nur auf einigen Apps ein Nachfahre (ein Ausliefern ist mittendrin
+  abgebrochen), wird ebenfalls übersprungen, mit Warnung — sonst stellte der
+  Lauf die neueren Apps zurück.
+
+Der manuelle Start bleibt frei (er ist der Rückweg auf einen älteren Commit).
+`CLAUDE.md` sagte, der Deploy feuere nach einem Neustart nicht von selbst; der
+Satz ist berichtigt, das Runbook (DEPLOYMENT.md, A2) nennt die Regel und die
+zwei Sperren.
+
+**Beweis.** `packages/core/tests/deployDecision.test.ts` schneidet den
+Schritt aus der echten Workflow-Datei und führt ihn in einem Wegwerf-Repo aus
+(neun Fälle: neuer, älter, gemischt, gleich, nur Doku, App ohne Antwort,
+manueller Start). Gegenprobe: gegen die Workflow-Datei von vor dem Vorfall
+sind genau die zwei Fälle „älterer Commit" und „gemischter Stand" rot.
+
+**Nicht gehalten:** antwortet eine App gar nicht, wird weiter
+sicherheitshalber ausgeliefert, auch ein älterer Commit. Die offenen Wackler
+aus MG1 (b) und CW1 (a) waren an diesem Abend nicht beteiligt und warten
+weiter auf ihren nächsten roten Lauf.
+
+**Gelernt:** Eine Prüfung neu zu starten ist kein Blick, sondern ein Hebel:
+sie löst das Ausliefern ihres eigenen Commits aus, egal wie weit `main`
+inzwischen ist. Neu gestartet wird nur an der Spitze von `main`. Und ein
+Test, der Zufallswerte auf „alle verschieden" prüft, ist eine Lotterie —
+erst ausrechnen, wie oft er verliert, dann die Uhr stellen.
+
+---
+
 ### KR1 — Teil 1: KI-Einschätzung und Runner-Lauf auf den echten Seiten geklickt ✅ 2026-11-21
 
 **Was.** Zwei der neun Klick-Proben aus KR1, in Davids angemeldetem Browser,
