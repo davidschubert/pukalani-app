@@ -324,6 +324,7 @@ jobs:
           # neuen App), wird sofort deployt statt gerätselt (fail-open).
           BASE=''
           FAIL=''
+          AHEAD=''
           for pair in $APP_HOSTS; do
             app="${pair%%=*}"; host="${pair#*=}"
             BUILD=$(curl -fsS -m 15 "https://$host/api/health" | jq -r '.build // empty' || true)
@@ -331,6 +332,10 @@ jobs:
             if [ -z "$BUILD" ] || ! git cat-file -e "${BUILD}^{commit}" 2>/dev/null; then
               FAIL="$app meldet keinen im Repo auflösbaren Build ('${BUILD:-n/a}')"
               break
+            fi
+            # Hosts, auf denen schon ein NACHFAHRE dieses Commits läuft (s. u.).
+            if [ "$BUILD" != "$EXPECTED_SHA" ] && git merge-base --is-ancestor "$EXPECTED_SHA" "$BUILD"; then
+              AHEAD="${AHEAD:+$AHEAD, }$app"
             fi
             if [ -z "$BASE" ]; then
               BASE="$BUILD"
@@ -360,6 +365,16 @@ jobs:
           # älteren Commit) ist weiter oben schon entschieden und bleibt frei.
           if [ "$BASE" != "$EXPECTED_SHA" ] && git merge-base --is-ancestor "$EXPECTED_SHA" "$BASE"; then
             echo "Überholt: auf jedem Host läuft schon ein neuerer Stand ($BASE) — $EXPECTED_SHA wird nicht ausgeliefert."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # DASSELBE FÜR DEN GEMISCHTEN STAND (2026-11-21): ist ein Ausliefern
+          # mittendrin abgebrochen, laufen einige Hosts schon neuer als dieser
+          # Commit, andere noch nicht. Ihn jetzt auszuliefern würde die neueren
+          # Hosts zurückstellen. Auch dann wird übersprungen — mit Warnung,
+          # denn die zurückgebliebenen Hosts brauchen den NEUESTEN Stand, und
+          # den bringt nur dessen eigener Lauf oder der manuelle Start.
+          if [ -n "$AHEAD" ]; then
+            echo "::warning::Überholt auf einem Teil der Hosts ($AHEAD laufen schon neuer als $EXPECTED_SHA) — nicht ausgeliefert. Die übrigen Hosts brauchen den neuesten Stand: Deploy für die Spitze von main starten."
             echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
           FILES=$(git diff --name-only "$BASE" "$EXPECTED_SHA" || true)
