@@ -34,9 +34,15 @@ const route = useRoute()
 
 const memberId = computed(() => String(route.params.id ?? ''))
 
-const { data, error } = await useFetch<CommunityMemberProfileResponse>(
+const { data, error, refresh } = await useFetch<CommunityMemberProfileResponse>(
   () => `/api/community/members/${memberId.value}/profile`,
 )
+
+/**
+ * „Nicht gefunden" nur, wenn der Server es sagt (404) oder nichts kam — jede
+ * andere Störung bekommt „Noch einmal versuchen" (FE-004, Q14).
+ */
+const loadFailed = computed(() => !data.value && !!error.value && error.value.statusCode !== 404)
 
 const ROLE_COLOR: Record<CommunityRole, 'primary' | 'info' | 'warning' | 'neutral'> = {
   owner: 'primary',
@@ -87,8 +93,11 @@ const geonamesUrl = 'https://www.geonames.org'
           </UButton>
         </div>
 
+        <div role="alert">
+          <CoreLoadError v-if="loadFailed" :retry="refresh" data-member-load-error />
+        </div>
         <CoreEmptyState
-          v-if="error || !data"
+          v-if="!loadFailed && (error || !data)"
           icon="i-ph-user-circle-dashed"
           :title="t('members.profile.notFoundTitle')"
           :description="t('members.profile.notFoundText')"
@@ -98,7 +107,7 @@ const geonamesUrl = 'https://www.geonames.org'
           data-member-not-found
         />
 
-        <template v-else>
+        <template v-else-if="data">
           <div class="flex flex-wrap items-center gap-4" data-member-profile>
             <UserAvatar :user="{ name: displayName, prefs: { avatarUrl: data.avatarUrl } }" size="3xl" />
             <div class="min-w-0">

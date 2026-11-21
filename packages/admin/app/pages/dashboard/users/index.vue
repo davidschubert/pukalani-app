@@ -52,7 +52,7 @@ const filterLinks = computed(() => PEOPLE_FILTERS.map(value => ({
   },
 })))
 
-const { data, refresh } = await useFetch<AdminUserListResponse>('/api/admin/users', {
+const { data, refresh, status, error } = await useFetch<AdminUserListResponse>('/api/admin/users', {
   query: computed(() => ({
     search: activeSearch.value,
     page: page.value,
@@ -80,6 +80,13 @@ function runSearch() {
 // „Filter ohne Treffer" ist ein eigener Leerzustand (Audit-Befund C11): Suche
 // ODER People-Filter aktiv → der nächste Schritt ist Zurücksetzen.
 const hasActiveFilter = computed(() => filter.value !== null || activeSearch.value !== '')
+
+/**
+ * Lädt / Fehler / leer / Daten (FE-004, Q14). Ein gescheiterter Abruf zeigte
+ * vorher eine leere Tabelle mit „Noch keine Nutzer". „Leer" gilt nur ohne
+ * Filter und Suche; mit ihnen bleibt „keine Treffer" im `#empty` der Tabelle.
+ */
+const usersState = computed(() => listState({ status: status.value, error: error.value, empty: !data.value?.users.length && !hasActiveFilter.value }))
 function resetFilters() {
   search.value = ''
   activeSearch.value = ''
@@ -426,150 +433,153 @@ async function createUser() {
         </UButton>
       </div>
 
-      <UTable :data="data?.users ?? []" :columns="columns" data-users-table>
-        <template #select-header>
-          <UCheckbox
-            :model-value="allSelected"
-            :aria-label="t('admin.users.bulk.selectAll')"
-            data-users-select-all
-            @update:model-value="toggleAll"
-          />
-        </template>
-        <template #select-cell="{ row }">
-          <UCheckbox
-            v-if="row.original.$id !== me?.$id"
-            :model-value="isSelected(row.original.$id)"
-            :aria-label="t('admin.users.bulk.selectOne')"
-            :data-users-select="row.original.$id"
-            @update:model-value="toggleSelected(row.original.$id)"
-          />
-        </template>
-        <template #name-header>
-          <SortableHeader :label="t('admin.users.name')" field="name" :active="sortField" :dir="sortDir" @toggle="toggle" />
-        </template>
-        <template #email-header>
-          <SortableHeader :label="t('admin.users.email')" field="email" :active="sortField" :dir="sortDir" @toggle="toggle" />
-        </template>
-        <template #createdAt-header>
-          <SortableHeader :label="t('admin.users.joined')" field="$createdAt" :active="sortField" :dir="sortDir" @toggle="toggle" />
-        </template>
-        <template #active-header>
-          <SortableHeader :label="t('admin.users.activeNow')" field="active" :active="sortField" :dir="sortDir" @toggle="toggle" />
-        </template>
-        <template #verified-header>
-          <SortableHeader :label="t('admin.users.verified')" field="emailVerification" :active="sortField" :dir="sortDir" @toggle="toggle" />
-        </template>
-        <template #status-header>
-          <SortableHeader :label="t('admin.users.status')" field="status" :active="sortField" :dir="sortDir" @toggle="toggle" />
-        </template>
-        <template #labels-header>
-          <SortableHeader :label="t('admin.users.labels')" field="labels" :active="sortField" :dir="sortDir" @toggle="toggle" />
-        </template>
-        <template #name-cell="{ row }">
-          <ULink :to="localePath(`/dashboard/users/${row.original.$id}`)" class="flex items-center gap-2 font-medium text-default hover:text-primary">
-            <!-- UChip statt handgebautem Punkt (Audit-Befund C12) — genau wie
-                 auf der Detailseite users/[id].vue -->
-            <UChip
-              :show="isOnline(row.original)"
-              color="success"
-              position="bottom-right"
-              inset
-              size="sm"
-              class="shrink-0"
-              :title="isOnline(row.original) ? t('admin.users.online') : undefined"
+      <CoreListState
+        :state="usersState"
+        :retry="refresh"
+        empty-icon="i-ph-users"
+        :empty-title="t('admin.users.emptyTitle')"
+        :empty-description="t('admin.users.emptyText')"
+        :empty-action-label="t('admin.users.add.cta')"
+        empty-action-icon="i-ph-plus"
+        data-users-list
+        @empty-action="openCreate"
+      >
+        <UTable :data="data?.users ?? []" :columns="columns" :loading="isFetchLoading(status)" data-users-table>
+          <template #select-header>
+            <UCheckbox
+              :model-value="allSelected"
+              :aria-label="t('admin.users.bulk.selectAll')"
+              data-users-select-all
+              @update:model-value="toggleAll"
+            />
+          </template>
+          <template #select-cell="{ row }">
+            <UCheckbox
+              v-if="row.original.$id !== me?.$id"
+              :model-value="isSelected(row.original.$id)"
+              :aria-label="t('admin.users.bulk.selectOne')"
+              :data-users-select="row.original.$id"
+              @update:model-value="toggleSelected(row.original.$id)"
+            />
+          </template>
+          <template #name-header>
+            <SortableHeader :label="t('admin.users.name')" field="name" :active="sortField" :dir="sortDir" @toggle="toggle" />
+          </template>
+          <template #email-header>
+            <SortableHeader :label="t('admin.users.email')" field="email" :active="sortField" :dir="sortDir" @toggle="toggle" />
+          </template>
+          <template #createdAt-header>
+            <SortableHeader :label="t('admin.users.joined')" field="$createdAt" :active="sortField" :dir="sortDir" @toggle="toggle" />
+          </template>
+          <template #active-header>
+            <SortableHeader :label="t('admin.users.activeNow')" field="active" :active="sortField" :dir="sortDir" @toggle="toggle" />
+          </template>
+          <template #verified-header>
+            <SortableHeader :label="t('admin.users.verified')" field="emailVerification" :active="sortField" :dir="sortDir" @toggle="toggle" />
+          </template>
+          <template #status-header>
+            <SortableHeader :label="t('admin.users.status')" field="status" :active="sortField" :dir="sortDir" @toggle="toggle" />
+          </template>
+          <template #labels-header>
+            <SortableHeader :label="t('admin.users.labels')" field="labels" :active="sortField" :dir="sortDir" @toggle="toggle" />
+          </template>
+          <template #name-cell="{ row }">
+            <ULink :to="localePath(`/dashboard/users/${row.original.$id}`)" class="flex items-center gap-2 font-medium text-default hover:text-primary">
+              <!-- UChip statt handgebautem Punkt (Audit-Befund C12) — genau wie
+                   auf der Detailseite users/[id].vue -->
+              <UChip
+                :show="isOnline(row.original)"
+                color="success"
+                position="bottom-right"
+                inset
+                size="sm"
+                class="shrink-0"
+                :title="isOnline(row.original) ? t('admin.users.online') : undefined"
+              >
+                <UserAvatar :user="{ name: row.original.name, email: row.original.email, prefs: { avatarUrl: row.original.avatarUrl } }" size="xs" />
+              </UChip>
+              <span class="hover:underline">{{ row.original.name }}</span>
+            </ULink>
+          </template>
+          <template #active-cell="{ row }">
+            <span
+              class="inline-flex items-center gap-1.5 text-sm"
+              :title="!isOnline(row.original) && row.original.lastSeen ? formatDate(row.original.lastSeen) : undefined"
             >
-              <UserAvatar :user="{ name: row.original.name, email: row.original.email, prefs: { avatarUrl: row.original.avatarUrl } }" size="xs" />
-            </UChip>
-            <span class="hover:underline">{{ row.original.name }}</span>
-          </ULink>
-        </template>
-        <template #active-cell="{ row }">
-          <span
-            class="inline-flex items-center gap-1.5 text-sm"
-            :title="!isOnline(row.original) && row.original.lastSeen ? formatDate(row.original.lastSeen) : undefined"
-          >
-            <span class="size-2 rounded-full" :class="isOnline(row.original) ? 'bg-success' : 'bg-error'" />
-            {{ isOnline(row.original) ? t('admin.users.online') : t('admin.users.offline') }}
-          </span>
-        </template>
-        <template #createdAt-cell="{ row }">
-          <span :title="formatDate(row.original.$createdAt)">{{ formatRelativeTime(row.original.$createdAt) }}</span>
-        </template>
-        <template #lastActivity-cell="{ row }">
-          <span v-if="row.original.accessedAt" :title="formatDate(row.original.accessedAt)">
-            {{ formatRelativeTime(row.original.accessedAt) }}
-          </span>
-          <span v-else class="text-muted">—</span>
-        </template>
-        <template #verified-cell="{ row }">
-          <div class="flex flex-wrap gap-1">
-            <UBadge v-if="row.original.emailVerification" color="success" variant="subtle" size="sm" icon="i-ph-envelope-simple">{{ t('admin.users.verifiedEmail') }}</UBadge>
-            <UBadge v-if="row.original.phoneVerification" color="success" variant="subtle" size="sm" icon="i-ph-phone">{{ t('admin.users.verifiedPhone') }}</UBadge>
-            <span v-if="!row.original.emailVerification && !row.original.phoneVerification" class="text-muted">—</span>
-          </div>
-        </template>
-        <template #status-cell="{ row }">
-          <UBadge :color="row.original.status ? 'success' : 'error'" variant="subtle">
-            {{ row.original.status ? t('admin.users.active') : t('admin.users.blockedBadge') }}
-          </UBadge>
-        </template>
-        <template #labels-cell="{ row }">
-          <div class="flex flex-wrap gap-1">
-            <UBadge
-              v-for="label in row.original.labels"
-              :key="label"
-              :color="isKnownRole(label) ? 'primary' : 'neutral'"
-              variant="subtle"
-              :class="isKnownRole(label) ? undefined : 'font-mono text-xs'"
-              :title="isKnownRole(label) ? undefined : label"
-            >
-              {{ roleLabel(label) }}
+              <span class="size-2 rounded-full" :class="isOnline(row.original) ? 'bg-success' : 'bg-error'" />
+              {{ isOnline(row.original) ? t('admin.users.online') : t('admin.users.offline') }}
+            </span>
+          </template>
+          <template #createdAt-cell="{ row }">
+            <span :title="formatDate(row.original.$createdAt)">{{ formatRelativeTime(row.original.$createdAt) }}</span>
+          </template>
+          <template #lastActivity-cell="{ row }">
+            <span v-if="row.original.accessedAt" :title="formatDate(row.original.accessedAt)">
+              {{ formatRelativeTime(row.original.accessedAt) }}
+            </span>
+            <span v-else class="text-muted">—</span>
+          </template>
+          <template #verified-cell="{ row }">
+            <div class="flex flex-wrap gap-1">
+              <UBadge v-if="row.original.emailVerification" color="success" variant="subtle" size="sm" icon="i-ph-envelope-simple">{{ t('admin.users.verifiedEmail') }}</UBadge>
+              <UBadge v-if="row.original.phoneVerification" color="success" variant="subtle" size="sm" icon="i-ph-phone">{{ t('admin.users.verifiedPhone') }}</UBadge>
+              <span v-if="!row.original.emailVerification && !row.original.phoneVerification" class="text-muted">—</span>
+            </div>
+          </template>
+          <template #status-cell="{ row }">
+            <UBadge :color="row.original.status ? 'success' : 'error'" variant="subtle">
+              {{ row.original.status ? t('admin.users.active') : t('admin.users.blockedBadge') }}
             </UBadge>
-            <span v-if="!row.original.labels.length" class="text-muted">—</span>
-          </div>
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex justify-end">
-            <UDropdownMenu :items="rowActions(row.original)" :content="{ align: 'end' }">
-              <UButton
-                icon="i-ph-dots-three-vertical"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                :aria-label="t('admin.users.rowActions')"
-                :loading="exportingId === row.original.$id"
-              />
-            </UDropdownMenu>
-          </div>
-        </template>
-        <!--
-          Leerzustand als MUSTER (Audit-Befund C11): „Filter/Suche ohne Treffer"
-          ist ein ANDERER Zustand als „noch nichts angelegt" — hier ist der eine
-          nächste Schritt das Zurücksetzen, nicht das Anlegen. Ohne Filter zeigen
-          wir nur die Erklärung (eine Nutzerliste ist nie wirklich leer: man
-          selbst steht drin).
-        -->
-        <template #empty>
-          <CoreEmptyState
-            v-if="hasActiveFilter"
-            icon="i-ph-funnel"
-            :title="t('ui.empty.noResultsTitle')"
-            :description="t('ui.empty.noResultsText')"
-            :action-label="t('ui.empty.resetFilters')"
-            action-icon="i-ph-arrow-counter-clockwise"
-            @action="resetFilters"
-          />
-          <CoreEmptyState
-            v-else
-            icon="i-ph-users"
-            :title="t('admin.users.emptyTitle')"
-            :description="t('admin.users.emptyText')"
-            :action-label="t('admin.users.add.cta')"
-            action-icon="i-ph-plus"
-            @action="openCreate"
-          />
-        </template>
-      </UTable>
+          </template>
+          <template #labels-cell="{ row }">
+            <div class="flex flex-wrap gap-1">
+              <UBadge
+                v-for="label in row.original.labels"
+                :key="label"
+                :color="isKnownRole(label) ? 'primary' : 'neutral'"
+                variant="subtle"
+                :class="isKnownRole(label) ? undefined : 'font-mono text-xs'"
+                :title="isKnownRole(label) ? undefined : label"
+              >
+                {{ roleLabel(label) }}
+              </UBadge>
+              <span v-if="!row.original.labels.length" class="text-muted">—</span>
+            </div>
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex justify-end">
+              <UDropdownMenu :items="rowActions(row.original)" :content="{ align: 'end' }">
+                <UButton
+                  icon="i-ph-dots-three-vertical"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  :aria-label="t('admin.users.rowActions')"
+                  :loading="exportingId === row.original.$id"
+                />
+              </UDropdownMenu>
+            </div>
+          </template>
+          <!--
+            Leerzustand als MUSTER (Audit-Befund C11): „Filter/Suche ohne Treffer"
+            ist ein ANDERER Zustand als „noch nichts angelegt" — hier ist der eine
+            nächste Schritt das Zurücksetzen, nicht das Anlegen. Ohne Filter zeigen
+            wir nur die Erklärung (eine Nutzerliste ist nie wirklich leer: man
+            selbst steht drin).
+          -->
+          <template #empty>
+            <!-- Nur mit Filter oder Suche erreichbar: ohne sie zeigt CoreListState den leeren Zustand. -->
+            <CoreEmptyState
+              icon="i-ph-funnel"
+              :title="t('ui.empty.noResultsTitle')"
+              :description="t('ui.empty.noResultsText')"
+              :action-label="t('ui.empty.resetFilters')"
+              action-icon="i-ph-arrow-counter-clockwise"
+              @action="resetFilters"
+            />
+          </template>
+        </UTable>
+      </CoreListState>
 
       <UPagination
         v-if="(data?.total ?? 0) > 25"

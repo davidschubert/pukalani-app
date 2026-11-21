@@ -141,7 +141,9 @@ und die Ausnahmen, die `feature` heißen dürfen: `.claude/rules/plans-products.
 ## Coding Rules
 - DATENLISTEN im Dashboard: `UTable` ist der Standard (Davids Entscheidung B6)
   Handgebaute Listen nur mit Grund, und der gehört an die Stelle geschrieben.
-  Leerer Zustand über `CoreEmptyState`.
+  Zustände über `listState()` + `CoreListState` (lädt, Fehler mit Neuversuch,
+  leer über `CoreEmptyState`), Rest-Liste LZ1. Rückfragen über `useConfirm()`,
+  nie `confirm()` des Browsers (Lint).
 - KEINE globale `app.pageTransition` in einer App mit Dashboard:
   mit `mode: 'out-in'` bleibt der Seitenbereich nach dem ersten Klick leer —
   ohne Fehler, nur im Prod-Build.

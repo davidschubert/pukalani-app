@@ -1,0 +1,10 @@
+/* DIE Seitenbreite von branding.supply (Davids Entscheidung R10, 2026-11-21,
+   DECISION-LOG): 1280 px statt der 90rem aller anderen Sites. EINE Variable —
+   jede Hülle der App und ihrer Layer (brand, insights) liest
+   `max-w-(--ui-container)`, nie ein festes `max-w-7xl`.
+   `:root:root` statt `:root`: die Core-Regel in `main.css` steht in DERSELBEN
+   Schicht, und die Reihenfolge der CSS-Dateien zwischen App und Layern ist
+   keine Zusage — die doppelte Pseudo-Klasse gewinnt unabhängig davon. */
+:root:root {
+  --ui-container: 80rem;
+}

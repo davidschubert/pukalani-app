@@ -111,12 +111,13 @@ function createMap(L: typeof import('leaflet'), el: HTMLDivElement, center: [num
   // Fläche und folgen unserem Theme nicht. `--ui-primary` ist je nach Theme
   // auch mal `white` (auf den Kontroll-Hosts gemessen) — der Punkt wäre dann
   // weiß im weißen Ring und praktisch unsichtbar. Rot mit weißem Ring liest
-  // sich auf jeder Karte und in jedem Theme gleich.
+  // sich auf jeder Karte gleich: die feste Stufe `error-600` der Farbwelt, nie
+  // das hell/dunkel wechselnde `bg-error` (Q25/UI-006).
   L.marker(center, {
     keyboard: false,
     icon: L.divIcon({
       className: '',
-      html: '<span class="block size-3 rounded-full bg-red-500 shadow ring-2 ring-white"></span>',
+      html: '<span class="block size-3 rounded-full bg-(--ui-color-error-600) shadow ring-2 ring-white"></span>',
       iconSize: [12, 12],
       iconAnchor: [6, 6],
     }),

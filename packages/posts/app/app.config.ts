@@ -18,7 +18,7 @@ export default defineAppConfig({
           // der öffentliche Feed-Eintrag schon trägt (blueprint app.config).
           planProduct: 'posts',
           labelKey: 'admin.nav.posts',
-          icon: 'i-ph-users-three',
+          icon: 'i-ph-chat-text',
           to: '/dashboard/posts',
           requiredCapability: 'posts.moderate',
           // U7/G5 (2026-08-11): die Moderationsfläche zieht aus „Produkte" in
@@ -114,7 +114,7 @@ export default defineAppConfig({
           productKey: 'posts',
           planProduct: 'posts',
           labelKey: 'posts.stats.total',
-          icon: 'i-ph-users-three',
+          icon: 'i-ph-chat-text',
           to: '/dashboard/posts',
           requiredCapability: 'posts.moderate',
           order: 20,

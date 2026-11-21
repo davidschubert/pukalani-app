@@ -73,6 +73,110 @@ reißen lassen: der Leser liest den Rest leer. Und ein Test, der nur im
 vollen Lauf rot wird, ist erst behoben, wenn ein Gegenbeispiel ihn mit der
 alten Fassung JEDES Mal rot macht.
 
+---
+
+### Q14 — Zustände einer Liste: lädt, Fehler mit „Noch einmal versuchen“, leer oder Daten; keine Rückfrage mehr über das Browser-Fenster (FE-004, UI-005, Teile von UI-004, UI-008, UX-012) ✅ 2026-11-21
+
+**Was.** Vorher lasen die meisten Seiten aus einem Abruf nur `data` und
+`status`. Ein gescheiterter Abruf lieferte den Vorgabewert, also eine leere
+Liste, und die Seite sagte „nichts vorhanden“ — auf der Abrechnungs-Seite
+etwa „Du besitzt keine Community“.
+
+- **Bausteine im Core:** `listState({ status, error, empty })`
+  (`packages/core/app/utils/listState.ts`) macht aus einem Abruf genau einen
+  von vier Zuständen; er baut auf `isFetchLoading` (Q15) auf, Server und
+  Browser rechnen dasselbe. `CoreListState` zeichnet ihn: lädt
+  (`CoreLoadingState`, Symbol aus `ui.icons.loading`), Fehler
+  (`CoreLoadError` mit „Noch einmal versuchen“, ruft `refresh`), leer
+  (`CoreEmptyState` mit nächstem Schritt), sonst die Tabelle. Lädt, Fehler
+  und leer haben dieselbe Mindesthöhe; der Fehler steht in `role="alert"`,
+  lädt und leer in `role="status"` — beide Bereiche gibt es immer.
+  Texte `ui.listState.*` in de und en.
+- **Umgestellt (Geld und Mitglieder):** Abrechnungs-Übersicht des Kontos,
+  Plan-Seite (Abo-Stand nicht geladen ⇒ Hinweis mit Neuversuch statt „kein
+  Abo“), Mitglieder-Liste, Mitglieds-Profil und Nutzer-Detail („nicht
+  gefunden“ nur noch bei 404), Nutzer-Liste, Einladungs-Codes der
+  Betreiber-App, Abo-Liste im Betreiber-Dashboard, Vertrauensstufen.
+- **Kein `confirm()` mehr:** die drei Stellen in Insights (Fund wegnehmen,
+  Brief erzeugen, Kanal entfernen) laufen über `useConfirm()`. ESLint
+  verbietet `confirm`, `alert`, `prompt` und `window.*` davon in `app/`-Code;
+  eine Variable namens `confirm` bleibt erlaubt.
+- **Rest-Liste LZ1:** `packages/core/tests/support/listStateBacklog.ts`
+  (110 Dateien, 136 Abrufe ohne Fehler-Zweig) mit Wächter
+  `listStateBacklogGuard.test.ts`; Einzelheiten `docs/plans/offen/LZ1.md`.
+- **Tests:** `listState.test.ts` (vier Zustände, Ansage-Bereiche,
+  Neuversuch ohne Doppelklick) und `confirmDialog.test.ts` laden die echten
+  Komponenten mit dem Vue-Compiler ohne neues Paket
+  (`tests/support/sfc.ts`). Im Browser `apps/comments/e2e/list-states-pool.spec.ts`
+  auf der Bühne (`pnpm buehne e2e`): Vertrauensstufen und Mitglieder zeigen
+  bei gestörtem Abruf „Fehler“, „Noch einmal versuchen“ holt die Daten, eine
+  leere Antwort zeigt „leer“. Der Q15-Test bleibt grün.
+- **Gegenproben (alle rot):** alte Rechnung (Fehler ⇒ leer) im Unit-Test und
+  im Browser-Test (beide Fehler-Fälle); `role="alert"` entfernt; Neuversuch
+  ohne Sperre; Dialog ohne Sperre; Lint gegen die drei alten Insights-Stellen;
+  Wächter mit neuer Seite, gestiegener Zahl und ausgedachtem Eintrag.
+- **Von Q25 übernommen** (lagen in Dateien dieses PR): der abgeschnittene
+  Satz der Karte „Offene Einladungen" (UI-011, Teil 1; `min-w-0` am inneren
+  Container der Karte, bei 375 px mit einer gestellten Einladung geprüft:
+  der Satz bricht um, die Tabelle rollt für sich) und die Breite der
+  Nutzer-Detailseite (UI-002, `max-w-7xl` wie das übrige Dashboard). Die
+  Ausnahme dafür im Breiten-Wächter `pageWidthGuard.test.ts` ist gelöscht;
+  Gegenprobe mit der alten Breite rot.
+
+**Nicht geprüft:** die Betreiber-Seiten (Nutzer, Einladungs-Codes, Abos), die
+Konto-Abrechnung, die Plan-Seite und die Detail-Seiten nicht im Browser,
+nur Lint, Typecheck und Lesen; die Insights-Dialoge nicht geklickt; kein
+Vorleseprogramm, nur die Rollen im HTML.
+
+**Gelernt:** Ein Abruf, der beim frischen Laden auf dem Server läuft, ist im
+Browser-Test nur abfangbar, wenn die Seite im Browser gewechselt wird — und
+ein Klick vor dem Übernehmen der Seite ist ein voller Aufruf. Über den
+Router der App (`__vue_app__…$router.push`) wechseln und zählen, dass der
+Abruf wirklich abgefangen wurde; sonst ist der Test grün, ohne etwas zu
+prüfen.
+
+### Q25 — Kleine UI-Korrekturen: Seitenbreiten, Farben aus der Farbwelt, ein Symbol, die Umfrage-Karte (UI-002, UI-006, UI-010, UI-011) ✅ 2026-11-21
+
+**Was.** Nur Darstellung, kein Verhalten. UI-007 (154 Schriftgrößen) entfällt
+nach Davids Wahl und steht als TY1 geparkt in OPEN-ITEMS.
+
+1. **Seitenbreiten (UI-002, Davids Ja zu R10).** branding.supply hat seine
+   Breite als EINE Variable: `--ui-container: 80rem` in
+   `apps/branding/app/assets/css/branding.css` (Selektor `:root:root`, damit
+   die Reihenfolge der CSS-Dateien zwischen App und Layern egal ist). Die 18
+   festen `max-w-7xl`-Hüllen in 17 öffentlichen Seiten von `apps/branding`,
+   `brand` und `insights` lesen jetzt `max-w-(--ui-container)`. Dashboard
+   (admin-Übersicht, drei Brand-Seiten) auf `max-w-7xl`. Neuer Wächter
+   `packages/core/tests/pageWidthGuard.test.ts`. Der Kommentar in `main.css`
+   war schon mit Q26 berichtigt. Gemessen lokal: Brand-Dashboard bei 1920 px
+   vorher 1440, nachher 1280; öffentliche Seiten von branding.supply 1280
+   (unverändert), andere Sites weiter 90rem.
+2. **Feste Farben (UI-006).** Karten-Markierungen (Mitglieder-Weltkarte,
+   Mini-Karte, Sitzungs-Dialog) nehmen FESTE STUFEN der Farbwelt
+   (`--ui-color-neutral-800`, `--ui-color-error-600`), nicht die Tokens, die
+   mit hell/dunkel wechseln: die Kacheln bleiben immer hell. Weiße Schrift
+   darauf: Rot 3,8 → 4,8 zu 1, dunkles Feld 10,3 → 14,3 bis 15,5 zu 1 (alle
+   neun Grundtöne). Im Brand-Layer tragen die Bildkacheln `bw-on-dark`, die
+   Schrift liest `var(--bw-ink)` statt `#f7f2ea` im `style` — derselbe Wert,
+   in hell und dunkel gemessen.
+3. **Doppeltes Symbol (UI-010).** „Beiträge" in der Moderation, die
+   Kennzahl „Beiträge" und „Feed" zeigen `i-ph-chat-text`; die drei Köpfe
+   bleiben bei den Mitgliedern (und bei „Communities" im Control Plane).
+4. **Umfrage-Karte (UI-011, Teil 2).** Der Rumpf ist ein bedingter Slot;
+   zugeklappt kein leeres Band mehr, „Gerne" klappt die Fragen wie vorher auf.
+5. **An Q14 abgegeben** (Dateien aus dem offenen PR 485): der abgeschnittene
+   Satz in „Offene Einladungen" (UI-011, Teil 1; Lösung lokal geprüft:
+   `:ui="{ container: 'min-w-0' }"` an der `UPageCard`) und die Breite in
+   `admin/…/users/[id].vue` (UI-002; bis dahin die eine Ausnahme im Wächter).
+
+**Gelernt:** Ein Inhalt mit `v-if` IM Slot lässt UCard trotzdem den Rumpf
+zeichnen — nur ein bedingter Slot (`<template v-if #default>`) lässt ihn weg.
+Und eine Karte, die auf dem Handy abschneidet, hat oft ein Flex-Kind mit
+`min-width: auto`; eine `overflow`-Hülle um die Tabelle hilft dann nicht, nur
+`min-w-0` am Kind, das die Breite weiterreicht.
+
+---
+
 ### Q26 — Aufräumen im Code: Doppelungen, tote Exporte, veraltete Kommentare, ein Satz zu den Rechten (ARC-005, ARC-006, ARC-007, ARC-009, DOC-016) ✅ 2026-11-21
 
 **Was.** Ein kleines Paket, abgearbeitet nach der Liste des Audits, kein

@@ -279,7 +279,7 @@ function rankOf(index: number): number {
 
 <template>
   <div class="pb-10">
-    <div class="mx-auto mt-10 max-w-7xl">
+    <div class="mx-auto mt-10 max-w-(--ui-container)">
       <div class="mb-8">
         <BwBrandCheckTabs current="ranking" />
       </div>
