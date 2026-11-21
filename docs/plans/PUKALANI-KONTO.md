@@ -525,6 +525,9 @@ Jede Etappe ist für sich nützlich und einzeln rückholbar. Vor jeder steht nac
 | **E4** | **Verbundene Dienste: erst branding.supply, dann pukalani.studio** | Anmeldung über das Pukalani-Konto; Bestandskonten übernommen und verbunden; Export und Löschung erreichen den Dienst. Eigenes Projekt und eigene Daten bleiben. Das Studio folgt als zweiter Dienst auf demselben Weg (S–M, sobald branding.supply steht). | L–XL |
 | **E5** | **Aufräumen** | Alte Wege entfernt, Referenz-Doku und Regeln nachgezogen, Hilfe-Texte für Kunden. | S–M |
 
+Das Konzept der ersten Etappe (E1 samt E0) steht in
+[PUKALANI-KONTO-E1.md](PUKALANI-KONTO-E1.md).
+
 E1 und E2 gehören fachlich zusammen, werden aber getrennt ausgerollt: E1 ändert
 nur, **was im Cookie liegt** — die Formulare bleiben, wo sie sind. Erst E2
 verlegt sie.
