@@ -62,6 +62,23 @@ const stats = [
         <UBadge color="warning" variant="subtle">Warning</UBadge>
         <UBadge color="info" variant="subtle">Info</UBadge>
       </div>
+      <!-- Schrift-Kontrast (Q07): Rot und Grün als Fläche mit Schrift darauf,
+           dazu die zwei blassen Textfarben auf Seite und erhöhter Fläche -->
+      <div class="flex flex-wrap items-center gap-2">
+        <UButton color="error">Error solid</UButton>
+        <UButton color="success">Success solid</UButton>
+        <UBadge color="error">Error</UBadge>
+        <UBadge color="success">Success</UBadge>
+        <UBadge color="success" variant="soft">Success soft</UBadge>
+        <span class="text-sm text-error">Text error</span>
+        <span class="text-sm text-success">Text success</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-4 rounded-lg bg-elevated p-3 text-sm">
+        <span class="text-toned">Text toned</span>
+        <span class="text-muted">Text muted</span>
+        <span class="text-dimmed">Text dimmed</span>
+      </div>
+      <p class="text-sm"><span class="text-muted">Text muted</span> · <span class="text-dimmed">Text dimmed</span></p>
       <UAlert color="primary" variant="subtle" icon="i-ph-info" title="Alert" description="Theme-Token-Probe." />
       <div class="flex max-w-md gap-2">
         <UInput placeholder="Input" class="flex-1" />

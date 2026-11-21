@@ -1,0 +1,51 @@
+/*
+ * SCHRIFT-KONTRAST DER HILFE (Q07, 2026-11).
+ *
+ * Die Hilfe trägt die Marken-Chrome von pukalani.app (packages/marketing),
+ * ist aber eine LESE-Seite: Fließtext, Links im Text, zwei Navigationen. Drei
+ * Farben waren dafür als Schrift zu blass (WCAG 2.2 AA verlangt 4,5 zu 1):
+ *
+ *   Sonne als Link und aktiver Menüpunkt   1,6 zu 1 auf dem Wolkengrau
+ *   text-muted (Fließtext, Menüpunkte)     4,1 zu 1 auf dem Wolkengrau
+ *   text-dimmed                            2,3 zu 1
+ *
+ * Der Themes-Layer, der dieselben zwei Textfarben für alle Community-Apps
+ * rechnet (packages/themes/shared/textContrast.ts), ist hier bewusst nicht
+ * eingebunden. Die Werte unten folgen derselben Regel — Farbton der
+ * mist-Palette, Helligkeit nur so weit verschoben wie nötig — gegen die
+ * Flächen DIESER Seite; apps/help/tests/helpContrast.test.ts rechnet sie nach.
+ *
+ * Gesetzt auf `.marketing-site` (hängt am <body>, app.vue): ein anderes
+ * Element als <html>, gewinnt also gegen die Vorgaben von Nuxt UI, ohne dass
+ * die Reihenfolge der CSS-Dateien zählt (dieselbe Überlegung wie in
+ * puka-theme.css).
+ */
+.marketing-site {
+  --ui-text-dimmed: #647072;
+  --ui-text-muted: #546468;
+}
+
+.dark .marketing-site {
+  --ui-text-dimmed: #819296;
+  --ui-text-muted: var(--ui-color-neutral-400);
+}
+
+/*
+ * DIE SONNE ALS SCHRIFT. `text-primary` malt `--ui-primary`, und das ist hier
+ * die Sonne (#fbb337) — als FLÄCHE richtig (Knöpfe tragen dunkle Tinte), als
+ * Schrift auf hellem Grund unlesbar. puka-theme.css kennt dafür schon eine
+ * Schrift-Stufe: `--ui-color-primary-600` zeigt im Hellen auf puka-800
+ * (#983912, 6,4 zu 1) und im Dunkeln auf puka-400. Die Bausteine von Nuxt UI
+ * (Links im Text, aktiver Punkt in Seitenleiste, Unter-Navigation und
+ * Inhaltsverzeichnis) und Markdown-Inhalte schreiben aber `text-primary` —
+ * deshalb zeigt HIER die Schrift-Klasse auf die Schrift-Stufe. Flächen
+ * (`bg-primary`), Rahmen und Ringe bleiben die Sonne.
+ *
+ * AUSGENOMMEN ist das dunkle Band `.tone-ink` (die Fußzeile): es ist auch im
+ * hellen Schema dunkel, dort IST die Sonne die lesbare Schrift (8 zu 1) und
+ * die Schrift-Stufe wäre es nicht (2,4 zu 1).
+ */
+.marketing-site .text-primary:not(.tone-ink *),
+.marketing-site .hover\:text-primary:not(.tone-ink *):hover {
+  color: var(--ui-color-primary-600);
+}

@@ -28,6 +28,21 @@ paths:
   ≠ Key: die Id bleibt `default` (communities.theme, data-theme, CSS-Dateinamen,
   gespeicherte Configs) — Theme-Namen nie über die Id umbenennen. Theme-Namen
   sind Eigennamen und laufen NICHT über i18n (de = en).
+- SCHRIFT-KONTRAST (Q07, seit 2026-11-21): der Generator schreibt eine ZWEITE
+  Datei, `public/themes/contrast.css` — die zwei blassen Textfarben
+  (`--ui-text-dimmed`, `--ui-text-muted`) je neutraler Palette und die
+  Statusfarben `--ui-error`/`--ui-success`, hell und dunkel, gerechnet aus der
+  handgepflegten `neutral.css` (Logik + Gate: `shared/textContrast.ts`).
+  Regel: Farbton bleibt, die Helligkeit rückt nur so weit, bis die Farbe als
+  SCHRIFT 4,5 zu 1 erreicht — auf Seite, gedämpfter und erhöhter Fläche und
+  (Status) auf der eigenen 10-Prozent-Fläche. Liegt eine Paarung darunter,
+  bricht der Generator ab. Wer `neutral.css` ändert, erzeugt neu (`--check`
+  merkt es). Die Datei ist unlayered: JEDER helle Block nennt sein dunkles
+  Gegenstück, sonst schlüge `:root` auch `.dark`. Die getönte Palette eines
+  Custom Themes bekommt dieselbe Rechnung zur Laufzeit (`customThemeCss`).
+  NICHT im Gate: `--ui-primary` als Schrift (weiter 3 zu 1, als Bauteil-Farbe)
+  sowie Gelb und Blau. Apps OHNE themes-Layer (help, marketing) sehen die
+  Datei nicht — die Hilfe hat eigene Werte in `apps/help/app/assets/css/help.css`.
 - Customize theme: /dashboard/themes (Galerie, Zweispalten), Editor als Vollseite
   (/new, /:id — Dock: Boxen „Farben"+„Schriften", je EIN „Erweitert"),
   Schriften-Verwaltung /dashboard/themes/fonts. Konzept + bewusste
