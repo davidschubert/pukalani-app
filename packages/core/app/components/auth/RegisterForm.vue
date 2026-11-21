@@ -48,6 +48,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const pukalaniSpeaks = usePukalaniSpeaks()
 const { afterAuthTarget } = useAuthRedirect()
 const appConfig = useAppConfig()
 const auth = useAuthStore()
@@ -198,7 +199,8 @@ async function onSubmit(event: FormSubmitEvent<RegisterFormInput>) {
 <template>
   <div class="space-y-4" data-register-form>
     <div class="text-center">
-      <UIcon name="i-ph-user-circle-plus" class="mx-auto size-8 text-primary" />
+      <!-- Wo Pukalani spricht, steht darüber schon das Zeichen (AuthBrandHeader, Q24) — ein zweites Symbol wäre ein drittes Gesicht. -->
+      <UIcon v-if="!pukalaniSpeaks" name="i-ph-user-circle-plus" class="mx-auto size-8 text-primary" />
       <h1 class="mt-2 text-xl font-semibold">{{ t('auth.register.title') }}</h1>
       <p class="text-sm text-muted">{{ t('auth.register.description') }}</p>
     </div>

@@ -232,7 +232,16 @@
       "close": "Close menu"
     },
     "metaTitle": "{page} · {brand}",
-    "ogImageAlt": "Preview image for {brand}"
+    "ogImageAlt": "Preview image for {brand}",
+    "brandFamily": {
+      "label": "Also from us:",
+      "aria": "Our other brands",
+      "roles": {
+        "pukalani": "community platform",
+        "studio": "UI/UX design",
+        "branding": "brand building"
+      }
+    }
   },
   "profile": {
     "saved": "Profile saved",
