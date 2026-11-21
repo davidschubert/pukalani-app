@@ -647,7 +647,7 @@ useBrandTitle(() => (title.value
               data-kit-bundle
             />
             <span v-if="manifest && manifest.bundle.missing > 0" class="bw-state bw-state--draft">
-              {{ t('brand.kitPage.missingTiles', { count: manifest.bundle.missing }) }}
+              {{ t('brand.kitPage.missingTiles', { count: manifest.bundle.missing }, manifest.bundle.missing) }}
             </span>
             <span v-else-if="manifest" class="bw-state bw-state--confirmed">
               <UIcon name="i-ph-check" /> {{ t('brand.kitPage.complete') }}

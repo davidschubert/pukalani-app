@@ -15,5 +15,9 @@ export default {
     en: 'Editable content pages (Imprint, Terms, Privacy) with a WYSIWYG editor and per-language versions.',
     de: 'Editierbare Inhaltsseiten (Impressum, AGB, Datenschutz) mit WYSIWYG-Editor und Sprachversionen.',
   },
+  customerDescription: {
+    en: 'Your own pages such as imprint, terms and privacy, edited in the editor, per language.',
+    de: 'Eigene Seiten wie Impressum, AGB und Datenschutz, im Editor bearbeitet, je Sprache.',
+  },
   icon: 'i-ph-file-text',
 } satisfies ProductManifest

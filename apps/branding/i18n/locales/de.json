@@ -63,7 +63,7 @@
     "cap6Line": "Jede Entscheidung baut auf den vorherigen auf — über Sitzungen hinweg.",
     "ctaTitle": "Die erste Entscheidung ist die leichteste.",
     "ctaBody": "Konto anlegen, Arbeitstitel wählen — euer Markenberater übernimmt. Pausiert jederzeit, euer Stand bleibt gespeichert.",
-    "ctaStart": "Starte dein Branding",
+    "ctaStart": "Branding starten",
     "ctaAbout": "Warum es uns gibt",
     "cta": {
       "brands": "Eure Brandings",
@@ -145,7 +145,7 @@
     "crewIntro": "Ihr führt EIN Gespräch, von der ersten Frage bis zum fertigen Dokument: euer Markenberater George bleibt euer Gegenüber, in jedem Kapitel. Was sich ändert, ist die Art zu fragen — dafür holt er sich den Blick der Fachleute, mit denen er das Kapitel durchgesehen hat, und sagt euch, wessen Blick das gerade ist.",
     "crewAsksLabel": "Typische Frage:",
     "ctaText": "Das Team steht bereit — die erste Frage stellt euer Markenberater.",
-    "ctaButton": "Starte dein Branding",
+    "ctaButton": "Branding starten",
     "seoTitle": "Das Team von Branding Supply — euer Markenberater und sein Team aus Markenexperten",
     "seoDescription": "Euer persönlicher Markenberater führt das Gespräch, ein Team aus Markenexperten übernimmt je Aufgabe: Strategie, Design, Brand Book, Content, Monitoring, Score, Benchmark. Wer was für eure Marke tut.",
     "georgeEyebrow": "Euer Markenberater",
@@ -180,7 +180,7 @@
   },
   "products": {
     "common": {
-      "eyebrow": "Products",
+      "eyebrow": "Produkte",
       "getTitle": "Was ihr bekommt",
       "howTitle": "So funktioniert es",
       "proofEyebrow": "Beleg",
@@ -196,7 +196,7 @@
       "brandBookKit": "Brand Book & Kit"
     },
     "overview": {
-      "seoTitle": "Products — fünf Schritte von der Prüfung bis zur Lieferung",
+      "seoTitle": "Produkte — fünf Schritte von der Prüfung bis zur Lieferung",
       "seoDescription": "Brand-Check, Brand Foundation, Marktvergleich, Brand Design, Brand Book & Kit: prüfen, vergleichen, bauen, liefern. Fünf Produkte, ein Markendokument.",
       "title": "Prüfen, vergleichen, bauen, liefern.",
       "lead": "Fünf Produkte, ein Markendokument. Jedes setzt auf dem vorigen auf — ihr fangt vorn an und hört auf, wo es für euch genug ist.",
@@ -286,9 +286,9 @@
       "how3Title": "Feld für Feld vergleichen",
       "how3Body": "Der Bericht stellt eure Aussage neben die der anderen, in derselben Reihenfolge wie eure Foundation.",
       "proofTitle": "Wie wir lesen, steht offen da.",
-      "proofBody": "Der Marktvergleich liest fremde Auftritte. Deshalb steht auf der Methodik-Seite, was wir abrufen, was wir auslassen und wie ihr widersprechen könnt. In Discover Brands seht ihr, wie eine fertige Marke bei uns aussieht.",
+      "proofBody": "Der Marktvergleich liest fremde Auftritte. Deshalb steht auf der Methodik-Seite, was wir abrufen, was wir auslassen und wie ihr widersprechen könnt. Unter „Marken entdecken“ seht ihr, wie eine fertige Marke bei uns aussieht.",
       "proofLinkMethod": "Zur Methodik",
-      "proofLinkDiscover": "Discover Brands",
+      "proofLinkDiscover": "Marken entdecken",
       "price": "{price} netto je Branding, einmalig — zzgl. USt. Beta-Konten nutzen ihn frei; der Kauf folgt, bis dahin per Erstgespräch.",
       "requirement": "eine abgenommene Brand Foundation."
     },
@@ -316,8 +316,8 @@
       "how3Title": "Abnehmen und weitergeben",
       "how3Body": "Das abgenommene Board ist die Vorlage für Brand Book & Kit.",
       "proofTitle": "So sehen fertige Marken bei uns aus.",
-      "proofBody": "In Discover Brands stehen die Brandings, deren Eigentümer sie öffentlich gemacht haben — mit Farbwelt, Schrift und Zeichen.",
-      "proofLink": "Discover Brands ansehen",
+      "proofBody": "Unter „Marken entdecken“ stehen die Brandings, deren Eigentümer sie öffentlich gemacht haben — mit Farbwelt, Schrift und Zeichen.",
+      "proofLink": "Marken entdecken",
       "price": "Studio-begleitet: Freischaltung je Marke nach dem Erstgespräch.",
       "requirement": "eine abgenommene Brand Foundation."
     },

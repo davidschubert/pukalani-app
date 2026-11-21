@@ -14,5 +14,9 @@ export default {
     en: 'Cookieless visitor statistics with Plausible: paste the script id of your site on our instance, the pages report themselves.',
     de: 'Cookielose Besucherstatistik mit Plausible: Script-Id der eigenen Site auf unserer Instanz eintragen, die Seiten melden sich selbst.',
   },
+  customerDescription: {
+    en: 'Visitor numbers for your community, without cookies or a consent banner.',
+    de: 'Besucherzahlen deiner Community, ohne Cookies und ohne Banner.',
+  },
   icon: 'i-ph-chart-line-up',
 } satisfies ProductManifest

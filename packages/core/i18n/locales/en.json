@@ -248,7 +248,7 @@
     "saveFailed": "Saving failed",
     "saveFailedDescription": "Your changes were not applied. Check your connection and try again.",
     "bioLabel": "Bio",
-    "bioDescription": "Stored in your account prefs.",
+    "bioDescription": "Stored with your account.",
     "phoneLabel": "Phone number",
     "phonePlaceholder": "+14155552671",
     "phoneDescription": "Optional. International format (e.g. +14155552671). Saved to your account.",
@@ -315,7 +315,7 @@
     "sessions": {
       "title": "Sessions",
       "description": "Devices and browsers currently signed in to your account.",
-      "client": "Client",
+      "client": "Device",
       "location": "Location",
       "ip": "IP",
       "created": "Created",
@@ -333,8 +333,8 @@
       "confirmAll": "Sign out all",
       "cancel": "Cancel",
       "auth": "Sign-in",
-      "factors": "MFA factors of this session",
-      "expires": "expires",
+      "factors": "Second factors of this session",
+      "expires": "Expires",
       "times": "Timestamps",
       "geoAttribution": "Location data: IP geolocation by {provider}",
       "details": "Details",
@@ -345,7 +345,16 @@
       "engine": "Rendering engine",
       "os": "Operating system",
       "device": "Device",
-      "mfa": "MFA factors",
+      "mfa": "Second factors",
+      "method": {
+        "email": "Email",
+        "password": "Password",
+        "magic-url": "Link by email",
+        "phone": "SMS",
+        "totp": "Authenticator app",
+        "anonymous": "Guest",
+        "token": "Code by email"
+      },
       "expiry": "Expires"
     },
     "password": {

@@ -4,7 +4,7 @@
       "title": "Kurse",
       "description": "Lerne in deinem Tempo — Lektion für Lektion.",
       "empty": "Noch keine Kurse veröffentlicht.",
-      "lessons": "{count} Lektionen",
+      "lessons": "{count} Lektion | {count} Lektionen",
       "enrolled": "Eingeschrieben",
       "manage": "Verwalten",
       "create": "Neuer Kurs"

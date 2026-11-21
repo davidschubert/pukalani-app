@@ -184,7 +184,7 @@
         "socialTitle": "Beim Teilen eines Links",
         "socialGenerated": "Diese Karte entsteht automatisch aus Farbe und Name deiner Community.",
         "socialOffTitle": "Keine Vorschau-Karte",
-        "socialOffText": "Für diese Instanz sind Vorschau-Karten nicht eingeschaltet. Geteilte Links erscheinen ohne Bild."
+        "socialOffText": "Auf dieser Site sind Vorschau-Karten nicht eingeschaltet. Geteilte Links erscheinen ohne Bild."
       },
       "validation": {
         "descriptionMax": "Die Beschreibung ist zu lang."

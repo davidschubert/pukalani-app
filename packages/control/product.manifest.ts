@@ -17,5 +17,9 @@ export default {
     en: 'The platform control plane: site registry, health overview, provisioning and entitlements. Runs only on the control site.',
     de: 'Das Control Plane der Plattform: Sites-Register, Health-Übersicht, Provisionierung und Entitlements. Läuft nur auf der Control-Site.',
   },
+  customerDescription: {
+    en: 'Management of all sites on the platform.',
+    de: 'Die Verwaltung aller Sites der Plattform.',
+  },
   icon: 'i-ph-globe-hemisphere-west',
 } satisfies ProductManifest

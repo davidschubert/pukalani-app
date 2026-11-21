@@ -27,8 +27,12 @@ export default {
   apiPrefixes: ['/api/brand', '/api/discover'],
   title: { en: 'Brand Wizard', de: 'Brand-Wizard' },
   description: {
-    en: 'Guided AI brand consultant: build a complete brand foundation — purpose, values, archetype, voice and manifesto.',
+    en: 'Guided AI brand advisor: build a complete brand foundation — purpose, values, archetype, voice and manifesto.',
     de: 'Geführter KI-Markenberater: eine vollständige Brand Foundation — Purpose, Werte, Archetyp, Stimme und Manifest.',
+  },
+  customerDescription: {
+    en: 'Your brand, built in a conversation with a personal brand advisor: purpose, values, voice and manifesto.',
+    de: 'Eure Marke, im Gespräch mit einem persönlichen Markenberater: Purpose, Werte, Stimme und Manifest.',
   },
   icon: 'i-ph-compass',
 } satisfies ProductManifest

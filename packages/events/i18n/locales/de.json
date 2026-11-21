@@ -28,7 +28,7 @@
     "card": {
       "cancelled": "Abgesagt",
       "full": "Ausgebucht",
-      "attendees": "{count} Zusagen",
+      "attendees": "{count} Zusage | {count} Zusagen",
       "attendeesOfCapacity": "{count} von {capacity} Plätzen",
       "replay": "Replay",
       "free": "Kostenlos",
@@ -210,8 +210,8 @@
       "today": "Heute"
     },
     "vote": {
-      "up": "Hochvoten",
-      "down": "Runtervoten",
+      "up": "Upvote",
+      "down": "Downvote",
       "failed": "Stimme konnte nicht gespeichert werden.",
       "failedHint": "Deine Stimme kam nicht an. Klick noch einmal."
     },

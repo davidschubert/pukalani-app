@@ -78,5 +78,9 @@ export default {
     en: 'The editorial desk: brand profiles, duels, articles and rankings about brands we do not own — every statement with its source.',
     de: 'Der redaktionelle Bereich: Markenprofile, Duelle, Artikel und Rankings über fremde Marken — jede Aussage mit ihrer Quelle.',
   },
+  customerDescription: {
+    en: 'Brand profiles, duels, articles and rankings — every statement with its source.',
+    de: 'Markenprofile, Duelle, Artikel und Rankings — jede Aussage mit Quelle.',
+  },
   icon: 'i-ph-newspaper',
 } satisfies ProductManifest

@@ -184,7 +184,7 @@
         "socialTitle": "When a link is shared",
         "socialGenerated": "This card is generated automatically from your community colour and name.",
         "socialOffTitle": "No preview card",
-        "socialOffText": "Preview cards are not enabled on this instance. Shared links appear without an image."
+        "socialOffText": "Preview cards are not enabled on this site. Shared links appear without an image."
       },
       "validation": {
         "descriptionMax": "The description is too long."

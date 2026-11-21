@@ -216,7 +216,7 @@ function rowActions(post: CommunityPost): DropdownMenuItem[][] {
               <template #state-cell="{ row }">
                 <div class="flex flex-wrap items-center gap-1">
                   <UBadge v-if="data?.reportCounts[row.original.$id]" color="warning" variant="subtle" size="sm" data-mod-reported>
-                    {{ t('posts.moderation.reports', { count: data.reportCounts[row.original.$id] }) }}
+                    {{ t('posts.moderation.reports', { count: data.reportCounts[row.original.$id] }, data.reportCounts[row.original.$id] ?? 0) }}
                   </UBadge>
                   <UBadge v-if="row.original.status === 'hidden'" color="error" variant="subtle" size="sm">
                     {{ t('posts.moderation.hiddenBadge') }}

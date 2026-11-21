@@ -97,8 +97,8 @@ const averageWebsite = computed(() => {
 })
 
 const summary = computed(() => (checked.value.length
-  ? t('brand.myScores.list.summary', { count: rows.value.length, avg: averageWebsite.value })
-  : t('brand.myScores.list.summaryEmpty', { count: rows.value.length })))
+  ? t('brand.myScores.list.summary', { count: rows.value.length, avg: averageWebsite.value }, rows.value.length)
+  : t('brand.myScores.list.summaryEmpty', { count: rows.value.length }, rows.value.length)))
 
 // ── Anzeige-Helfer ─────────────────────────────────────────────────────────
 

@@ -15,5 +15,9 @@ export default {
     en: 'User-generated posts with markdown, moderation assist, one-click AI translation and activity feed integration.',
     de: 'Nutzer-Beiträge mit Markdown, Moderations-Assist, KI-Übersetzung per Klick und Anbindung an den Activity-Feed.',
   },
+  customerDescription: {
+    en: 'Posts with formatting, moderation help and one-click translation.',
+    de: 'Beiträge mit Formatierung, Hilfe bei der Moderation und Übersetzung per Klick.',
+  },
   icon: 'i-ph-note-pencil',
 } satisfies ProductManifest

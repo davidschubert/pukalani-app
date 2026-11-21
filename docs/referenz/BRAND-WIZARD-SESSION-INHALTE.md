@@ -3796,7 +3796,7 @@ Interview-Technik: **Frida** (Design Directorin). Gesprochen wird alles von Geor
 
 **Fliesst später in:** 8 Felder in 3 Kapiteln (Typografie · Zeichen · Bildsprache)
 
-### `i.scale` — Grössen-Hierarchie
+### `i.scale` — Größen-Hierarchie
 
 **Art:** Ableitung · **Umfang:** ~1 Min, 2 Züge · **Vertraulichkeit:** öffentlich
 

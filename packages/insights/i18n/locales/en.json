@@ -356,7 +356,7 @@
         "youtube_unavailable": "YouTube did not answer.",
         "brief_exists": "This video already has a post. The button next to it takes you there.",
         "video_not_citable": "This video is missing its channel or publication date — without both it cannot be cited as a source. The next daily run will fill them in.",
-        "ai_disabled": "AI is switched off on this instance right now.",
+        "ai_disabled": "AI is switched off here right now.",
         "ai_hourly_limit": "Enough runs for this hour. Try again later.",
         "ai_daily_limit": "Enough runs for today. Try again tomorrow.",
         "slug_taken": "No free address could be found for this working title. Rename the video or create the post by hand.",
@@ -556,7 +556,7 @@
       "prototypeOnly": "Prototype — nothing is saved, no model is called.",
       "error": {
         "validation": "Input incomplete — the review rules on the right point to the spot.",
-        "aiDisabled": "AI is switched off on this instance.",
+        "aiDisabled": "AI is switched off here.",
         "aiHourlyLimit": "Too many runs this hour — try again shortly.",
         "aiDailyLimit": "The daily allowance is used up.",
         "aiTruncated": "The model stopped mid-text, so the run is unusable. Ask for a shorter length and try again.",

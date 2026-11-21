@@ -219,7 +219,7 @@ function rowActions(row: EventRow): DropdownMenuItem[][] {
           <template #state-cell="{ row }">
             <div class="flex flex-wrap items-center gap-1">
               <UBadge v-if="reportCount(row.original)" color="warning" variant="subtle" size="sm" data-mod-reported>
-                {{ t('events.moderation.reports', { count: reportCount(row.original) }) }}
+                {{ t('events.moderation.reports', { count: reportCount(row.original) }, reportCount(row.original)) }}
               </UBadge>
               <UBadge :color="statusColor(row.original)" variant="subtle" size="sm">
                 {{ t(`events.admin.status.${row.original.status}`) }}

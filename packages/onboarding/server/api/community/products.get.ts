@@ -63,7 +63,8 @@ export default defineEventHandler(async (event): Promise<CommunityProductsRespon
     products.push({
       key: manifest.key,
       title: manifest.title,
-      description: manifest.description,
+      // Kundschaft liest den Kundentext; der Entwickler-Text bleibt dem Betreiber.
+      description: manifest.customerDescription ?? manifest.description,
       icon: manifest.icon,
       minPlan: minPlans[manifest.key] ?? '',
     })
