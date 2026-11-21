@@ -30,6 +30,49 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q26-N — Wacklige Core-Tests im vollen `pnpm -r test` ✅ 2026-11-21
+
+**Was.** Beim Paket Q26 hatten zwei volle Läufe von `pnpm -r test` je einen
+anderen roten Test in `packages/core`, einzeln und in der CI grün.
+
+1. **`tests/appReleaseScript.test.ts`** — „ABBRUCH: das Archiv für help ist
+   nicht lesbar oder unvollständig (Teil-Ergebnisse: 0 141 0)". In der Pipe
+   `head | zstd -dc | tar -x` von `ops/app-release.sh` hört tar an der
+   Ende-Marke des Archivs auf und schließt die Leitung, während zstd noch
+   die Auffüll-Nullen schreibt. Ob zstd dann schon fertig ist, entscheidet
+   die Last. Der erste Versuch, 141 auch für zstd gelten zu lassen, war
+   falsch: im vollen Lauf endete zstd mit **70** („Broken pipe") — Node
+   ignoriert SIGPIPE, und das erben alle Kindprozesse über `exec`. Ein
+   Exit-Code sagt also nicht verlässlich, ob nur der Leser fertig war.
+   **Lösung:** die drei Entpack-Stellen rufen `untar`; das ist `tar -x`,
+   danach `cat >/dev/null` — die Leitung reißt nie, das Ergebnis ist das von
+   tar, der Rest ist durch `head -c` begrenzt. `pipe_ok` ist unverändert.
+   Zwei neue Fälle im Test (4 MB Nachlauf hinter der Ende-Marke, mit und ohne
+   zstd); **Gegenprobe** mit dem alten Skript: rot mit „Teil-Ergebnisse:
+   0 70 0", jedes Mal.
+2. **Zeitgrenze.** `tests/verifyAuthMethods.test.ts` lief in die 5-s-Grenze,
+   im vollen Lauf danach auch `rollbackScript`, `checkAiRouting`,
+   `verifyRealtime` — alle starten echte Prozesse, und wenn alle Pakete
+   gleichzeitig testen, dauert allein ein Start Sekunden.
+   `packages/core/vitest.config.ts` setzt `testTimeout: 30_000`.
+
+**Beweis.** Drei volle `pnpm -r test` hintereinander grün (lokal, macOS).
+NICHT geprüft: die Server-Attrappe `ops/app-release-attrappe.sh` (Docker,
+nur mit Davids Ja).
+
+**Offen.** `ops/app-release.sh` liegt auf app-prod noch in der alten
+Fassung; ab dem Merge meldet der tägliche Blick `verify-server-scripts.mjs
+--strict` die Abweichung, bis die neue Fassung von Hand eingespielt ist
+(nur mit Davids Klick, `docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md`).
+
+**Gelernt:** Bei `pipefail` sagt ein Exit-Code des Schreibers nicht
+verlässlich, dass nur der Leser früh fertig war — 141 unter der Shell, ein
+Schreibfehler mit eigener Nummer, wenn SIGPIPE geerbt ignoriert ist (jeder
+Prozess, den Node startet). Nicht Codes deuten, sondern die Leitung nie
+reißen lassen: der Leser liest den Rest leer. Und ein Test, der nur im
+vollen Lauf rot wird, ist erst behoben, wenn ein Gegenbeispiel ihn mit der
+alten Fassung JEDES Mal rot macht.
+
 ### Q26 — Aufräumen im Code: Doppelungen, tote Exporte, veraltete Kommentare, ein Satz zu den Rechten (ARC-005, ARC-006, ARC-007, ARC-009, DOC-016) ✅ 2026-11-21
 
 **Was.** Ein kleines Paket, abgearbeitet nach der Liste des Audits, kein

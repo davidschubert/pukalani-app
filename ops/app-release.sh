@@ -231,6 +231,20 @@ main() {
     return 0
   }
 
+  # Entpackt wie `tar -x "$@"` und liest danach den Rest der Leitung leer.
+  # tar hört an der Ende-Marke des Archivs auf; was das Glied davor (zstd,
+  # head) dann noch schreibt, träfe eine geschlossene Pipe — 141 oder, wenn
+  # SIGPIPE geerbt ignoriert ist (so startet Node seine Kindprozesse), ein
+  # Schreibfehler mit eigener Nummer. Beides wäre ein Scheinfehler, und nur
+  # manchmal (Q26-N). Das Ergebnis bleibt das von tar; der Rest ist durch
+  # `head -c` begrenzt.
+  untar() {
+    local rc=0
+    tar -x "$@" 2>&8 || rc=$?
+    cat >/dev/null
+    return "$rc"
+  }
+
   # Was beim Abbruch verschwinden muss (ein Verzeichnis je Lauf).
   TMP=""
   cleanup() { if [ -n "$TMP" ]; then rm -rf "$TMP"; fi; }
@@ -361,7 +375,7 @@ main() {
       # absolute Pfade und `..` von sich aus ab.
       local parts
       set +e
-      head -c "$MAX_RELEASE" | zstd -dc 2>&8 | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>&8
+      head -c "$MAX_RELEASE" | zstd -dc 2>&8 | untar -C "$TMP" --strip-components=1 --no-same-owner
       parts="${PIPESTATUS[*]}"
       set -e
       pipe_ok "$parts" || die 3 "das Archiv für $APP ist nicht lesbar oder unvollständig (Teil-Ergebnisse: $parts) — nichts geändert."
@@ -388,7 +402,7 @@ main() {
       TMP="$(mktemp -d "$ROOT/$SITE/.ops-incoming.XXXXXX")"
       local f name count=0 allowed parts
       set +e
-      head -c "$MAX_OPS" | tar -x -C "$TMP" --no-same-owner 2>&8
+      head -c "$MAX_OPS" | untar -C "$TMP" --no-same-owner
       parts="${PIPESTATUS[*]}"
       set -e
       pipe_ok "$parts" || die 3 "das Archiv mit den Dateien der Site ist nicht lesbar (Teil-Ergebnisse: $parts) — nichts geändert."
@@ -432,7 +446,7 @@ main() {
       # Das Archiv trägt `fonts/…`; die erste Ebene fällt weg.
       local parts
       set +e
-      head -c "$MAX_FONTS" | tar -x -C "$TMP" --strip-components=1 --no-same-owner 2>&8
+      head -c "$MAX_FONTS" | untar -C "$TMP" --strip-components=1 --no-same-owner
       parts="${PIPESTATUS[*]}"
       set -e
       pipe_ok "$parts" || die 3 "das Archiv mit dem Font-Cache ist nicht lesbar (Teil-Ergebnisse: $parts) — nichts geändert."
