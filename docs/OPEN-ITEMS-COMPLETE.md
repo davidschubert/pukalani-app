@@ -30,6 +30,32 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### LZ1 — Listen-Zustände: Rest-Liste nach Q14 von 110 auf 59 Dateien (FE-004, UI-005) ✅ 2026-11-21
+
+**Was.** In vier Schüben (PR 497, 500, 502, 503) lesen Seiten ihren Abruffehler
+und zeigen bei einem Fehler „Noch einmal versuchen" statt einer falschen
+Leer-Auskunft: Kurse, Termine, Feed, Diskussionen (Themen, Kategorien,
+Abzeichen), Nachrichten, Betreiber-Listen in admin/control/pages/messages/
+feedback/media/comments, „Meine Communities", Konto-Startseite, Verbrauch,
+Produkte, Marken-Entdecken, Ranking, Insights-Listen, Kurs-Bearbeitung.
+Rest-Liste: 110 → 59 Dateien, 136 → 80 Abrufe.
+
+- Muster: Listen mit eigener Leer-Auskunft über `listState()` +
+  `CoreListState` (die Tabelle zeichnet „leer" selbst, weil „Filter ohne
+  Treffer" ein Zustand der Daten ist); alle anderen mit einem
+  `CoreLoadError`-Zweig vor dem Inhalt (`error && !data`).
+- Bewusst offen (59): Hinweis-Kästen und Zusatz-Auskünfte, Seiten mit eigenem
+  Fehlerweg; Gründe im Kopf von `listStateBacklog.ts`. Ihre Umstellung ist je
+  Seite eine eigene Entscheidung.
+- Nicht erledigt aus `LZ1.md`: (e) Sackgassen UX-012, (f) Lade-Zeichen UI-008,
+  (g) handgebaute Listen ohne Grund UI-009.
+
+**Gelernt:** Ein Abruf mit `default: () => …` hat nie `data === null`: ein
+Fehlerzweig `error && !data` zündet dort nie, der Zweig muss `error` allein
+fragen. Und ein Skript, das viele Seiten gleich umbaut, darf Einrückung und
+`v-else`-Ketten nicht raten: jede Seite wurde danach vom Linter und vom
+Wächter gegengeprüft. Nicht im Browser angesehen.
+
 ### Bahn 2 / Paket 1 — Acht Stellen, an denen ein verschluckter Lesefehler den Ablauf verfälschte (Rest aus Q13, ARC-002) ✅ 2026-11-21
 
 **Was.** Q13 hatte 236 stille Lesefehler auf `softFail` umgestellt (Verhalten
