@@ -146,7 +146,7 @@ const langs = [
           <UIcon name="i-ph-x" class="size-4.5" style="color: var(--bw-ink-soft)" />
         </button>
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('brand.new.eyebrow') }}</p>
-        <h2 class="mt-1 text-[28px] font-extralight leading-tight tracking-tight">{{ t('brand.new.title') }}</h2>
+        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">{{ t('brand.new.title') }}</h2>
 
         <!-- Schritt 1: die Weiche, links oder rechts -->
         <div class="mt-5 grid grid-cols-2 gap-2">

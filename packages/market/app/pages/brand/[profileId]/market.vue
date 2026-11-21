@@ -897,7 +897,7 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
           <p class="bw-label uppercase tracking-wider" style="color: var(--bw-muted)">
             {{ t('brand.workspace.railLayer') }}
           </p>
-          <h1 class="mt-1 text-[26px] font-extralight leading-tight tracking-tight">
+          <h1 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">
             {{ t('market.page.title') }}
           </h1>
           <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
@@ -1106,7 +1106,7 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
           <!-- (d) DER BERICHT -->
           <template v-if="report">
             <div>
-              <h2 class="text-[20px] font-extralight leading-tight tracking-tight">
+              <h2 class="text-xl font-extralight leading-tight tracking-tight">
                 {{ t('market.result.title') }}
               </h2>
               <p class="bw-label mt-1" style="color: var(--bw-muted)">
@@ -1254,7 +1254,7 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
 
           <!-- (e) DER RELAUNCH — die eigene alte Website gegen die Foundation. -->
           <section v-if="selfCandidate && selfProfile && report">
-            <h2 class="text-[20px] font-extralight leading-tight tracking-tight">
+            <h2 class="text-xl font-extralight leading-tight tracking-tight">
               {{ t('market.relaunch.title') }}
             </h2>
             <p class="mt-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">

@@ -1,6 +1,7 @@
 import type { Client, Realtime } from 'appwrite'
 import { realtimeAllowed } from '../../shared/realtimeGate'
 import { isJwtCookieConflict, isRealtimeAccessEnded } from '../../shared/realtimeAuth'
+import { nextReconnectFailures, reconnectDelayMs } from '../../shared/realtimeReconnect'
 
 /**
  * EINE geteilte, JWT-authentifizierte Realtime-Verbindung für die ganze App.
@@ -113,6 +114,7 @@ export function ensureRealtimeClients(): Promise<RealtimeClients | null> {
       const cookieClient = new Client().setEndpoint(endpoint).setProject(project)
       const rtClient = new Client().setEndpoint(endpoint).setProject(project)
       const realtime = new Realtime(rtClient)
+      installReconnectBackoff(realtime)
       // RT1: Appwrites Ablehnung „JWT und Cookie" beweist, dass das Cookie den
       // Socket erreicht und gültig ist — ab dann trägt es den Socket allein.
       realtime.onError((error, code) => {
@@ -125,6 +127,24 @@ export function ensureRealtimeClients(): Promise<RealtimeClients | null> {
     })
   }
   return clientsPromise
+}
+
+/**
+ * Wachsende Abstände beim Neuversuch (Q23-Rest): Regel und Begründung in
+ * `shared/realtimeReconnect.ts`. Das SDK fragt `getTimeout()` NACH seinen
+ * `onClose`-Rückrufen — der Zähler ist dann schon nachgeführt. `getTimeout`
+ * ist im SDK eine (in den Typen private) Methode; die Instanz überschreibt
+ * sie, damit nur DIESE Verbindung betroffen ist.
+ */
+function installReconnectBackoff(realtime: Realtime): void {
+  let openedAt: number | null = null
+  let failures = 0
+  realtime.onOpen(() => { openedAt = Date.now() })
+  realtime.onClose(() => {
+    failures = nextReconnectFailures(failures, openedAt === null ? null : Date.now() - openedAt)
+    openedAt = null
+  })
+  ;(realtime as unknown as { getTimeout: () => number }).getTimeout = () => reconnectDelayMs(failures)
 }
 
 /**

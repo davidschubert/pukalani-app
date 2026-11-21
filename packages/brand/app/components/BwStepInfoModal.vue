@@ -76,7 +76,7 @@ const pct = computed(() =>
           <UIcon name="i-ph-x" class="size-4.5" style="color: var(--bw-ink-soft)" />
         </button>
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ eyebrow }}</p>
-        <h2 class="mt-1 text-[28px] font-extralight leading-tight tracking-tight">{{ heading }}</h2>
+        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">{{ heading }}</h2>
         <p v-if="shown.step.info.description" class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ shown.step.info.description }}</p>
 
         <p class="bw-label mt-6" style="color: var(--bw-muted)">{{ t('brand.workspace.decisions') }}</p>

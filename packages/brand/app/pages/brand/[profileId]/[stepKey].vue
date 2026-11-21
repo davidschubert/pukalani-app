@@ -5010,7 +5010,7 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">
           {{ versionsSlot ? slotLabel(versionsSlot) : '' }}
         </p>
-        <h2 class="mt-1 text-[24px] font-extralight leading-tight tracking-tight">{{ t('brand.workspace.versions.title') }}</h2>
+        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">{{ t('brand.workspace.versions.title') }}</h2>
         <p class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('brand.workspace.versions.description') }}</p>
 
         <!-- Lesen ja, übernehmen nein — s. `versionsControls`. -->
@@ -5085,7 +5085,7 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
     <template #content>
       <div class="bw-root bw-overlay max-h-[85vh] overflow-y-auto p-8">
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-stale)">{{ t('brand.workspace.sync.conflict') }}</p>
-        <h2 class="mt-1 text-[24px] font-extralight leading-tight tracking-tight">{{ t('brand.workspace.conflict.title') }}</h2>
+        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">{{ t('brand.workspace.conflict.title') }}</h2>
         <p class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('brand.workspace.conflict.description') }}</p>
 
         <div v-for="row in conflictRows" :key="row.slotId" class="mt-5">

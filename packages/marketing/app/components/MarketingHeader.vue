@@ -262,7 +262,7 @@ const HEADER_UI = {
   // (gemessen 826px breit). Deshalb steht hier KEINE eigene Breite mehr; wer
   // einen vierten Knopf ergänzt, misst bei 1024px nach.
   right: 'gap-3',
-  title: 'items-center gap-2 text-[1.1rem] font-extrabold tracking-[-0.01em]',
+  title: 'items-center gap-2 text-lg font-extrabold tracking-[-0.01em]',
 }
 
 /**
@@ -297,7 +297,7 @@ const NAV_UI = {
   // Grund (seit 2026-08-08 puka-800, AA; vorher --puka-sun-deep). `py-0.5`
   // hält die Zeile auf den 27px des Bestands — die Vorgabe `py-1.5` machte die
   // ganze Leiste 23px höher.
-  link: 'px-2.5 py-0.5 text-[0.95rem] font-medium text-toned hover:text-primary-600',
+  link: 'px-2.5 py-0.5 text-sm font-medium text-toned hover:text-primary-600',
   linkTrailingIcon: 'size-[0.8rem]',
   // DIE BREITE DES AUSKLAPPERS STEHT AN DER PLATTE, NICHT AM INHALT.
   // Reka misst den Inhalt und schreibt das Ergebnis nach
@@ -326,7 +326,7 @@ const NAV_UI = {
 }
 
 const MOBILE_NAV_UI = {
-  link: 'px-3 py-2.5 text-[0.95rem] font-semibold text-highlighted hover:text-primary-600',
+  link: 'px-3 py-2.5 text-sm font-semibold text-highlighted hover:text-primary-600',
   linkLeadingIcon: 'size-[1.05rem] text-primary-600 group-hover:text-primary-600',
   separator: 'my-2 bg-[color:var(--puka-menu-edge)]',
 }
@@ -379,7 +379,7 @@ const MOBILE_NAV_UI = {
                 <UIcon :name="product.icon" class="size-[1.1rem]" />
               </span>
               <span :class="ui.childLinkWrapper()">
-                <span :class="ui.childLinkLabel({ active: false, class: 'flex items-center gap-1.5 whitespace-normal font-bold text-[0.92rem] text-highlighted' })">
+                <span :class="ui.childLinkLabel({ active: false, class: 'flex items-center gap-1.5 whitespace-normal font-bold text-sm text-highlighted' })">
                   {{ t(`marketing.nav.products.items.${product.key}.title`) }}
                   <!-- LAYER-EIGENER SCHLÜSSEL (`marketing.nav.earlyAccess`,
                        nicht mehr `marketing.blocks.earlyAccess`): der
@@ -394,7 +394,7 @@ const MOBILE_NAV_UI = {
                     :label="t('marketing.nav.earlyAccess')"
                   />
                 </span>
-                <span :class="ui.childLinkDescription({ active: false, class: 'block text-[0.8rem]/[1.4] text-toned' })">
+                <span :class="ui.childLinkDescription({ active: false, class: 'block text-xs/[1.4] text-toned' })">
                   {{ t(`marketing.nav.products.items.${product.key}.text`) }}
                 </span>
               </span>
@@ -403,7 +403,7 @@ const MOBILE_NAV_UI = {
           <li>
             <NuxtLink
               :to="blocksTarget"
-              class="mt-1 flex items-center gap-1.5 border-t border-[color:var(--puka-menu-edge)] px-3 pb-1.5 pt-2.5 text-[0.85rem] font-bold text-primary-600 hover:underline"
+              class="mt-1 flex items-center gap-1.5 border-t border-[color:var(--puka-menu-edge)] px-3 pb-1.5 pt-2.5 text-sm font-bold text-primary-600 hover:underline"
               @click="openMenu = ''"
             >
               {{ t('marketing.nav.products.overview') }}
@@ -424,7 +424,7 @@ const MOBILE_NAV_UI = {
         color="neutral"
         variant="link"
         size="sm"
-        class="hidden lg:inline-flex px-2.5 text-[0.95rem] font-medium text-toned hover:text-primary-600"
+        class="hidden lg:inline-flex px-2.5 text-sm font-medium text-toned hover:text-primary-600"
       >
         {{ t('marketing.nav.signIn') }}
       </UButton>
@@ -438,7 +438,7 @@ const MOBILE_NAV_UI = {
         color="neutral"
         variant="link"
         size="sm"
-        class="hidden lg:inline-flex px-2.5 text-[0.95rem] font-medium text-toned hover:text-primary-600"
+        class="hidden lg:inline-flex px-2.5 text-sm font-medium text-toned hover:text-primary-600"
         @click="trackFunnel('funnel_cta_start', { gate: 'on', cta: 'code' })"
       >
         {{ t('marketing.nav.hasCode') }}

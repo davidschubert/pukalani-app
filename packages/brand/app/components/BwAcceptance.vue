@@ -593,7 +593,7 @@ async function confirmRestart(): Promise<void> {
       <p class="bw-label uppercase tracking-wider" style="color: var(--bw-muted)">
         {{ t('brand.acceptance.title') }}
       </p>
-      <h1 class="mt-1 text-[26px] font-extralight leading-tight tracking-tight">
+      <h1 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">
         {{ t(`brand.steps.${stepKey}`) }}
       </h1>
       <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
@@ -709,7 +709,7 @@ async function confirmRestart(): Promise<void> {
           <p class="bw-label uppercase tracking-widest" style="color: var(--bw-stale)">
             {{ t(`brand.steps.${stepKey}`) }}
           </p>
-          <h2 class="mt-1 text-[24px] font-extralight leading-tight tracking-tight">
+          <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">
             {{ t('brand.acceptance.restart.title') }}
           </h2>
 

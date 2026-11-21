@@ -25,6 +25,10 @@ export interface PresenceUser {
 interface RawPresence { userId: string, status?: string, $updatedAt?: string, metadata?: Record<string, unknown> }
 
 const HEARTBEAT_MS = 20_000
+/** Fenster, in dem Anlässe zu EINEM Herzschlag gebündelt werden (Q23-Rest). */
+const PRESENCE_BUNDLE_MS = 300
+/** Längste Wartezeit ab dem ersten Anlass (Q23-Rest). */
+const PRESENCE_BUNDLE_MAX_MS = 1_000
 // Realtime ist der schnelle Pfad: WS-Upsert → Event → Reader-Refresh in ~280ms
 // (gemessen, konsistent). Der Poll ist nur Backstop, falls ein Event verloren geht
 // oder der WS kurz weg ist → 20s. WICHTIG: setzt einen GESUNDEN realtime-Worker
@@ -182,10 +186,34 @@ export function usePresenceState() {
     upsertWs()
   }
 
+  /**
+   * BÜNDELN (Q23-Rest, Bahn 2): beim Öffnen einer Seite melden sich mehrere
+   * Bausteine kurz nacheinander (Anmeldung bekannt, `setPage`, `setScope`,
+   * `focus`) — vorher schrieb jeder Anlass sofort, also zwei bis vier
+   * Herzschläge (HTTP UND WS) in der ersten Sekunde. Jetzt wartet das
+   * Schreiben auf 300 ms Ruhe (höchstens 1 s ab dem ersten Anlass) und
+   * schreibt dann EINMAL den Stand von dann. Der Takt (`HEARTBEAT_MS`) und das Verlassen (`pagehide`)
+   * schreiben weiter sofort.
+   */
+  let bundled: ReturnType<typeof setTimeout> | null = null
+  let bundleStartedAt = 0
+  function scheduleUpsert() {
+    const now = Date.now()
+    if (!bundled) bundleStartedAt = now
+    else clearTimeout(bundled)
+    // Ruhe abwarten, aber nie länger als PRESENCE_BUNDLE_MAX_MS ab dem
+    // ersten Anlass — sonst schöbe Dauertippen den Herzschlag ewig hinaus.
+    const wait = Math.min(PRESENCE_BUNDLE_MS, Math.max(0, bundleStartedAt + PRESENCE_BUNDLE_MAX_MS - now))
+    bundled = setTimeout(() => {
+      bundled = null
+      upsert()
+    }, wait)
+  }
+
   if (!stateStarted) {
     stateStarted = true
-    watch(() => auth.user?.$id, id => { if (id) upsert() }, { immediate: true })
-    watch(myMeta, upsert, { deep: true })
+    watch(() => auth.user?.$id, id => { if (id) scheduleUpsert() }, { immediate: true })
+    watch(myMeta, scheduleUpsert, { deep: true })
     setInterval(upsert, HEARTBEAT_MS)
     // `away` = Tab im Hintergrund (anderer Tab/minimiert). Bei JEDEM Sichtbarkeits-
     // wechsel aktualisieren + sofort upserten: andere sehen den „im anderen Tab"-
@@ -196,8 +224,8 @@ export function usePresenceState() {
       if (myMeta.value.away !== away) myMeta.value = { ...myMeta.value, away }
     }
     syncAway() // initialer Stand (falls Tab beim Laden schon versteckt ist)
-    document.addEventListener('visibilitychange', () => { syncAway(); upsert() })
-    window.addEventListener('focus', () => { syncAway(); upsert() })
+    document.addEventListener('visibilitychange', () => { syncAway(); scheduleUpsert() })
+    window.addEventListener('focus', () => { syncAway(); scheduleUpsert() })
     // Tab schließt / Seite verlässt (kein SPA-Wechsel) → Presence sofort entfernen,
     // statt bis zur Expiry (240 s, `PRESENCE_TTL_MS` im Heartbeat) „online" zu bleiben. sendBeacon überlebt Unload.
     window.addEventListener('pagehide', () => {

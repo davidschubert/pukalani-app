@@ -30,6 +30,40 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### TY1 — Schriftgrößen als Stufen statt von Hand (UI-007) ✅ 2026-11-21
+
+**Was.** Klassen wie `text-[26px]` und `text-[0.95rem]` in `app/`-Code sind
+auf die Stufen von Tailwind (`text-xs` … `text-4xl`) umgestellt: 68 Stellen in
+27 Dateien (Marketing-Site, Kopf und Fuß, Brand-Layer, Markt, Hilfe). Gezählt
+am 2026-11-21: 82 feste Größen in `app/`-Code (ohne `.playground`); die 154 des
+Audits enthalten Spielwiesen und `<style>`-Blöcke.
+
+- Zuordnung zur nächsten Stufe, bei Gleichstand die kleinere (bricht das
+  Layout nicht um): 12–12,8 px → `xs`; 13,6–15,2 px → `sm`; 16,8 px → `base`;
+  17,6–18 px → `lg`; 20–22 px → `xl`; 24–28 px → `2xl`; 30 px → `3xl`; 40 px →
+  `4xl`. Sichtbarer Abstand (mehr als 1 px) an auffälligen Stellen: 28 px →
+  24 px (Überschriften in Brand-Wizard, Foundation, neue Marke), 26 px → 24 px,
+  22 px → 20 px, 40 px → 36 px (Gestaltungstafel), 0,95 rem → 14 px
+  (Menü, Fuß, Kopf der Marketing-Site). Zeilenhöhe: die Stufen bringen ihre
+  eigene mit, eine `leading-*`-Klasse daneben gewinnt weiter.
+- Ausnahmen bleiben, im Wächter mit Grund: Mikro-Beschriftungen unter 12 px
+  (Achsen, Karten, Kalenderzelle, Zähler, Weltkarte), `em` im Inline-Code, ein
+  Dokument-Text, der `.bw-doc-text` bewusst überschreibt.
+- Wächter `packages/core/tests/fontSizeGuard.test.ts`: jede neue feste Größe
+  in Klasse oder `style="font-size: …"` ist rot; Ausnahmen mit Zahl und Grund;
+  Gegenprobe an einer echten Datei (rot) und eine Erkennungs-Probe.
+- NICHT angefasst: `font-size` in `<style>`-Blöcken und CSS-Dateien
+  (`brand.css`, Marketing-, Portfolio-, Photos-Seiten) und die Studio-Site
+  (`apps/portfolio`) — der Befund nennt sie nicht; Rest für einen größeren
+  Umbau.
+
+**Gelernt:** Eine Regel „nimm die nächste Stufe" braucht eine Untergrenze:
+Mikro-Beschriftungen unter 12 px haben keine Stufe, und ein ehrlicher Wächter
+führt sie als Ausnahme statt sie hochzurunden. Und `font-size` in CSS-Dateien
+schlägt Klassen aus dem Utility-Layer — ein Inline-Stil kann deshalb ein
+gewollter Überschreiber sein und gehört nicht blind in eine Klasse. Im Browser
+angesehen nur: Marketing (1440 und 375 px); Brand-Seiten nicht.
+
 ### LZ1 — Listen-Zustände: Rest-Liste nach Q14 von 110 auf 59 Dateien (FE-004, UI-005) ✅ 2026-11-21
 
 **Was.** In vier Schüben (PR 497, 500, 502, 503) lesen Seiten ihren Abruffehler
@@ -55,6 +89,60 @@ Fehlerzweig `error && !data` zündet dort nie, der Zweig muss `error` allein
 fragen. Und ein Skript, das viele Seiten gleich umbaut, darf Einrückung und
 `v-else`-Ketten nicht raten: jede Seite wurde danach vom Linter und vom
 Wächter gegengeprüft. Nicht im Browser angesehen.
+### Bahn 2 / Paket 3 — Reste aus Q23 und Q09: Herzschläge gebündelt, Neuversuch mit wachsenden Abständen, Schubladen-Knopf mit Zustand, Werkstatt-Bereiche ✅ 2026-11-21
+
+**Was.**
+
+- **(a) Herzschläge beim Öffnen gebündelt** (`core/app/composables/usePresence.ts`).
+  Anmeldung, `setPage`, `setScope` und `focus` schrieben je sofort (HTTP und
+  WS). Jetzt wartet das Schreiben auf 300 ms Ruhe (`PRESENCE_BUNDLE_MS`,
+  höchstens 1 s ab dem ersten Anlass) und schreibt EINMAL; Takt und
+  `pagehide` bleiben sofort. Ein festes 300-ms-Fenster reichte in der
+  langsameren CI nicht (dort kam ein später Anlass danach: 2).
+- **(b) Neuversuch mit wachsenden Abständen** (`core/shared/realtimeReconnect.ts`,
+  eingehängt in `useRealtimeClient.ts`). Das SDK nullt seinen Zähler beim
+  Öffnen; eine angenommene und gleich geschlossene Verbindung kam so immer
+  wieder. Unsere Instanz zählt die DAUER: unter 30 s offen = Fehlschlag;
+  Abstand 1, 2, 4 … 60 s. Die Regel-Zeile in `.claude/rules/realtime.md`
+  ist nachgezogen.
+- **(c) Schubladen-Knopf im schmalen Fenster mit `aria-expanded`** — ohne
+  eine Seite anzufassen: `CoreDashboardToggleState` sitzt im Dashboard-Layout
+  um den Seiten-Slot und gibt jeder `UDashboardNavbar` darunter über `UTheme`
+  die Vorgabe `toggle: { 'aria-expanded': offen }` (die Kopfzeile reicht das
+  Objekt als Attribute an ihren Knopf). Wächter: `dashboardLandmarksGuard.test.ts`
+  (Hülle um den Slot, keine Seite setzt `toggle` selbst).
+- **(d) Werkstatt** (`packages/brand/app/components/BwWorkspace.vue`, alle
+  vier Zweige): `main` umschließt jetzt Kopfzeile der Bühne, Bühne und
+  Eingabefeld; die zwei Seitenspalten heißen „Kapitel" und „Dein
+  Markendokument" (de+en). Q21 war schon auf `main`.
+
+**Gemessen** (lokal, Dev-Server aus dem Worktree, lokale Appwrite,
+Wegwerf-Konto mit Label `admin`; Fall `apps/comments/e2e/presence-open-and-reconnect.spec.ts`):
+
+| Messung | vorher | nachher |
+| --- | --- | --- |
+| `POST /api/presence/heartbeat` in 5 s nach dem Laden, Dashboard (die CI-Grenze ist 2) | 3 | 1 |
+| dasselbe, Beitrags-Seite | 3 | 1 |
+| Verbindungsversuche in 20 s, wenn jede Verbindung angenommen und sofort geschlossen wird | 39 (zwei je Sekunde) | 5 bis 6 (bei 1, 2, 4, 9, 18 s) |
+
+Unverändert grün im selben Lauf: `presence-shared-poll.spec.ts` (ein Abruf je
+20 s), `realtime.spec.ts` (Kommentar erscheint live), `session-revoke.spec.ts`
+(eigener Widerruf schickt den Tab sofort zur Anmeldung, fremder nicht),
+`dashboard-landmarks.spec.ts` inklusive neuem Fall „Schubladen-Knopf",
+Render-Test der Werkstatt (Gegenprobe gegen den Stand davor: rot).
+
+**Nicht geprüft:** die 120-s-Regel nicht eigens neu gemessen (das SDK pingt
+weiter im Takt, der Code daran ist unverändert); das Erscheinen eines
+zweiten Kontos kommt bis zu 1 s später als vorher, nicht mit zwei Konten
+nachgemessen (mit der Obergrenze bis zu 1 s); die Schublade nur im
+Dev-Server, nicht im Production-Build.
+
+**Gelernt:** „Fester 1-s-Neuversuch" stand als FALLE des SDK in der Regel
+und galt damit als hinzunehmen. Die Staffelung des SDK ist da, sie wird nur
+nie erreicht — eine eigene Zählung an der Dauer statt am `open` braucht
+keinen Eingriff ins SDK, nur das Überschreiben einer Methode der EINEN
+Instanz.
+
 ### KC1 — KI-Training je Community als Schalter für den Owner (Bahn 2 / Paket 2) ✅ 2026-11-21
 
 **Was.** Bis heute galt für jede öffentliche Community fest: KI-Suche und

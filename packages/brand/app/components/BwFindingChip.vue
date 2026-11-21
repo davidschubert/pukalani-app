@@ -262,7 +262,7 @@ async function confirmDismiss(): Promise<void> {
           <p class="bw-label uppercase tracking-widest" style="color: var(--bw-stale)">
             {{ t(kind.key) }}
           </p>
-          <h2 class="mt-1 text-[24px] font-extralight leading-tight tracking-tight">
+          <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">
             {{ t('brand.finding.dismissTitle') }}
           </h2>
           <p class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ current.why }}</p>

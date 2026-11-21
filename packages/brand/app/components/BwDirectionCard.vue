@@ -74,7 +74,7 @@ const swatches = computed(() => {
       <span class="block h-9" style="background: linear-gradient(90deg, var(--dir-c), var(--dir-b) 60%, var(--dir-a))" />
       <span class="block px-3.5 pb-3.5 pt-3" style="background: var(--dir-a)">
         <span
-          class="block text-[15px] leading-tight"
+          class="block text-sm leading-tight"
           :style="`font-family: ${direction.fonts.heading.stack}; color: ${swatches[0]}`"
         >{{ name }}</span>
         <span

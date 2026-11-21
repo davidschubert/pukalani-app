@@ -446,7 +446,11 @@ const searchGroups = computed(() => {
       class="flex min-w-0 flex-1 outline-none"
       :class="sidebarVariant === 'inset' ? 'm-2 overflow-hidden rounded-xl bg-default shadow-sm ring ring-default' : undefined"
     >
-      <slot />
+      <!-- Schubladen-Knopf mit Zustand (Q09-Rest): Vorgabe für jede
+           Kopfzeile darunter, Begründung in CoreDashboardToggleState. -->
+      <CoreDashboardToggleState>
+        <slot />
+      </CoreDashboardToggleState>
     </main>
   </UDashboardGroup>
 </template>
