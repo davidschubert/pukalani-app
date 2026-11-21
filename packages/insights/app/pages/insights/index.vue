@@ -26,7 +26,7 @@ const localePath = useLocalePath()
 
 const readerLocale = computed<InsightsLocale>(() => (locale.value === 'de' ? 'de' : 'en'))
 
-const { data } = await useFetch<InsightsPublicListResponse>('/api/insights/public/posts', {
+const { data, error, refresh } = await useFetch<InsightsPublicListResponse>('/api/insights/public/posts', {
   key: 'insights-public-list',
 })
 
@@ -53,7 +53,12 @@ useSeoMeta({
       </p>
     </div>
 
-    <div class="mt-10">
+    <!-- Fehler statt „noch keine Beiträge" (FE-004, LZ1) -->
+    <div v-if="error && !posts.length" role="alert" class="mt-10">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
+    <div v-else class="mt-10">
       <InPostList
         :posts="posts"
         :locale="readerLocale"

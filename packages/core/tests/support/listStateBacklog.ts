@@ -14,6 +14,14 @@
  * höher steht als gezählt (dann hier senken).
  *
  * Plan und Reihenfolge: docs/plans/offen/LZ1.md
+ *
+ * WARUM der Rest bleibt (Stand nach Schub 4, LZ1): Hinweis-Kästen und Zusatz-Auskünfte
+ * (`*Notice.global`, Feedback-Knopf, Sitzungs-/2FA-/Benachrichtigungs-Karten,
+ * Handle, Auswahl-Kategorien der Diskussionen, Vorschläge im Nachrichten-Fenster):
+ * ein Ausfall blendet nur das Zusatzstück aus, es gibt keine Liste zu zeichnen;
+ * Seiten, deren Abruf hinter eigenem Fehlerweg liegt (Hilfe/Docs, Brand-Wizard,
+ * Kennzahl-Kacheln des Dashboards, Einladungs-Seiten) und Lade-Wege über Stores.
+ * Sie brauchen je Seite eine eigene Entscheidung und stehen für Schub 5.
  */
 export const LIST_STATE_BACKLOG: Readonly<Record<string, number>> = {
   'apps/control/app/pages/dashboard/stripe.vue': 1,
@@ -31,7 +39,6 @@ export const LIST_STATE_BACKLOG: Readonly<Record<string, number>> = {
   'packages/blueprint/app/pages/discussions/about.vue': 3,
   'packages/brand/app/components/BwDiscoverTeaser.vue': 1,
   'packages/brand/app/pages/brand-check/[id].vue': 1,
-  'packages/brand/app/pages/brand-check/ranking.vue': 1,
   'packages/brand/app/pages/brand-check/vergleich.vue': 1,
   'packages/brand/app/pages/brand/[profileId]/[stepKey].vue': 2,
   'packages/brand/app/pages/brand/[profileId]/design.vue': 1,
@@ -41,24 +48,20 @@ export const LIST_STATE_BACKLOG: Readonly<Record<string, number>> = {
   'packages/brand/app/pages/dashboard/brand-scores.vue': 1,
   'packages/brand/app/pages/dashboard/brands/[id]/score.vue': 3,
   'packages/brand/app/pages/dashboard/brands/index.vue': 2,
-  'packages/brand/app/pages/discover/index.vue': 1,
   'packages/brand/app/pages/invite.vue': 1,
   'packages/comments/app/components/CommentSection.vue': 1,
   'packages/comments/app/pages/dashboard/community/embed.vue': 1,
   'packages/comments/app/pages/embed.vue': 1,
   'packages/control/app/pages/dashboard/communities.vue': 1,
-  'packages/control/app/pages/dashboard/websites.vue': 2,
+  'packages/control/app/pages/dashboard/websites.vue': 1,
   'packages/core/app/components/auth/AccountSessionsCard.vue': 1,
   'packages/core/app/components/auth/TwoFactorCard.vue': 1,
   'packages/core/app/components/user/UserHandleForm.vue': 1,
   'packages/core/app/components/user/UserNotificationSettings.vue': 1,
   'packages/courses/app/components/LessonView.vue': 2,
-  'packages/courses/app/pages/dashboard/courses/[id].vue': 1,
   'packages/feedback/app/components/FeedbackButton.global.vue': 1,
   'packages/insights/app/pages/dashboard/insights/[id].vue': 1,
-  'packages/insights/app/pages/dashboard/insights/index.vue': 1,
   'packages/insights/app/pages/dashboard/insights/radar.vue': 1,
-  'packages/insights/app/pages/insights/index.vue': 1,
   'packages/insights/app/pages/rankings/index.vue': 1,
   'packages/insights/app/pages/topics/[slug].vue': 1,
   'packages/market/app/pages/brand/[profileId]/market.vue': 3,
