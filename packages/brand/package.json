@@ -26,8 +26,11 @@
   },
   "devDependencies": {
     "@nuxt/eslint-config": "catalog:",
+    "@nuxt/test-utils": "catalog:",
     "@types/node": "catalog:",
+    "@vue/test-utils": "catalog:",
     "eslint": "catalog:",
+    "happy-dom": "catalog:",
     "jiti": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
