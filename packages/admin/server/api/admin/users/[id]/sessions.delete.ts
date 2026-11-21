@@ -1,3 +1,4 @@
+import { forgetAccountSessions } from '../../../../../../core/server/utils/sessionAccount'
 /** Alle Sessions eines Users invalidieren (Security-Aktion, z.B. nach Kompromittierung) */
 export default defineEventHandler(async (event) => {
   const adminUser = requirePermission(event, 'users.manage')
@@ -10,6 +11,8 @@ export default defineEventHandler(async (event) => {
   const admin = createAdminClient(event)
   await admin.users.deleteSessions({ userId })
     .catch((error) => { throw toH3Error(error, 'User not found') })
+  // Widerrufen heißt sofort widerrufen — auch im Anmelde-Merker (Q12).
+  forgetAccountSessions(userId)
 
   await recordAudit(event, { action: 'user.sessions_cleared', targetType: 'user', targetId: userId })
 

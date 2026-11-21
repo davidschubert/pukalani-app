@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { forgetAccountSessions } from './sessionAccount'
 
 /**
  * DER EINE SCHREIBER FÜR KONTO-LABELS (SEC-024, seit 2026-11-13).
@@ -136,6 +137,9 @@ export async function mutateUserLabels(
     return { ok: false, reason: 'unavailable', message: messageOf(error) }
   }
 
+  // Labels tragen Rollen und Publikum: der Anmelde-Merker (Q12) darf den alten
+  // Stand nicht weiterreichen — geräumt wird nach jedem Versuch, auch einem
+  // gescheiterten (er kann halb geschrieben haben).
   return await serialize(userId, async (): Promise<UserLabelsResult> => {
     let changed = false
     let lastError = ''
@@ -171,5 +175,5 @@ export async function mutateUserLabels(
     return lastError
       ? { ok: false, reason: 'verify_failed', message: lastError }
       : { ok: false, reason: 'verify_failed' }
-  })
+  }).finally(() => forgetAccountSessions(userId))
 }
