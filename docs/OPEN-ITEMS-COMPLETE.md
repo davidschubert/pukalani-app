@@ -30,6 +30,65 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### TY1 — Schriftgrößen als Stufen statt von Hand (UI-007) ✅ 2026-11-21
+
+**Was.** Klassen wie `text-[26px]` und `text-[0.95rem]` in `app/`-Code sind
+auf die Stufen von Tailwind (`text-xs` … `text-4xl`) umgestellt: 68 Stellen in
+27 Dateien (Marketing-Site, Kopf und Fuß, Brand-Layer, Markt, Hilfe). Gezählt
+am 2026-11-21: 82 feste Größen in `app/`-Code (ohne `.playground`); die 154 des
+Audits enthalten Spielwiesen und `<style>`-Blöcke.
+
+- Zuordnung zur nächsten Stufe, bei Gleichstand die kleinere (bricht das
+  Layout nicht um): 12–12,8 px → `xs`; 13,6–15,2 px → `sm`; 16,8 px → `base`;
+  17,6–18 px → `lg`; 20–22 px → `xl`; 24–28 px → `2xl`; 30 px → `3xl`; 40 px →
+  `4xl`. Sichtbarer Abstand (mehr als 1 px) an auffälligen Stellen: 28 px →
+  24 px (Überschriften in Brand-Wizard, Foundation, neue Marke), 26 px → 24 px,
+  22 px → 20 px, 40 px → 36 px (Gestaltungstafel), 0,95 rem → 14 px
+  (Menü, Fuß, Kopf der Marketing-Site). Zeilenhöhe: die Stufen bringen ihre
+  eigene mit, eine `leading-*`-Klasse daneben gewinnt weiter.
+- Ausnahmen bleiben, im Wächter mit Grund: Mikro-Beschriftungen unter 12 px
+  (Achsen, Karten, Kalenderzelle, Zähler, Weltkarte), `em` im Inline-Code, ein
+  Dokument-Text, der `.bw-doc-text` bewusst überschreibt.
+- Wächter `packages/core/tests/fontSizeGuard.test.ts`: jede neue feste Größe
+  in Klasse oder `style="font-size: …"` ist rot; Ausnahmen mit Zahl und Grund;
+  Gegenprobe an einer echten Datei (rot) und eine Erkennungs-Probe.
+- NICHT angefasst: `font-size` in `<style>`-Blöcken und CSS-Dateien
+  (`brand.css`, Marketing-, Portfolio-, Photos-Seiten) und die Studio-Site
+  (`apps/portfolio`) — der Befund nennt sie nicht; Rest für einen größeren
+  Umbau.
+
+**Gelernt:** Eine Regel „nimm die nächste Stufe" braucht eine Untergrenze:
+Mikro-Beschriftungen unter 12 px haben keine Stufe, und ein ehrlicher Wächter
+führt sie als Ausnahme statt sie hochzurunden. Und `font-size` in CSS-Dateien
+schlägt Klassen aus dem Utility-Layer — ein Inline-Stil kann deshalb ein
+gewollter Überschreiber sein und gehört nicht blind in eine Klasse. Im Browser
+angesehen nur: Marketing (1440 und 375 px); Brand-Seiten nicht.
+
+### LZ1 — Listen-Zustände: Rest-Liste nach Q14 von 110 auf 59 Dateien (FE-004, UI-005) ✅ 2026-11-21
+
+**Was.** In vier Schüben (PR 497, 500, 502, 503) lesen Seiten ihren Abruffehler
+und zeigen bei einem Fehler „Noch einmal versuchen" statt einer falschen
+Leer-Auskunft: Kurse, Termine, Feed, Diskussionen (Themen, Kategorien,
+Abzeichen), Nachrichten, Betreiber-Listen in admin/control/pages/messages/
+feedback/media/comments, „Meine Communities", Konto-Startseite, Verbrauch,
+Produkte, Marken-Entdecken, Ranking, Insights-Listen, Kurs-Bearbeitung.
+Rest-Liste: 110 → 59 Dateien, 136 → 80 Abrufe.
+
+- Muster: Listen mit eigener Leer-Auskunft über `listState()` +
+  `CoreListState` (die Tabelle zeichnet „leer" selbst, weil „Filter ohne
+  Treffer" ein Zustand der Daten ist); alle anderen mit einem
+  `CoreLoadError`-Zweig vor dem Inhalt (`error && !data`).
+- Bewusst offen (59): Hinweis-Kästen und Zusatz-Auskünfte, Seiten mit eigenem
+  Fehlerweg; Gründe im Kopf von `listStateBacklog.ts`. Ihre Umstellung ist je
+  Seite eine eigene Entscheidung.
+- Nicht erledigt aus `LZ1.md`: (e) Sackgassen UX-012, (f) Lade-Zeichen UI-008,
+  (g) handgebaute Listen ohne Grund UI-009.
+
+**Gelernt:** Ein Abruf mit `default: () => …` hat nie `data === null`: ein
+Fehlerzweig `error && !data` zündet dort nie, der Zweig muss `error` allein
+fragen. Und ein Skript, das viele Seiten gleich umbaut, darf Einrückung und
+`v-else`-Ketten nicht raten: jede Seite wurde danach vom Linter und vom
+Wächter gegengeprüft. Nicht im Browser angesehen.
 ### Bahn 2 / Paket 3 — Reste aus Q23 und Q09: Herzschläge gebündelt, Neuversuch mit wachsenden Abständen, Schubladen-Knopf mit Zustand, Werkstatt-Bereiche ✅ 2026-11-21
 
 **Was.**
