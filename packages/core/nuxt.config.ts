@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { execSync } from 'node:child_process'
 import { FETCH_ERROR_HOOK } from './shared/fetchErrorBridge'
 import { clearNitroRouteTypes } from './build/nitroRouteTypes'
+import { devEnvHint } from './build/devEnvHint'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 
@@ -258,6 +259,17 @@ export default defineNuxtConfig({
      */
     'nitro:init': (nitro) => {
       nitro.hooks.hook('types:extend', clearNitroRouteTypes)
+    },
+
+    /**
+     * FEHLENDE `.env` BEIM NAMEN NENNEN (DOC-006, 2026-11-21) — nur im
+     * Dev-Server, nie bei `nuxi prepare`/Typecheck/Build. Eine Zeile, kein
+     * Abbruch; das Warum steht in `build/devEnvHint.ts`.
+     */
+    'ready': (nuxt) => {
+      if (!nuxt.options.dev || nuxt.options._prepare) return
+      const hint = devEnvHint({ rootDir: nuxt.options.rootDir, repoDir: join(currentDir, '../..'), env: process.env })
+      if (hint) console.error(hint)
     },
   },
 
