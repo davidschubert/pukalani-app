@@ -195,7 +195,7 @@ describe('parseMarkdown Überschriften', () => {
  * CommonMark: Backslash-Escapes und HTML-Entities (2026-08-04).
  * Anlass ist der Serialisierer von `@tiptap/markdown`, der jeden Text-Knoten
  * hartkodiert maskiert — ohne diese Regel zeigte der Beitrag die Backslashes
- * (Messung: docs/plans/COMPOSER-UEDITOR.md).
+ * (Messung: docs/archiv/COMPOSER-UEDITOR.md).
  */
 describe('Backslash-Escapes', () => {
   it('nimmt dem Marker die Wirkung und zeigt das Zeichen', () => {

@@ -2,7 +2,7 @@ import type { Capability } from './types/authz'
 
 /**
  * DIE EINE NAVIGATIONS-REGEL des Dashboards (E9, Davids Entscheidung
- * 2026-07-30, docs/plans/DASHBOARD-IA.md) — PURE, damit Layout und Test
+ * 2026-07-30, docs/archiv/DASHBOARD-IA.md) — PURE, damit Layout und Test
  * dieselbe Wahrheit lesen.
  *
  * Es gibt EINE Dashboard-Navigation. Welche Einträge erscheinen, entscheidet
@@ -279,7 +279,7 @@ function isDashboardNavGroup(value: unknown): value is DashboardNavGroup {
 /**
  * DIE REIHENFOLGE DER DASHBOARD-NAVIGATION IST DIE WAHL JEDER PERSON
  * (NAV1 Paket 3, Entscheidung 3 aus DECISION-LOG „Navigation anpassen",
- * 2026-09-08 — Konzept: docs/plans/DASHBOARD-NAV-JE-PERSON.md).
+ * 2026-09-08 — Konzept: docs/archiv/DASHBOARD-NAV-JE-PERSON.md).
  *
  * JE PERSON, NICHT JE COMMUNITY: die Nav ist rollen-gefiltert, eine vom Owner
  * gesetzte Reihenfolge ginge für einen Moderator gar nicht auf — er sieht die

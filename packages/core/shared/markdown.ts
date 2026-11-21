@@ -19,7 +19,7 @@
  * `UEditor`: `@tiptap/markdown` maskiert beim Serialisieren HARTKODIERT jeden
  * Text-Knoten (`escapeMarkdownSyntax(encodeHtmlEntities(text))`), ohne diese
  * Regel würde aus getipptem `snake_case` gespeichertes `snake\_case` und der
- * Beitrag zeigte den Backslash (Messung: docs/plans/COMPOSER-UEDITOR.md).
+ * Beitrag zeigte den Backslash (Messung: docs/archiv/COMPOSER-UEDITOR.md).
  *
  * DIE SICHERHEITSGRENZE ÄNDERT SICH NICHT. Entmaskieren und Dekodieren
  * passieren AUSSCHLIESSLICH im Blatt eines TEXT-Knotens, der Renderer macht
