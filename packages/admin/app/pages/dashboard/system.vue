@@ -14,7 +14,7 @@ useBrandTitle(() => t('dashboard.system.title'))
 
 // Live-/per-Request-Daten ohne SEO-Relevanz → client-seitig (kein SSR-Render,
 // sonst Hydration-Mismatch über uptime/memory/generatedAt).
-const { data, status, refresh } = useFetch<SystemInfo>('/api/admin/system', {
+const { data, status, error, refresh } = useFetch<SystemInfo>('/api/admin/system', {
   lazy: true,
   server: false,
 })
@@ -236,6 +236,11 @@ async function createDepTicket(body: DepTicketBody) {
           <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
             <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
           </div>
+          <!-- Fehler statt „keine Systemdaten" (FE-004, LZ1) -->
+          <div v-else-if="error && !data" role="alert">
+            <CoreLoadError :retry="refresh" />
+          </div>
+
 
           <template v-else-if="data">
           <!-- Application -->

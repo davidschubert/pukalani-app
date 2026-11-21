@@ -24,7 +24,7 @@ const entries = ref<ChangelogEntry[]>([])
 const total = ref(0)
 const pending = ref(false)
 
-const { data } = await useFetch<ChangelogListResponse>('/api/changelog', {
+const { data, error, refresh } = await useFetch<ChangelogListResponse>('/api/changelog', {
   query: { page: 1, limit: LIMIT },
 })
 entries.value = data.value?.entries ?? []
@@ -82,7 +82,12 @@ useBrandTitle(() => t('changelog.title'), {
       <p class="mt-2 text-muted">{{ t('changelog.description') }}</p>
     </div>
 
-    <p v-if="!entries.length" class="text-muted">{{ t('changelog.empty') }}</p>
+    <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+    <div v-if="error && !entries.length" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
+    <p v-else-if="!entries.length" class="text-muted">{{ t('changelog.empty') }}</p>
 
     <template v-else>
       <UChangelogVersions>

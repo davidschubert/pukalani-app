@@ -22,7 +22,7 @@ const toast = useToast()
 
 useBrandTitle(() => t('admin.config.title'))
 
-const { data, refresh } = await useFetch<AppConfig>('/api/admin/config')
+const { data, error, refresh } = await useFetch<AppConfig>('/api/admin/config')
 
 // Edit-Awareness: warnt, wenn ein anderer Admin dieses Formular ebenfalls offen hat.
 const { editors } = useEditAwareness('config')
@@ -114,7 +114,12 @@ async function save() {
 
 <template>
   <div class="mx-auto w-full lg:max-w-2xl">
-    <UPageCard :title="t('admin.config.title')" :description="t('admin.config.description')" variant="subtle">
+    <!-- Fehler statt „keine Einstellungen" (FE-004, LZ1) -->
+    <div v-if="error && !data" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
+    <UPageCard v-else :title="t('admin.config.title')" :description="t('admin.config.description')" variant="subtle">
       <UAlert
         v-if="editors.length"
         color="warning"

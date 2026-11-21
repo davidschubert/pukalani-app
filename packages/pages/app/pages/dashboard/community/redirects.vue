@@ -51,7 +51,7 @@ const { t } = useI18n()
 const toast = useToast()
 useBrandTitle(() => t('pages.redirects.title'))
 
-const { data, refresh } = await useFetch<CommunityRedirectConfig>('/api/pages/redirects', { lazy: true, server: false })
+const { data, error, refresh } = await useFetch<CommunityRedirectConfig>('/api/pages/redirects', { lazy: true, server: false })
 
 const rules = ref<CommunityRedirectRule[]>([])
 const savedJson = ref('[]')
@@ -207,7 +207,12 @@ const columns = computed<TableColumn<RedirectRow>[]>(() => [
       </p>
     </UCard>
 
-    <UTable :data="tableRows" :columns="columns" data-testid="redirects-table">
+    <!-- Fehler statt „keine Weiterleitungen" (FE-004, LZ1) -->
+    <div v-if="error && !data" role="alert">
+      <CoreLoadError :retry="refresh" />
+    </div>
+
+    <UTable v-else :data="tableRows" :columns="columns" data-testid="redirects-table">
       <template #from-cell="{ row }">
         <span class="font-mono text-sm font-medium">{{ row.original.from }}</span>
       </template>

@@ -37,7 +37,7 @@ interface RequestDto {
 }
 interface Stats { total: number, new: number, assigned: number, redeemed: number, declined: number, deferred: number, waiting: number }
 
-const { data, refresh, status } = await useFetch<{ total: number, stats: Stats, requests: RequestDto[] }>(
+const { data, refresh, status, error } = await useFetch<{ total: number, stats: Stats, requests: RequestDto[] }>(
   '/api/control/invite-requests',
   { lazy: true, server: false },
 )
@@ -184,7 +184,12 @@ function rowActions(request: RequestDto): DropdownMenuItem[][] {
         </div>
       </div>
 
-      <UTable :data="requests" :columns="columns" data-requests-list>
+      <!-- Fehler statt „keine Anfragen" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="requests" :columns="columns" data-requests-list>
         <template #email-cell="{ row }">
           <div class="min-w-0">
             <p class="font-medium">{{ row.original.email }}</p>
