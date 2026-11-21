@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PostListResponse } from '../../../posts/shared/types/post'
 /**
  * BAUPLAN-Komposition Feed + Kommentare (umgezogen aus apps/comments,
  * 2026-07-27): füllt den #comments-Slot des posts-Layers mit dem
@@ -16,11 +17,13 @@ useBrandTitle(() => t('posts.feed.title'), { description: () => t('posts.feed.de
 
 // Kommentar-Anzahl je Post (comments-Layer-API). Die ERSTE Seite wird im
 // SSR mitgeladen, damit die Buttons ohne Wort→Zahl-Flash hydratisieren:
-// derselbe useFetch-Key wie in PostFeed → EIN Request, geteilter Payload.
+// Die Seite lädt die erste Seite EINMAL und reicht sie als `first-page` an
+// PostFeed weiter (Q12, PERF-004). Vorher stand hier „derselbe useFetch-Key →
+// EIN Request" — gemessen waren es zwei, auf dem Server wie im Browser.
 // useRequestFetch statt $fetch: im Pool entscheidet der Host über den
 // Mandanten — $fetch verlöre ihn im SSR (CLAUDE.md).
 const requestFetch = useRequestFetch()
-const { data: firstPage } = await useFetch<{ rows: { $id: string }[] }>('/api/posts')
+const { data: firstPage } = await useFetch<PostListResponse>('/api/posts')
 const initialIds = firstPage.value?.rows.map(row => row.$id) ?? []
 const { data: initialCounts } = await useFetch<{ counts: Record<string, number> }>('/api/comments/counts', {
   query: { targetType: 'post', targetIds: initialIds.join(',') },
@@ -52,7 +55,7 @@ async function loadCounts(ids: string[]) {
     <h1 class="text-2xl font-bold">{{ t('posts.feed.title') }}</h1>
     <p class="mt-1 text-sm text-muted">{{ t('posts.feed.description') }}</p>
 
-    <PostFeed class="mt-6" :reply-counts="replyCounts" @rows-changed="loadCounts">
+    <PostFeed class="mt-6" :first-page="firstPage ?? null" :reply-counts="replyCounts" @rows-changed="loadCounts">
       <template #comments="{ post }">
         <!-- `locked`: ein geschlossenes Thema erscheint auch im Feed — ohne den
              Hinweis böte die Seite dort Antworten, Likes und Reaktionen an, die
