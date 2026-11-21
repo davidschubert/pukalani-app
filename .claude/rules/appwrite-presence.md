@@ -11,6 +11,7 @@ paths:
   - "packages/core/server/api/auth/realtime-token.get.ts"
   - "packages/core/server/utils/presence*.ts"
   - "packages/core/shared/presence*.ts"
+  - "packages/core/shared/sharedPoll.ts"
   - "packages/core/shared/realtimeAuth.ts"
   - "packages/core/scripts/verify-presence-*.mjs"
 ---
@@ -73,6 +74,12 @@ Ob eine App/Seite überhaupt Realtime hat (Config-Gate F14, Host-Gate G5):
   Auslöser); „online jetzt" = `$updatedAt` jünger als `FRESH_MS`. Server:
   `listOnlinePresences()` in `core/server/utils/presence.ts` (Fenster
   `PRESENCE_FRESH_MS` in `core/server/utils/presenceFilter.ts`).
+- EIN ABRUF JE REITER (Q23/PERF-011): alle `usePresence()` teilen Liste, Abo
+  und Takt (`core/shared/sharedPoll.ts`), das Prädikat filtert je Leser. Der
+  Takt ist Rückhalt (20 s nach dem LETZTEN Abruf, ein Ereignis bricht ihn ab), der unveränderte
+  eigene Herzschlag lädt nichts nach. Kein eigenes `presences.list()` neben
+  dem Leser. Wächter: `core/tests/sharedPoll.test.ts`,
+  `apps/comments/e2e/presence-shared-poll.spec.ts`.
 - VORFAHRT „sichtbar schlägt away": zwei offene Tabs VERSCHIEDENER
   Communities teilen sich die EINE Presence. Ein away-Schreiber weicht einer
   frischen (`PRESENCE_VISIBLE_FRESH_MS`) SICHTBAREN Presence eines FREMDEN
