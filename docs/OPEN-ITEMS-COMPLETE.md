@@ -82,6 +82,51 @@ nie erreicht — eine eigene Zählung an der Dauer statt am `open` braucht
 keinen Eingriff ins SDK, nur das Überschreiben einer Methode der EINEN
 Instanz.
 
+### KC1 — KI-Training je Community als Schalter für den Owner (Bahn 2 / Paket 2) ✅ 2026-11-21
+
+**Was.** Bis heute galt für jede öffentliche Community fest: KI-Suche und
+-Antworten ja, Training nein (Q11, DECISION-LOG 2026-11-21). Jetzt wählt der
+Owner. Vorgabe bleibt „nein".
+
+- **Gespeichert** im vorhandenen `profile`-JSON der Community als
+  `aiTraining: true` — wie die Hauptsprache aus Q10, **ohne Migration**. Nur
+  `true` wird gespeichert, „nein" nimmt den Schlüssel heraus, ein Speichern
+  ohne das Feld lässt die Wahl stehen (`packages/control/shared/onboarding.ts`,
+  Schema `packages/control/schemas/communityProfile.ts`).
+- **Weg:** Dashboard → `PATCH /api/community/profile` (onboarding, reicht das
+  Feld nur mit, wenn gesetzt) → Naht `POST /api/control/community/profile`
+  (Rechte wie bei der Hauptsprache: `team.manage`, also Owner und Admin) →
+  Mandanten-Kontext `aiTraining` (`tenantsResolver.ts`) → `/robots.txt` der
+  Platform-App reicht `aiCrawlerPolicy('community', { training })`. Die Regel
+  bleibt an der einen Stelle `packages/core/shared/aiCrawlers.ts`.
+- **Schalter** im Dashboard „Community" unter „Sichtbarkeit", nur bei
+  öffentlicher Sichtbarkeit (bei „nur für Mitglieder" sperrt die robots.txt
+  ohnehin alles). Er speichert sofort, mit dem Satz, dass er eine Bitte an
+  Crawler ist und kein Schloss. Texte de+en.
+- **Täglicher Blick** `scripts/ops/verify-delivery.mjs`: prüft zuerst die
+  Vorgabe; passt sie nicht, ist die andere Wahl desselben Owners auch grün.
+  Rot bleibt, was zu keiner Wahl passt.
+- **Tests:** `apps/platform/tests/robotsAiTraining.test.ts` (Vorgabe nein,
+  Wahl ja nur für DIESE Community — Nachbar bleibt nein, „nur für Mitglieder"
+  sperrt weiter), `packages/control/tests/communityAiTraining.test.ts`
+  (Speichern, Zurücknehmen, Feld fehlt ⇒ Wahl bleibt, Nachbar-Community
+  unberührt), Rollen in `route-roles-seam-community-team.test.ts` (Moderator,
+  Editor, Viewer, Entfernte: 403, nichts geschrieben),
+  `packages/core/tests/verifyDeliveryAiTraining.test.ts`.
+
+**Entschieden (Bahn 2, klein und umkehrbar):** „Nur der Owner" heißt hier
+dieselbe Regel wie bei der Hauptsprache (Owner UND Admin), damit eine Karte
+nicht zwei Rechte-Stufen hat. Die Wahl wirkt nach dem Zwischenspeicher des
+Mandanten (bis 30 s) und dem Browser-Cache der robots.txt (1 h).
+
+**Nicht geprüft:** kein Klick im echten Dashboard mit einem Owner-Konto auf
+einer Bühne.
+
+**Gelernt:** Ein Schalter, der SOFORT speichert, darf nicht den Stand des
+Formulars daneben neu setzen — sonst wirft er dessen ungespeicherte
+Änderungen weg. Er bekommt einen eigenen Wert und schickt die Nachbar-Felder
+im GESPEICHERTEN Stand mit.
+
 ### Bahn 2 / Paket 1 — Acht Stellen, an denen ein verschluckter Lesefehler den Ablauf verfälschte (Rest aus Q13, ARC-002) ✅ 2026-11-21
 
 **Was.** Q13 hatte 236 stille Lesefehler auf `softFail` umgestellt (Verhalten

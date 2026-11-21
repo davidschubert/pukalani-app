@@ -32,5 +32,6 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
     name: tenant.name ?? '',
     description: tenant.description ?? '',
     locale: tenant.primaryLocale ?? '',
+    aiTraining: tenant.aiTraining === true,
   }
 })

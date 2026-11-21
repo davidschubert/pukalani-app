@@ -17,7 +17,7 @@ const localePath = useLocalePath()
 const confirm = useConfirm()
 
 const courseId = route.params.id as string
-const { data: course, status, refresh } = await useFetch<CourseRow & { lessons: LessonRow[] }>(`/api/courses/${courseId}/manage`, {
+const { data: course, status, error, refresh } = await useFetch<CourseRow & { lessons: LessonRow[] }>(`/api/courses/${courseId}/manage`, {
   lazy: true,
   server: false,
 })
@@ -220,6 +220,11 @@ const urlPlaceholder = 'https://'
 
         <div v-if="status === 'pending' && !course" class="flex justify-center py-16">
           <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
+        </div>
+
+        <!-- Fehler statt „Kurs nicht gefunden" (FE-004, LZ1) -->
+        <div v-else-if="error && !course" role="alert">
+          <CoreLoadError :retry="refresh" />
         </div>
 
         <template v-else-if="course">
