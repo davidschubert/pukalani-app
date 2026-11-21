@@ -14,6 +14,13 @@ const props = defineProps<{
    * den Verb-CTA.
    */
   replyCounts?: Record<string, number>
+  /**
+   * Die erste Seite, wenn die SEITE sie schon geladen hat (Bauplan-Feed: sie
+   * braucht die Ids für die Kommentar-Zahlen). Dann lädt der Feed sie NICHT
+   * noch einmal (Q12, PERF-004: vorher zwei Abrufe je Seitenaufbau, auf dem
+   * Server UND im Browser). Ohne Prop holt der Feed sie selbst.
+   */
+  firstPage?: PostListResponse | null
 }>()
 
 const emit = defineEmits<{
@@ -63,12 +70,18 @@ onBeforeUnmount(() => {
   stops.length = 0
 })
 
-const { data, pending, refresh } = await useFetch<PostListResponse>('/api/posts')
-stops.push(watch(data, (value) => {
+// Nur ohne `firstPage` holt der Feed die erste Seite selbst (s. Prop). Ein
+// fester useFetch-Schlüssel hätte NICHT gereicht: auf dem Server lädt Nuxt
+// bei einem zweiten Aufruf nach dem ersten trotzdem neu (gemessen, Q12).
+const own = props.firstPage === undefined ? await useFetch<PostListResponse>('/api/posts') : null
+const firstPage = computed(() => (own ? own.data.value : props.firstPage) ?? null)
+const pending = computed(() => own?.pending.value ?? false)
+function applyFirstPage(value: PostListResponse | null) {
   if (!value) return
   rows.value = value.rows
   nextCursor.value = value.nextCursor
-}, { immediate: true }))
+}
+stops.push(watch(firstPage, applyFirstPage, { immediate: true }))
 // Ids nach außen melden (App lädt dazu die Kommentar-Counts)
 stops.push(watch(() => rows.value.map(row => row.$id).join(','), () => {
   emit('rowsChanged', rows.value.map(row => row.$id))
@@ -91,7 +104,8 @@ async function loadMore() {
 
 async function showNew() {
   pendingNew.value = 0
-  await refresh()
+  if (own) await own.refresh()
+  else applyFirstPage(await $fetch<PostListResponse>('/api/posts'))
   if (import.meta.client) window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 

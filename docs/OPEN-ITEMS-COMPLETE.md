@@ -82,6 +82,68 @@ Vorlagen hängen also an einem Schritt mit Geheimnis, nicht nur an einem
 Schlüssel. Ohne Vorlage setzt Appwrite den PROJEKTNAMEN ein; daher das
 „Account team" im Pool. Und: eine Schleife `for c in "-r lint"` gibt pnpm EIN
 Wort „-r lint" — „Unknown option", Exit 1, aber kein Fehler im Code.
+### Q12 — Weniger Datenbank-Aufrufe je Seite: das Konto einmal, der Feed einmal, Kommentare in einem Zug (PERF-003, PERF-004, PERF-005, PERF-008, FE-006) ✅ 2026-11-21
+
+**Was.** Beim Rendern einer Seite ruft Nuxt die eigenen `/api`-Routen auf,
+und jeder dieser Aufrufe lief wieder durch die ganze Middleware-Kette. Für ein
+angemeldetes Konto fragte der Server deshalb bis zu 13-mal bei Appwrite, wer
+es ist; der Feed lud seine Liste doppelt und zählte Kommentare je Beitrag.
+
+- **Anmelde-Merker (Teil 1, `core/shared/sessionAccountMemo.ts`,
+  `core/server/utils/sessionAccount.ts`).** Die Antwort von `account.get()`
+  gilt je Sitzung höchstens 5 s (Davids Entscheidung B3). Schlüssel ist ein
+  Hash aus Cookie-Name, Mandant und Sitzung; nur im Speicher, höchstens 2000
+  Einträge; gleichzeitige Anfragen teilen sich eine Abfrage; Fehler werden
+  nicht gemerkt. Schreibende Anfragen und `/api/auth/me` fragen immer frisch.
+  Geräumt wird im selben Prozess sofort: nach jeder schreibenden Anfrage des
+  Kontos (Plugin `session-account-memo.ts`), bei `clearSessionCookie`, im
+  Label-Schreiber, bei Konto-Löschung und Sperre durch den Betreiber.
+- **Instanz-Lesungen (`core/server/utils/instanceReadCache.ts`).**
+  `app_config/global`, `custom_themes` und `custom_fonts` höchstens 15 s
+  gemerkt; jeder Schreiber ruft `forgetInstanceRead`.
+- **Feed (Teil 2).** `PostFeed` nimmt die erste Seite als Prop `first-page`,
+  die Feed-Seite des Bauplans reicht ihre weiter. `/api/comments/counts` zählt
+  über eine Liste (nur `targetId`, geblättert) statt je Ziel — dieselbe
+  Datentür und Mitglieder-Klinke, Leserechte und der Filter auf versteckte
+  Kommentare wirken wie vorher.
+- **FE-006.** Der Auth-Store fragt auf Kontroll-Hosts nicht mehr nach der
+  Community-Rolle (dort immer 404).
+- **Indizes (PERF-008).** `control-041` (`communities.tenantId`) und
+  `system-042` (`notifications`: `read`, `$createdAt`). Lokal gefahren; auf
+  Production offen (OPEN-ITEMS „Q12M"). Der Code arbeitet ohne sie richtig,
+  `/api/health` bleibt ohne sie `ok` (die Proben zeigen auf Spalten, nicht auf
+  Indizes) — lokal nachgesehen, bevor die Migrationen liefen.
+
+Gemessen lokal (Platform-Dev-Server, Bühne, Aufrufe an Appwrite je
+Seitenaufbau, Median aus drei Abrufen; „Konto" = höchste Zahl der
+Konto-Abfragen). Nachher mit warmen Merkern aus dem vorigen Abruf:
+
+| Seite | vorher Aufrufe / Konto | nachher Aufrufe / Konto |
+| --- | --- | --- |
+| Startseite, Gast | 7 / 0 | 1 / 0 |
+| Feed, Gast | 16 / 0 | 6 / 0 |
+| Beitrag mit Kommentaren, Gast | 10 / 0 | 6 / 0 |
+| Startseite, Mitglied | 13 / 7 | 9 / 1 |
+| Feed, Mitglied | 32 / 13 | 8 / 1 |
+| Beitrag mit Kommentaren, Mitglied | 33 / 13 | 17 / 1 |
+| Dashboard-Übersicht, Owner | 19 / 6 | 13 / 1 |
+
+Beweise: `core/tests/sessionAccountMemo.test.ts` (Zähl-Wächter je
+Seitenvorlage; ohne Merker rot), `core/tests/instanceReadCache.test.ts`,
+`comments/tests/comment-counts-one-pass.test.ts` (gegen die alte Route rot).
+Im Browser lokal: der Feed ruft beim Laden kein `/api/posts` mehr nach, beim
+Wechsel innerhalb der App einmal statt zweimal.
+
+**Gelernt:** Ein fester `useFetch`-Schlüssel teilt auf dem Server nur
+GLEICHZEITIGE Aufrufe — ruft eine Kind-Komponente dieselbe Adresse nach dem
+Eltern-Aufruf, lädt Nuxt neu. Wer Daten zwischen Seite und Komponente teilt,
+reicht sie als Prop weiter, und eine Zahl im Kommentar („EIN Request") gilt
+erst, wenn sie gemessen ist. Ein Merker für Anmeldungen braucht neben der
+Frist eine Epoche: eine Abfrage, die beim Räumen schon unterwegs war, darf
+ihr Ergebnis danach nicht mehr ablegen.
+
+---
+
 ### Q18 — Lint und Manifest: Lint aus dem Hauptordner prüft Server-Dateien, die Einordnung der Layer hat eine Quelle, `pnpm check` = Lint-Lauf der CI (ARC-003, ARC-004, Code-Teil von ARC-008, DOC-012) ✅ 2026-11-21
 
 **Was.** Vier Lücken mit derselben Ursache: eine von Hand geführte Liste neben
@@ -163,8 +225,6 @@ prüfen soll, muss auch IM Hauptordner laufen — die Nuxt-Vorlage fragt
 blieb ohne die Berichtigung grün; erst die Gegenprobe (Berichtigung
 zurücknehmen, Test muss rot werden) hat das gezeigt. Darum läuft ESLint dort
 in einem eigenen Prozess mit dem Hauptordner als Arbeitsverzeichnis.
-
----
 
 ---
 
