@@ -28,7 +28,7 @@ export default {
     // `brand` STAND HIER (P1b) und ist mit dem Rückbau vom 2026-08-31 raus:
     // der Brand-Wizard hat seit Davids Kehrtwende eine eigene App, eine eigene
     // Domain und ein eigenes Appwrite-Projekt (apps/branding,
-    // docs/plans/BRANDING-SUPPLY-INFRA.md §2). pukalani.studio ist wieder nur
+    // docs/archiv/BRANDING-SUPPLY-INFRA.md §2). pukalani.studio ist wieder nur
     // der Studio-Trichter.
   ],
   // Ziel-Prüfung (OPS-002): nur gegen diese Appwrite-Projekte darf der

@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   /**
    * branding.supply — die eigene App des Brand-Wizards (Infra-Plan
-   * docs/plans/BRANDING-SUPPLY-INFRA.md §2, Davids Entscheidung 2026-08-31).
+   * docs/archiv/BRANDING-SUPPLY-INFRA.md §2, Davids Entscheidung 2026-08-31).
    *
    * Früher gelistet = höhere Priorität; core + system sind das Fundament und
    * bleiben immer. Die Menge muss zum Site-Manifest passen — `pnpm

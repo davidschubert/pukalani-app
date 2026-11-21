@@ -7,7 +7,7 @@ trotzdem noch am Konto hängt.
 Code: `packages/onboarding/server/utils/labelReconcile.ts` (Logik),
 `packages/control/server/utils/labelReconcileReader.ts` (Leser),
 `apps/platform/server/plugins/label-reconcile.ts` (Verdrahtung, Takt).
-Regel: `.claude/rules/tenant-isolation.md`, Absatz SITE-LABEL.
+Regel: `.claude/rules/tenant-mitglieder.md`, Absatz SITE-LABEL.
 
 ## Was der Lauf tut
 

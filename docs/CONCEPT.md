@@ -677,7 +677,7 @@ in ihrer Datei eine Regel steht, sondern weil sie im Themes-Layer liegt.
 > sein — wer das „nachrüstet", bricht die Grenze.
 
 > **`brand` ist der erste Produkt-Layer, dessen Tabellen auf genau EINER Instanz
-> stehen** — seit der Kehrtwende vom 2026-08-31 (docs/plans/BRANDING-SUPPLY-INFRA.md)
+> stehen** — seit der Kehrtwende vom 2026-08-31 (docs/archiv/BRANDING-SUPPLY-INFRA.md)
 > ist das `branding` (branding.supply, vorher P1b: `portfolio`) — sie stehen deshalb
 > im `BRANDING_SOLL` von `verify-schema-parity.mjs` und NICHT in der instanzweiten
 > Spalten-Parität.

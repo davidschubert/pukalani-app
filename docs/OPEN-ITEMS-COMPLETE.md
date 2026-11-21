@@ -257,6 +257,648 @@ dasteht.
 
 ---
 
+### Q17 — Regelwerk berichtigt und gekürzt, mit Deckel und Wächter (DOC-001, DOC-002, DOC-003, DOC-015, Text-Teil von ARC-008) ✅ 2026-11-21
+
+**Was.** `CLAUDE.md` und die Dateien unter `.claude/rules/` liest jede
+KI-Sitzung als verbindlich, in jeder Runde neu. Seit der Aufteilung im
+September waren sie von rund 100 auf 249 KB gewachsen, und an gut sechzig
+Stellen nannten sie Namen, Pfade und Zahlen, die es so nicht mehr gab.
+
+1. **Gekürzt.** Aus den Regeln heraus sind Herleitung, Datum, Messwert und
+   Vorfall; geblieben ist die Regel, ihr Geltungsbereich und woran man sie
+   prüft. Das Kürzel des Pakets oder Befunds bleibt als Anker stehen.
+   Zusammen 249.295 → 211.162 Bytes (Tabelle unten).
+2. **Geteilt, wo es nach dem Kürzen nicht passte.** Aus vier Regeldateien
+   wurden zwölf, jede mit einem eigenen, engeren `paths:`-Kopf:
+   `hosts-ops` → `hosts-ops`, `ops-waechter`, `ops-server`, `ops-ausliefern` ·
+   `appwrite` → `appwrite`, `appwrite-migrationen`, `appwrite-presence` ·
+   `tenant-isolation` → `tenant-isolation`, `tenant-mitglieder` ·
+   `ki-mail-embed-moderation` → `ki`, `lange-laeufe`, `mail-embed-moderation` ·
+   aus `CLAUDE.md` zogen Zeit-Lauf und Fristen-Lauf nach `zeit-laeufe`
+   (in `CLAUDE.md` steht die Kurzform mit Zeiger).
+3. **Berichtigt** (jede Angabe am Code von heute nachgesehen, nicht am
+   Befund). Die wichtigsten: Anwesenheit wird an ZWEI Stellen geschrieben,
+   beide gewollt (HTTP-Heartbeat und WS-Upsert), mit den Konstanten statt
+   90 s / 60 s; der Lösch-Lauf des Runners steht auf `apply`, nicht auf
+   `count`; `isAiAvailable` heißt `isAiConfigured` und braucht `await`;
+   `isMailerConfigured` heißt `mailerConfigured`; `PlatformPlanBadge` heißt
+   `CorePlanBadge`; `useTenantBranding` heißt `useCommunitySettings`; die
+   Betreiber-Konsole läuft im Projekt `admin`; der Schalter „JWT" ist aus;
+   `NUXT_AI_KEY` ist auf `platform` keine Pflicht; die Liste der Layer hinter
+   der Datentür und die der Wächter im Lint-Lauf stehen nicht mehr als Zahl
+   in der Regel, sondern als Zeiger auf ihre Quelle im Code. `CLAUDE.md` sagt
+   zur Layer-Einteilung jetzt: die Liste IST `eslint.config.mjs` (Text-Teil
+   von ARC-008; die Frage, ob `admin`, `billing`, `themes` Fundament sind,
+   bleibt Davids). Die Anleitungen der Audit-Helfer (`.claude/agents/`)
+   führen keine eigene Layer-Liste mehr und melden den WS-Upsert nicht mehr
+   als Fehler.
+4. **Neu im Regelwerk:** der Grundsatz „Schutz ist im Core AN, nur
+   Funktionen sind aus" (`CLAUDE.md`, Config-Gates), „Das Ergebnis prüfen,
+   nicht nur das Programm" (`tests.md`), „Eine Aussage, eine Quelle"
+   (`i18n-seo.md`) und „Regelwerk klein halten" (`CLAUDE.md`,
+   `docs-ordnung.md`).
+5. **Der Wächter `pnpm check:rules`** (`scripts/check-rules.mjs`, im
+   Lint-Lauf): Deckel 20.000 Bytes für `CLAUDE.md` und 15.000 je Regeldatei
+   (Davids Entscheidung vom 2026-11-21); jeder Lade-Pfad trifft mindestens
+   eine Datei; jeder in Backticks genannte Pfad existiert (auch die
+   Kurzformen ab Layer); jedes genannte `pnpm`-Skript steht in einer
+   `package.json`. Gegenproben je Regel in
+   `packages/core/tests/checkRules.test.ts`. Auf dem Stand vor diesem Paket
+   meldete er 15 Verstöße.
+6. **Nacharbeit aus Q19:** `BRANDING-SUPPLY-INFRA.md` liegt im Archiv, alle
+   Verweise sind nachgezogen, die Ausnahme `BUILT_PLAN_STAYS` im Wächter
+   `check:doc-links` ist gestrichen.
+
+**Keine Regel verloren — wie das geprüft ist.** Je Datei entstand vor dem
+Kürzen eine Liste ihrer Regeln und danach dieselbe Liste mit Fundstelle;
+zusätzlich hat je Datei eine zweite, unabhängige Sitzung ALT und NEU
+gegeneinander gelesen, ohne die erste Liste zu kennen. Ergebnis der
+Gegenprüfung: keine Regel fehlte, rund vierzig Stellen waren weicher geworden (ein
+Halbsatz, eine Ausnahme, eine Prüf-Stelle fehlte) und sind wieder
+vollständig. Gestrichen sind vier Aussagen, keine davon eine Handlungsregel:
+(1) `tests.md`: der Zählwert „elf von zwölf Beweisen laufen nachts" — die
+Quelle ist `scripts/buehne/beweise.mjs`; (2) `tests.md`: die Liste, welche
+Beweise auf `hand` stehen — die Gründe stehen je Skript in derselben Datei,
+die Regel „echte KI, Stripe und fremde Websites bleiben auf `hand`" bleibt;
+(3) `hosts-ops.md`: der Zustand „SITE und PROBE in `deploy.yml` sind
+identisch"; (4) `editor.md`: die wörtliche Wiederholung von
+„`<script setup lang="ts">`, Nuxt UI bevorzugen" aus `CLAUDE.md`.
+
+**Nicht gemacht.** Die Übersicht `docs/referenz/SICHERHEITSMODELL.md` und die
+Lehren für `docs/runbooks/GESAMTAUDIT.md` (beide DOC-015) liegen außerhalb
+des Regelwerks und sind nicht angelegt. `docs/CONCEPT.md` A14 ordnet
+`admin`, `billing`, `themes` weiter anders ein als `eslint.config.mjs`.
+
+**Gelernt:** Beim Teilen ging keine Regel verloren, aber REICHWEITE: mit den
+engeren Lade-Pfaden luden Regeln bei Dateien nicht mehr, für die sie gelten
+(wer `notify()` ruft, wer ein Label schreibt, wer eine Übersetzung leeren
+muss). Das fand erst die Gegenprüfung mit der ausdrücklichen Frage „bei
+welcher Datei lädt diese Regel jetzt nicht mehr?". Eine Vorher-Nachher-Liste
+der Regeln beweist den Text, nicht, wo er ankommt. Und: einen Lade-Pfad, den
+die Gegenprüfung selbst vorschlug, gab es nicht — der neue Wächter fing ihn
+beim ersten Lauf.
+
+**Was eine gelesene Datei an Regeln lädt** (Bytes ohne `CLAUDE.md`, gemessen
+mit den Lade-Pfaden vorher und nachher): `packages/control/server/utils/controlLock.ts`
+121.527 → 51.292 · `packages/posts/server/api/posts/index.post.ts` 100.404 →
+28.945 · `packages/core/server/utils/mailer.ts` 93.404 → 38.530 ·
+`.github/workflows/production-watch.yml` 43.847 → 18.481 ·
+`apps/platform/app/app.config.ts` 50.053 → 15.776. Der Text insgesamt ist nur
+um ein Sechstel kleiner; der Gewinn je Runde kommt aus den engeren
+Lade-Pfaden.
+
+**Größen (Bytes).**
+
+| Datei vorher | Bytes vorher | Dateien nachher | Bytes nachher | Regeln vorher | Regeln nachher |
+| --- | ---: | --- | ---: | ---: | --- |
+| `CLAUDE.md` | 20.732 | `CLAUDE.md` 19.596 · `zeit-laeufe` 1.585 | 21.181 | 61 | 61 + 2 neu |
+| `hosts-ops` | 43.847 | `hosts-ops` 8.269 · `ops-waechter` 9.144 · `ops-server` 6.605 · `ops-ausliefern` 9.337 | 33.355 | 134 | 134 |
+| `appwrite` | 29.672 | `appwrite` 10.643 · `appwrite-migrationen` 9.008 · `appwrite-presence` 5.651 | 25.302 | 103 | 103 |
+| `ki-mail-embed-moderation` | 32.394 | `ki` 10.732 · `lange-laeufe` 8.478 · `mail-embed-moderation` 9.306 | 28.516 | 91 | 91 |
+| `tenant-isolation` | 31.338 | `tenant-isolation` 11.976 · `tenant-mitglieder` 13.655 | 25.631 | 81 | 81 |
+| `tests` | 20.212 | `tests` 13.537 | 13.537 | 61 | 60 + 1 neu |
+| `deps-build` | 13.311 | `deps-build` 10.911 | 10.911 | 41 | 41 + 3 neu |
+| `themes` | 12.930 | `themes` 11.414 | 11.414 | 71 | 71 |
+| `onboarding` | 10.319 | `onboarding` 9.126 | 9.126 | 49 | 49 |
+| `plans-products` | 6.351 | `plans-products` 5.892 | 5.892 | 33 | 33 |
+| `ai-runner` | 7.711 | `ai-runner` 6.968 | 6.968 | 35 | 35 |
+| `editor` | 7.000 | `editor` 6.326 | 6.326 | 22 | 21 |
+| `realtime` | 4.134 | `realtime` 3.629 | 3.629 | 14 | 14 |
+| `i18n-seo` | 6.206 | `i18n-seo` 5.922 | 5.922 | 20 | 20 + 1 neu |
+| `docs-ordnung` | 3.138 | `docs-ordnung` 3.452 | 3.452 | 11 | 11 + 2 neu |
+| **zusammen** | **249.295** | 24 Dateien | **211.162** | 827 | 825 + 9 neu |
+
+Die Regel-Zahlen sind von Hand gezählt (eine Zeile je Gebot, Verbot oder Falle); die Gegenprüfung zählte je Datei etwas anders, fand aber dieselben Regeln.
+
+#### Herleitungen, die aus den Regeln hierher gezogen sind
+
+Je Regeldatei: was beim Kürzen herausging. „Steht schon" nennt den Eintrag
+dieser Datei, der das Wissen trägt; alles andere ist der Text, der vorher in
+der Regel stand (Datum, Messwert, Vorfall). Zeilenangaben meinen den Stand
+dieser Datei am 2026-11-21.
+
+
+##### Aus `hosts-ops`
+
+Geprüft per `grep` in `docs/OPEN-ITEMS-COMPLETE.md`. „steht schon" = Wissen
+liegt dort; sonst der Text, der umziehen soll.
+
+**Hosts / Konsole**
+- AH-4 / AH-4b / AH-4c (Konsole → `admin`): NICHT als eigene Überschrift
+  gefunden (nur Erwähnungen Z. ~11007, ~11665; Paritäts-Lücke Z. 11079).
+  Umziehen: „AH-4 (Davids Entscheidung 2026-08-11, Runbook
+  docs/archiv/ADMIN-CUTOVER.md): Betreiber-Oberfläche heißt
+  `admin.pukalani.app`. AH-4b (2026-08-18, Davids Panel-Klick): ploi-Site
+  392163, Verzeichnis `/home/ploi/admin.pukalani.app/`, certbot-Lineage
+  `admin`; pm2 `adminpukalaniapp`, Vorgänger `controlpukalaniapp` einmalig per
+  `ops/pm2-heal.sh` entfernt; `control.pukalani.app` bewusst ohne 301 (Davids
+  Entscheidung; Stripe-Webhook zeigt seit AH-4 auf admin), 301-Middleware
+  `00.legacy-console-hosts.ts` + adminConsole-Config entfernt; SAN `studio`
+  mit dem AH-4b-Zertifikat weg. AH-4c (2026-08-18): Appwrite-Projekt `admin`
+  (Neuanlage + 1:1-Umzug, Runbook docs/archiv/ADMIN-PROJEKT-CUTOVER.md;
+  Werkzeug `scripts/ops/ah4c-project-transfer.mjs` am 2026-11-15 gelöscht,
+  letzter Stand Commit `9788e7ab`); Alt-Projekte `control` und `pool` am
+  2026-08-19 gelöscht (Davids Entscheidung, Alt-Stände nur in den
+  Offsite-Dumps)."
+- Control-Cutover 2026-07-26 (eigene ploi-Site 392163, nginx → 3003): steht
+  als Memory „Control-Cutover 2026-07-26"; im Repo Runbook
+  docs/archiv/CONTROL-CUTOVER.md. Kein Umzug nötig.
+- `studio.pukalani.app`-Alias entfernt am 2026-07-30 (ploi → Site → Verwalte →
+  Domain aliases; ploi pflegt `server_name` und lädt nginx neu). Grund:
+  Stripe-Webhook zeigte schon auf control; „Studio" = Kundenangebot. Beim
+  Cutover-Aufräumen starb portfolio, weil `pm2 jlist` ein cwd unter
+  `/home/ploi/studio.pukalani.app` zeigte. Steht nur bruchstückhaft
+  (Z. ~15359, 15391) — umziehen.
+- `app.pukalani.app` entfernt am 2026-07-27 (nie beworben, kein DNS, stand nur
+  in controlHosts) — umziehen (kurz).
+- AH-1 (account., 2026-08-11): Hinweis auf my./start.-301 und Einladungs-Code
+  sieben Tage — Regel bleibt in der Datei, Datum geht. Kein Umzug nötig.
+
+**TLS**
+- Lineage-Vorfall 2026-07-27 (Zertifikat der Landingpage ersetzte das
+  Wildcard, platform + demo ~40 min TLS-tot): steht im Kopf von
+  `scripts/ops/verify-tls.mjs`; in OPEN-ITEMS-COMPLETE nicht als eigene
+  Überschrift gefunden — umziehen: „2026-07-27: eine Zertifikats-Anforderung
+  auf der Site `pukalani.app` überschrieb die geteilte Lineage samt Wildcard,
+  platform und demo ~40 min TLS-tot. Seitdem Apex proxied über Cloudflare,
+  Wildcard nur über die Site `platform.pukalani.app`."
+- D4 (Full (Strict), Origin-Zertifikat bis 2041): steht schon, „### D4 — Der
+  Apex läuft auf „Full (Strict)" ✅ 2026-08-03".
+- Lineages `control.pukalani.app` / `comments.pukalani.app` (mit Site-Umbenennung
+  bzw. -Löschung Geschichte): steht in den Kommentaren von `HOSTS` in
+  `scripts/ops/verify-tls.mjs`. Kein Umzug nötig.
+
+**Wächter**
+- Wächter-Workflow 2026-08-20, Alarmweg MON1 2026-10-28, TLS-Wächter 19 Tage /
+  ~900 Läufe rot, Gmail-Filter „Newsletter", Issue-Mails kommen nicht,
+  UptimeRobot-SSL nur im Bezahltarif: steht schon, „## MON1 — Wächter gegen
+  stille Prod-Ausfälle …" (Z. ~20899, „19 Tage" Z. 20961).
+- KM1 a (verify-ai-models halbstündlich seit 2026-11-19), KM1 e (Labels,
+  Issue 401): steht schon, „### KM1 a …", „### KM1 e — Alarmweg …".
+- OPS-001 Backup-Blick (2026-11-15): steht schon, „### GA1 P11 — Backup der
+  Datenbank …".
+- OPS-008 Datenbank-Stand (2026-11-16): steht schon, „### GA1 P21 —
+  Migrationen: Skripte prüfen ihr Ziel …".
+- OPS-011 / OPS-004 (in die App hinein, Live-Verbindung, 2026-11-16): steht
+  schon, „### GA1 P22 — Alarm sieht in die App hinein …". Fehlt dort evtl.:
+  „realtime-watchdog: gemessen zwei Neustarts in vier Monaten, beide ohne
+  Erfolg; dritter Handshake-Versuch nach 5½ min, länger als der Takt des
+  Wächters auf dem Server" — grep „zwei Neustarts" ohne Treffer ⇒ umziehen.
+- OPS-012 / BE-004 (Turnstile 2026-11-16, KI-Modelle 2026-11-14 bis -19
+  täglich, zwei Listen seit 2026-11-18): steht schon, „### GA1 P20 …" bzw.
+  KM1.
+- `pm2 update` beginnt die Zählung neu (gemessen 2026-11-19, Hinweis seit
+  2026-11-20): steht schon (Z. ~1280-1292).
+- Anmelde-Regeln-Blick seit 2026-11-18, Node-Version seit 2026-11-19: im
+  Kürzel-Umfeld N-Nacharbeiten; nicht eigens geprüft — Hauptsitzung bitte
+  per grep „verify-node-version" / „auth-policies --ci" nachsehen.
+- verify-delivery seit 2026-11-20, scharf am selben Tag
+  (`PUKALANI_DELIVERY_MODE: alarm`): grep ohne Treffer ⇒ umziehen: „Seit
+  2026-11-20 prüft der tägliche Lauf die Auslieferung von außen
+  (`verify-delivery.mjs`): gepacktes Skript, robots.txt mit Regeln und eigener
+  Sitemap, genau ein Vorschaubild, Symbol-Route ohne fremden Dienst; am selben
+  Tag auf `alarm` gestellt."
+- WA1 d Kundendomains (2026-11-18): steht schon, „### N16 — Nacharbeiten
+  „Drei größere Reste": BT1 (a), WA1 (d), WA1 (e)".
+- Rot-Kriterien der App-Signale (zwei Takte + 30 min, Tages-Lauf gescheitert,
+  nie gemeldet, KI 402/404, platform ab 25 Server-Fehlern in 25 h): steht im
+  Code `scripts/ops/app-signals-rules.mjs` (Begründung je Schwelle im
+  Kommentar). Kein Umzug nötig.
+
+**Vertretung (P24)**
+- Steht schon, „### GA1 P24 — Vertretung vorbereitet …" (Z. 4483);
+  `NUXT_ALERT_EMAIL` nachgesehen 2026-11-17 (Z. 4542). DECISION-LOG
+  2026-11-14 („Wieder prüfen", Stufen) und 2026-11-16 (Backup-Schlüssel)
+  stehen im DECISION-LOG.
+- Neustart-Regel der Appwrite-Container seit 2026-11-20, am selben Tag
+  bewiesen: steht schon (Z. ~419).
+
+**Server-Vorlagen (P23)**
+- Steht schon, „### GA1 P23 — Server-Einstellungen als Vorlage im Repo …"
+  (Z. 5135). Ob dort die Messung „zwei Sites reichten die Adresse nicht
+  weiter, zwei setzten Schutz-Kopfzeilen, sechs keine" und „globales Log
+  52 Tage" steht: grep ohne Treffer ⇒ umziehen (ein Satz mit diesen Zahlen).
+- SE1 a (CSP-Berichte seit 2026-11-17): steht schon (N17, Z. ~1502).
+- Doppelter crontab-Eintrag (Ploi schreibt nach `/etc/crontab`, stand
+  monatelang doppelt): unter P23 vermutlich; sonst umziehen.
+- Termin-Erinnerungen zählen stillgelegte Communities seit 2026-11-19: grep
+  ohne eindeutigen Treffer ⇒ umziehen (ein Satz).
+
+**CI-Schlüssel / Rückweg / Backup**
+- P08 (2026-11-14), N12 (fester Befehl, 2026-11-18), `vars.`-Vorfall
+  (Empfänger-Adresse im Lauf-Protokoll, bemerkt 2026-11-15), `deployment:
+  false` gemessen: steht schon, „### GA1 P08 — Ausliefer-Weg …" (Z. 6191,
+  `vars.` Z. 6256) und „### N12 — Nacharbeiten „Ausliefer-Weg"".
+- `app-env-abholer` seit 2026-11-18, BU1 b: steht schon (N11/N12).
+- P10 Rückweg (2026-11-15, geübt: help zurück und vor je 12 s, älterer Commit
+  auf alle sechs Apps 12 min; Rückweg nannte drei Monate einen gelöschten
+  Prozess; „vier Stände" gezählt 2026-11-15): steht schon, „### GA1 P10 —
+  Rückweg bei einer schlechten Version ✅ 2026-11-15" (Z. 6121, 6158, 6171).
+- P11 Backup (03:30 UTC, Box 30 Tage, Server 14 Tage, sechs Volumes, Rest-
+  Volume `appwrite_appwrite-builds`): steht schon, „### GA1 P11 …" (Z. 6033).
+- Docker-Server-Backup seit 2026-11-20 (Plausible, Chatwoot, Umami, Shlink):
+  grep „docker-apps-backup" ohne Treffer; steht in OPEN-ITEMS.md „DS1" und im
+  Runbook DOCKER-APPS-WIEDERHERSTELLUNG.md ⇒ bei Erledigung von DS1 umziehen.
+
+**Env**
+- F44 (platform ohne `NUXT_SMTP_*`, keine Benachrichtigungs-Mail): steht schon,
+  „### F44 — Der Pool verschickt zum ersten Mal überhaupt Mails ✅ 2026-08-03".
+- SEC-025 (2026-11-13), SEC-010 (2026-11-16), SEC-004, BE-014: stehen schon
+  (Z. 6426-6456, 5160, 4896).
+- `ops:site-env` täglich in CI seit 2026-08-20, leer/nicht leer seit
+  2026-11-17; `NUXT_REDIS_URL` Pflicht platform/admin/portfolio seit
+  2026-11-16, branding seit 2026-11-17: Kommentare in
+  `scripts/ops/verify-site-env.mjs` tragen die Daten. Kein Umzug nötig.
+- Beispiel Reihenfolge neue Variable: `NUXT_INSIGHTS_NEWSLETTER_SECRET`,
+  SEC-020, 2026-11-15: steht schon (Z. 5755).
+- P20 („noch nicht bewertet" 36 Namen, abgearbeitet 2026-11-17): Überschrift
+  „### GA1 P20 …" steht; die Zahl 36 per grep nicht gefunden ⇒ ein Satz
+  umziehen.
+- Eigene Domain einer Einzel-Site (Davids Auftrag 2026-11-16,
+  `resolveSiteLinkBase`): grep ohne Treffer ⇒ umziehen: „2026-11-16 (Davids
+  Auftrag): eine aktive eigene Domain einer Einzel-Site wird Absender-Adresse
+  aller Mail-Links und des OAuth-Rückwegs (`registerSiteOriginResolver`,
+  domains-Layer, 30 s Zwischenspeicher)."
+
+##### Aus `appwrite`
+
+Geprüft per `grep` in `docs/OPEN-ITEMS-COMPLETE.md` (nur Überschriften-Suche,
+Datei nicht ganz gelesen). Je Kürzel/Thema: „steht schon" oder Text zum Umziehen.
+
+**Realtime-Socket**
+- P1 (geteilter Socket, 2026-07-01): Datum entfernt. Kein eigener Eintrag „P1"
+  gesucht; Inhalt (die Regel) steht weiter in `appwrite-presence.md`. Nichts umzuziehen.
+- RT1 (Cookie-Auth lokal): steht schon — „### RT1 — Geteilter Realtime-Socket
+  verband sich lokal jede Sekunde neu ✅ 2026-11-08".
+- RT2 (Account-Channel über den geteilten Socket, eigener Cookie-WS war in Prod
+  Gast, Tab nach 98,5 s noch angemeldet; 2026-11-08): steht schon — „### RT2 —
+  Sofort-Abmeldung bei Session-Widerruf kam in Prod nie an ✅ 2026-11-09"
+  (die Zahl 98,5 steht dort).
+
+**Projekte**
+- AH-1 (`pool` → `account`, 2026-08-11; `pool` gelöscht 2026-08-19, Davids
+  Entscheidung, Alt-Stand nur in Offsite-Dumps): steht schon — „### AH-1 — EIN
+  Cutover: Projekt pool→account + Host my./start.→account. ✅ 2026-08-11".
+- Lokale Projekte wie Production seit dem Spiegel vom 2026-11-09: UMZIEHEN, falls
+  nicht vorhanden — „Lokal heißen die Appwrite-Projekte seit dem Spiegel vom
+  2026-11-09 wie auf Production (`account`, `admin`); ein lokales `pool` gibt es
+  nicht mehr."
+- F45: steht schon — „### F45 — Die Betreiber-Konsole hat ihre Realtime zurück ✅ 2026-08-03".
+
+**Rechte an Ablagen und Tabellen**
+- SEC-001 (2026-11-13), system-039, system-032 (alte Migration stellte den Bucket
+  bei jedem Lauf zurück): steht schon — „### GA1 P01 — Profilbild-Ablage: nur
+  Bilder, nur über den Server ✅ 2026-11-13".
+- SEC-002 (2026-11-16) samt den beiden Appwrite-2.7.1-Fallen (Schreiben ohne
+  Änderung prüft nur Leserecht; `updateTable` setzt Defaults): steht schon —
+  „### GA1 P13 — Schreiben nur noch über den Server; Kontoanlage nur über unsere
+  Anmeldung; Zustimmung als Nachweis ✅ 2026-11-16" (dort „Eine Änderung ohne
+  Änderung prüft nur das Leserecht").
+
+**Appwrite 2.7.2**
+- Messung vom 2026-11-18 auf 2.7.3 (Production seit demselben Tag): HTML als
+  `x.png` ⇒ 400 `storage_file_type_unsupported` auch mit Admin-Schlüssel, JPEG
+  als `x.png` geht durch, wenn der Bucket `jpg` erlaubt; Bestätigungs-Routen
+  10 je Konto/Stunde ⇒ 429 `general_rate_limit_exceeded`, ein Erfolg setzt den
+  Zähler der Sitzungs-Route zurück; vorher zählte Appwrite Schlüssel gar nicht;
+  bei uns trägt nur `account.createSession` (OTP-Prüfung, OAuth-Rückweg) einen
+  Schlüssel, die einzige Bremse dort war bisher `accountAttempts.ts`: steht
+  schon im Runbook `docs/runbooks/APPWRITE-2-7-UPGRADE.md` (enthält
+  `storage_file_type_unsupported` / `general_rate_limit_exceeded`, Abschnitt
+  „2.7.1 → 2.7.3") und unter „### AW30 (a) — Appwrite 2.7.3 auf dev, CI und
+  Production ✅ 2026-11-18".
+
+**Anmeldung, Bremsen, Zustimmung**
+- SEC-007 (2026-11-16; „so wäre der Anmelde-Code ausgefallen"; täglicher Wächter
+  seit 2026-11-17): steht schon — „### GA1 P13 …" (s. o.).
+- SEC-003/BE-002 (2026-11-13): steht schon — „### GA1 P02 — Anmelde-Bremse:
+  vorab zählen, je Konto zählen ✅ 2026-11-13".
+- AB1 d (2026-11-17): steht schon — „### N02 — Nacharbeiten „Mails und Bremsen":
+  AB1 (b–f) und SR1 (c, d) ✅ 2026-11-17".
+- P29 (bekanntes Gerät, 2026-11-13; Anmelde-Regeln): steht schon — u. a. „### N11
+  — Nacharbeiten „Was Davids Klick braucht": P29, …".
+- SEC-008 (2026-11-16, Wortlaut der beiden Entscheidungen „Die Zustimmung zu den
+  AGB wird vom Server geprüft und an einer Stelle festgehalten, die das Konto
+  nicht selbst ändern kann" und „Tür zu und einmal fragen"; Betreiber-Ausnahme
+  Davids Entscheidung 2026-11-16): steht schon — „### GA1 P13 …". Falls der
+  Wortlaut der beiden Zitate dort fehlt: UMZIEHEN wie hier zitiert.
+
+**Migrationen, Ziel-Prüfung, Schema-Stand**
+- OPS-002 / OPS-008 (2026-11-16; Wortlaut „Skripte, die in eine Datenbank
+  schreiben, prüfen vorher, ob es die richtige ist" und „Die Plattform zeigt an,
+  ob die Datenbank zum ausgerollten Programm passt, und der tägliche Wächter
+  prüft es"; „zweimal ging Programm vor seiner Migration live"; der Direktaufruf
+  einer Migration war bis dahin der übliche Weg auf Production und ging am
+  Runner vorbei; seit P10 färbt `ok` das Ausliefern): steht schon — „### GA1 P21
+  — Migrationen: Skripte prüfen ihr Ziel, jede Seite meldet den Datenbank-Stand
+  ✅ 2026-11-16". Falls „zweimal ging Programm vor seiner Migration live" dort
+  fehlt (grep ohne Treffer): UMZIEHEN unter GA1 P21.
+- Index-Cache-Falle (CI-E2E zweimal live mit 400/column_not_available trotz
+  'available'; 23 Versuche ohne Bewegung; Anstoß einen Tag optional, 2 von 63
+  Migrationen reichten ihn durch, 61 nicht): steht schon — „### F19b · #33 — Der
+  Cache-Anstoß hängt nicht mehr am Aufrufer ✅ 2026-08-02" (23 Wiederholungen,
+  61 Migrationen).
+- Appwrite 2.4 (#14104, am 2026-10-24 gegen 2.6.1 bewiesen): steht schon im
+  Runbook `docs/runbooks/APPWRITE-2-6-UPGRADE.md` (enthält „14104"); in
+  OPEN-ITEMS-COMPLETE kein Treffer — UMZIEHEN, falls gewünscht: „Seit Appwrite
+  2.4 (#14104, am 2026-10-24 gegen 2.6.1 bewiesen) liest der Index-Endpunkt bei
+  einem nicht-`available`-Status im Cache das Attribut-Dokument selbst nach; die
+  Fabrik `createIndexSteps` bleibt als Gürtel und Hosenträger."
+- AU4 (Soll je Instanz; Anlass: `changelog`-Tabelle des admin-Layers fehlte nach
+  dem control-Cutover monatelang in `control`, der alte Union-Vergleich konnte
+  eine überall fehlende Tabelle nie sehen): steht schon — „### AU4 —
+  Schema-Paritäts-Wächter prüft jetzt Soll pro Instanz über alle Layer ✅
+  2026-08-16".
+- MG1 c (Spalten genau, 2026-11-18; alte `PARITY_TABLES` darin aufgegangen):
+  steht schon — „### N12 — Nacharbeiten „Ausliefer-Weg": … MG1 (c) ✅ 2026-11-18".
+- `intro_requests` über ensure-Skript übersehen (2026-08-31): grep auf
+  „intro_requests so/übersehen" ohne Treffer — UMZIEHEN: „2026-08-31: die
+  Tabelle `intro_requests` (aus einem ensure-Skript, nicht aus `pnpm migrate`)
+  fehlte im Soll von `verify-schema-parity` — seither gilt: auch ensure-Tabellen
+  gehören in den Layer-Block."
+- P20 (`user-data-coverage.test.ts` hält Soll gegen Migrationen, 2026-11-16):
+  Kürzel P20 in CLAUDE.md verankert; kein eigener Text umzuziehen.
+- `ausgerollt`-Flag (2026-08-31; Betreiber-Konsole fiel nach AH-4c wochenlang
+  ungeprüft aus der Runde): steht schon — „### Paritäts-Wächter: AH-4c-Lücke
+  geschlossen + Ausgerollt-Flag ✅ 2026-08-31".
+- Wächter täglich im Produktions-Wächter seit 2026-11-16: steht schon unter GA1
+  P21 (s. o.).
+- Control-Plane-Migrationen `control-NNN` seit 2026-07-29 (Cutover): Datum
+  entfernt; Regel bleibt. Nichts umzuziehen (Cutover-Geschichte in
+  `docs/archiv/**`).
+- portfolios sechs tote Tabellen (Warnung): Zählwert entfernt; UMZIEHEN unter AU4
+  falls gewünscht: „portfolio hat sechs tote Alt-Tabellen — `ops:schema-parity`
+  meldet sie als nicht-fatale Warnung."
+
+**Presence**
+- Presences API self-hostbar seit 1.9.5: Versionsangabe entfernt (Appwrite läuft
+  auf 2.7.4). Nichts umzuziehen.
+- BT1 e (2026-11-18, Heartbeat nur für Mitglieder): steht schon — „### N14 —
+  Nacharbeiten „Runner-Auftrag vom Server, …": RU1 (b), BT1 (b, d, e), SI1 (b) ✅
+  2026-11-18".
+- Vorfahrt „sichtbar schlägt away" (2026-08-18; Zähler flackerte 0↔1): steht
+  schon — „### Presence-Vorfahrt: sichtbarer Tab schlägt away-Tab fremder
+  Mandanten ✅ 2026-08-18".
+- A4 Presence-Grenze (2026-07-29; vorher `read("users")`, also im Pool jedes
+  eingeloggte Konto ALLER Communities): steht schon in
+  `docs/archiv/PRESENCE-GRENZE.md` („## 8. Umsetzung (2026-07-29)") und unter
+  „PRESENCE-GRENZE" in OPEN-ITEMS-COMPLETE (2 Treffer).
+
+##### Aus `ki-mail`
+
+Geprüft per `grep` in `docs/OPEN-ITEMS-COMPLETE.md` (nicht ganz gelesen).
+
+**Steht schon (Überschrift dort)**
+
+- SEC-005, SEC-017, BE-006, BE-007 (Bindung, Protokoll, Riegel, Abgeschnitten, 2026-11-15): „### GA1 P17 — KI-Aufrufe: Schutz als Voreinstellung ✅ 2026-11-15".
+- BE-004 (Anbieter-Liste je Transport, 2026-11-14, Bild-Erzeugen `google-vertex/global`, Davids Entscheidung 2026-11-13): „### GA1 P09 — Zeichen-Entwürfe: eigene Anbieter-Liste, Hinweis zum Modell, Wächter ✅ 2026-11-14".
+- AI1 (Basis bekam einen Ort, Bild-Aufruf erbte ihn still): „### AI1 — Das Vision-Modell von branding.supply war tot, und nichts wurde rot ✅ 2026-10-27" und „### AI1 — Live-Beweis: der Textweg rechnet auf Prod in der EU ✅ 2026-11-09".
+- KM1 a (Modell-Wächter alle 30 min statt täglich, bis 2026-11-19): „### KM1 a — Der Blick auf die KI-Modelle läuft alle 30 Minuten statt einmal am Tag ✅ 2026-11-19".
+- Zwei Endpunkt-Listen / `eu.openrouter.ai` (2026-11-18), „roter Wächter ≠ Aufrufe scheitern": „### KA1 — KI-Alarm vom 2026-11-18: der Wächter war rot, kein Modell war ausgefallen ✅ 2026-11-18".
+- KI1 c (Speichern prüft, 2026-11-17), LL1 a: „### N05 — Nacharbeiten „Lange Läufe und KI-Wege": LL1 (a, …), KI1 (c, …) ✅ 2026-11-17".
+- KI1 d (Feld-Kennzeichen, 2026-11-18; Stream/Lauf zeigen den Satz selbst): „### N13 — Nacharbeiten „Brand-Check im Hintergrund, …": LL1 (b, c, d), KI1 (d) …" und „### N15 — …" / „### N18 — …".
+- BE-008/BE-010 (Lauf-Sperre, 2026-11-16, 60-s-Frist, „zehn gleichzeitige ⇒ eine, neun 409"): „### GA1 P18 — Lange Läufe aus der Anfrage nehmen: Marktvergleich im Hintergrund, Lauf-Sperre ✅ 2026-11-16".
+- N10 (drei Markenberater-Wege, brand-027, 2026-11-18): „### N10 — Nacharbeiten „Lange Wege des Markenberaters" …".
+- N13 (öffentlicher Brand-Check, Marktbericht, Dokument-Prüfung, 2026-11-18), LL1 d (CMS-Seite, pages-007): „### N13 — Nacharbeiten „Brand-Check im Hintergrund, Wege über der Wartezeit, Rollen-Tests" …".
+- LL1 c (nächtlicher Radar unter der Sperre; Rückbuchung der Vorbilder-Lesung 2026-11-19; `lease_lost`-Rückbuchung 2026-11-20): „### N17 — Nacharbeiten „Skripte, Erinnerungen, Rückbuchung, Log-Umlauf" …" und „### N18 — Nacharbeiten „Zähl-Lücke im täglichen Blick, Rückbuchung, Abhängigkeiten" …".
+- BI3 (Video-Brief, Vorbild, 65,4 s Lauf gegen die 60-s-Frist): „### BI3 — „Brief aus Video" lief dem Proxy davon: 504 statt Erfolgsmeldung ✅ 2026-11-08".
+- UGC-Übersetzung (2026-08-18, Davids Entscheidungen, Migrationen posts-023/comments-020/events-013/courses-007): „### KI-Übersetzung für User-Content — einer übersetzt für alle ✅ 2026-08-18".
+- MM1 (nur Mitglieder übersetzen, 2026-11-17), KK1 (verschobene Erinnerung, 2026-11-17): „### N03 — Nacharbeiten „Kurse, Mitmachen, Termine": KU1, MM1 (b–d) und KK1 (a, b, c) ✅ 2026-11-17".
+- SEC-029 (Kurse/Lektionen ohne Leserecht, 2026-11-13): „### GA1 P04 — Kurse: Vorschau für alle, Inhalt nur für Mitglieder ✅ 2026-11-13".
+- SEC-032 (Löschen leert `translations`, 2026-11-15): „### GA1 P14 — Export und Löschung vollständig ✅ 2026-11-15".
+- SEC-018 (öffentliche Formulare, 2026-11-15), SEC-020 (Abmelde-Links, 2026-11-15): „### GA1 P25 — Kleine Sicherheitsriegel: sieben zweite Sicherungen ✅ 2026-11-15".
+- AB1 e (Grenze an den Anmelde-Mails, 2026-11-17): unter „### N08 — …" / „### N11 — …" (AB1 erwähnt; die e-Stelle bitte beim Eintragen gegenprüfen).
+- BE-018 (Zeitpunkt als Rohwert, 2026-11-17; vorher `de-DE` und Server-Zeit für alle), BE-020 (Zurückziehen nur offener Meldungen, 2026-11-17): „### GA1 P28 — Kleine Korrekturen: Erinnerungen mit Zeitzone, …".
+- SE1 d (Erinnerungen in unerreichbare Communities, gebaut 2026-11-19, nicht scharf): „### N17 — …" und „### N07 — Nacharbeiten „Kopfzeilen, Wächter, Adressen": SE1 (a, c, d, f) …" (offener Teil steht in OPEN-ITEMS „SE1" d).
+- SEC-033 (gemeldete private Nachrichten, Davids Entscheidung 2026-11-12): „### GA1 P16 — Betreiber-Dashboard: Export ohne Nachrichtentexte, frische Anmeldung, Protokoll; gemeldete Nachrichten mit Frist ✅ 2026-11-16".
+- BE-023 (lokale Einbetter nicht mehr in `app.config.ts`, `/api/stats` mit Mandant 404, 2026-11-15): „### GA1 P26 — Aufräumen: Altlasten weg, ein Start-Skript, Test-App ohne Entwickler-Einstellungen ✅ 2026-11-15".
+- „Core-Bausteine seit 2026-07-09/10" (KI, E-Mail, Embed, Moderation): Datum der Ursprungs-Bausteine, keine eigene Regel; nicht gesucht/umzuziehen nötig.
+
+**Soll umziehen (nicht gefunden)**
+
+- **KI-Preis des Orts-Pins** (Herleitung zu SEC-005/KI1): „Der Orts-Pin auf die zwei EU-Endpunkte kostet rund 10 % mehr je Aufruf. Ein gemessener Aufruf über die weltweite Adresse mit `provider.only` auf einen Europa-Endpunkt antwortete 200 zum Europa-Preis (2026-11-18)." — „10 %" ist unter SEC-005/KA1 nicht gefunden (grep „rund 10", „10 %" trifft nur F19).
+- **`proxy_read_timeout` wird nicht angehoben** (BE-008): „Davids Richtung vom 2026-11-08: die 60-s-Frist des Webservers wird NICHT angehoben; lange Wege gehen hinter die Antwort (Lauf-Sperre). Ausnahme bleibt der nginx-Block mit 180 s für `brief`, `draft`, `translate`." — BI3 nennt die 180 s, die Richtung „nicht anheben" bitte unter GA1 P18 gegenprüfen.
+- **Gesprächs-Zug ohne „Noch einmal erzeugen"** (BE-007): „Einen Gesprächs-Zug zu wiederholen schickte die Antwort des Menschen doppelt — deshalb bekommt er nur den Satz „schreib einfach noch einmal"." — nicht als Vorfall gefunden (grep „schreib einfach noch"); Regel steht weiter in `ki.md`.
+- **UGC „schon in der Zielsprache"** (2026-08-21, Davids Entscheidung): „Das Modell antwortet `{"same": true}` statt eines teuren Echos; die Route cacht die Grundfassung wörtlich, erkannt wird es client-seitig (`ugcTranslationIsOriginal`), bewusst ohne Flag in der Antwort." — grep nach `same`/`ugcTranslationIsOriginal` in OPEN-ITEMS-COMPLETE ohne Treffer.
+- **Beweis-Zahl UGC**: „`packages/core/scripts/verify-ugc-translation.mjs` lief 35/35 grün (braucht Dev-Server, lokale Appwrite, Schlüssel; bezahlt echte KI-Aufrufe)." — Zählergebnis, aus der Regel gestrichen.
+- **`isAiAvailable` → `isAiConfigured` (2026-08-18)**: „Die Auskunft hieß bis 2026-08-18 `isAiAvailable` und war synchron; seit der KI-Schlüssel auch aus `instance_secrets` kommt, ist sie async und heißt `isAiConfigured` — die Umbenennung ist die Sicherung, weil ein vergessenes `await` kein Typfehler wäre." — steht im Code (`aiComplete.ts:205-211`, `aiGate.test.ts`), in OPEN-ITEMS-COMPLETE kein Treffer.
+
+##### Aus `tenant-isolation`
+
+Geprüft per `grep -n` in `docs/OPEN-ITEMS-COMPLETE.md` (nicht ganz gelesen).
+
+**Steht schon**
+- C1c (actor/as getrennt, „eine von fünf Inhaltsarten war zu") — Tabellenzeile `| C1c |` (Z. ~16628) und F17 (Z. ~16668).
+- SEC-002 / „Der Server schreibt", „zwei Routen verließen sich auf 401" — `### GA1 P13 — Schreiben nur noch über den Server; …` (Z. ~5027).
+- P20 (Liste der Datentür-Layer nach `scripts/lib/data-door-layers.mjs`) — `### GA1 P20 — Wächter, die ihre Listen selbst erzeugen: …, Datentür` (Z. ~5230).
+- SEC-025 / SEC-024 (Resolver lehnt ab; Label-Schreiber, Abgleich) — `### GA1 P06 — Sicherungen, die nicht prüfen können, lehnen ab` (Z. ~6423, Punkte 2 und 3).
+- SEC-030 + Teil 2 (Mitmachen nur für Mitglieder, Hinweisseite für Entfernte) — `### GA1 P05 — Mitmachen nur für Mitglieder, Hinweisseite für Entfernte` (Z. ~6633).
+- SEC-029 (Kurse) — `### GA1 P04 — Kurse: Vorschau für alle, Inhalt nur für Mitglieder` (Z. ~6712).
+- BE-023 (`/api/stats` mit Mandant 404) — GA1-Abschnitt mit „Test-App und Plattform ohne Entwickler-Einstellungen (BE-023)" (Z. ~5851).
+- MM1 / MM1 b (Übersetzen nur für Mitglieder; Bühnen-Messung: Antwort auf alten Kommentar einer Entfernten schrieb Glocke + Mail mit Auszug) — `### N03 — Nacharbeiten „Kurse, Mitmachen, Termine": KU1, MM1 (b–d) …` (Z. ~4023).
+- BT1 e (Rollen-Tor 30 s durch `members.invite`; Heartbeat) — `**BT1 (e) — die vier Stellen, …**` (Z. ~2810) unter `### N14`.
+- SI1 b (Abgleich: stillgelegte Community, Herabstufung 26 h) — `**SI1 (b) — Grenze des Label-Abgleichs, bewertet:**` (Z. ~2828).
+- SE1 d (nicht erreichbare Communities, Erinnerungs-Lauf zählt nur) — `**SE1 (d) — der Erinnerungs-Lauf erkennt nicht erreichbare Communities (zählt erst nur).**` (Z. ~1576).
+- A5 (Label = Mitglied; A4-Regel „hat den Host eingeloggt benutzt" wurde am selben Tag zur Lüge, „Zugang entziehen" nahm nur die Rolle) — Tabellenzeile `| A5 |` (Z. ~16603).
+- C15 (Glocke mandantenrichtig, system-022) — Tabellenzeile `| C15 |` (Z. ~16633).
+- C17 (Glocke hängt, wo die Meldungen liegen) — Tabellenzeile `| C17 |` (Z. ~16634).
+- D5 (Mail-Links auf Community-Host) — Tabellenzeile `| D5 |` (Z. ~16635).
+- M13 (Sperre friert nur Inhalte ein) — `### M13 (Rest) — Sperr-/Missbrauchspfad ✅ 2026-08-02 (Davids Entscheidungen)` (Z. ~17957).
+
+**Umziehen (nicht unter dem Kürzel gefunden)**
+- DATENTÜR (2026-07-26), Vorfall: Isolation hing an drei Dingen, an die man
+  sich erinnern musste (scopeQuery/scopeRow/ID-Prüfung). Am 2026-07-26 lasen
+  drei Moderations-Routen fremde Zeilen per ID (commit 1cc4855). Daraufhin
+  EINE Datentür `tenantDb(event)`. (`grep -c 1cc4855` = 0.)
+- BACKSTOP auf `server/plugins/**` erweitert (2026-07-28, Dashboard-Audit B2):
+  der Stats-Contributor von comments lag in `server/plugins/` und zählte
+  ungebremst pool-weit in eine Kunden-Ansicht. Achtung: das Kürzel `B2` in der
+  Tabelle von OPEN-ITEMS-COMPLETE ist ein ANDERER Punkt (og:image je
+  Tenant-Seite) — dieser B2 stammt aus dem Dashboard-Audit.
+- POOL-UNIQUE-Beispiele: comments-015 `uq_tenant_host`, pages-004, courses-002
+  `uq_tenant_slug` — die INDEXNAMEN blieben `uq_tenant_*`, nur die Spalte wurde
+  in E8-3 von `tenantId` auf `communityId` umbenannt.
+- N7 (2026-07-28): Betreiber-Changelog (admin-Layer) antwortet auf
+  Mandanten-Hosts 404, Seite über `useIsTenantHost()`, API über
+  `useTenant(event)`; die Chrome-Registry allein versteckte nur.
+  (`grep -c "N7"` = 0 unter diesem Kürzel.) Seit 2026-11-15 (BE-023) trägt
+  dieselbe Sperre `/api/stats` der Test-App.
+- C15-Zusatz (2026-08-03, Davids Entscheidung „wer zahlt, entscheidet die
+  Glocke"): Community-Abo-Warnung `scope:'tenant'`, im Pool geschrieben, weil
+  `metadata.userId` eines Community-Checkouts eine POOL-Id ist (auf `control`
+  404 `user_not_found`) und das Control Plane keinen Pool-Schlüssel hat.
+  Gegen eine Service-Naht control→platform: kostete ein zweites Secret, einen
+  Dienst-Endpunkt auf einem öffentlichen Mehr-Mandanten-Host und einen
+  Geldpfad, der bei Platform-Ausfall Stripe-Retrys auslöst — für Sofortigkeit,
+  die neben einer 14-Tage-Frist wertlos ist.
+- D5 Messwert: Mailpit-Beweis `verify-notification-mail-links.mjs` 11/11.
+- C17 Detail: die Glocke kam in die Seitenleiste neben die Suche, weil eine
+  schwebende Glocke oben rechts die Aktionen der Seiten-Kopfzeilen verdeckte;
+  `my.pukalani.app` (Pool) war nie Leser von `_account`-Zeilen.
+- SEC-025-Vorgeschichte: ohne Resolver kehrte die Middleware bis 2026-11-13
+  STILL zurück — kein Mandant, kein 404, keine Trennung, `/api/health` grün.
+- SEC-030-Vorgeschichte: bis 2026-11-13 fragte die Datentür nach dem Beitritt,
+  las die Antwort aber nicht — geschlossene Registrierung und „Zugang
+  entziehen" hielten niemanden vom Schreiben ab. MM1 (2026-11-17): vorher
+  genügte die Anmeldung zum Übersetzen, ein fremdes Konto verbrauchte das
+  Tages-Kontingent der Community.
+- Daten der Regeln (aus der Regeldatei entfernt): Datentür 2026-07-26; actor
+  2026-08-02; SEC-002 2026-11-16; SEC-025/SEC-024/SEC-030/SEC-029 2026-11-13
+  (Entscheidungen 2026-11-12); Backstop 2026-07-27; P20 2026-11-16; M13
+  2026-08-02 (festgehalten 2026-08-03); A5 2026-07-29; SI1 b 2026-11-17; MM1
+  2026-11-17 (Entscheidung 2026-11-16); BT1 e 2026-11-18; C15/C17 2026-07-29;
+  D5 2026-08-01; SE1 d 2026-11-19; N7 2026-07-28; BE-023 2026-11-15.
+
+##### Aus `tests`
+
+Geprüft per `grep -n` in `docs/OPEN-ITEMS-COMPLETE.md`.
+
+- WORKTREE-BEWEIS über `launch.json` (2026-07-29 zweimal erwischt) — kein eindeutiger Treffer unter einem Kürzel. Umziehen:
+  „2026-07-29: ein Dev-Server aus `.claude/launch.json` startete mit cwd = Haupt-Repo statt Worktree — zweimal maß ein Beweis unveränderten Code und sah wie ein Fehlschlag der neuen Arbeit aus."
+- Direkter `nuxt.mjs dev`-Start ⇒ 500 auf jeder SSR-Seite (2026-07-31) — kein Treffer zu `NODE_PATH`. Umziehen:
+  „2026-07-31: `node ./node_modules/nuxt/bin/nuxt.mjs dev` fand `tailwindcss` nicht (liegt nur in `node_modules/.pnpm/node_modules/`, das pnpm erst beim Script-Lauf in den NODE_PATH legt) — jede SSR-Seite 500, sah aus wie ein Regressionsschaden."
+- `--port`-Falle (2026-08-01: 3007 → 3000, fast auf den core-Playground) — steht schon: „### C20 / F14 — Apps ohne Realtime bekommen keinen Socket mehr ✅ 2026-08-01" (Zeile ~18261) und „### F11 — Gäste holen keinen Realtime-Token mehr ✅ 2026-08-01" (~17925).
+- „dependency optimized" / zweite Messung — steht schon: „### C20 / F14 …" (~18268).
+- 250-Einträge-Puffer von `performance.getEntriesByType` — steht schon: „### F11 — Gäste holen keinen Realtime-Token mehr ✅ 2026-08-01" (~17920).
+- SERVICE-NAHT (2026-08-01, F12-Beweis maß über `NUXT_ONBOARDING_CONTROL_URL` das Control Plane :3004 aus dem Haupt-Repo, fremder Arbeitsstand ⇒ 26/27, nach Ausweichen 27/27) — Ort teils: „### F12 — `my.pukalani.app` ist jetzt der Kundenbereich ✅ 2026-08-01" (~17768); die 26/27-Erzählung fand sich nur unter „### F57 — die vier sozialen Mechaniken sind KOMPLETT ✅ 2026-08-14" (~12518, anderes Thema?). Sicherheitshalber umziehen unter F12:
+  „Beweis-Falle 2026-08-01: der F12-Beweis lief gegen einen Worktree-Platform-Server, sprach über `NUXT_ONBOARDING_CONTROL_URL` aber das Control Plane auf :3004 aus dem Haupt-Repo an und maß dort den halbfertigen Stand einer fremden Sitzung (ein zusätzliches Feld im Umschlag ⇒ 26/27). Zweiter Dienst im Worktree auf :3014, Naht dorthin ⇒ 27/27."
+- Beweis-Regel 1 (Tautologie im Aufwärm-Schritt von `verify-presence-away-priority`, 2026-08-18) — steht schon: „### N14 — Nacharbeiten …" (~2860) und „### Presence-Vorfahrt: sichtbarer Tab schlägt away-Tab fremder Mandanten ✅ 2026-08-18" (~11517).
+- Beweis-Regel 2 (`verify-presence-boundary` 16/23 rot wegen toter Control-Naht :3004, 2026-08-18) — steht schon: „### Presence-Vorfahrt: … ✅ 2026-08-18" (~11525).
+- Beweis-Regel 3 Pipe/Exit-Code (2026-10-28: TS2322 kam nach `main`, Typecheck drei Pushes rot, Sitzung hielt ihn für grün) — kein Treffer zu „TS2322"/„drei Pushes". Umziehen:
+  „2026-10-28: `pnpm --filter <app> typecheck | tail -6` meldete den Exit-Code von `tail` — ein TS2322 kam nach `main` und hielt den Typecheck drei Pushes lang rot, während die Sitzung ihn für grün hielt."
+- KALTSTART-Messwerte (`/` ~25 s, `/embed` >30 s; API-Routen kalt 0,05 s, 2026-08-01; die alte Behauptung „jede /api/auth-Route beim ersten Aufruf" schickte eine F10-Diagnose auf eine falsche Fährte; Fallen alle 2026-07-28 erwischt) — teils: „## C — erledigt (Claude konnte sofort)", Zeile C9 (~16629). Umziehen (Zahlen):
+  „E2E-Kaltstart gemessen: `/` ~25 s, `/embed` mit Client-Bundle >30 s; API-Routen bündelt Nitro beim Start, kalt 0,05 s (2026-08-01). Die frühere Annahme „jede /api/auth-Route kompiliert beim ersten Aufruf" schickte die F10-Diagnose auf eine falsche Fährte."
+- TEARDOWN-HANG `channel: 'chrome'` / GoogleUpdater (behoben 2026-08-01; Force-Kill nach 300 s ⇒ Exit 1; danach 24/24 in ~25 s) — steht schon: „### E7 — der lokale Playwright-Hang ist weg ✅ 2026-08-01" (~17599) und C-Tabelle F9 (~16664).
+- SCHMALE FENSTER (Q01, 2026-11-20; Gegenprobe auf Englisch blieb grün) — steht schon: „### Q01 — Navigation auf dem Handy …" (~668).
+- ROLLEN-TESTS (OPS-009, 2026-11-17, Zitat „Klein beginnen: Die Prüfungen aus P04 und P05 bekommen sofort ihre Tests"; häufigste Fehlerklasse des Gesamtaudits; Abbau des Bestands je Layer 2026-11-17/18) — steht schon: „### GA1 P27 — Tests über den echten Kundenpfad … ✅ 2026-11-17" (~4300), Abbau unter „### N09 …" (~3157), „### N13 …" (~2643), „### N14 …" (~2860); Datumsliste je Layer steht zusätzlich als Kommentar in `packages/core/tests/route-role-coverage.test.ts:43–75`.
+- BÜHNE: ein neues Pflichtfeld an der Route brach einmal 25 Skripte — kein Treffer zu „25 Skripte". Umziehen unter GA1 P27:
+  „Vor `scripts/lib/probe-stage.mjs` baute jedes Beweis-Skript den Rumpf für `POST /api/onboarding/site` selbst — ein neues Pflichtfeld an der Route brach so 25 Skripte, ohne dass ein Test es merkte."
+- BEWEISE LAUFEN VON SELBST (bis 2026-11-17 liefen 6 von 82 Skripten in der CI; beim Einzug 27 von 42 rot, fast alle wegen des Skripts) — steht schon: „### GA1 P27 …" (~4328).
+- Bühnen-Zurückstellen / `baseline.mjs` (2026-11-21; Anlass `courses/verify-pool-isolation` ließ beide Communities ohne Plan, 40 Skripte später fehlten einem Browser-Test die Menüpunkte ab `personal`; Wartezeit 31 s) — steht schon: „### N21 — Bühne rot in der Nacht: ein Beweis ließ die Probe-Communities ohne Plan zurück ✅ 2026-11-21" (~252, ~276).
+- „✔ aufgeräumt" ohne Zählung in einem Dutzend Skripten; Registrierungs-Sonde legte je Abfrage ein Konto an — steht schon unter „### GA1 P27 …" (Einzug-Befunde, ~4320–4330; nicht wörtlich geprüft, bitte bei Eintrag gegenlesen).
+- PB1 d (platform-Host antwortet nur `/api/health`) — steht schon: PB1 (9 Treffer), u. a. Kopf von `scripts/ops/verify-delivery.mjs`.
+- EINZEL-INSTANZ (2026-11-17) / BRANDING.SUPPLY (2026-11-18, BT1 a; seit 2026-11-19 auch `verify-brand-kit`, `-design`, `-sessions`; Design-Vorlage war als Kopie still veraltet; Aufräum-Register ohne `tables.read` zählte „nichts übrig", lokal gemessen 2026-11-19) — steht schon: „### N17 — Nacharbeiten „Skripte, Erinnerungen, Rückbuchung, Log-Umlauf": BT1 (a) …" (~1519, ~1569, ~1573) und „### N16 — Nacharbeiten „Drei größere Reste": BT1 (a) …" (~1966, ~2115).
+- „Elf von zwölf laufen" (Stand 2026-11-19) — Zählwert; heute 12 Einträge `env: 'branding'`, 11 davon `lauf: 'nacht'` (`scripts/buehne/beweise.mjs`). Nicht umziehen nötig, steht sinngemäß unter N17.
+- „acht Isolations-Tests" — Zählwert; die Dateien stehen im Schritt von `.github/workflows/buehne.yml` (Zeilen um 395–397). Steht unter „### GA1 P27 …" (~4324).
+
+##### Aus `deps-build`
+
+Geprüft per `grep -n` in `docs/OPEN-ITEMS-COMPLETE.md`.
+
+- SINGLE-COPY (2026-07-30 zweimal erwischt: vue doppelt ⇒ Prod-Build stirbt an ENAMETOOLONG; h3 doppelt ⇒ 1102/944/1261 Typfehler) — kein Treffer zu „ENAMETOOLONG"/„1261". Umziehen:
+  „2026-07-30, zweimal: zwei Kopien von vue ließen den Prod-Build an ENAMETOOLONG sterben, zwei Kopien von h3 ergaben 1102/944/1261 Typfehler (je nach gehoisteter Version). Seitdem `pnpm check:single-copy` als CI-Gate."
+- CARET PINNT NICHTS (`^4.4.8` erlaubt 4.5.1) — steht schon: „### F48 Teilpaket 3 — Namensvervollständigung beim Tippen von `@` ✅ 2026-08-05" (~14593); Beispiel bleibt in der Regel.
+- i18n↔Nuxt-Paare (10.4↔4.4, 10.6↔4.5) — steht schon: „### Verlauf aus OPEN-ITEMS ausgelagert ✅ 2026-11-16" (~4825–4829), heute zusätzlich im Kommentar `pnpm-workspace.yaml:121–124`.
+- TS2589-STRUKTURFIX (Davids Entscheidung 2026-08-14; ~210 Routen; Aufrufstellen × Routen = 92 % aller Instanziierungen, 7,5 Mio → 618k, Typecheck 10,7 s → 5,4 s; vorher reichten 12 neue Routen für TS2589, jetzt kosten 100 Proberouten +142 Instanziierungen; Handler-Annotationen allein 1 %; Grep-Stand `$fetch<…, string>` 0) — steht schon: „### TS2589-Strukturfix — Nitros Routen-Typkarte ist aus ✅ 2026-08-14" (~12461–12471).
+- `lint:scripts` als eigener Schritt (2026-08-20) — Datum allein, keine Herleitung nötig.
+- `check:nul-bytes` (SEC-044, 2026-11-13) — steht schon: „### GA1 P07 — Tor vor dem Ausliefern: alle vier Prüfungen halten auf ✅ 2026-11-13" (~6943–6952).
+- `check:permissions` (SEC-001, 2026-11-13) — steht schon: u. a. „### N07 …" (~3671) und GA1-Abschnitte zu SEC-001.
+- `check:workflows` (SEC-041/042, 2026-11-14) — steht schon: „### GA1 P08 — Ausliefer-Weg: getrennte Schlüssel, Geheimnisse nur für den Hauptzweig ✅ 2026-11-14" (~6194, ~6227).
+- `check:public-ips` (SEC-011, 2026-11-15) — steht schon: „### GA1 P25 — Kleine Sicherheitsriegel: sieben zweite Sicherungen ✅ 2026-11-15" (~5733).
+- `check:icons` (FE-002, 2026-11-20) — steht schon: „### Q04 — Auslieferung: gepackt, robots.txt, Vorschaubild, Symbole — und ein täglicher Blick darauf ✅ 2026-11-20" (~750); das Kürzel FE-002 selbst kommt in OPEN-ITEMS-COMPLETE nicht vor (0 Treffer) — beim Eintrag ggf. ergänzen.
+- LOSE PROMISES (SEC-023, 2026-11-13) — steht schon: „### GA1 P06 — Sicherungen, die nicht prüfen können, lehnen ab ✅ 2026-11-14" (~6426–6435).
+- `lint:typed` (SI1 c, 2026-11-18; vorher 34 Aufbauten für acht Programme; Median aus vier Runden unter Last: vorher `pnpm -r lint` 66 s, nachher 27 s + `lint:typed` 11 s = 39 s; Datei-Menge vorher/nachher gleich 1178 Dateien; `nuxi prepare` kalt ~7 s) — steht schon: „### N12 — Nacharbeiten „Ausliefer-Weg": CI1 (a, b, c), RW1 (c), SI1 (c), MG1 (c) ✅ 2026-11-18", Punkt „2 · Der Lint-Lauf ist schneller (SI1 c, PR 335)" (~2438–2441). Ob 66 s/39 s/1178 dort stehen, nicht wörtlich geprüft — falls nicht, ergänzen:
+  „SI1 c gemessen 2026-11-18 lokal, abwechselnd unter gleicher Last, Median aus vier Runden: vorher `pnpm -r lint` 66 s, nachher `pnpm -r lint` 27 s + `pnpm lint:typed` 11 s = 39 s; Datei-Menge der Regel vorher und nachher gleich (1178 Dateien, je dieselbe tsconfig); `nuxi prepare` je App kalt ~7 s."
+- LINT-LAUF „mehr als lint" (2026-09-10 rot erwischt) — Datum, kein eigener Eintrag gefunden. Umziehen (knapp):
+  „2026-09-10: ein Push war rot, weil der Lint-Lauf vor `pnpm -r lint` Wächter fährt (`check:doc-links` u. a.), die lokal niemand gefahren hatte."
+- `check:prompt-quotes` (AI2, 2026-11-09; 4 von 52 bezahlten Läufen) — steht schon: „### AI2 — die Anführungszeichen-Regel gilt jetzt für JEDEN JSON-Prompt ✅ 2026-11-09" (~7661, ~7687).
+- WÄCHTER LESEN LISTEN AUS DEM CODE (GA1 P20, 2026-11-16, Zitat „Die Wächter erzeugen ihre Listen aus dem Code"; damals zehn Prüfungen in `check:manifests`; gemessen `check:manifests` 0,25 s, `lint:scripts` rund 4 s) — steht schon: „### GA1 P20 — Wächter, die ihre Listen selbst erzeugen: Not-Aus je Route, Lösch-Pflicht, Datentür ✅ 2026-11-16" (~5252–5281).
+- ALLE VIER PRÜFUNGEN (P07, 2026-11-13, Entscheidung 2026-11-12) — steht schon: „### GA1 P07 — Tor vor dem Ausliefern …" (~6943).
+- PFLICHT-PRÜFUNG NUR EIGENER ZWEIG (CW1 b, 2026-11-18; Zweig eines Helfers mit erfundenem Testwert in Variable `SECRET` machte die Prüfung dreizehn Minuten auf `main` und in jedem PR rot) — steht schon: „### N12 — Nacharbeiten „Ausliefer-Weg" …" (~2519) und CW1 unter „### N15 …" (~2342).
+- check:rules (NEU, Hauptsitzung Q17) — keine Herleitung aus dieser Datei; trägt die Hauptsitzung selbst ein.
+
+##### Aus `themes`
+
+- Katalog-Größe „26×11“, „seit 2026-07-24“ — Zählwert/Datum; die Quelle ist `packages/themes/theme.catalog.ts`. Kein Umzug nötig (Zahl veraltet ohnehin).
+- B3 / N6 (Label „Aloha“, 2026-07-29; davor „Sunrise“, klang neben „Sunset“ verwandt; davor „Maui“ = interner Produktname vor Kunden): B3 steht schon: `docs/OPEN-ITEMS-COMPLETE.md` Tabelle unter „### F19 · #33 — Warum die CI-E2E zufällig starb …“ (Zeile „| B3 | Theme-Name Sunrise …“). N6 („Maui“ → „Sunrise“) steht dort NICHT unter dem Kürzel; Umzugstext: „N6 — Anzeige-Label des Standard-Themes `default` hieß ursprünglich „Maui“ (interner Produktname vor Kunden), wurde zu „Sunrise“, am 2026-07-29 (B3) zu „Aloha“. Die Id blieb immer `default`.“
+- Q07 (Schrift-Kontrast, seit 2026-11-21): steht schon: „### Q07 — Kontrast der Textfarben im Pool …“.
+- B5 (Community gewinnt, 2026-07-29, Davids Entscheidung; Neutral-Rest gleicher Tag; `resolveThemeSelection` „11 Fälle getestet“; Beweis `verify-site-branding.mjs` „40/40“): B5 steht schon (Tabelle unter „### F19 · #33 …“, Zeile „| B5 | Besucher-Theme vs. Community-Theme …“). Zählwerte nicht dort; Umzugstext: „B5-Beweis 2026-07-29: `resolveThemeSelection` mit 11 Fällen getestet, `verify-site-branding.mjs` 40/40 grün (Neutral-Achse control-020 eingeschlossen).“
+- D6 (Spiegel seit 2026-08-01; `upsertRow` publiziert unter Appwrite 1.9.6 KEIN Realtime-Event, live erwischt 2026-08-01; SSR-Resolver-Cache ≤30 s): steht schon: Tabelle unter „### F19 · #33 …“, Zeile „| D6 | ✅ ERLEDIGT 2026-08-01 …“ (enthält die upsertRow-Begründung mit Appwrite-Version).
+- F45 (2026-08-03: im Projekt `control` stand gar keine Web-Platform, Realtime der Betreiber-Konsole tot — Sofort-Abmeldung, Glocke, Live-Theme): steht schon: „### F45 — Die Betreiber-Konsole hat ihre Realtime zurück ✅ 2026-08-03“.
+- Favicon-Upload (2026-08-18, „Davids Zuschnitt“; `verify-community-favicon.mjs` „14, Gegenproben“): unter dem Kürzel U15 nur Teil 4/5 gefunden, der Favicon-Bau selbst nicht als Überschrift. Umzugstext: „Community-Favicon-Upload (U15-Kette, 2026-08-18, Davids Zuschnitt: nur PNG, 32–512 px, ≤ 1 MB): Bucket `favicons` (system-037) als einzige Wahrheit, Beweis `packages/onboarding/scripts/verify-community-favicon.mjs` mit 14 Prüfungen inkl. Gegenproben.“
+- OPS-005 (bis 2026-11-15 dritte Anlegestelle `scripts/ops/f3-lib/rules.mts` samt Wächter-Test, mit OPS-005 gelöscht): steht schon: „### GA1 P26 — Aufräumen: Altlasten weg, ein Start-Skript …“ (OPS-005); `f3-lib` zusätzlich erwähnt bei Zeile ~12794.
+- F50/F51 (Settings-Hub + Switcher seit 2026-08-08; Sicherheits-Audit 2026-08-02 „Ziel-Host aus der Mitgliedschaftsliste“; F50-Nachtrag 2026-08-08 gesiegelte Ausgänge, damals Ziele `start.*`/`my.*`): steht schon: „### F50 + F51 — Community-Settings-Hub und Community-Switcher ✅ 2026-08-08“. Ergänzung für den Umzug: „Seit dem Kontroll-Host-Cutover (AH-1) liegen beide Ausgänge auf `account.*` (`/start`, `/communities`); `wizardHosts` ist in Produktion leer, `resolveWizardHosts()` fällt auf die Kontroll-Hosts zurück.“
+- `useTenantBranding` hieß bis 2026-08-17 so, heute `useCommunitySettings` (Begründung steht im Kopf von `packages/core/app/composables/useCommunitySettings.ts`). Kein Umzug nötig.
+
+##### Aus `onboarding`
+
+- Onboarding-Layer „seit 2026-07-25“ — Datum, kein Wissen über das Kürzel hinaus.
+- BE-013 (seit 2026-11-16; Halter-Übernahme nach 30 s; `incrementRowColumn` „gemessen unteilbar“): steht schon: „### GA1 P15 — Testphase einmal je Konto, eigene Domain … Regeln hal…“. Die 30 s stehen im Code als `CONTROL_LOCK_STALL_MS` (`packages/control/server/utils/controlLock.ts`).
+- „6 Vibes“ — Zählwert, Quelle ist `SITE_VIBES` in `packages/control/shared/onboarding.ts`. Kein Umzug.
+- S9 (Mitglieder-Verwaltung seit 2026-07-29, Audit-Befund „tote Capability“): steht schon (Erwähnungen unter „### F15 — Termine sind wieder meldbar …“ u. a.); falls die Hauptsitzung eine eigene Zeile will: „S9 (2026-07-29): `/dashboard/members` wanderte in den onboarding-Layer — die Capability war tot, weil admin die Service-Naht nicht hat.“
+- SEC-024 (2026-11-13, Entzug nachgeprüft): steht schon: „### GA1 P06 — Sicherungen, die nicht prüfen können, lehnen ab ✅ 2026-11-14“.
+- SEC-030 (2026-11-13, Hinweisseite `/removed`): steht schon: „### GA1 P05 — Mitmachen nur für Mitglieder, Hinweisseite für Entfernte ✅ 2026-11-13“.
+- SEC-028 (2026-11-15, Einladungen lesen wie annehmen; `listCommunityInvites` auf 100 gekappt): steht schon: „### GA1 P25 — Kleine Sicherheitsriegel: sieben zweite Sicherungen ✅ 2026-11-15“. Die Kappung „100“ fiel als Zählwert heraus; Umzugstext falls nicht dort: „`listCommunityInvites` liefert höchstens 100 Zeilen und ist deshalb nur Anzeige.“
+- C16 (2026-07-31, `community.delete` als Stilllegen — Kehrtwende zu Davids Entscheidung 3 vom 2026-07-29; Host 404 in ≤30 s): steht schon: „### C16 — die drei toten Berechtigungen haben ein Ziel ✅ 2026-07-31“.
+- A5 („seit A5 steht dort jedes beigetretene Mitglied, nicht mehr nur das Team“): steht schon (A5 30× erwähnt, u. a. „### GA1 P05 …“).
+- „Ehemaliges Mitglied“: Cache pro Nutzer 60 s (Wert im Code: `createMicrocache(... ?? 60_000)` in `packages/control/server/utils/communityMembersResolver.ts`); „eine Kommentarliste hat 25 Autoren“ als Begründung für das Bündeln. Umzugstext: „Ehemalig-Vertrag: gebündelt, weil eine Kommentarliste ~25 Autoren hat; Cache 60 s je Nutzer.“
+- MM1 b (2026-11-17, zweiter Vertrag ohne Request): steht schon: „### N03 — Nacharbeiten „Kurse, Mitmachen, Termine“: KU1, MM1 (b–d) und KK1 (a, b, c) ✅ 2026-11-17“.
+- GA1 P13 (Betreiber-Bedingungen seit 2026-11-16; Davids Auftrag „betreiber benötigen eigene agb's, die sie per kästchen bestätigen müssen“): steht schon: „### GA1 P13 — Schreiben nur noch über den Server; Kontoanlage nur über unsere Anmeldung; Zustimmung als Nachweis ✅ 2026-11-16“. Das wörtliche Auftrags-Zitat ggf. dort ergänzen.
+- `start.pukalani.app` als Einladungs-Ziel: Altname vor dem Kontroll-Host-Cutover (AH-1); heute `onboardingStartUrl`, Vorgabe `https://account.pukalani.app`. Kein Umzug (steht im Kopf von `packages/onboarding/shared/controlExit.ts`).
+
+##### Aus `plans-products`
+
+- P4-Rename 2026-07-26 (vorher free/pro/business; Daten migriert): steht schon unter „### Verlauf aus OPEN-ITEMS ausgelagert ✅ 2026-11-16“ (P4 6× erwähnt). Kurztext falls gewünscht: „P4 (2026-07-26): Pläne free/pro/business → basic/personal/pro, Personal 19 € → 29 €, Daten migriert; `normalizeTenantPlan()` mappt Altwerte.“
+- F49 (Davids Entscheidung 2026-08-07; Verzug „unverändert 14 Tage“): steht schon: „### F49 — Pricing-Umbau: ohne Abo nur-lesend, Preisseite nur Personal + Pro ✅ 2026-08-07“. 14 Tage = `PAST_DUE_GRACE_DAYS` in `packages/control/shared/communityBilling.ts`.
+- E11 (2026-07-30, hebt die P4-Zeile „im CODE bleibt features“ auf; Zusammenziehen über control-025 inkl. idx_site_product, system-024, courses-004): steht schon (Tabelle unter „### F19 · #33 …“, Zeile E11). Migrations-Liste als Umzugstext falls nicht dort: „E11-Zusammenziehen: control-025 (inkl. `idx_site_product`), system-024, courses-004 — alte feature-Spalten/Tabellen und Übergangs-Aliasse entfernt.“
+- Produkt-Beispiel „posts = personal, ai = pro“ — Momentaufnahme; die Zuordnung IST `pukalani.tenancy.products` in `apps/platform/app/app.config.ts`. Kein Umzug.
+- BE-015 (seit 2026-11-16, Davids Entscheidung „einmal je Person“; 14 Tage Pro), BE-014 + SEC-022 (seit 2026-11-16; 14 Tage Schonfrist, Eintrag verfällt nach 14 Tagen), BE-016 (seit 2026-11-16): steht schon: „### GA1 P15 — Testphase einmal je Konto, eigene Domain mit Freigabe und Schonfrist, Stripe-Eingang liest frisch …“. Die Zahlen stehen im Code als `TRIAL_DAYS`, `CUSTOM_DOMAIN_GRACE_DAYS`, `CUSTOM_DOMAIN_CLAIM_DAYS`.
+- Sweep „binnen einer Stunde“: `SWEEP_INTERVAL_MS = 60 * 60 * 1000` in `packages/control/server/plugins/trial-sweep.ts`; in der Regel steht jetzt „der stündliche Sweep“. Kein Umzug.
+
+##### Aus `ai-runner`
+
+Geprüft per `grep -n` in `docs/OPEN-ITEMS-COMPLETE.md` (HEAD 69be1f0f).
+
+- AI-Runner-Daemon allgemein (Start 2026-08-18, „acceptEdits erlaubt kein git commit, gemessen", „§ 11 gemessen"): steht schon: „### U21 — Tickets, die sich selbst umsetzen (AI-Runner) ✅ 2026-08-18" (Z. 11721); Messungen in `docs/archiv/AI-RUNNER.md` § 11.
+- Zählwerte der Beweise „verify-runner-boundary (24)", „smoke.mjs (86)", „läuft seit 2026-11-14 mit `pnpm -r test`": Zählwerte, nicht umziehen (veralten mit jedem Test; Quelle sind die Skripte selbst). Das Datum steht unter GA1 P03.
+- SEC-037 (Testbefehle als Auswahl, Davids Entscheidung 2026-11-12/13, „kamen nach dem Entwurf dazu und liefen genau deshalb an ihr vorbei"): steht schon: „### GA1 P03 — Runner: Testbefehle nur aus der Liste, Herkunft vom Server, Fristen ✅ 2026-11-14" (Z. 6357).
+- SEC-038 (promptTrusted vom Server, 2026-11-14): steht schon: GA1 P03 (wie oben).
+- BE-025 (Fristen 30/90 Tage, 2026-11-14): steht schon: GA1 P03 (wie oben).
+- RU1 b (Auftragstext vom Server, 2026-11-18; „bis dahin setzte die Seite den Text zusammen und schickte ihn mit; der Server sagte „geprüft" über einen Text, den er nie gesehen hatte"; Test vergleicht mit der Fassung vor dem Umzug; `verify-run-prompt.mjs` auf der Bühne mit Gegenprobe gefahren): steht schon: „### N14 — Nacharbeiten „Runner-Auftrag vom Server, …": RU1 (b), …" (Z. 2741, Absatz „RU1 (b) — den Auftragstext eines Runner-Laufs baut der Server." Z. 2748).
+- RU1 c, Texte nach 12 Monaten (2026-11-17, Davids Ja zur Zahl, control `apply` seit 2026-11-17): steht schon: „### N04 — Nacharbeiten „Fristen und Aufräum-Läufe": EL1 (c, d), KE3, RU1 (c, e) ✅ 2026-11-17" (Z. 3770, Absatz Z. 3800).
+- RU1 c, nie beendete Läufe (Lauf gebaut 2026-11-17, scharf geschaltet 2026-11-18): steht schon: „### N08 — …RU1 (c, d, e)…" (Z. 3313, Absatz Z. 3354) und „### N11 — Nacharbeiten „Was Davids Klick braucht": … RU1 (c) … ✅ 2026-11-18" (Z. 2886, Absatz „Lauf für nie beendete Runner-Läufe scharf (RU1 c)" Z. 2934).
+- Hinweis an die Hauptsitzung: Die alte Regel sagte „control: `count`" für `staleRunRetention`; laut N11 und `apps/control/app/app.config.ts:134,138` ist der Lauf seit 2026-11-18 auf `apply`. Kein Umzug nötig, die Berichtigung steht in `ai-runner-regeln.md`.
+
+##### Aus `editor`
+
+Geprüft per `grep -n` in `docs/OPEN-ITEMS-COMPLETE.md` (HEAD 69be1f0f).
+
+- UEditor gesetzt (Davids Vorgabe 2026-08-04), Umstellung von `PostBodyField.vue` am 2026-08-04, Nachladen spart 169 KiB gzip (≈20 % des Seiten-JS): steht schon: „### F48 Teilpaket 2 — Schreibfläche für Beiträge auf `UEditor` ✅ 2026-08-04" (Z. 14629; „~169 KiB gzip" Z. 14660).
+- F48 CommonMark-treuer Parser (Escapes, Entities): steht schon: „### F48 Teilpaket 1 — Markdown-Renderer CommonMark-treu ✅ 2026-08-04" (Z. 14680).
+- Erwähnungen gebaut 2026-08-04/05, Serialisierer, „Gegenprobe gemessen: 14 von 22 Prüfungen fallen", Pin `@tiptap/extension-mention` („ungepinnt bewegt sich der Lockfile um 1898 Zeilen statt um 6"): steht schon: „### F48 Teilpaket 3 — Namensvervollständigung beim Tippen von `@` ✅ 2026-08-05" (Z. 14572; „1898 Zeilen" Z. 14592; „14/22" Z. 14627). Messung, Optionen, Nebenbefunde zusätzlich in `docs/archiv/COMPOSER-UEDITOR.md`.
+- Pin-Stand „seit 2026-11-18 `3.34.0`": Versionsstand, nicht umziehen — die Quelle ist `pnpm-workspace.yaml` (Katalog Z. 88, `overrides` Z. 184).
+- AH-7 konto-weite Handles (Davids Entscheidung 2026-08-11, eine Pukalani-ID = EIN Handle): steht schon: „### AH-7 — Der konto-weite @handle ✅ 2026-08-12" (Z. 13718).
+- NICHT gefunden — UMZIEHEN unter „### AH-7 — Der konto-weite @handle ✅ 2026-08-12":
+  „Beim Bau von AH-7 fiel am Beweis auf: ohne Mitglieder-Gate standen Mitglieder von Community A im Erwähnungs-Menü von Community B — Row-Permissions allein reichen nicht, weil ein Leser Labels mehrerer Communities trägt und Appwrite nicht fragt, auf welchem Host er steht. Gegenprobe zu `packages/core/scripts/verify-handle-search-boundary.mjs` in Commit `3d074289`: drei Mutationen, drei Rote — Mitglieder-Gate, Publikums-Filter und Auflösungs-Filter fallen je einzeln. Die Lese-Publikums-Liste (`read(label:<communityId>)` je Mitgliedschaft) ersetzt die weggefallene `communityId`-Spalte von `community_handles`."
+  (Hinweis: `3d074289` taucht in COMPLETE nur in anderem Zusammenhang auf, Z. 12326 „Autonome Runde 4".)
+
+##### Aus `realtime`
+
+Geprüft per `grep -n` in `docs/OPEN-ITEMS-COMPLETE.md` (HEAD 69be1f0f).
+
+- OPS-004 Produktions-Wächter Realtime (seit 2026-11-16; Watchdog alle 5 min, höchstens dreimal neu erstellen): steht schon: „### GA1 P22 — Alarm sieht in die App hinein: Zeit-Läufe, Fehler, KI-Ausfälle, Live-Verbindung ✅ 2026-11-16" (Z. 5297, Punkt „6. Live-Verbindung (OPS-004)" Z. 5336); Takt und Zahl im Kopf von `ops/realtime-watchdog.sh`.
+- F14 Config-Gate (seit 2026-08-01; marketing/help abonnierten `app_config` über den geerbten core-Layer, ohne die Flags je zu lesen; `!databaseId`-Guard aus dem Live-Vorfall 2026-07-29): steht schon: „### C20 / F14 — Apps ohne Realtime bekommen keinen Socket mehr ✅ 2026-08-01" (Z. 18189; `!databaseId`-Guard Z. 18214).
+- G5 Host-Gate (2026-08-03; Fehlerseite mit hydriertem Auth-Store, jeder Abbruch zog `/api/auth/me` + `/api/community/role`): steht schon: „### G5 — Der Reconnect-Sturm auf 404-Hosts ✅ 2026-08-03" (Z. 15698); SDK-1-s-Reconnect (`reconnectAttempts` im `open`-Handler) ebd. Z. 15753.
+- NICHT gefunden — UMZIEHEN unter „### G5 — Der Reconnect-Sturm auf 404-Hosts ✅ 2026-08-03":
+  „Messwert: vor dem Fix 66 WebSocket-Verbindungen + 15 Requests in 60 s auf der 404-Seite eines unbekannten/`abuse`-gesperrten Hosts, danach 1 + 0."
+- RT2 Account-Channel auf geteiltem Socket (2026-11-08), Mindestabstand verwarf den Widerruf (Prod-Messung 2026-11-09: Prüfung beim Seitenladen, Widerruf 7 s später ⇒ abgemeldet erst nach 33 s): steht schon: „### RT2 — Sofort-Abmeldung bei Session-Widerruf kam in Prod nie an ✅ 2026-11-09" (Z. 7454, „Nachtrag 2026-11-09 — die 30-s-Bremse verwarf den Widerruf" Z. 7495–7503).
+- SEC-025 (503 „Trennung ohne Resolver") und C12b: nur Anker, nichts herausgenommen.
+
+##### Aus `i18n-seo`
+
+Geprüft per `grep -n` in `docs/OPEN-ITEMS-COMPLETE.md` (HEAD 69be1f0f).
+
+- Q03 (2026-11-20): Rückweg für übersetzte Adress-Namen („live erwischt") und zweiter Teil von `check:i18n-keys` (Anlass `t('ui.close')` zehn Wochen auf einem Knopf ohne Schlüssel): steht schon: „### Q03 — Sprach-Umleitung ohne Fehlerseite, Wächter für fest genannte Text-Schlüssel ✅ 2026-11-20" (Z. 983; „ui.close" Z. 1001).
+- B1 (canonical/hreflang/og:url zeigten auf allen Mandanten-Hosts auf platform.pukalani.app): nur Anker, bleibt als „(Befund B1)" in der Regel; Erzählung gekürzt.
+- B2 og:image je Tenant: steht schon: Tabellenzeile „| B2 | ~~**og:image je Tenant-Seite**~~ — **erledigt 2026-07-29** …" (Z. 16612).
+- NICHT gefunden — UMZIEHEN (Thema: spitze Klammern in Locale-Messages; passende Überschrift in COMPLETE nicht gefunden, Vorschlag: neuer Kurzeintrag oder unter „### F48 Teilpaket 2 … ✅ 2026-08-04", falls dort die Embed-/Composer-Arbeit des Tages steht):
+  „2026-08-04 live erwischt: der Platzhalter `/discussions/<adresse>` in einer Locale-Message galt nuxt-i18n als HTML. Der Nachrichten-Compiler stieg auf dem Client aus, SSR renderte übersetzt, im Browser standen rohe Schlüssel (`home.title`), Hydration-Mismatch. Zwei E2E-Specs (Realtime-Pille, Embed-Composer) starben daran; Unit-Tests, Typecheck und Lint sahen nichts, nur `nuxt-i18n WARN Detected HTML in 1 message` im Dev-Log."
+- NICHT gefunden — UMZIEHEN (Thema: Wächter `check:i18n-keys`, Teil 1; Vorschlag: neuer Kurzeintrag „check:i18n-keys — Schlüssel aus app.config ✅ 2026-08-06"):
+  „`apps/comments` setzte am 2026-08-02 `labelKey: 'legal.imprint'`, ohne den Schlüssel anzulegen; vier Tage lang stand im Fuß von comments.pukalani.app wörtlich `legal.imprint` (der Fuß gehört blueprint, der Text der App; vue-i18n gibt bei fehlender Übersetzung den Schlüssel aus). Typecheck, Lint und Unit-Tests sahen nichts. Seit 2026-08-06 prüft `pnpm check:i18n-keys` jeden in einer `app.config` deklarierten Schlüssel in jeder erbenden App."
+- Studio/Hilfe/branding.supply als Beispiele für feste og-Bilder: keine Herleitung, die Fundstellen sind die `app.vue` der Apps.
+
+---
+
 ### Q19 — Runbooks, Referenz und Doku-Ordnung (DOC-004, DOC-007 bis DOC-011, DOC-014) ✅ 2026-11-21
 
 **Was.** Ein Durchgang durch die Doku nach dem zweiten Durchlauf des Gesamtaudits:
@@ -11100,7 +11742,7 @@ der alle Verbraucher lesen.
 ### branding.supply live — eigenes Appwrite-Projekt, eigene Domain, Beta im Invite-Modus ✅ 2026-09-01
 
 **Was:** Ausführung des abgenommenen Infra-Plans (Davids Kehrtwende 2026-08-31,
-[BRANDING-SUPPLY-INFRA.md](plans/BRANDING-SUPPLY-INFRA.md), Runbook
+[BRANDING-SUPPLY-INFRA.md](archiv/BRANDING-SUPPLY-INFRA.md), Runbook
 [BRANDING-SUPPLY-SETUP.md](runbooks/BRANDING-SUPPLY-SETUP.md) — dort stehen
 alle Häkchen und Fallen im Detail). Konsole komplett per Chrome-Fernsteuerung
 geklickt (Projekt `branding`, DB `main`, 2 Platforms, Runtime-Key 10 Scopes /

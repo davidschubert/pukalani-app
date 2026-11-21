@@ -6,7 +6,7 @@ import type { PageTranslateResponse, PageTranslateRunView } from './types/page'
 /**
  * DIE ÜBERSETZUNG EINER SEITE IM HINTERGRUND — der pure Teil (LL1 d,
  * 2026-11-18). Der Server-Teil steht in `server/utils/pageTranslateRun.ts`,
- * die Regel in `.claude/rules/ki-mail-embed-moderation.md` („LANGE ARBEIT
+ * die Regel in `.claude/rules/lange-laeufe.md` („LANGE ARBEIT
  * GEHÖRT NICHT IN DIE ANFRAGE").
  *
  * ── WARUM ────────────────────────────────────────────────────────────────
