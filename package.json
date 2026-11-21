@@ -36,6 +36,7 @@
     "check:ai-routing": "node scripts/check-ai-routing.mjs",
     "check:public-ips": "node scripts/check-public-ips.mjs",
     "check:icons": "node scripts/check-icons.mjs",
+    "check:page-weight": "node scripts/check-page-weight.mjs",
     "check:secrets": "gitleaks git --no-banner --redact --verbose .",
     "lint:prepare": "pnpm --filter \"./apps/*\" exec nuxi prepare",
     "lint:typed": "node scripts/lint-typed.mjs",

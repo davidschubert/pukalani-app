@@ -90,6 +90,18 @@ declare module 'h3' {
      * (Spiegel in den Client, die Nachfrage öffnet sich dann einmal).
      */
     consentMissing?: ConsentKind[]
+    /**
+     * Seiten kurz fertig halten (Q22, `shared/pageCache.ts`): Schlüssel der
+     * Anfrage — gesetzt von `server/middleware/11.page-cache.ts`, nur wenn
+     * Schalter, Methode, Pfad und Cookies es erlauben und kein Treffer da war.
+     */
+    pageCacheKey?: string
+    /** Sprach-Cookie der App, den eine gehaltene Antwort setzen darf. */
+    pageCacheCookieKey?: string
+    /** Die gerenderte SEITE darf gehalten werden (`app/plugins/page-cache.server.ts`). */
+    pageCacheEligible?: true
+    /** Eine Bot-Prüfung stand im SSR auf der Seite — nie halten. */
+    pageCacheBlocked?: true
   }
 }
 

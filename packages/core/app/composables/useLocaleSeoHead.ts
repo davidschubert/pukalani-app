@@ -174,5 +174,10 @@ declare module '#app' {
      * stempelt `noindex, follow` (shared/seoRobots.ts).
      */
     seoNoindex?: boolean
+    /**
+     * `false` = diese Seite wird nie fertig gehalten, auch wenn die App
+     * `pukalani.pageCache` eingeschaltet hat (Q22, z. B. ein Formular).
+     */
+    pageCache?: boolean
   }
 }

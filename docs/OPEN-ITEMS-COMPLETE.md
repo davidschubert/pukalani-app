@@ -30,6 +30,58 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q22 — Seitengewicht und fertig gehaltene Seiten (PERF-006, PERF-009, PERF-010) ✅ 2026-11-21
+
+**Erst gemessen, dann gebaut** (Synthese: „erst nach Q04 messen"). Live vor
+der Änderung, je Startseite `/de`, Lighthouse mobil Median aus drei Läufen:
+pukalani.app 96 Punkte (LCP 1,2 s, TBT 211 ms), Hilfe 97 (1,2 s, 206 ms),
+Studio 100 (1,2 s, 47 ms; im Audit 75 mit LCP 10,9 s — erledigt durch
+Q04/Q05). Erste Antwort live 0,15 bis 0,36 s; Sprachdatei je Seite nur die
+eine Sprache (10 bis 29 KB gepackt); ungenutztes Skript laut Lighthouse nur
+noch 26 bis 51 KB gepackt.
+
+- **PERF-006 — kleiner geworden, kein Umbau.** Mit gepackter Auslieferung
+  bleibt wenig: kein Textkatalog-Schnitt, keine Hülle auf Verdacht. Gebaut nur
+  der WÄCHTER: `pnpm check:page-weight` (`scripts/check-page-weight.mjs`,
+  Grenzen in `scripts/lib/page-weight-budgets.mjs`) rechnet aus Nuxts
+  Client-Manifest das Skript-Gewicht der Startseite (Einstieg + Seite +
+  Layout, transitiv, gzip) und läuft im Ausliefern nach jedem Build — ein zu
+  schwerer Stand wird nicht ausgeliefert. Grenzen: Landing 295, Hilfe 300,
+  Studio 258 KB (Stand plus rund 5 %). Gegenprobe: Grenze 270 bei 280 KB ⇒
+  Exit 1.
+- **PERF-010 — gebaut.** zod kam nicht über den Schalter-Plugin allein in
+  den Einstieg, sondern über `consent-prompt.client.ts`, das sein Formular
+  (Auth-Schemas, zod) FEST importierte — in jeder App, auch ohne
+  Zustimmungs-Pflicht. Jetzt `defineAsyncComponent` (lädt beim ersten
+  Öffnen) und der Schalter aus dem schlanken Einstieg `zod/v4/core`
+  (`jitless` im gebauten Studio geprüft: an, kein Bericht). Skripte, die die
+  Startseite sofort lädt (modulepreload, lokal gemessen, gzip): Landing
+  312 → 280 KB, Hilfe 322 → 290 KB, Studio 291 → 245 KB; zod nur noch als
+  `prefetch` im Leerlauf.
+- **PERF-009 — gebaut (Davids Entscheidung R3, DECISION-LOG).** Landing,
+  Hilfe und die Studio-Seiten mit Layout `site` halten fertige Seiten 60 s,
+  über den Microcache; Schalter `pukalani.pageCache` (Core AUS). Regeln in
+  `packages/core/shared/pageCache.ts`, Speicher `server/utils/pageCache.ts`,
+  Middleware `11.page-cache.ts` (Treffer, NACH allen Weiterleitungen), Plugin
+  `server/plugins/page-cache.ts` (ablegen erst in `afterResponse`, wenn alle
+  Kopfzeilen stehen), Nuxt-Plugin `page-cache.server.ts` (Layout, Seiten-Meta
+  `pageCache: false`, Fehlerseite), `AuthTurnstileWidget` sperrt jede Seite mit
+  Bot-Prüfung. Lokal im Production-Build: erste Antwort aus dem Speicher
+  ~2 ms statt 12 bis 37 ms; Kopfzeile `x-page-cache: HIT|MISS`. Nach außen
+  bleibt `cache-control: no-cache`, Cloudflare meldet weiter `DYNAMIC`.
+  Tests `packages/core/tests/pageCache.test.ts` (echte h3-App): Treffer,
+  Sitzungs-Cookie, fremdes `Set-Cookie`, 60 s, Sprache/Cookie/Host getrennt,
+  Fehlerseite/Bot/Abfrage/POST; vier Gegenproben (Code absichtlich
+  gebrochen) rot.
+
+**Gelernt:** Jede erste Seite setzt den Sprach-Cookie — die naheliegende
+Regel „nie eine Antwort mit `Set-Cookie` halten" hätte NICHTS gehalten, und
+„nur ohne Sitzungs-Cookie" hätte die Sprach-Weiterleitung (302 nach Cookie
+oder Browser-Sprache, `redirectOn: 'all'`) für den nächsten Besucher
+überschrieben. Der Schlüssel muss das ERGEBNIS der Spracherkennung tragen,
+und deren Kopie braucht einen Test gegen das Original. Und: ein Test, der die
+Konstante liest, die er prüft, blieb bei 10 statt 60 Minuten grün — die
+Zahl gehört ausgeschrieben in den Test (Beweis-Regel 1).
 ### Q16 — Wörter und Anrede: ein Wort je Sache, keine Entwickler-Wörter vor Kundschaft (BRD-007, BRD-008, BRD-012, UX-013) ✅ 2026-11-21
 
 **Was.** Davids Ja zu R5 (Menü der deutschen Seite von branding.supply

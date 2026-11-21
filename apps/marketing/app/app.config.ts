@@ -21,6 +21,13 @@ export default defineAppConfig({
       home: true,
     },
     /**
+     * SEITEN 60 s FERTIG HALTEN (Q22, Davids Entscheidung R3 vom 2026-11-21,
+     * DECISION-LOG): diese Site hat keine Konten. Regeln und Grenzen: `packages/core/shared/pageCache.ts`.
+     */
+    pageCache: {
+      enabled: true,
+    },
+    /**
      * Plausible (self-hosted, plausible.hawaii.studio) — cookieloses
      * Tracking, daher bleibt `pukalani.consent` bewusst AUS (kein Banner).
      * v3-Snippet: die Site-Zuordnung zu pukalani.app steckt in der

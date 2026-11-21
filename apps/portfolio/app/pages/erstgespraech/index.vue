@@ -46,7 +46,8 @@ import { breadcrumbList } from '../../utils/schema'
  * auf /danke): eine eigene Danke-Seite ist per Zurück-Taste und per Direktlink
  * erreichbar und behauptet dann eine Absendung, die es nie gab.
  */
-definePageMeta({ layout: 'site' })
+// Formular mit Bot-Prüfung: nie fertig halten (Q22).
+definePageMeta({ layout: 'site', pageCache: false })
 
 const { t, locale } = useI18n()
 const localePath = useLocalePath()

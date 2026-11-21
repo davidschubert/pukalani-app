@@ -7,6 +7,39 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-21 — Seiten ohne Konten werden 60 Sekunden fertig gehalten (Q22, R3)
+
+**Anlass:** Landing, Hilfe und die öffentlichen Studio-Seiten wurden bei jedem
+Abruf neu gerechnet (live 0,15 bis 0,36 s bis zur ersten Antwort), obwohl
+dort niemand angemeldet ist. Die Projektregel „kein SSR-Seiten-SWR"
+(Session-State steckt im HTML) entstand für Apps mit Anmeldung und wurde für
+diese drei Sites nie eigens betrachtet.
+
+**Davids Entscheidung R3** (2026-11-21): Diese drei Sites dürfen Seiten
+60 Sekunden fertig halten — eine AUSNAHME von der Regel, begründet damit,
+dass sie keine Konten haben. Sie gilt NUR dort, nie für Communities,
+Kundenbereich, Konsole oder branding.supply.
+
+**Umsetzung:** über den vorhandenen Microcache (`createMicrocache`), kein
+zweiter Mechanismus; Schalter `pukalani.pageCache` (Core AUS, je App eine
+Stelle in `app.config.ts`, beim Studio nur Layout `site`). Gehalten wird nur
+ein GET ohne Abfrage-Parameter, ohne Cookie außer dem Sprach-Cookie, getrennt
+je Host, Pfad und der Sprache, die das i18n-Modul für die Anfrage erkennen
+würde (Sprach-Weiterleitungen bleiben so je Besucher richtig), nur Status 200,
+nur wenn die Antwort keinen anderen Cookie setzt; Seiten mit Bot-Prüfung und
+das Erstgespräch bleiben frisch. Nach außen geht weiter `cache-control:
+no-cache` — Browser und Cloudflare halten nichts, der Speicher liegt nur im
+App-Prozess. Kopfzeile `x-page-cache: HIT|MISS` zeigt von außen, was geschah.
+Regeln: `packages/core/shared/pageCache.ts`.
+
+**Verworfen:** Nitros `routeRules` mit `cache`/`swr` (zweiter Mechanismus,
+weiß nichts von Sprach-Weiterleitung und Cookies); Vorab-Rendern beim Build
+(die Studio-Seiten lesen Inhalte aus der Datenbank, die im Dashboard
+geändert werden; nach einer Änderung sind sie jetzt spätestens nach 60 s
+sichtbar).
+
+---
+
 ## 2026-11-21 — Eine Marke, ein Zeichen; die drei Marken zeigen aufeinander (Q24, R4 und R9)
 
 **Anlass:** Marketing-Site und Hilfe trugen die puka, die Anmeldung ein

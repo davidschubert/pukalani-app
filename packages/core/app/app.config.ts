@@ -767,6 +767,22 @@ export default defineAppConfig({
        */
       avatarOrphanSweep: 'off' as RowRetentionMode,
     },
+    /**
+     * SEITEN KURZ FERTIG HALTEN (Q22, Davids Entscheidung R3 vom 2026-11-21):
+     * eine fertig gerenderte Seite wird 60 s je Prozess gehalten und ohne
+     * neues Rendern ausgeliefert. Eine AUSNAHME von „kein SSR-Seiten-SWR" —
+     * NUR für Sites ohne Konten (Landing, Hilfe, öffentliche Studio-Seiten),
+     * nie für Communities, Kundenbereich, Konsole oder branding.supply.
+     * Core-Default AUS. Gehalten wird nur GET ohne Abfrage-Parameter, ohne
+     * Cookie außer dem Sprach-Cookie, getrennt je Host, Pfad und erkannter
+     * Sprache, nur Status 200 und nur, wenn die Antwort keinen anderen Cookie
+     * setzt. Regeln: `shared/pageCache.ts`.
+     * `layouts`: leer = jede Seite der App, sonst nur Seiten dieser Layouts.
+     */
+    pageCache: {
+      enabled: false,
+      layouts: [] as string[],
+    },
     observability: {
       /** Strukturierte JSON-Error-Logs für unbehandelte Server-Fehler (5xx)
        *  am zentralen Nitro-Error-Hook. Sentry-Andockpunkt: server/utils/logEvent.ts */

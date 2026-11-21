@@ -21,7 +21,8 @@ export interface Microcache<T> {
   clear: () => void
 }
 
-export function createMicrocache<T>(ttlMs: number): Microcache<T> {
+/** `maxEntries` nur, wenn die Werte groß sind (ganze HTML-Seiten, Q22). */
+export function createMicrocache<T>(ttlMs: number, maxEntries: number = MAX_ENTRIES): Microcache<T> {
   const store = new Map<string, { value: T, expires: number }>()
   return {
     get(key) {
@@ -31,8 +32,8 @@ export function createMicrocache<T>(ttlMs: number): Microcache<T> {
       return undefined
     },
     set(key, value) {
-      // Simpler Überlauf-Schutz statt LRU — bei 500 Keys ist Leeren billig
-      if (store.size >= MAX_ENTRIES) store.clear()
+      // Simpler Überlauf-Schutz statt LRU — bei so wenigen Keys ist Leeren billig
+      if (store.size >= maxEntries) store.clear()
       store.set(key, { value, expires: Date.now() + ttlMs })
     },
     delete(key) {

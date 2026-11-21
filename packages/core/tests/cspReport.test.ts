@@ -45,8 +45,12 @@ describe('Zod probiert im Browser kein `new Function`', () => {
   it('der Schalter steht auf Modul-Ebene, vor dem Plugin, und das Plugin lädt als erstes', () => {
     const file = fileURLToPath(new URL('../app/plugins/00.zod-jitless.client.ts', import.meta.url))
     const source = readFileSync(file, 'utf8')
-    const config = source.indexOf('\nz.config({ jitless: true })\n')
+    const config = source.indexOf('\nconfig({ jitless: true })\n')
     expect(config).toBeGreaterThan(0)
+    // Der schlanke Einstieg (Q22, PERF-010): der volle Einstieg `zod` zog
+    // die ganze Bibliothek in den Einstieg jeder Seite.
+    expect(source).toContain("import { config } from 'zod/v4/core'")
+    expect(source).not.toMatch(/from 'zod'/)
     expect(config).toBeLessThan(source.indexOf('export default defineNuxtPlugin'))
     expect(source).toContain('enforce: \'pre\'')
   })
