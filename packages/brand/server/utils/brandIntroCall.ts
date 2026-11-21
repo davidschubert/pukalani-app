@@ -19,6 +19,8 @@ import {
   isAppwriteNotFound,
 } from './brandStore'
 import { softFail } from '../../../core/server/utils/softFail'
+import { frameMail, resolveMailLocale } from '../../../core/shared/mailFrame'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * DER UNTERBAU DES ERSTGESPRÄCHS (BS1 Paket Z0) — die zwei Mails, die eine
@@ -110,15 +112,16 @@ export async function notifyBrandIntroOperator(
   return await sendMail(event, {
     to,
     subject: `Erstgespräch-Anfrage: ${entry.name}${entry.company ? ` (${entry.company})` : ''}`,
-    text: [
-      'Jemand möchte ein Erstgespräch über branding.supply.',
-      '',
-      lines.join('\n'),
-      '',
-      'Anliegen:',
-      entry.message,
-      '',
-    ].join('\n'),
+    // Rahmen (Q06): Betreiber-Mail auf Deutsch, ohne Namen.
+    text: frameMail({
+      brand: resolveMailBrand(event),
+      locale: 'de',
+      lines: [
+        'Jemand möchte ein Erstgespräch über branding.supply.',
+        lines.join('\n'),
+        `Anliegen:\n${entry.message}`,
+      ],
+    }).text,
   }).catch(softFail('brand:utils/brandIntroCall:sendMail', false))
 }
 
@@ -150,38 +153,29 @@ export async function sendBrandIntroConfirmMail(
    */
   const salutationName = displayNameProblem(entry.name) === null ? entry.name : ''
 
-  const de = [
-    salutationName ? `Hallo ${salutationName},` : 'Hallo,',
-    '',
-    'danke — eure Anfrage für ein Erstgespräch ist bei uns angekommen. Wir',
-    'melden uns bei euch mit ein paar Terminvorschlägen.',
-    '',
-    'Eure Nachricht liegt uns vor.',
-    '',
-    'Wenn etwas fehlt, antwortet einfach auf diese Mail.',
-    '',
-    'Pukalani Studio · branding.supply',
-  ].join('\n')
-
-  const en = [
-    salutationName ? `Hi ${salutationName},` : 'Hi,',
-    '',
-    'thanks — your request for an intro call has reached us. We will come back',
-    'to you with a few suggested times.',
-    '',
-    'We have your message on file.',
-    '',
-    'If anything is missing, just reply to this email.',
-    '',
-    'Pukalani Studio · branding.supply',
-  ].join('\n')
+  // Rahmen (Q06): Anrede und Schluss mit der Marke kommen aus
+  // `core/shared/mailFrame.ts` — die feste Unterschrift fällt. Die Anrede-Form
+  // „ihr" im Text bleibt (eigene Marken-Stimme).
+  const locale = resolveMailLocale({ request: entry.locale })
+  const lines = locale === 'de'
+    ? [
+        'Danke — eure Anfrage für ein Erstgespräch ist bei uns angekommen. Wir\nmelden uns bei euch mit ein paar Terminvorschlägen.',
+        'Eure Nachricht liegt uns vor.',
+        'Wenn etwas fehlt, antwortet einfach auf diese Mail.',
+      ]
+    : [
+        'Thanks — your request for an intro call has reached us. We will come back\nto you with a few suggested times.',
+        'We have your message on file.',
+        'If anything is missing, just reply to this email.',
+      ]
+  const { text } = frameMail({ brand: resolveMailBrand(event), locale, name: salutationName, lines })
 
   return await sendMail(event, {
     to: entry.email,
-    subject: entry.locale === 'de'
+    subject: locale === 'de'
       ? 'Eure Anfrage für ein Erstgespräch'
       : 'Your request for an intro call',
-    text: entry.locale === 'de' ? de : en,
+    text,
   }).catch(softFail('brand:utils/brandIntroCall:sendMail#2', false))
 }
 

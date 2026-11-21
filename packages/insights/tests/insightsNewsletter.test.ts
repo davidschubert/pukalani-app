@@ -119,7 +119,7 @@ describe('Das Versprechen hat keinen Takt', () => {
       const copy = insightsNewsletterConfirmMailCopy(locale, {
         confirmUrl: 'https://branding.supply/newsletter/confirm?token=t',
         unsubscribeUrl: 'https://branding.supply/newsletter/unsubscribe?token=u',
-      })
+      }, 'Testmarke')
       const haystack = `${copy.subject}\n${copy.text}`.toLowerCase()
       for (const word of INSIGHTS_NEWSLETTER_FORBIDDEN_CADENCE_WORDS) {
         expect(haystack).not.toContain(word)
@@ -129,7 +129,7 @@ describe('Das Versprechen hat keinen Takt', () => {
 
   it('nennt auch in der AUSGABE-Mail keinen Takt — in beiden Fassungen', () => {
     for (const locale of ['de', 'en'] as const) {
-      const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: 'Diesmal ein Blick auf zwei Marken.', introEn: 'Diesmal ein Blick auf zwei Marken.' }, locale, ISSUE_LINKS)
+      const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: 'Diesmal ein Blick auf zwei Marken.', introEn: 'Diesmal ein Blick auf zwei Marken.' }, locale, ISSUE_LINKS, 'Testmarke')
       const haystack = `${copy.subject}\n${copy.text}`.toLowerCase()
       for (const word of INSIGHTS_NEWSLETTER_FORBIDDEN_CADENCE_WORDS) {
         expect(haystack).not.toContain(word)
@@ -152,9 +152,9 @@ describe('Das Versprechen hat keinen Takt', () => {
   })
 
   it('sagt dafür, WANN geschrieben wird — in beiden Sprachen', () => {
-    expect(insightsNewsletterConfirmMailCopy('de', { confirmUrl: 'c', unsubscribeUrl: 'u' }).text)
+    expect(insightsNewsletterConfirmMailCopy('de', { confirmUrl: 'c', unsubscribeUrl: 'u' }, 'Testmarke').text)
       .toContain('wenn ein neues Stück erscheint')
-    expect(insightsNewsletterConfirmMailCopy('en', { confirmUrl: 'c', unsubscribeUrl: 'u' }).text)
+    expect(insightsNewsletterConfirmMailCopy('en', { confirmUrl: 'c', unsubscribeUrl: 'u' }, 'Testmarke').text)
       .toContain('when a new piece is out')
   })
 
@@ -163,7 +163,7 @@ describe('Das Versprechen hat keinen Takt', () => {
       const copy = insightsNewsletterConfirmMailCopy(locale, {
         confirmUrl: 'https://branding.supply/newsletter/confirm?token=abc',
         unsubscribeUrl: 'https://branding.supply/newsletter/unsubscribe?token=xyz',
-      })
+      }, 'Testmarke')
       expect(copy.text).toContain('/newsletter/confirm?token=abc')
       expect(copy.text).toContain('/newsletter/unsubscribe?token=xyz')
       // Kein HTML, keine spitzen Klammern (die Mail geht als reiner Text raus).
@@ -567,17 +567,17 @@ describe('createInsightsNewsletterSendSchema — die Einleitung je Sprache, und 
 
 describe('insightsNewsletterIssueCopy — der Wortlaut einer Ausgabe', () => {
   it('nimmt als Betreff den TITEL der Fassung, ohne Präfix und ohne Nummer', () => {
-    expect(insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS).subject)
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS, 'Testmarke').subject)
       .toBe('Zwei Marken im Vergleich')
-    expect(insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'en', ISSUE_LINKS).subject)
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'en', ISSUE_LINKS, 'Testmarke').subject)
       .toBe('Two brands compared')
   })
 
   it('schreibt in der Sprache des EMPFÄNGERS, wenn die Fassung redigiert ist', () => {
-    const de = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS)
+    const de = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS, 'Testmarke')
     expect(de.text).toContain('Zwei Marken, ein Blick.')
     expect(de.text).toContain('Du bekommst das, weil du dich eingetragen hast')
-    const en = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'en', ISSUE_LINKS)
+    const en = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'en', ISSUE_LINKS, 'Testmarke')
     expect(en.text).toContain('Two brands, one look.')
     expect(en.text).toContain('You are getting this because you signed up')
   })
@@ -585,17 +585,27 @@ describe('insightsNewsletterIssueCopy — der Wortlaut einer Ausgabe', () => {
   it('schickt die GRUNDFASSUNG, solange die zweite nicht redigiert ist (§3.2)', () => {
     // Die Gegenprobe zum Test darüber: dieselbe Zeile, nur ohne Häkchen.
     const roh = { ...ISSUE_POST, translationReviewed: false }
-    const copy = insightsNewsletterIssueCopy(roh, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS)
+    const copy = insightsNewsletterIssueCopy(roh, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS, 'Testmarke')
     expect(copy.subject).toBe('Two brands compared')
     expect(copy.text).toContain('Two brands, one look.')
     expect(copy.text).not.toContain('Zwei Marken')
   })
 
   it('setzt die eigene Einleitung GANZ OBEN — und lässt sie weg, wenn es keine gibt', () => {
-    const mit = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '  Diesmal kurz.  ', introEn: '  Diesmal kurz.  ' }, 'de', ISSUE_LINKS)
-    expect(mit.text.startsWith('Diesmal kurz.')).toBe(true)
-    const ohne = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '   ', introEn: '   ' }, 'de', ISSUE_LINKS)
-    expect(ohne.text.startsWith('Zwei Marken, ein Blick.')).toBe(true)
+    const mit = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '  Diesmal kurz.  ', introEn: '  Diesmal kurz.  ' }, 'de', ISSUE_LINKS, 'Testmarke')
+    // Über der Einleitung steht nur die Anrede des Rahmens (Q06).
+    expect(mit.text.startsWith('Hallo,\n\nDiesmal kurz.')).toBe(true)
+    const ohne = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '   ', introEn: '   ' }, 'de', ISSUE_LINKS, 'Testmarke')
+    expect(ohne.text.startsWith('Hallo,\n\nZwei Marken, ein Blick.')).toBe(true)
+  })
+
+  it('Rahmen (Q06): Anrede, Schluss mit der Marke, Abmelde-Hinweis als Fußzeile — beide Mails', () => {
+    const issue = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'en', ISSUE_LINKS, 'Testmarke')
+    expect(issue.text.startsWith('Hi,\n\n')).toBe(true)
+    expect(issue.text).toContain('Best regards\nTestmarke\n\n—\nYou are getting this because you signed up')
+    const confirm = insightsNewsletterConfirmMailCopy('de', { confirmUrl: 'c', unsubscribeUrl: 'u' }, 'Testmarke')
+    expect(confirm.text.startsWith('Hallo,\n\nEin Klick fehlt noch')).toBe(true)
+    expect(confirm.text).toContain('Viele Grüße\nTestmarke\n\n—\nDu warst das nicht?')
   })
 
   /**
@@ -609,15 +619,15 @@ describe('insightsNewsletterIssueCopy — der Wortlaut einer Ausgabe', () => {
    */
   it('gibt jedem seine Einleitung — und NIE die der anderen Sprache', () => {
     const nurDe = { introDe: 'Nur auf Deutsch.', introEn: '' }
-    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurDe, 'de', ISSUE_LINKS).text)
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurDe, 'de', ISSUE_LINKS, 'Testmarke').text)
       .toContain('Nur auf Deutsch.')
-    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurDe, 'en', ISSUE_LINKS).text)
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurDe, 'en', ISSUE_LINKS, 'Testmarke').text)
       .not.toContain('Nur auf Deutsch.')
 
     const nurEn = { introDe: '', introEn: 'English only.' }
-    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurEn, 'en', ISSUE_LINKS).text)
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurEn, 'en', ISSUE_LINKS, 'Testmarke').text)
       .toContain('English only.')
-    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurEn, 'de', ISSUE_LINKS).text)
+    expect(insightsNewsletterIssueCopy(ISSUE_POST, nurEn, 'de', ISSUE_LINKS, 'Testmarke').text)
       .not.toContain('English only.')
   })
 
@@ -636,20 +646,21 @@ describe('insightsNewsletterIssueCopy — der Wortlaut einer Ausgabe', () => {
       { introDe: 'Deutsch dazu.', introEn: 'English on top.' },
       'en',
       ISSUE_LINKS,
+      'Testmarke',
     )
     expect(copy.text).toContain('Deutsch dazu.')
     expect(copy.text).not.toContain('English on top.')
   })
 
   it('trägt die Adresse des Beitrags UND den Abmelde-Link dieses Empfängers', () => {
-    const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS)
+    const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: '', introEn: '' }, 'de', ISSUE_LINKS, 'Testmarke')
     expect(copy.text).toContain('https://branding.supply/de/duels/a-vs-b')
     expect(copy.text).toContain('https://branding.supply/de/newsletter/unsubscribe?token=row.sig')
   })
 
   it('bleibt reiner Text — kein HTML, keine spitzen Klammern', () => {
     for (const locale of ['de', 'en'] as const) {
-      const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: 'Ganz kurz.', introEn: 'Ganz kurz.' }, locale, ISSUE_LINKS)
+      const copy = insightsNewsletterIssueCopy(ISSUE_POST, { introDe: 'Ganz kurz.', introEn: 'Ganz kurz.' }, locale, ISSUE_LINKS, 'Testmarke')
       expect(copy.text).not.toMatch(/[<>]/)
       expect(copy.subject).not.toMatch(/[<>]/)
     }

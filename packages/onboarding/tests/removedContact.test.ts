@@ -118,6 +118,7 @@ describe('Mail an die Leitung', () => {
     senderEmail: 'eve@example.test',
     message: 'Bitte schaut nochmal drauf: https://example.test',
     membersUrl: 'https://morgenlicht.example/dashboard/members',
+    brand: 'Morgenlicht',
   }
 
   it('de: Community, Name, Adresse, Nachricht (entschärft), Link zur Verwaltung', () => {
@@ -136,6 +137,17 @@ describe('Mail an die Leitung', () => {
     expect(mail.subject).toContain('message from')
     expect(mail.text).toContain('Email: eve@example.test')
     expect(mail.text).toContain('Manage members:')
+  })
+
+  it('Rahmen (Q06): Anrede an die Empfängerin, Schluss mit der Marke, „du" statt „euch"', () => {
+    const de = buildRemovedContactMail({ ...input, locale: 'de', recipientName: 'Olga' })
+    expect(de.text.startsWith('Hallo Olga,\n\n')).toBe(true)
+    expect(de.text).toContain('hat dir über die Hinweisseite geschrieben')
+    expect(de.text).not.toContain('euch')
+    expect(de.text).toContain('Viele Grüße\nMorgenlicht')
+    const en = buildRemovedContactMail({ ...input, locale: 'en' })
+    expect(en.text.startsWith('Hi,\n\n')).toBe(true)
+    expect(en.text).toContain('Best regards\nMorgenlicht')
   })
 })
 

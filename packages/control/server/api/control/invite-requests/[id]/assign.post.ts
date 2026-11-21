@@ -42,7 +42,8 @@ export default defineEventHandler(async (event) => {
   const sent = await sendInviteMail(event, {
     to: request.email,
     code: result.code,
-    locale: request.locale || 'de',
+    // Rückfall regelt `resolveMailLocale` in sendInviteMail (Q06: Englisch).
+    locale: request.locale,
     reminder: isReminder,
   })
 

@@ -21,7 +21,10 @@
  *
  * Textbau pur und ohne `H3Event`, damit er ohne laufenden Server prüfbar ist —
  * dasselbe Muster wie bei den Stripe-Dashboard-Texten.
+ *
+ * RAHMEN (Q06): Anrede, Gruß und Marke kommen aus `core/shared/mailFrame.ts`.
  */
+import { frameMail, type MailLocale } from '../../core/shared/mailFrame'
 
 export interface CommunityReadyMailInput {
   /** Anzeigename der Community. */
@@ -33,8 +36,12 @@ export interface CommunityReadyMailInput {
   /** Ende der Testphase (ISO) — leer/null = keine Testphase (BE-015: das Konto
    *  hatte seine schon). Dann steht statt des Enddatums der Weg zum Plan. */
   trialEndsAt: string | null
-  /** Sprache der Mail ('de' | 'en'). */
-  locale: string
+  /** Sprache der Mail — der Aufrufer löst sie mit `resolveMailLocale` auf. */
+  locale: MailLocale
+  /** Marke in der Schluss-Zeile (`resolveMailBrand(event)`). */
+  brand: string
+  /** Anzeigename des Empfängers für die Anrede. */
+  name?: string | null
 }
 
 export interface CommunityReadyMailText {
@@ -73,9 +80,7 @@ export function formatMailDate(iso: string, german: boolean): string {
 }
 
 export function buildCommunityReadyMail(input: CommunityReadyMailInput): CommunityReadyMailText {
-  // Deutsch ist der Rückfall (wie in den Einladungs-Mails): nur ein
-  // ausdrückliches 'en' schaltet um.
-  const german = input.locale !== 'en'
+  const german = input.locale === 'de'
   const address = siteLink(input.host, '', german)
   const dashboard = siteLink(input.host, '/dashboard', german)
   const account = siteLink(input.accountHost, '', german)
@@ -89,37 +94,31 @@ export function buildCommunityReadyMail(input: CommunityReadyMailInput): Communi
     ? `Deine Community steht: ${input.siteName}`
     : `Your community is live: ${input.siteName}`
 
+  // Absätze für den Rahmen; die Adress-Zeilen bleiben EIN Absatz.
   const lines = german
     ? [
         `${input.siteName} ist angelegt und erreichbar.`,
-        '',
-        `Adresse deiner Community: ${address}`,
-        `Verwaltung (Dashboard): ${dashboard}`,
-        `Dein Kundenbereich: ${account}`,
-        ...(trialDate
-          ? ['', `Deine Testphase läuft bis zum ${trialDate}. Danach ist die Community ohne Abo nur noch zum Lesen — Inhalte und Mitglieder bleiben.`]
-          : []),
-        ...(noTrial
-          ? ['', `Zum Schreiben braucht die Community ein Abo (Personal oder Pro); bis dahin ist sie nur zum Lesen. Plan wählen: ${plan}`]
-          : []),
-        '',
+        [
+          `Adresse deiner Community: ${address}`,
+          `Verwaltung (Dashboard): ${dashboard}`,
+          `Dein Kundenbereich: ${account}`,
+        ].join('\n'),
+        trialDate ? `Deine Testphase läuft bis zum ${trialDate}. Danach ist die Community ohne Abo nur noch zum Lesen — Inhalte und Mitglieder bleiben.` : '',
+        noTrial ? `Zum Schreiben braucht die Community ein Abo (Personal oder Pro); bis dahin ist sie nur zum Lesen. Plan wählen: ${plan}` : '',
         'Im Dashboard wartet eine kurze Liste mit den ersten fünf Schritten.',
       ]
     : [
         `${input.siteName} has been created and is reachable.`,
-        '',
-        `Your community address: ${address}`,
-        `Admin area (dashboard): ${dashboard}`,
-        `Your account area: ${account}`,
-        ...(trialDate
-          ? ['', `Your trial runs until ${trialDate}. After that the community stays read-only without a subscription — content and members remain.`]
-          : []),
-        ...(noTrial
-          ? ['', `To post in it, the community needs a subscription (Personal or Pro); until then it is read-only. Choose a plan: ${plan}`]
-          : []),
-        '',
+        [
+          `Your community address: ${address}`,
+          `Admin area (dashboard): ${dashboard}`,
+          `Your account area: ${account}`,
+        ].join('\n'),
+        trialDate ? `Your trial runs until ${trialDate}. After that the community stays read-only without a subscription — content and members remain.` : '',
+        noTrial ? `To post in it, the community needs a subscription (Personal or Pro); until then it is read-only. Choose a plan: ${plan}` : '',
         'A short list with your first five steps is waiting in the dashboard.',
       ]
 
-  return { subject, text: lines.join('\n') }
+  const { text } = frameMail({ brand: input.brand, locale: input.locale, name: input.name, lines })
+  return { subject, text }
 }
