@@ -259,6 +259,11 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     expect(railEntry).toBeDefined()
     await railEntry!.trigger('click')
     await vi.waitFor(() => expect(useRouter().currentRoute.value.query.s).toBe('a.complaints'))
+    // Die offene Session trägt in der Leiste `aria-current` — genau eine.
+    await vi.waitFor(() => {
+      const current = wrapper.find('nav[aria-label="Fortschritt"]').findAll('button[aria-current="true"]')
+      expect(current.map(entry => entry.text().trim().startsWith(complaints))).toEqual([true])
+    })
     // Der Schalter im Balken trägt `aria-expanded`; der Schliess-Knopf des
     // mobilen Overlays heißt genauso, hat es aber nicht.
     const navToggle = () => wrapper.find(`button[aria-expanded][aria-label="${bar.hideNav}"], button[aria-expanded][aria-label="${bar.showNav}"]`)

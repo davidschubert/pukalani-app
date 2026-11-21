@@ -44,5 +44,11 @@ Rauch-Test (gestellte Antworten in `tests/render/support/workshopFixtures.ts`).
   `onMounted`-Klammern) und deshalb zuletzt.
 - **(f) Korrektur-Regel und Warteschlange** — Skript 1505–2006 (Slot-Zustände,
   Korrektur-Regel, „neu besprechen").
-- **(g) Leiste, Fortschritt, Navigation, Abnahme** — Skript 2583–3195,
-  3701–3796; Vorlage `#rail` und `#stage-bar` 3898–3951.
+- ~~**(g) Leiste, Fortschritt, Navigation, Abnahme**~~ — **geschnitten
+  (WS1-Lauf 2026-11-21):** `useBrandWorkshopRail` (Leiste der drei Schichten
+  und Gesamtfortschritt; die Seite reicht die Rechnungen herein, die Bühne und
+  Leiste teilen), `useBrandWorkshopLayout` (Spalten ein-/ausklappen, schmale
+  Fenster), `BwStageBar` (Balken mit der `h1`). Die Navigation selbst
+  (`goToStep`, `selectSession`, `goToBrand`, Abnahme-Sprünge) bleibt in der
+  Seite: sie hängt am Autosave und an der Session-Wahl. Seite 4.612 → 3.957
+  Zeilen.
