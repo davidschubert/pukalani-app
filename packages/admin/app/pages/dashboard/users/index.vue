@@ -394,7 +394,8 @@ async function createUser() {
 <template>
   <UDashboardPanel id="users">
     <template #header>
-      <UDashboardNavbar :title="`${t(`admin.users.filter.${filter ?? 'all'}`)} (${data?.total ?? 0})`">
+      <!-- Die Zahl nur mit Daten: „(0)" neben einem Abruffehler wäre falsch. -->
+      <UDashboardNavbar :title="data ? `${t(`admin.users.filter.${filter ?? 'all'}`)} (${data.total})` : t(`admin.users.filter.${filter ?? 'all'}`)">
         <template #leading>
           <CoreSidebarCollapse />
         </template>

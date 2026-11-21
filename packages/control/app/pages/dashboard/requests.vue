@@ -37,12 +37,18 @@ interface RequestDto {
 }
 interface Stats { total: number, new: number, assigned: number, redeemed: number, declined: number, deferred: number, waiting: number }
 
-const { data, refresh, status, error } = await useFetch<{ total: number, stats: Stats, requests: RequestDto[] }>(
+const { data, refresh, status, error } = await useFetch<{ total: number, stats: Stats, requests: RequestDto[], incomplete?: Array<'codes' | 'communities'> }>(
   '/api/control/invite-requests',
   { lazy: true, server: false },
 )
 const requests = computed(() => data.value?.requests ?? [])
 const stats = computed(() => data.value?.stats)
+/**
+ * Was der Server nicht nachschlagen konnte (Bahn 2): die Liste bleibt
+ * sichtbar, aber ohne diesen Hinweis sähe „Code unbekannt" aus wie „kein
+ * Code" — und ein gesperrtes „Erinnern" wäre ohne Grund.
+ */
+const incomplete = computed(() => data.value?.incomplete ?? [])
 
 const busy = ref<string | null>(null)
 
@@ -183,6 +189,17 @@ function rowActions(request: RequestDto): DropdownMenuItem[][] {
           <p class="text-sm text-muted">{{ t(`control.requests.stats.${key}`) }}</p>
         </div>
       </div>
+
+      <UAlert
+        v-if="incomplete.length"
+        class="mb-4"
+        color="warning"
+        variant="subtle"
+        icon="i-ph-warning"
+        :title="t('control.requests.incomplete.title')"
+        :description="incomplete.map(part => t(`control.requests.incomplete.${part}`)).join(' ')"
+        data-requests-incomplete
+      />
 
       <!-- Fehler statt „keine Anfragen" (FE-004, LZ1) -->
       <div v-if="error && !data" role="alert">

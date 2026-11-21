@@ -371,7 +371,8 @@ function rowActions(comment: ModeratedComment): DropdownMenuItem[][] {
 <template>
   <UDashboardPanel id="moderation">
     <template #header>
-      <UDashboardNavbar :title="`${t('admin.nav.comments')} (${data?.total ?? 0})`">
+      <!-- Die Zahl nur mit Daten: „(0)" neben einem Abruffehler wäre falsch. -->
+      <UDashboardNavbar :title="data ? `${t('admin.nav.comments')} (${data.total})` : t('admin.nav.comments')">
         <template #leading>
           <CoreSidebarCollapse />
         </template>
