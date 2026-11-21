@@ -30,7 +30,8 @@ Erledigt am 2026-11-21 (COMPLETE „N22"): der DNS-Eintrag
   bleibt** (gemessen mit `pnpm audit`, dem Lockfile und `npm view`; die Runde
   selbst steht in der [Erledigt-Liste](../../OPEN-ITEMS-COMPLETE.md), „N19"). Keine
   der drei Stellen mit Hinweis ist eine direkte Abhängigkeit:
-  - `minimatch` (mittel, Issue 374): die betroffene Ausgabe 10.2.6 hängt nur
+  - `minimatch` (mittel; Issue 374 am 2026-11-21 geschlossen, der Punkt
+    wird nur noch hier geführt): die betroffene Ausgabe 10.2.6 hängt nur
     noch an EINEM Weg — `nitropack` 2.13.6 → `archiver` 8.0.0 → `readdir-glob`
     3.0.0. `readdir-glob` 4.0.0 verlangt `minimatch` 11, ist aber eine neue
     Hauptversion, und `archiver` 8.0.0 (die neueste Ausgabe) erlaubt nur
@@ -55,7 +56,8 @@ Erledigt am 2026-11-21 (COMPLETE „N22"): der DNS-Eintrag
     eigenen Schritt mit dem nächsten Neuauflösen des Lockfiles, die jüngste
     ist über der Drei-Tage-Frist ab dem 2026-11-23 20:54 UTC):
     MariaDB 10.11.20 im CI-Verbund
-    (Issue 373 — das offizielle Image gibt es noch nicht, der Tag `10.11`
+    (Issue 373 am 2026-11-21 geschlossen, der Punkt wird nur noch hier
+    geführt — das offizielle Image gibt es noch nicht, der Tag `10.11`
     zeigt auf 10.11.19; der E2E-Lauf schreibt die laufende Version in sein
     Protokoll, mit dem neuen Image stehen ein zurückgespieltes Test-Backup und
     die Vote-Probe aus); `node-appwrite` 32.0.0 (neue Hauptversion, ändert
