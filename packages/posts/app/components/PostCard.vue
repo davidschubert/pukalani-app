@@ -24,10 +24,11 @@ const props = defineProps<{
   defaultCommentsOpen?: boolean
   /**
    * Die Ebene der Titel-Überschrift (Q10, SEO-003). Im Feed ist der Titel
-   * einer von vielen (`h3`, die Vorgabe); auf der Seite EINES Beitrags ist er
+   * einer von vielen (`h2`, die Vorgabe — direkt unter der `h1` der Feed-Seite;
+   * `h3` übersprang eine Ebene, UX-011); auf der Seite EINES Beitrags ist er
    * die Hauptüberschrift — die Seite hatte sonst gar kein `h1`.
    */
-  titleTag?: 'h1' | 'h3'
+  titleTag?: 'h1' | 'h2'
 }>()
 
 const emit = defineEmits<{ deleted: [id: string], updated: [post: FeedPost] }>()
@@ -351,7 +352,7 @@ const showTooltip = computed(() => (props.replyCount ?? 0) > 0)
 
     <div class="mt-3 space-y-3">
       <component
-        :is="titleTag ?? 'h3'"
+        :is="titleTag ?? 'h2'"
         v-if="shownTitle && !editing"
         class="font-semibold"
         :class="titleTag === 'h1' ? 'text-xl' : post.type === 'question' ? 'text-lg' : ''"

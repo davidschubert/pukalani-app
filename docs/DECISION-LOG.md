@@ -1962,7 +1962,9 @@ Abnahme des Prototyps I0.
 
 **Entscheidung (David, Empfehlung angenommen):** Stufe 3 des Zeichen-Kapitels (D5c, KI-Bildlogos
 als Entwürfe) nutzt bei OpenRouter `google/gemini-2.5-flash-image-preview` unter dem festen
-ZDR-Filter des Core-Transports (Kosten grob 3–5 ct je Bild; 4 Entwürfe × 3 Läufe je Marke und
+ZDR-Filter des Core-Transports (Stand heute: ALLE KI-Transporte senden `zdr: true` fest, Bild,
+Vision und Video zusätzlich nur mit festem Ort `providerRouting.only` — `.claude/rules/ki.md`)
+(Kosten grob 3–5 ct je Bild; 4 Entwürfe × 3 Läufe je Marke und
 Tag ≈ 0,40–0,60 €). Vor dem Bau wird geprüft, ob das Modell unter `data_collection: deny`
 geroutet wird — sonst antwortet die Stufe ruhig 503 und das Kapitel läuft ohne sie. Die
 Prod-Migration **brand-023** (Tabelle `brand_mark_drafts`, Bucket `brand-drafts`) darf nach der
@@ -1978,7 +1980,8 @@ Bild. brand-023 ist auf `branding` gefahren.
 
 **Entscheidung (David, Empfehlung angenommen):** `pukalani.ai.visionModel` auf branding.supply
 = `google/gemini-2.5-flash` — liest Screenshots gut genug für eine Belegung aus 50 kontrollierten
-Vokabular-Ids, unter dem festen ZDR-Filter des Core-Transports verfügbar, grob 20 000 Tokens je
+Vokabular-Ids, unter dem festen ZDR-Filter des Core-Transports (Stand heute: siehe Klammer im
+Eintrag davor) verfügbar, grob 20 000 Tokens je
 Lauf (Cent-Bereich; 3 Läufe je Marke und Tag). Alternative bei Qualitätsproblemen:
 `anthropic/claude-sonnet-4.5` (~10× teurer). Gesetzt als Build-Default in
 `apps/branding/app/app.config.ts` (einziger Konsument); der Laufzeit-Override braucht eine

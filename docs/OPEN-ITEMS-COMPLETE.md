@@ -30,6 +30,55 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Bahn 6 / Paket 2 — Aufbau- und Aufräum-Reste: Überschriften-Ebenen, Tastatur auf „Produkte", ein toter Export, acht Kommentare (UX-011 Teile 5 und 6, ARC-006, DOC-016) ✅ 2026-11-21
+
+**Was.**
+- **UX-011 Teil 5 — Überschriften springen eine Ebene.** Die sechs Seiten aus
+  der Messung des Audits, gegen den heutigen Code nachgesehen: Feed (Gast,
+  Mitglied, englisch) — die Beitrags-Titel waren `h3` direkt unter der `h1`;
+  die Vorgabe von `PostCard` ist jetzt `h2` (`PostFeed` steht nur auf den zwei
+  Feed-Seiten, die Beitrags-Seite nimmt weiter `h1`). Konto-Daten auf
+  branding.supply — der Hinweis-Kopf in `AccountDeleteCard` (core) war `h3`,
+  der Karten-Titel ist keine Überschrift; jetzt `h2` (gilt auch für die
+  Konto-Daten im Dashboard). Community-Plan — die Plan-Namen sind `h2` statt
+  `h3`. Hilfe „Erste Schritte" (de + en) — die vier Unterpunkte des
+  Einrichtungs-Assistenten `###` statt `####`.
+- **UX-011 Teil 6 — „Community-Einstellungen → Produkte" rollt ohne
+  Tab-Schritt.** Ohne gesperrte Produkte steht im rollenden Bereich kein
+  Bedienelement. Der Inhalt ist jetzt ein benannter Bereich mit
+  `tabindex="0"` und sichtbarem Fokus-Rahmen.
+- **ARC-006.** `__resetCustomDomainNoticeReader` gelöscht — die Suche nach dem
+  Namen in Code, Tests, Skripten, Regeln und Vorlagen fand nur die Definition.
+  `realtimeCookieClient` bleibt: zwei Regel-Dateien und die Doku-Site nennen
+  ihn als Einstieg in den einen Realtime-Socket.
+- **DOC-016.** Die zwölf nicht nachgelesenen Stellen gegen den heutigen Code
+  gelesen: acht berichtigt (Ort der Text-Bindung im insights-Vertrag,
+  Buchungsregel im Kopf von `marketQuota.ts`, eine Klammer „Stand heute" an
+  zwei Einträgen des DECISION-LOG statt eines Umschreibens, Sitzung je Host vs.
+  Cookie-Wert je Konto in `EIGENE-DOMAIN.md`, drei Deployments an der Naht,
+  das Leeren in `comments/index.get.ts`, Eröffnen vs. Antworten in
+  `conversations.ts`, `control` antwortet 404 statt 301 in `tenant.ts`); drei
+  stimmten schon (`inviteCodes.ts`, `messageReports.ts`, `courseAccess.ts`,
+  durch BE-013, SEC-033, SEC-029); `llms.txt` der Studio-Site bleibt (die
+  Begründung passt zum Inhalt; ob die Seite weltweit wirbt, ist eine
+  Inhalts-Entscheidung).
+
+**Beweis.** Neuer Test `apps/help/tests/helpHeadingOrder.test.ts`: jede
+Hilfe-Datei beider Sprachen springt keine Ebene (Code-Blöcke ausgenommen);
+Gegenprobe mit der alten Fassung von „Erste Schritte" rot (`48: ## → ####`).
+Feed vorher im ausgelieferten HTML gemessen: `h1` „Feed", darunter 25 × `h3`.
+`pnpm check`, Typecheck aller Apps und alle Tests grün.
+
+**Nicht gemessen.** Plan-, Produkte- und Konto-Daten-Seite liegen hinter der
+Anmeldung und in Apps ohne E2E-Lauf (platform, branding); dort ist die
+Änderung nach Code gelesen, nicht mit axe nachgemessen. Der Feed wird nach dem
+Ausliefern im HTML nachgemessen.
+
+**Gelernt:** Eine Karten-Bibliothek, deren Titel kein Überschriften-Element
+ist (`UPageCard`), macht jede Überschrift IN der Karte zur nächsten Ebene nach
+der Seiten-`h1` — wer dort aus Gewohnheit `h3` schreibt, reißt ein Loch in die
+Gliederung, das man im Bild nie sieht.
+
 ### GW1 — Seitengewicht, Rest von PERF-006: zwei Bausteine laden erst bei Bedarf; der Textkatalog bleibt (Bahn 5, Paket 2) ✅ 2026-11-21
 
 **Erst gemessen.** Skripte, die die Startseite sofort lädt (Einstieg, Seite,

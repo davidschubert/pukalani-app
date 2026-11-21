@@ -254,11 +254,14 @@ export { fetchBrandSiteForCheck } from '../../../brand/server/utils/brandCheckFe
  * `zdr: true`, `dataCollection: 'deny'`, `allowFallbacks: false`. Ohne
  * `allowFallbacks: false` weicht OpenRouter bei Last auf einen Anbieter
  * AUSSERHALB dieser Bedingungen aus, und der Lauf gelänge — mit genau dem
- * Ergebnis, das die zwei anderen Felder verhindern sollen. Der insights-Layer
+ * Ergebnis, das die zwei anderen Felder verhindern sollen. SEIT AI1 AUCH EIN
+ * ORT: `only` nennt die zwei EU-Endpunkte des Textmodells
+ * (`AI_TEXT_EU_ENDPOINTS` in `core/shared/aiProviderRouting.ts`, dieselbe
+ * Konstante). Der insights-Layer
  * bekommt hier KEINE eigene Fassung: „wer auch immer ein Modell ruft, ruft es
  * unter diesen Bedingungen" (Kopf von `brandProviderRouting.ts`).
  *
- * ── `BRAND_PROVIDER_ROUTING_VERTEX_EU` — DIESELBEN BEDINGUNGEN, PLUS DER ORT ────
+ * ── `BRAND_PROVIDER_ROUTING_VERTEX_EU` — DIESELBEN BEDINGUNGEN, EIN ANDERER ORT ────
  * Dieselbe Klemme mit `only: ['google-vertex/eu']`, für die Läufe, die
  * fremdes MATERIAL hinreichen statt einer Fragestellung: die
  * Inspirationslesung im brand-Layer (Kundenbilder) und, seit BI2 K5, das

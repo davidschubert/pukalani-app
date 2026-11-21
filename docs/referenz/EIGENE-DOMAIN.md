@@ -192,9 +192,10 @@ Drei Feinheiten mit Grund:
   zurück.~~ Seit RT2 (2026-11-08) entfallen: der `account`-Channel läuft wie
   Row-Streams, Presence und Live-Theme über den JWT-Socket, die Sofort-
   Abmeldung funktioniert damit auf jeder Domain.
-- **Die Sitzung hängt am Host.** Nach der Umstellung meldet man sich auf der
-  neuen Adresse neu an; ein Cookie auf eine fremde Domain mitzunehmen gibt es
-  nicht und soll es nicht geben.
+- **Das Sitzungs-Cookie hängt am Host.** Nach der Umstellung meldet man sich
+  auf der neuen Adresse neu an; ein Cookie auf eine fremde Domain mitzunehmen
+  gibt es nicht und soll es nicht geben. Der Cookie-WERT dagegen gilt für das
+  ganze Konto — Appwrite kennt keine Sitzung je Host (SEC-022).
 - **Entfernen über die Betreiber-Konsole lässt die Appwrite-Web-Platforms der
   Site stehen** — das Control Plane hat in jenem Projekt keinen Schlüssel.
   Über die Seite der Site selbst wird aufgeräumt.
