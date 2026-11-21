@@ -111,6 +111,59 @@ Baustein-Name, den es nicht gibt, fällt weder im Typecheck noch im Lint auf —
 nur als „Failed to resolve component" in der Browser-Konsole; nach einem
 Sprung der Bibliothek hält der Wächter die Namen.
 
+### RU1 (b) — Runner: das Budget-Feld nimmt wieder eine Zahl an ✅ 2026-11-21
+
+**Was.** Im Formular „Lauf starten" lehnte das Feld „Budget (USD)" jede
+getippte Zahl ab („Invalid input: expected string, received number"), der
+Start-Knopf blieb gesperrt; ein Lauf ging nur mit leerem Feld und bekam den
+Deckel des Rechners. Gefunden bei der Klick-Probe auf der echten Seite
+(Eintrag „KR1 — Teil 1" weiter unten).
+
+- **Ursache.** `UInput type="number"` wandelt die Eingabe selbst in eine ZAHL
+  um und lässt nur das geleerte Feld als `''` stehen. Das Schema des
+  Formulars (`packages/runner/schemas/runStart.ts`) verlangte an der Stelle
+  einen Text — sein Kommentar sagte ausdrücklich, ein Zahlenfeld liefere
+  einen Text. Das stimmt für das rohe HTML-Feld, nicht für `UInput`.
+- **Behebung.** Das Schema nimmt Text ODER Zahl und liest beides über EINE
+  Funktion, `budgetFromInput` (leer = 0 = kein eigener Deckel, 0 bis 100,
+  sonst ungültig). Das Formular (`RunnerRunForm.vue`) rechnet beim Abschicken
+  mit derselben Funktion um — vorher prüfte es etwas anderes, als es
+  schickte. Scheitert der Wert schon am Typ, steht jetzt der eigene Satz aus
+  den Sprachdateien da, nicht mehr die rohe englische Meldung.
+- **Beweis.** `packages/runner/tests/runStartSchema.test.ts` (21 Fälle):
+  die Zahl, die das Feld wirklich liefert, geht durch; negativ, über 100,
+  Text ohne Zahl und falsche Typen scheitern mit der Budget-Meldung. Tests
+  des Pakets, ESLint und der Typecheck der Betreiber-Konsole sind grün.
+
+**Offen bleibt** RU1 (c): der Editor macht aus `README.md` einen Link.
+
+**Gelernt:** Das Schema war nie mit dem Wert geprüft worden, den das Feld
+zur Laufzeit liefert — die Typen sagten „Text" (so tippt `UInput` sein
+`v-model`), die Laufzeit schrieb eine Zahl. Bei `UInput type="number"` gilt:
+im Zustand steht eine Zahl oder `''`, was auch immer der Typ behauptet; ein
+Schema für so ein Feld nimmt beides an und bekommt einen Test mit einer
+echten Zahl.
+
+---
+
+### AW30 (d) — die letzten Reste der alten Appwrite-Patches sind vom Server ✅ 2026-11-21
+
+**Was.** Im Ordner `patches/` auf dem Appwrite-Server lagen noch neun
+Dateien `registers-*` aus der Zeit vor 2.7 (der Mail-Patch für 1.9.5 bis
+2.7.1, je mit Original). Seit 2.7 braucht Appwrite den Patch nicht mehr.
+Mit Davids Ja gelöscht. Vorher nur lesend geprüft: keine Einstellungs-Datei
+und kein laufender Container verweist auf eine dieser Dateien. Die zehnte
+Datei dort, `clickhouse-logging.xml`, ist in Benutzung und unberührt.
+Danach liefen alle Container wie vorher.
+
+Dazu aufgeräumt, ebenfalls mit Davids Ja: die Reste der Runner-Klick-Probe
+vom selben Tag (das Test-Ticket in der Betreiber-Konsole, der Arbeitsordner
+und der Zweig des Laufs auf dem Mac).
+
+**Offen bleibt** von AW30: (b), (c) und (e).
+
+---
+
 ### Q20 — Einstieg von null: das README führt vom Klon zur laufenden App mit lokaler Datenbank (DOC-005, DOC-006, DOC-013) ✅ 2026-11-21
 
 **Was.**
@@ -1045,6 +1098,27 @@ für Notizen ohne Plan gedacht und trug am Ende vier Fünftel der Datei; eine
 Datei je Kürzel endet mit ihrem Punkt. (4) **Vor dem Verschieben das Dokument
 selbst lesen.** Zwei Pläne sahen nach dem Kopf „gebaut" aus; einer sagte
 weiter unten ausdrücklich, warum er bleibt.
+
+---
+
+### N22 — Die tote Adresse `changelog.pukalani.app` ist bei Cloudflare gelöscht (AR1 a) ✅ 2026-11-21
+
+**Was geschah.** Der A-Eintrag `changelog` in der Zone `pukalani.app` zeigte
+seit dem 2026-11-15 ins Leere: Function, Code und Webhook dahinter waren
+entfernt, der Eintrag blieb, weil Cloudflare in keinem Browser angemeldet war.
+Am 2026-11-21 mit Davids Ja im Panel gelöscht. Der Name bleibt für Kunden
+gesperrt (`RESERVED_SUBDOMAINS`); die Zeile in der Host-Tabelle der Doku ist
+gestrichen.
+
+**Beweis.** Beide Nameserver der Zone und zwei öffentliche Resolver nennen für
+den Namen nicht mehr den Datenbank-Server, sondern die Adresse des
+Platzhalter-Eintrags `*.pukalani.app` (der App-Server); der antwortet dort mit
+404 `unknown_host`.
+
+**Gelernt:** In einer Zone mit Platzhalter-Eintrag „löst" ein gelöschter Name
+weiter auf — er fällt auf den Platzhalter. Der Beweis für das Löschen ist
+deshalb nicht „keine Antwort", sondern die GEÄNDERTE Adresse bei den
+Nameservern der Zone und die Antwort des Servers dahinter.
 
 ---
 

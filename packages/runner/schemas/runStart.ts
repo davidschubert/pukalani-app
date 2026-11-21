@@ -5,6 +5,21 @@ import { PERMISSION_MODES, type PermissionMode } from '../shared/types/runner'
 type TranslateFn = (key: string) => string
 const identity: TranslateFn = key => key
 
+/** Der höchste Deckel, den das Formular annimmt — derselbe wie im Routen-Schema (`schemas/run.ts`). */
+const MAX_BUDGET_USD = 100
+
+/**
+ * Was im Budget-Feld steht, als Dollar-Betrag: '' (oder nur Leerzeichen) = 0 =
+ * kein eigener Deckel, eine Zahl oder ein Zahl-Text von 0 bis 100 = dieser
+ * Betrag, alles andere = `null` (ungültig). EINE Lesart für die Prüfung und
+ * fürs Abschicken — sonst prüft das Formular etwas anderes, als es schickt.
+ */
+export function budgetFromInput(value: unknown): number | null {
+  if (typeof value === 'string' && value.trim() === '') return 0
+  const amount = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN
+  return Number.isFinite(amount) && amount >= 0 && amount <= MAX_BUDGET_USD ? amount : null
+}
+
 /**
  * Das START-FORMULAR des Lauf-Bereichs (Paket 3) — nicht zu verwechseln mit
  * `createRunSchema` in `schemas/run.ts`, das den ROUTEN-Körper prüft.
@@ -29,13 +44,14 @@ export function createRunStartSchema(t: TranslateFn = identity, options: { promp
     /**
      * Leer = kein eigener Deckel; der Runner kappt ohnehin gegen seinen (§ 7.2).
      *
-     * ALS TEXT, nicht als Zahl: ein `type="number"`-Feld liefert einen String,
-     * und ein geleertes Feld liefert '' — eine Zahl-Prüfung müsste beides
-     * zusätzlich abfangen und der Formularzustand hätte zwei Typen. Der
-     * Bereich rechnet beim Abschicken um.
+     * TEXT ODER ZAHL: `UInput type="number"` wandelt die Eingabe selbst in
+     * eine Zahl um (`looseToNumber`) und lässt nur das geleerte Feld als ''
+     * stehen. Ein reines `z.string()` lehnte deshalb JEDE getippte Zahl ab,
+     * und der Start-Knopf blieb gesperrt (RU1 b, 2026-11-21). Gelesen wird
+     * beides über `budgetFromInput`, auch beim Abschicken.
      */
-    maxBudgetText: z.string().refine(
-      value => value === '' || (Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100),
+    maxBudgetText: z.union([z.string(), z.number()], { error: t('runner.form.errors.budget') }).refine(
+      value => budgetFromInput(value) !== null,
       { message: t('runner.form.errors.budget') },
     ),
     /**

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
-import { createRunStartSchema } from '../../schemas/runStart'
+import { budgetFromInput, createRunStartSchema } from '../../schemas/runStart'
 import { UNTRUSTED_PERMISSION_MODES } from '../../shared/runGuards'
 import { offeredTestCommands } from '../../shared/testCommands'
 import { PERMISSION_MODES, type PermissionMode, type RunStartOptions, type RunnerPublic, type RunnersListResponse } from '../../shared/types/runner'
@@ -91,8 +91,15 @@ const runnerItems = computed(() => activeRunners.value.map(runner => ({ label: r
 
 const schema = computed(() => createRunStartSchema(t, { promptTrusted: props.promptTrusted }))
 type FormInput = z.infer<ReturnType<typeof createRunStartSchema>>
+/**
+ * Der ZUSTAND tippt das Budget als Text — so tippt `UInput` sein `v-model`.
+ * ZUR LAUFZEIT schreibt `UInput type="number"` aber eine ZAHL hinein; deshalb
+ * nimmt das Schema beides (`FormInput`: Text oder Zahl), und gelesen wird
+ * überall über `budgetFromInput`, nie direkt.
+ */
+type FormState = Omit<FormInput, 'maxBudgetText'> & { maxBudgetText: string }
 
-const state = reactive<FormInput>({
+const state = reactive<FormState>({
   runnerId: '',
   model: modelItems.value[0]?.value ?? 'sonnet',
   // VORSICHTIGSTE VORBELEGUNG, in beiden Fällen: `plan` schreibt nichts. Wer
@@ -153,7 +160,8 @@ function onSubmit(event: FormSubmitEvent<FormInput>) {
     model: event.data.model,
     permissionMode: event.data.permissionMode,
     repoKey: event.data.repoKey,
-    maxBudgetUsd: event.data.maxBudgetText === '' ? 0 : Number(event.data.maxBudgetText),
+    // Dieselbe Lesart wie die Prüfung im Schema (Text ODER Zahl, leer = 0).
+    maxBudgetUsd: budgetFromInput(event.data.maxBudgetText) ?? 0,
     // In der Reihenfolge der gemeldeten Liste (nicht der Klick-Reihenfolge) und
     // nur, was gerade angeboten wird; ungeprüft ⇒ keine.
     testCommands: props.promptTrusted
