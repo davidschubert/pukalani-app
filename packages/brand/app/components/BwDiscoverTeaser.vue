@@ -92,14 +92,14 @@ function paletteName(paletteId: string): string {
         v-for="item in items" :key="item.slug"
         :to="localePath(`/discover/${item.slug}`)" class="group block"
       >
-        <div class="bw-tile relative overflow-hidden" style="aspect-ratio: 1 / 1">
+        <div class="bw-tile bw-on-dark relative overflow-hidden" style="aspect-ratio: 1 / 1">
           <div
             class="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.04]"
             :style="`background: ${tileBackground(item.paletteId)}`"
           />
           <p
             class="absolute inset-0 grid place-items-center p-6 text-center text-2xl font-extralight leading-snug tracking-tight"
-            style="color: #f7f2ea; text-shadow: 0 1px 12px rgb(20 20 20 / 0.3)"
+            style="color: var(--bw-ink); text-shadow: 0 1px 12px rgb(20 20 20 / 0.3)"
           >{{ item.title }}</p>
         </div>
         <div class="mt-3 flex items-start justify-between gap-3">

@@ -421,7 +421,7 @@ useBrandTitle(() => t('brand.myScores.title'))
 
 <template>
   <div class="bw-root pb-10">
-    <div class="mx-auto w-full max-w-(--ui-container)">
+    <div class="mx-auto w-full max-w-7xl">
       <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div class="min-w-0">
           <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('brand.myScores.title') }}</p>

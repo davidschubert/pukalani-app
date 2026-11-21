@@ -309,10 +309,10 @@ async function share(): Promise<void> {
       />
     </div>
 
-    <div v-else-if="publication" class="mx-auto mt-10 max-w-7xl">
+    <div v-else-if="publication" class="mx-auto mt-10 max-w-(--ui-container)">
       <!-- Volle 1280 px wie die Galerie (Davids Zuschnitt 2026-09-08) — der
            Dummy hatte das Dossier auf 896 px eingeengt. -->
-      <div class="mx-auto max-w-7xl">
+      <div class="mx-auto max-w-(--ui-container)">
         <NuxtLink
           :to="localePath('/discover')" class="bw-label inline-flex items-center gap-1.5"
           style="color: var(--bw-muted)" data-discover-back
@@ -340,13 +340,13 @@ async function share(): Promise<void> {
                 >{{ t('brand.discover.badge.preview') }}</span>
                 <span
                   v-if="publication.example"
-                  class="bw-label rounded-full px-2.5 py-1"
-                  style="background: rgb(20 20 20 / 0.35); color: #f7f2ea"
+                  class="bw-on-dark bw-label rounded-full px-2.5 py-1"
+                  style="background: rgb(20 20 20 / 0.35); color: var(--bw-ink)"
                 >{{ t('brand.discover.badge.example') }}</span>
                 <span
                   v-else-if="publication.pathKind === 'relaunch'"
-                  class="bw-label rounded-full px-2.5 py-1"
-                  style="background: rgb(20 20 20 / 0.35); color: #f7f2ea"
+                  class="bw-on-dark bw-label rounded-full px-2.5 py-1"
+                  style="background: rgb(20 20 20 / 0.35); color: var(--bw-ink)"
                 >{{ t('brand.discover.badge.relaunch') }}</span>
               </div>
               <h1 class="mt-3 text-3xl font-extralight leading-snug tracking-tight">{{ title }}</h1>
@@ -435,14 +435,14 @@ async function share(): Promise<void> {
               v-for="entry in similar" :key="entry.slug"
               :to="localePath(`/discover/${entry.slug}`)" class="group block"
             >
-              <div class="bw-tile relative overflow-hidden" style="aspect-ratio: 1 / 1">
+              <div class="bw-tile bw-on-dark relative overflow-hidden" style="aspect-ratio: 1 / 1">
                 <div
                   class="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.04]"
                   :style="`background: ${tileBackground(entry.paletteId)}`"
                 />
                 <p
                   class="absolute inset-0 grid place-items-center p-4 text-center text-base font-extralight leading-snug tracking-tight"
-                  style="color: #f7f2ea; text-shadow: 0 1px 12px rgb(20 20 20 / 0.3)"
+                  style="color: var(--bw-ink); text-shadow: 0 1px 12px rgb(20 20 20 / 0.3)"
                 >{{ entry.title }}</p>
               </div>
               <p class="bw-label mt-2" style="color: var(--bw-muted)">

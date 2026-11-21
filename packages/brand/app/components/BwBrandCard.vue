@@ -70,9 +70,9 @@ const actions = computed(() => [[
   <div class="bw-root group">
     <!-- Mit `to` ist die Kachel der Link (sie trägt den Titel), ohne `to`
          bleibt sie ein schlichter Kasten — s. das Prop. -->
-    <component :is="to ? NuxtLink : 'div'" :to="to" class="bw-tile relative block overflow-hidden" style="aspect-ratio: 1 / 1">
+    <component :is="to ? NuxtLink : 'div'" :to="to" class="bw-tile bw-on-dark relative block overflow-hidden" style="aspect-ratio: 1 / 1">
       <div class="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.04]" :style="bg" />
-      <p class="absolute inset-0 grid place-items-center p-6 text-center text-2xl font-extralight leading-snug tracking-tight" style="color: #f7f2ea; text-shadow: 0 1px 12px rgb(20 20 20 / 0.3)">{{ title }}</p>
+      <p class="absolute inset-0 grid place-items-center p-6 text-center text-2xl font-extralight leading-snug tracking-tight" style="color: var(--bw-ink); text-shadow: 0 1px 12px rgb(20 20 20 / 0.3)">{{ title }}</p>
     </component>
     <div class="mt-3 flex items-start justify-between gap-3">
       <p class="bw-label flex items-center gap-1.5" style="color: var(--bw-muted)">{{ path }}<UIcon v-if="flag" :name="flag" class="size-4 flex-none" /></p>

@@ -300,7 +300,7 @@ const crew = BRAND_ADVISORS.filter(a => !advisorIsVoice(a.key)).map(a => ({
 <template>
   <!-- Nav + Fuß kommen seit 2026-09-03 aus dem App-default-Layout. -->
   <div class="pb-10">
-    <div class="@container mx-auto max-w-7xl">
+    <div class="@container mx-auto max-w-(--ui-container)">
       <!-- 1 · Kopf: die Behauptung -->
       <section class="mx-auto mt-14 max-w-3xl text-center">
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">{{ t('team.teamEyebrow') }}</p>
