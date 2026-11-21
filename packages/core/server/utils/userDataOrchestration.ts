@@ -5,6 +5,7 @@ import type { H3Event } from 'h3'
 import { createSessionClient } from '../lib/appwrite'
 import type { UserDataAudience, UserDataExportContext } from './userData'
 import { softFail, softFailWith } from './softFail'
+import { forgetAccountSessions } from './sessionAccount'
 
 /**
  * GDPR-Orchestrierung (Plan: docs/archiv/GDPR-DELETE-AND-EXPORT.md §4.3).
@@ -342,6 +343,8 @@ export async function deleteUserCompletely(
     // Session-Kill bleibt best effort: der Block macht bestehende Sessions
     // ohnehin handlungsunfähig.
     await admin.users.deleteSessions({ userId }).catch(softFail('core:utils/userDataOrchestration:deleteSessions', undefined))
+    // Gesperrt gilt sofort, auch im Anmelde-Merker (Q12).
+    forgetAccountSessions(userId)
 
     // (3) AUDIT — OHNE Klarnamen (der steht im Snapshot, nicht im Log)
     if (opts.actor === 'self') {
