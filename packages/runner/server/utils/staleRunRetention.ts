@@ -1,6 +1,5 @@
 import { Query, type TablesDB } from 'node-appwrite'
 import {
-  isRetentionJobRunning,
   isRetentionRowGone,
   retentionModeOf,
   runRetentionJob,
@@ -150,11 +149,6 @@ export function appwriteStaleRunStore(tablesDB: TablesDB, databaseId: string): S
 export function staleRunRetentionMode(): RowRetentionMode {
   const appConfig = useAppConfig() as { pukalani?: { runner?: { staleRunRetention?: unknown } } }
   return retentionModeOf(STALE_RUN_RETENTION_JOB, appConfig.pukalani?.runner?.staleRunRetention)
-}
-
-/** Läuft gerade einer? (Takt und Hand-Route teilen sich die Sperre.) */
-export function isStaleRunRetentionRunning(): boolean {
-  return isRetentionJobRunning(STALE_RUN_RETENTION_JOB)
 }
 
 /**

@@ -50,11 +50,6 @@ export function hasDependencyTicketCreator(): boolean {
   return creator !== null
 }
 
-/** Nur für Tests: Registry zurücksetzen. */
-export function __resetDependencyTicketCreator(): void {
-  creator = null
-}
-
 /**
  * Ticket zur Update-Prüfung anlegen. `null` heißt „diese App hat kein Board" —
  * jede andere Auskunft (auch „gibt es schon") kommt als Fehler des Creators

@@ -10,7 +10,8 @@ import { type PresencePrioritySnapshot, yieldsToForeignVisiblePresence } from '.
  * (usePresence) liest weiterhin direkt über die Presences-API (Cookie-GET).
  *
  * Eine Presence pro User (presenceId = userId); metadata trägt scope/action/
- * typing. Kurze Expiry (90s) → verlässt der User die Seite, räumt der Server ab.
+ * typing. Kurze Expiry (`PRESENCE_TTL_MS`, 240 s) → verlässt der User die Seite,
+ * räumt der Server ab.
  */
 // Server-Expiry > Frische-Fenster (180s): eine „frische" Presence darf nie schon
 // abgelaufen sein, sonst würde sie zwischen zwei gedrosselten Heartbeats server-

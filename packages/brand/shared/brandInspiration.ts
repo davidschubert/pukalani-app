@@ -45,7 +45,6 @@ import { formatBrandSlotStructured } from './brandSlotFormat'
  * zwei erfundene dazulegen müssen, um weiterzukommen.
  */
 export const BRAND_INSPIRATION_MAX = 12
-export const BRAND_INSPIRATION_SUGGESTED_MIN = 3
 
 /**
  * 5 MB je Bild (§2.2). Ein Screenshot ist selten grösser; ein Foto schon.

@@ -1,6 +1,5 @@
 import type { TablesDB } from 'node-appwrite'
 import {
-  isRetentionJobRunning,
   isRetentionRowGone,
   retentionModeOf,
   runRetentionJob,
@@ -125,11 +124,6 @@ export function runTextRetentionDeps(
 export function runTextRetentionMode(): RowRetentionMode {
   const appConfig = useAppConfig() as { pukalani?: { runner?: { textRetention?: unknown } } }
   return retentionModeOf(RUN_TEXT_RETENTION_JOB, appConfig.pukalani?.runner?.textRetention)
-}
-
-/** Läuft gerade einer? (Takt und Hand-Route teilen sich die Sperre.) */
-export function isRunTextRetentionRunning(): boolean {
-  return isRetentionJobRunning(RUN_TEXT_RETENTION_JOB)
 }
 
 /**

@@ -195,11 +195,6 @@ export function getUserCounterRecorder(): UserCounterRecorder | null {
   return recorder
 }
 
-/** Nur für Tests: Registry zurücksetzen. */
-export function __resetUserCounterRecorder(): void {
-  recorder = null
-}
-
 /**
  * PURE (unit-getestet): Meldungen zusammenfassen — je (Nutzer, Art) EINE Zeile.
  *

@@ -34,9 +34,10 @@
 
   /* DIE Seitenbreite aller Apps (Davids Entscheidung 2026-08-20, Vorbild
      ui.nuxt.com): 90rem statt der Nuxt-UI-Vorgabe 80rem. Jeder UContainer
-     liest die Variable von Haus aus; die Layout-Hüllen (core/blueprint) und
-     die Dashboard-Deckel nutzen `max-w-(--ui-container)`, damit ALLES an
-     dieser einen Stelle hängt. Marketing überschreibt sie bewusst NICHT mehr
+     liest die Variable von Haus aus; die öffentlichen Layout-Hüllen
+     (core/blueprint) nutzen `max-w-(--ui-container)`. Dashboard und
+     Kundenbereich sind bewusst enger: 1280 px (`max-w-7xl`), weil dort eine
+     Sidebar danebensteht (DECISION-LOG 2026-08-23). Marketing überschreibt sie bewusst NICHT mehr
      (puka-theme.css erklärt dort nur noch die .mkt-inner-Paar-Rechnung). */
   --ui-container: 90rem;
 }

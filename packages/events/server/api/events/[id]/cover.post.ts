@@ -2,6 +2,7 @@ import { ID, Query } from 'node-appwrite'
 import { InputFile } from 'node-appwrite/file'
 import { EVENTS_TABLE, EVENT_COVERS_BUCKET, MAX_EVENT_COVER_BYTES, isSeriesEvent, isSeriesMaster, type EventRow } from '../../../../shared/types/event'
 import { softFail } from '../../../../../core/server/utils/softFail'
+import { isUploadImage } from '../../../../../core/server/utils/uploadImage'
 
 /**
  * Cover-Upload (events.manage): JPEG/PNG/WebP mit Magic-Bytes-Check —
@@ -26,14 +27,6 @@ import { softFail } from '../../../../../core/server/utils/softFail'
  * Inhalts-Sperre schlägt beim `db.update` zu, also NACH dem Storage-Upload;
  * der bestehende Aufräum-Zweig löscht die verwaiste Datei dann mit.
  */
-function isImage(data: Buffer): boolean {
-  if (data.length < 12) return false
-  const jpeg = data[0] === 0xFF && data[1] === 0xD8 && data[2] === 0xFF
-  const png = data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
-  const webp = data.subarray(0, 4).toString('latin1') === 'RIFF' && data.subarray(8, 12).toString('latin1') === 'WEBP'
-  return jpeg || png || webp
-}
-
 export default defineEventHandler(async (event) => {
   // Produkt-Gate (P4): Events sind ab Plan pro enthalten.
   requirePlanProduct(event, 'events')
@@ -61,7 +54,7 @@ export default defineEventHandler(async (event) => {
   if (!filePart?.filename) {
     throw createError({ status: 400, statusText: 'Missing file field' })
   }
-  if (!/\.(jpe?g|png|webp)$/i.test(filePart.filename) || !isImage(filePart.data)) {
+  if (!/\.(jpe?g|png|webp)$/i.test(filePart.filename) || !isUploadImage(filePart.data)) {
     throw createError({ status: 415, statusText: 'Only JPEG, PNG or WebP images are supported' })
   }
   if (filePart.data.length > MAX_EVENT_COVER_BYTES) {
