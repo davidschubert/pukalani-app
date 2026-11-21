@@ -3,6 +3,7 @@ import type { ProductManifest } from './shared/types/manifest'
 export default {
   key: 'core',
   tier: 'foundation',
+  kind: 'base',
   hasMigrations: false,
   // Der Core besitzt keine Tabellen, räumt aber Konto, Sitzungen, Einstellungen und
   // Avatar selbst ab — er ist der Orchestrator (`server/utils/userData.ts`).
