@@ -30,6 +30,58 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Bahn 2 / Paket 3 — Reste aus Q23 und Q09: Herzschläge gebündelt, Neuversuch mit wachsenden Abständen, Schubladen-Knopf mit Zustand, Werkstatt-Bereiche ✅ 2026-11-21
+
+**Was.**
+
+- **(a) Herzschläge beim Öffnen gebündelt** (`core/app/composables/usePresence.ts`).
+  Anmeldung, `setPage`, `setScope` und `focus` schrieben je sofort (HTTP und
+  WS). Jetzt sammelt ein Fenster von 300 ms (`PRESENCE_BUNDLE_MS`) alle
+  Anlässe zu EINEM Schreiben mit dem Stand am Fensterende; Takt und
+  `pagehide` bleiben sofort.
+- **(b) Neuversuch mit wachsenden Abständen** (`core/shared/realtimeReconnect.ts`,
+  eingehängt in `useRealtimeClient.ts`). Das SDK nullt seinen Zähler beim
+  Öffnen; eine angenommene und gleich geschlossene Verbindung kam so immer
+  wieder. Unsere Instanz zählt die DAUER: unter 30 s offen = Fehlschlag;
+  Abstand 1, 2, 4 … 60 s. Die Regel-Zeile in `.claude/rules/realtime.md`
+  ist nachgezogen.
+- **(c) Schubladen-Knopf im schmalen Fenster mit `aria-expanded`** — ohne
+  eine Seite anzufassen: `CoreDashboardToggleState` sitzt im Dashboard-Layout
+  um den Seiten-Slot und gibt jeder `UDashboardNavbar` darunter über `UTheme`
+  die Vorgabe `toggle: { 'aria-expanded': offen }` (die Kopfzeile reicht das
+  Objekt als Attribute an ihren Knopf). Wächter: `dashboardLandmarksGuard.test.ts`
+  (Hülle um den Slot, keine Seite setzt `toggle` selbst).
+- **(d) Werkstatt** (`packages/brand/app/components/BwWorkspace.vue`, alle
+  vier Zweige): `main` umschließt jetzt Kopfzeile der Bühne, Bühne und
+  Eingabefeld; die zwei Seitenspalten heißen „Kapitel" und „Dein
+  Markendokument" (de+en). Q21 war schon auf `main`.
+
+**Gemessen** (lokal, Dev-Server aus dem Worktree, lokale Appwrite,
+Wegwerf-Konto mit Label `admin`; Fall `apps/comments/e2e/presence-open-and-reconnect.spec.ts`):
+
+| Messung | vorher | nachher |
+| --- | --- | --- |
+| `POST /api/presence/heartbeat` in 5 s nach dem Laden, Dashboard | 3 | 1 |
+| dasselbe, Beitrags-Seite | 3 | 1 |
+| Verbindungsversuche in 20 s, wenn jede Verbindung angenommen und sofort geschlossen wird | 39 (zwei je Sekunde) | 5 bis 6 (bei 1, 2, 4, 9, 18 s) |
+
+Unverändert grün im selben Lauf: `presence-shared-poll.spec.ts` (ein Abruf je
+20 s), `realtime.spec.ts` (Kommentar erscheint live), `session-revoke.spec.ts`
+(eigener Widerruf schickt den Tab sofort zur Anmeldung, fremder nicht),
+`dashboard-landmarks.spec.ts` inklusive neuem Fall „Schubladen-Knopf",
+Render-Test der Werkstatt (Gegenprobe gegen den Stand davor: rot).
+
+**Nicht geprüft:** die 120-s-Regel nicht eigens neu gemessen (das SDK pingt
+weiter im Takt, der Code daran ist unverändert); das Erscheinen eines
+zweiten Kontos kommt bis zu 0,3 s später als vorher, nicht mit zwei Konten
+nachgemessen; die Schublade nur im Dev-Server, nicht im Production-Build.
+
+**Gelernt:** „Fester 1-s-Neuversuch" stand als FALLE des SDK in der Regel
+und galt damit als hinzunehmen. Die Staffelung des SDK ist da, sie wird nur
+nie erreicht — eine eigene Zählung an der Dauer statt am `open` braucht
+keinen Eingriff ins SDK, nur das Überschreiben einer Methode der EINEN
+Instanz.
+
 ### Bahn 2 / Paket 1 — Acht Stellen, an denen ein verschluckter Lesefehler den Ablauf verfälschte (Rest aus Q13, ARC-002) ✅ 2026-11-21
 
 **Was.** Q13 hatte 236 stille Lesefehler auf `softFail` umgestellt (Verhalten

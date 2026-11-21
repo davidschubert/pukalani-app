@@ -58,8 +58,10 @@ paths:
   `core/shared/realtimeGate.ts`) — er ist der Verstärker bei jedem flappenden
   Socket. Er darf aber NICHTS VERWERFEN: ein `sessions.*.delete`-Ereignis geht
   vorbei, alles andere wird ans Fensterende geschoben (`accountVerifyAt`).
-- FALLE: der feste 1-s-Reconnect in der Konsole kommt aus dem
-  Appwrite-Web-SDK (es nullt `reconnectAttempts` im `open`-Handler und
-  erreicht seine Staffelung nie) — kein eigener Fehler.
+- NEUVERSUCH MIT WACHSENDEN ABSTÄNDEN (Q23-Rest): das Web-SDK nullt seinen
+  Zähler im `open`-Handler, eine angenommene und gleich geschlossene
+  Verbindung kam so jede Sekunde wieder. Unsere Instanz zählt die DAUER
+  (`core/shared/realtimeReconnect.ts`, eingehängt in `useRealtimeClient.ts`):
+  1 s, 2 s, 4 s … 60 s, zurück erst nach 30 s stabiler Verbindung.
 - KEIN EIGENER ACCOUNT-WS (RT2): der `account`-Channel läuft auf dem geteilten
   Socket (Regel: `appwrite-presence.md`).

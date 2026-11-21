@@ -161,7 +161,7 @@ test.describe('Dashboard: Hauptbereich, Sprunglink, Umschalter (Q09)', () => {
     await expect(page.locator('main#dashboard-main h1').first()).toBeVisible({ timeout: 60_000 })
 
     // Der Knopf mit Zustand in der Kopfzeile des Hauptbereichs. Der zweite
-    // Knopf dort (Schublade, nur schmal sichtbar) trägt keinen Zustand.
+    // Knopf dort (Schublade) ist breit unsichtbar — sein Fall steht unten.
     const toggle = page.locator('main#dashboard-main button[aria-expanded]:visible').first()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
     // Mit Wiederholung: vor der Hydration tut der Klick nichts.
@@ -171,5 +171,20 @@ test.describe('Dashboard: Hauptbereich, Sprunglink, Umschalter (Q09)', () => {
     }).toPass({ timeout: 30_000 })
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  test('Schubladen-Knopf im schmalen Fenster sagt seinen Zustand (Q09-Rest)', async ({ page, context, baseURL }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await signIn(context, baseURL!)
+    await page.goto('/dashboard')
+    await expect(page.locator('main#dashboard-main h1').first()).toBeVisible({ timeout: 60_000 })
+
+    const drawer = page.locator('main#dashboard-main [data-slot="toggle"]:visible').first()
+    await expect(drawer).toHaveAttribute('aria-expanded', 'false')
+    // Mit Wiederholung: vor der Hydration tut der Klick nichts.
+    await expect(async () => {
+      await drawer.click()
+      await expect(page.locator('main#dashboard-main [data-slot="toggle"]').first()).toHaveAttribute('aria-expanded', 'true', { timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
   })
 })
