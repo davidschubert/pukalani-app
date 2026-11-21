@@ -210,7 +210,7 @@ const renderedBlocks = computed(() => (props.chapter.state === 'locked' && !isPr
         {{ t(lockReason ? 'brand.foundation.usage.follows' : 'brand.foundation.visual.follows') }}
       </span>
     </div>
-    <h2 class="mt-1 text-[26px] font-extralight leading-tight tracking-tight">{{ t(chapter.titleKey) }}</h2>
+    <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">{{ t(chapter.titleKey) }}</h2>
     <p v-if="note" class="bw-label mt-1.5" style="color: var(--bw-muted)">{{ note }}</p>
 
     <!-- DAS ANGEBOT AN DER SCHRANKE (§11 c, Davids Entscheidung: KEIN PREIS).
@@ -232,7 +232,7 @@ const renderedBlocks = computed(() => (props.chapter.state === 'locked' && !isPr
         <!-- Leitsatz: der eine Satz, der gross stehen darf. -->
         <div v-if="block.kind === 'lead'">
           <p v-if="block.labelKey" class="bw-label" style="color: var(--bw-muted)">{{ t(block.labelKey) }}</p>
-          <p class="mt-2 text-[22px] font-extralight leading-snug tracking-tight">{{ block.text }}</p>
+          <p class="mt-2 text-xl font-extralight leading-snug tracking-tight">{{ block.text }}</p>
         </div>
 
         <!-- Fließtext. Markdown nur mit Marke (s. Kopf). -->
@@ -474,7 +474,7 @@ const renderedBlocks = computed(() => (props.chapter.state === 'locked' && !isPr
             class="fd-dir-strip mt-2 h-8 rounded-xl"
             :style="`background: linear-gradient(90deg, ${block.gradient[2]}, ${block.gradient[1]} 60%, ${block.gradient[0]})`"
           />
-          <p class="mt-3 text-[22px] font-extralight leading-snug tracking-tight">{{ t(block.nameKey) }}</p>
+          <p class="mt-3 text-xl font-extralight leading-snug tracking-tight">{{ t(block.nameKey) }}</p>
           <p class="mt-1.5 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t(block.reasonKey) }}</p>
           <p class="bw-label mt-3" style="color: var(--bw-muted)">
             {{ t('brand.foundation.direction.fontsLabel') }}: {{ block.fonts.heading }} · {{ block.fonts.body }}

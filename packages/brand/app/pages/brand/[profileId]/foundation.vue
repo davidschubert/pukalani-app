@@ -1110,7 +1110,7 @@ useBrandTitle(() => (title.value || t('brand.foundation.title')))
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">
           {{ t('brand.foundation.share.eyebrow') }}
         </p>
-        <h2 class="mt-1 text-[28px] font-extralight leading-tight tracking-tight">
+        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">
           {{ t('brand.foundation.share.title') }}
         </h2>
         <p class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
@@ -1213,7 +1213,7 @@ useBrandTitle(() => (title.value || t('brand.foundation.title')))
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">
           {{ t('brand.publication.eyebrow') }}
         </p>
-        <h2 class="mt-1 text-[28px] font-extralight leading-tight tracking-tight">
+        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">
           {{ t('brand.publication.title') }}
         </h2>
         <p class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">

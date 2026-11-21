@@ -441,13 +441,13 @@ export default defineAppConfig({
         // die Stufe hell auf puka-800, AA). `min-h-4` hält den Platz frei,
         // damit die Namen auch dann auf einer Höhe stehen, wenn ein Plan
         // später ohne Zeichen auskommt (Bestand: `min-height: 1rem`).
-        header: 'min-h-4 text-[0.75rem] font-bold uppercase tracking-[0.06em] text-primary-600',
+        header: 'min-h-4 text-xs font-bold uppercase tracking-[0.06em] text-primary-600',
         // `.plan-name` 1,3rem/800 (Vorgabe wäre 1,5→1,875rem/600). Die
         // `sm:`-Stufe muss mit — tailwind-merge räumt nur innerhalb einer
         // Stufe auf (gleiche Falle wie bei pageHero/pageCTA oben).
-        title: 'text-[1.3rem] sm:text-[1.3rem] font-extrabold',
+        title: 'text-xl sm:text-xl font-extrabold',
         // `.plan-price` 1,6rem/800 (Vorgabe: 1,875→2,25rem/600).
-        price: 'text-[1.6rem] sm:text-[1.6rem] font-extrabold',
+        price: 'text-2xl sm:text-2xl font-extrabold',
         billing: 'gap-0',
         // DIE ZWEI ZEILEN UNTER DEM PREIS. `billingPeriod` = das Intervall
         // („pro Monat, jährlich abgerechnet"), `billingCycle` = die
@@ -461,8 +461,8 @@ export default defineAppConfig({
         // Plan-Karte (weiß/0,7 über tone-dawn-hold, #fefaf5) maß /70 nur
         // 3,47:1, /85 misst 4,90:1. Die Hierarchie bleibt — die PAngV-Zeile
         // darunter steht mit vollem `toned` bei 7,13:1 weiterhin kräftiger.
-        billingPeriod: 'whitespace-normal text-[0.78rem] font-medium text-toned/85',
-        billingCycle: 'whitespace-normal text-[0.78rem] font-semibold text-toned',
+        billingPeriod: 'whitespace-normal text-xs font-medium text-toned/85',
+        billingCycle: 'whitespace-normal text-xs font-semibold text-toned',
         // `.plan-desc` — siehe Begründung am `footer` unten.
         tagline: 'text-base/[1.55] font-normal text-toned',
       },

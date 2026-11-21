@@ -140,7 +140,7 @@ const headingStyle = computed(() => [
                man ein Paar an seiner Überschrift, und genau davor warnt das
                Anti-Muster der Session. -->
           <span
-            class="mt-3 block truncate text-[22px] leading-tight"
+            class="mt-3 block truncate text-xl leading-tight"
             :data-type-pair-heading="entry.id"
             :style="`font-family: ${entry.headingStack}`"
           >{{ wordmark }}</span>

@@ -62,7 +62,7 @@ const items = computed(() =>
           :ui="{ leading: 'mb-[0.9rem]' }"
         >
           <template #leading>
-            <span class="inline-flex size-[2.4rem] items-center justify-center rounded-full bg-[image:var(--puka-step-fill)] text-[1.1rem] font-extrabold text-inverted">
+            <span class="inline-flex size-[2.4rem] items-center justify-center rounded-full bg-[image:var(--puka-step-fill)] text-lg font-extrabold text-inverted">
               {{ step.n }}
             </span>
           </template>

@@ -87,7 +87,7 @@ useMarketingSeo({
                  bliebe auf EN deutsch und wäre wieder ein 404. -->
             <ULink
               :to="localePath({ name: 'datenschutz' })"
-              class="mt-3 inline-flex items-center gap-1.5 text-[0.92rem] font-bold text-primary-600"
+              class="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-primary-600"
             >
               {{ t('marketing.gdpr.legalLink') }}
               <UIcon name="i-ph-arrow-right-bold" class="size-4" />

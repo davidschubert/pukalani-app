@@ -54,7 +54,7 @@ watch(() => route.path, () => {
       <UNavigationMenu
         :items="sections"
         variant="link"
-        :ui="{ link: 'px-2.5 py-0.5 text-[0.95rem] font-medium' }"
+        :ui="{ link: 'px-2.5 py-0.5 text-sm font-medium' }"
       />
 
       <div class="flex items-center gap-1.5">

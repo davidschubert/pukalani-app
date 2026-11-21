@@ -270,7 +270,7 @@ const userMenu = computed(() => [[
         <span class="grid size-8 flex-none place-items-center rounded-full" style="background: var(--bw-ink); color: var(--bw-paper)" aria-hidden="true">
           <UIcon name="i-ph-fingerprint" class="size-5" />
         </span>
-        <span class="whitespace-nowrap text-[18px]" style="color: var(--bw-ink); font-weight: 400; letter-spacing: -0.01em">Branding Supply</span>
+        <span class="whitespace-nowrap text-lg" style="color: var(--bw-ink); font-weight: 400; letter-spacing: -0.01em">Branding Supply</span>
       </ULink>
       <!-- DAS BETA-SCHILDCHEN (Davids Entscheidung 2026-11-12): die Anmeldung
            ist offen, das Produkt bleibt eine Beta — und das soll auf JEDER

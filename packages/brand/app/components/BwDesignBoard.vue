@@ -115,10 +115,10 @@ const tiles = computed(() => [
     <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
       <p
         class="leading-none tracking-tight"
-        :class="compact ? 'text-[30px]' : 'text-[40px]'"
+        :class="compact ? 'text-3xl' : 'text-4xl'"
         :style="`font-family: ${headingStack}; letter-spacing: -0.5px`"
       >{{ title }}</p>
-      <p class="text-[12px] leading-[18px]" :style="`font-family: ${BRAND_MONO_STACK}; color: ${soft}`">
+      <p class="text-xs leading-[18px]" :style="`font-family: ${BRAND_MONO_STACK}; color: ${soft}`">
         {{ t('brand.foundation.design.title') }}<template v-if="stand"> · {{ t('brand.foundation.design.stand', { date: stand }) }}</template>
       </p>
     </div>
@@ -151,13 +151,13 @@ const tiles = computed(() => [
         <div class="mt-2 flex flex-col gap-1">
           <p
             v-for="token in transitions" :key="token.id"
-            class="flex items-baseline justify-between gap-3 text-[12px] leading-5" :style="`font-family: ${BRAND_MONO_STACK}`"
+            class="flex items-baseline justify-between gap-3 text-xs leading-5" :style="`font-family: ${BRAND_MONO_STACK}`"
           >
             <span>{{ token.label }}</span>
             <span class="tabular-nums" :style="`color: ${soft}`">{{ token.durationMs }} ms</span>
           </p>
         </div>
-        <p v-if="motionNote" class="mt-2 text-[12px] leading-[18px]" :style="`font-family: ${bodyStack}; color: ${soft}`">
+        <p v-if="motionNote" class="mt-2 text-xs leading-[18px]" :style="`font-family: ${bodyStack}; color: ${soft}`">
           {{ motionNote }}
         </p>
       </div>
@@ -168,13 +168,13 @@ const tiles = computed(() => [
           {{ t('brand.foundation.design.board.type') }}<template v-if="pair"> · {{ pair.headingFamily }} + {{ pair.bodyFamily }}</template>
         </p>
         <p
-          class="mt-2 leading-tight" :class="compact ? 'text-[24px]' : 'text-[30px]'"
+          class="mt-2 leading-tight" :class="compact ? 'text-2xl' : 'text-3xl'"
           :style="`font-family: ${headingStack}`"
         >{{ t('brand.type.specimen.heading') }}</p>
-        <p class="mt-2 max-w-[52ch] text-[14px] leading-relaxed" :style="`font-family: ${bodyStack}; color: ${ramp[800]}`">
+        <p class="mt-2 max-w-[52ch] text-sm leading-relaxed" :style="`font-family: ${bodyStack}; color: ${ramp[800]}`">
           {{ t('brand.type.specimen.body') }}
         </p>
-        <p class="mt-2 text-[12px]" :style="`font-family: ${BRAND_MONO_STACK}; color: ${soft}`">
+        <p class="mt-2 text-xs" :style="`font-family: ${BRAND_MONO_STACK}; color: ${soft}`">
           {{ t('brand.type.specimen.mono') }}
         </p>
       </div>
@@ -210,7 +210,7 @@ const tiles = computed(() => [
             <circle cx="46" cy="44" r="26" :fill="tile.a" />
             <rect x="70" y="16" width="38" height="52" rx="3" :fill="tile.b" opacity="0.85" />
           </svg>
-          <ul class="flex flex-col justify-center gap-1 text-[12px] leading-[18px]" :style="`font-family: ${bodyStack}; color: ${ramp[800]}`">
+          <ul class="flex flex-col justify-center gap-1 text-xs leading-[18px]" :style="`font-family: ${bodyStack}; color: ${ramp[800]}`">
             <li v-for="line in principleLines" :key="line" class="flex items-start gap-2">
               <span class="mt-2 size-1 flex-none rounded-full" :style="`background: ${ramp[500]}`" />
               <span class="min-w-0">{{ line }}</span>
