@@ -17,7 +17,9 @@
       "count": "{count} conversations",
       "loadFailed": "The inbox could not be loaded.",
       "disabled": "This community has not switched on private messages.",
-      "disabledHint": "The owner can enable them in the settings."
+      "disabledHint": "The owner can enable them in the settings.",
+      "disabledHintManager": "You can turn them on in the community settings.",
+      "disabledAction": "Turn on messages"
     },
     "thread": {
       "placeholder": "Write a message …",

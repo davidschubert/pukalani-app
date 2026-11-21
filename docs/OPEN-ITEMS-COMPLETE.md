@@ -195,6 +195,52 @@ schlägt Klassen aus dem Utility-Layer — ein Inline-Stil kann deshalb ein
 gewollter Überschreiber sein und gehört nicht blind in eine Klasse. Im Browser
 angesehen nur: Marketing (1440 und 375 px); Brand-Seiten nicht.
 
+### LZ1 Nachtrag — Stichprobe im Browser, Sackgassen, ein Lade-Zeichen, Listen-Gründe (FE-004, UX-012, UI-008, UI-009) ✅ 2026-11-21
+
+**Was.**
+
+- **Stichprobe im Browser** (lokal: Bühne mit Owner-, Mitglieds- und
+  Betreiber-Konto, branding.supply mit Probe-Konto; Abruf im Browser mit 500
+  beantwortet, dann „Noch einmal versuchen"): je Schub vier Seiten — Beiträge,
+  Kategorien, Termine, Kurse; Nachrichten-Einstellung, gemeldete Nachrichten,
+  Roadmap, Weiterleitungen; Produkte, Speicher, Insights-Marken,
+  Freischaltungen; Marken entdecken, Ranking, Insights, Brand-Scores. Fehler,
+  Neuversuch und danach „leer" oder Daten stimmen überall bis auf:
+  - **Fehlerzweig im Daten-Zweig** (2 Seiten: Insights-Kanäle und -Funde):
+    `<CoreLoadError>` stand in `v-else-if="rows.length > 0"` — ohne Daten
+    ist die Liste leer, die Seite sagte „leer" statt „Fehler". Zweig vor den
+    Leer-Zustand gezogen; neuer Wächter `loadErrorBranchGuard.test.ts` (mit
+    Gegenprobe) hält das für alle Seiten fest.
+  - **Zähler im Fehlerfall** (3 Seiten: Ranking, Marken entdecken,
+    Insights-Marken): „0 Präsenzen" / „Alle 0" neben der Fehlermeldung —
+    ausgeblendet, solange ohne Daten ein Fehler steht.
+  - Roadmap blieb nach dem Neuversuch rot — kein Muster-Fehler: der echte
+    Abruf antwortet lokal 403, weil der Kontroll-Dienst die Bühnen-Community
+    nicht kennt.
+- **(e) Sackgassen UX-012:** Nachrichten aus — wer sie einschalten darf
+  (`messages.manage`), liest „Du kannst sie … einschalten" mit Knopf zur
+  Einstellung, „Neue Nachricht" ist ausgeblendet; Dashboard eines Mitglieds
+  ohne Team-Rolle zeigt einen Leer-Zustand mit Weg in die Seitenleiste und
+  Knopf zu den Einstellungen (der admin-Layer kennt die Bereiche nicht
+  einzeln, daher kein Link dorthin); der Startseiten-Satz einer NEUEN
+  Community spricht den Besucher an („Hier entsteht gerade …"). Bestehende
+  Startseiten bleiben, wie ihr Owner sie hat.
+- **(f) UI-008:** 24 Seiten-Ladezeichen sind `CoreLoadingState`, 6 kleine
+  Zeichen nehmen den offenen Kreis aus `icons.loading`; `i-ph-spinner` ist
+  weg, ein Wächter hält es fest.
+- **(g) UI-009:** alle vier Stellen tragen den Grund mit „B6" (Rang-Mini-
+  Listen, fester Preiskatalog, Gegenüberstellung zweier Messungen,
+  Plan-Matrix mit Zwischenüberschriften) — keine ist ein Datenbestand.
+- **Rest-Liste:** 59 → 56 Dateien (Insights-Rankings und -Themen,
+  Brand-Scores; dort hielt ein `catch` jeden Fehler für „leer"). Die übrigen
+  Begründungen im Kopf von `listStateBacklog.ts` gelesen; sie stimmen.
+
+**Gelernt:** Ein Wächter, der zählt, ob `error` gelesen wird, sieht nicht,
+WO der Fehlerzweig steht — „gelesen, aber nie gezeigt" fand erst der
+blockierte Abruf im Browser. Die Prüfung im Browser braucht keinen
+Fremddienst: `window.fetch` für EINE Adresse mit 500 beantworten und
+clientseitig navigieren zeigt Fehler, Neuversuch und Erholung in einem Lauf.
+
 ### LZ1 — Listen-Zustände: Rest-Liste nach Q14 von 110 auf 59 Dateien (FE-004, UI-005) ✅ 2026-11-21
 
 **Was.** In vier Schüben (PR 497, 500, 502, 503) lesen Seiten ihren Abruffehler

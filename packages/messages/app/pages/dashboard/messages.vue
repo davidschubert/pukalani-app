@@ -44,6 +44,14 @@ const { data, status, error, refresh } = await useFetch<{ conversations: Convers
  */
 const disabled = computed(() => messageErrorReason(error.value) === MESSAGES_DISABLED_CODE)
 
+/**
+ * Wer Nachrichten einschalten DARF, liest keinen Satz über „den Owner",
+ * sondern bekommt den Weg zur Einstellung (UX-012). Die Seite liegt im
+ * selben Layer, die Adresse ist also bekannt.
+ */
+const canEnable = useCapability('messages.manage')
+const localePath = useLocalePath()
+
 const conversations = computed(() => {
   const rows = data.value?.conversations ?? []
   return showUnreadOnly.value ? rows.filter(row => row.unread > 0) : rows
@@ -115,6 +123,7 @@ async function afterChange(conversationId?: string) {
         </template>
         <template #right>
           <UButton
+            v-if="!disabled"
             icon="i-ph-plus"
             size="sm"
             :label="t('messages.inbox.new')"
@@ -129,7 +138,10 @@ async function afterChange(conversationId?: string) {
         <CoreEmptyState
           icon="i-ph-envelope-simple-open"
           :title="t('messages.inbox.disabled')"
-          :description="t('messages.inbox.disabledHint')"
+          :description="canEnable ? t('messages.inbox.disabledHintManager') : t('messages.inbox.disabledHint')"
+          :action-label="canEnable ? t('messages.inbox.disabledAction') : undefined"
+          action-icon="i-ph-gear-six"
+          :action-to="localePath('/dashboard/community/private-messages')"
         />
       </div>
 

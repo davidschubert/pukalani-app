@@ -560,6 +560,10 @@ useBrandTitle(() => t('brand.myScores.title'))
             {{ sourceLabel(diff.source) }} · {{ t('brand.myScores.diff.dates', { previous: formatDate(diff.previousAt), latest: formatDate(diff.latestAt) }) }}
           </p>
 
+          <!-- KEINE UTable (B6): eine Gegenüberstellung zweier Messungen mit
+               festen Kategorien in der Marken-Karte (bw-Optik), kein
+               Datenbestand — nichts zu sortieren, auszuwählen oder zu blättern.
+               Die Liste der Messungen weiter unten ist einer und nutzt UTable. -->
           <div class="mt-6 overflow-x-auto">
             <table class="w-full min-w-md text-sm">
               <thead>
