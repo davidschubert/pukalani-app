@@ -44,6 +44,11 @@ export function createCommunityProfileSchema(t: TranslateFn = identity) {
      * „nicht angefasst", nie „zurück auf die Vorgabe".
      */
     locale: z.enum(PRIMARY_LOCALES).optional(),
+    /**
+     * KI-Training erlaubt (KC1). OPTIONAL aus demselben Grund wie `locale`:
+     * fehlt das Feld, bleibt die gespeicherte Wahl unangetastet.
+     */
+    aiTraining: z.boolean().optional(),
   }).strict()
 }
 
@@ -57,4 +62,6 @@ export interface CommunityProfileResult {
   description: string
   /** Die gewählte Hauptsprache; '' = keine eigene Wahl (es gilt die Vorgabe). */
   locale?: string
+  /** KI-Training erlaubt (KC1); `false` = die Vorgabe. */
+  aiTraining?: boolean
 }

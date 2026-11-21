@@ -54,6 +54,11 @@ describeSeamTeamRoute('POST /api/control/community/members/list', () => import('
 describeSeamTeamRoute('POST /api/control/community/profile', () => import('../server/api/control/community/profile.post'),
   OWNER_AND_ADMIN, (jwt, communityId) => ({ jwt, communityId, name: 'Probe-Community', description: 'Kurz.' }))
 
+// KI-Training (KC1): dieselbe Route, dieselben Rollen wie die Hauptsprache —
+// ein Mitglied ohne Verwaltungs-Recht bekommt 403, geschrieben wird nichts.
+describeSeamTeamRoute('POST /api/control/community/profile (KI-Training)', () => import('../server/api/control/community/profile.post'),
+  OWNER_AND_ADMIN, (jwt, communityId) => ({ jwt, communityId, name: 'Probe-Community', description: '', aiTraining: true }))
+
 describeSeamTeamRoute('POST /api/control/community/profile-signal', () => import('../server/api/control/community/profile-signal.post'),
   OWNER_AND_ADMIN, (jwt, communityId) => ({ jwt, communityId, signal: { purpose: 'new', memberRange: 'to100' } }))
 
