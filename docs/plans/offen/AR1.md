@@ -10,18 +10,9 @@ Erledigt am 2026-11-17 (COMPLETE „N06"): die zwei Lücken am Ticket-Kauf, die
 drei übrigen Umzugs-Anleitungen liegen im Archiv, die READMEs von
 `apps/photos` und `apps/control` beschreiben ihre App, `CLAUDE.md` nennt die
 SDK-Versionen aus dem Katalog.
+Erledigt am 2026-11-21 (COMPLETE „N22"): der DNS-Eintrag
+`changelog.pukalani.app` ist bei Cloudflare gelöscht.
 
-- **(a) Die Adresse `changelog.pukalani.app` löschen.** Sie zeigt noch auf den
-  Datenbank-Server, dahinter ist nichts mehr (die Function und der Webhook
-  sind weg). David hat das Löschen am 2026-11-15 freigegeben und am
-  2026-11-18 auf später gelegt: Cloudflare war in keinem Browser angemeldet,
-  und ein Passwort gibt dort niemand außer ihm ein. Zu tun (David, oder eine
-  Session, sobald er angemeldet ist): Cloudflare → Zone `pukalani.app` → DNS
-  → Eintrag `changelog` (Typ A) → löschen. Der Name bleibt für Kunden gesperrt
-  (`RESERVED_SUBDOMAINS`). Danach von außen prüfen, dass der Name nicht mehr
-  auflöst, und die Zeile in `docs/content/2.architektur/6.hosts-und-ports.md`
-  streichen. Zurück: denselben Eintrag wieder anlegen (er zeigte auf dieselbe
-  Adresse wie `api.pukalani.app`).
 - **(d) Kleinigkeiten.** Ticket-Kauf (lebt nur in der Test-App): die
   Rückkehr-Adressen kommen weiter aus dem Host der Anfrage; die Prüfung
   „schon bezahlt" liest die 100 jüngsten Sitzungen und braucht ein

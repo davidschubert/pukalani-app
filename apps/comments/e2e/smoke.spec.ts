@@ -26,7 +26,7 @@ test.describe('Startseite', () => {
       if (msg.type() !== 'error') return
       const text = msg.text()
       // Bekanntes Rauschen ausklammern (HMR/Netz), nur echte App-Fehler zählen.
-      if (/Failed to load resource|WebSocket|Hydration completed/i.test(text)) return
+      if (/Failed to load resource|WebSocket/i.test(text)) return
       errors.push(text)
     })
     await page.goto('/')

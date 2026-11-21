@@ -67,7 +67,7 @@ const participation = computed(() => {
           :title="t('control.marketSignal.truncated')"
         />
 
-        <div v-if="status === 'pending'" class="space-y-3">
+        <div v-if="isFetchLoading(status)" class="space-y-3">
           <USkeleton class="h-24 w-full" />
           <USkeleton class="h-64 w-full" />
         </div>

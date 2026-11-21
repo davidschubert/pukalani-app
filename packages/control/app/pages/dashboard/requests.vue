@@ -165,7 +165,7 @@ function rowActions(request: RequestDto): DropdownMenuItem[][] {
             icon="i-ph-arrows-clockwise"
             color="neutral"
             variant="ghost"
-            :loading="status === 'pending'"
+            :loading="isFetchLoading(status)"
             :aria-label="t('control.requests.refresh')"
             @click="refresh()"
           />
