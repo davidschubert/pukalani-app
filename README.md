@@ -51,60 +51,118 @@ export default defineNuxtConfig({
 
 Geteilte Dependency-Versionen sind ausschließlich im Catalog ([pnpm-workspace.yaml](pnpm-workspace.yaml)) definiert — `package.json` referenziert `"catalog:"`.
 
-## Setup
+## Setup — vom Klon zur laufenden App
 
-Voraussetzungen: **Node 24** (genau die Version aus `.nvmrc`, `nvm install` im Repo-Ordner holt sie), **pnpm 10** und eine laufende **Appwrite-Instanz 2.7.x** (wie dev, CI und prod) (self-hosted, z. B. via Docker/OrbStack). Empfohlener DB-Adapter: **MariaDB** (Appwrites dokumentierter Default; MongoDB ist als Multi-Adapter neuer/weniger erprobt).
+Der Weg unten braucht kein Vorwissen und keinen Schlüssel von außen: er startet eine eigene
+Wegwerf-Appwrite auf dem Rechner — derselbe Aufbau, den der E2E-Lauf der CI bei jedem Lauf
+benutzt ([.github/workflows/e2e.yml](.github/workflows/e2e.yml)).
+
+**Voraussetzungen**
+
+- Git und **Node** in genau der Version aus [.nvmrc](.nvmrc) (`nvm install` im Repo-Ordner holt sie)
+- **pnpm 10** — die genaue Version steht im Feld `packageManager` der [package.json](package.json), `corepack enable` richtet sie ein
+- **Docker** mit `docker compose` (Docker Desktop oder OrbStack), dazu `curl` und `openssl`
+
+### 1. Klonen und installieren
 
 ```bash
+git clone https://github.com/davidschubert/pukalani-app.git
+cd pukalani-app
+nvm install
+corepack enable
 pnpm install
 ```
 
-**1. Appwrite-Instanz vorbereiten** (einmalig, interaktiv in der Appwrite-Console):
-- Account anlegen, **Projekt** erstellen, **Datenbank mit ID `main`** anlegen.
-- **API-Key** mit allen Scopes erzeugen.
+Ab hier laufen schon alle Prüfungen ohne Datenbank: `pnpm typecheck`, `pnpm lint`, `pnpm test`.
 
-**2. `.env` setzen** — pro App unter `apps/<app>/.env`:
-```dotenv
-NUXT_PUBLIC_APPWRITE_ENDPOINT="http://localhost/v1"
-NUXT_PUBLIC_APPWRITE_PROJECT_ID="reddit-comments"   # F6: Projekt-ID der Dev-Instanz bleibt historisch
-NUXT_PUBLIC_APPWRITE_DATABASE_ID="main"
-NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET="avatars"
-NUXT_APPWRITE_KEY="<dein-api-key>"            # server-only, alle Scopes
-NUXT_APPWRITE_MIGRATIONS_KEY="<dein-api-key>" # für Migrationen (kann derselbe sein)
-NUXT_PUBLIC_APP_URL="http://localhost:3001"   # Basis für Verifizierungs- und Reset-Links;
-                                              # fehlt sie, antwortet /api/auth/verification 503
-```
+### 2. Lokale Datenbank starten
 
-Das ist das Minimum. Optionale Funktionen (SMTP, Stripe, KI, Analytics, die Naht zum Control
-Plane) bringen eigene Schlüssel mit — die vollständige Liste steht in
-[apps/comments/.env.example](apps/comments/.env.example). Fehlt eine davon, wird nichts rot:
-das Feature bleibt still aus (`pnpm ops:site-env` prüft die Server-.env gegen die Pflicht-Liste).
-
-**3. Bootstrap** — legt Datenbank + Avatars-Bucket + Web-Platform an und fährt **alle Migrationen** in Reihenfolge (system→comments→moderation→admin):
 ```bash
-pnpm --filter comments bootstrap          # frische Instanz aufsetzen
-pnpm --filter comments bootstrap --seed   # + Demo-User & -Kommentare
-```
-> ⚠️ Primär für **frische** Instanzen: ein Sicherheits-Guard bricht ab, wenn die `comments`-Tabelle schon Daten hat. `comments-002` ist inzwischen idempotent (droppt nicht mehr, wenn das Zielschema schon steht) — der Erst-Umbau vom alten `postId`-Schema baut das Schema aber weiterhin destruktiv neu auf. `--force` überschreibt den Guard.
+# einmalig: der Schlüssel der Instanz, in einer Datei, die Git nicht sieht
+printf '_APP_OPENSSL_KEY_V1=%s\n' "$(openssl rand -hex 16)" > ci/appwrite/.env.local
 
-**4. Starten**:
+docker compose -f ci/appwrite/docker-compose.yml \
+  --env-file ci/appwrite/ci.env --env-file ci/appwrite/.env.local \
+  --project-name appwrite-ci up -d \
+  traefik appwrite appwrite-realtime appwrite-geo appwrite-worker mariadb redis
+
+# warten, bis hier eine Version zurückkommt (beim ersten Mal lädt Docker die Images)
+curl -s http://localhost:8080/v1/health/version
+```
+
+Die Instanz lauscht auf Port **8080** (nicht 80), damit sie neben einer anderen Appwrite laufen
+kann. Ist 8080 belegt: vor den `docker compose`-Befehl `_APP_HTTP_PORT=<port>` setzen und den
+Port in den Adressen unten mitziehen. Dasselbe gilt für die drei weiteren Ports, die der Stapel
+öffnet (`_APP_HTTPS_PORT`, `_APP_MQTT_PORT`, `_APP_MQTT_WSS_PORT` — Vorgaben in
+[ci/appwrite/ci.env](ci/appwrite/ci.env)).
+
+> Die Zugänge dieser Instanz stehen offen im Repo ([ci/appwrite/ci.env](ci/appwrite/ci.env),
+> [scripts/ci/console-lib.mjs](scripts/ci/console-lib.mjs)). Sie ist zum Wegwerfen gedacht und
+> gehört nie ins Netz und nie an echte Daten.
+
+### 3. Projekt, Tabellen und Demo-Daten anlegen
+
 ```bash
-pnpm dev:app     # comments App (Port 3001)
-pnpm dev:core    # Core Playground (Port 3000)
-pnpm typecheck   # Typecheck über die Apps (deckt alle Layer transitiv)
+node scripts/ci/appwrite-setup.mjs --endpoint http://localhost:8080/v1 --app apps/comments
+pnpm --filter comments bootstrap --seed
 ```
 
-Demo-Login (nach `--seed`): `uma@demo.local` / `Demo-Passw0rd!` (regulär), `mod@demo.local` (Moderator), `admin@demo.local` (Admin) — Passwort jeweils `Demo-Passw0rd!`.
+Der erste Befehl legt in der Instanz ein Konto, das Projekt `comments` und einen Schlüssel an
+und schreibt `apps/comments/.env`. Der zweite legt Datenbank und Ablagen an, fährt alle
+Migrationen der App und legt Demo-Konten und Demo-Inhalte an.
+
+### 4. App starten
+
+```bash
+pnpm dev:app
+```
+
+Die App läuft auf <http://localhost:3001>, `/api/health` meldet `ok`. Die Demo-Konten
+(Mitglied, Moderator, Admin) und ihr Passwort stehen in
+[apps/comments/scripts/seed-demo.ts](apps/comments/scripts/seed-demo.ts).
+
+Fehlt `apps/comments/.env`, sagen der Dev-Server und `bootstrap` das in einer Zeile mit dem
+Namen der Datei — dann fehlt Schritt 3.
+
+### Aufräumen
+
+```bash
+docker compose -f ci/appwrite/docker-compose.yml \
+  --env-file ci/appwrite/ci.env --env-file ci/appwrite/.env.local \
+  --project-name appwrite-ci down -v
+```
+
+`down -v` löscht die Instanz mit allen Daten; ohne `-v` bleibt sie für den nächsten Start
+erhalten. Nach einem `down -v` beginnt der Weg wieder bei Schritt 2 (ohne die `printf`-Zeile).
+
+### Andere Wege
+
+- **Eine vorhandene Appwrite-Instanz statt der Wegwerf-Instanz** — braucht Handarbeit in deren
+  Konsole und damit jemanden mit Zugang dazu: Projekt anlegen, zwei Schlüssel erzeugen (einen
+  für die Laufzeit, einen für Migrationen, mit getrennten Rechten — Tabelle in
+  [docs/content/1.erste-schritte/2.setup.md](docs/content/1.erste-schritte/2.setup.md)), dann
+  `apps/comments/.env.example` nach `apps/comments/.env` kopieren und ausfüllen. Das Minimum sind
+  `NUXT_PUBLIC_APPWRITE_ENDPOINT`, `NUXT_PUBLIC_APPWRITE_PROJECT_ID`,
+  `NUXT_PUBLIC_APPWRITE_DATABASE_ID`, `NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET`, `NUXT_APPWRITE_KEY`,
+  `NUXT_APPWRITE_MIGRATIONS_KEY` und `NUXT_PUBLIC_APP_URL`; alles Weitere in der Vorlage
+  (Mail, Stripe, KI, Analytics) ist je Funktion freiwillig — fehlt es, bleibt die Funktion aus.
+  Danach weiter mit `pnpm --filter comments bootstrap --seed`. Die Datenbank legt `bootstrap`
+  selbst an. `bootstrap` ist für eine FRISCHE Instanz gedacht und bricht ab, wenn schon
+  Kommentare da sind.
+- **Eine andere App** — jede App hat ihre eigene `.env` nach ihrer `.env.example`; Ports und
+  Besonderheiten der Beweise stehen in [.claude/rules/tests.md](.claude/rules/tests.md), das
+  Anlegen einer neuen App in [docs/runbooks/NEUE-SITE.md](docs/runbooks/NEUE-SITE.md).
+- **Production** ist kein Teil dieses Wegs: [docs/runbooks/DEPLOYMENT.md](docs/runbooks/DEPLOYMENT.md).
 
 ### Skripte
 
 | Befehl | Wirkung |
 |---|---|
-| `pnpm --filter comments bootstrap [--seed]` | Frische Instanz: DB + Bucket + Platform + alle Migrationen (optional Seed) |
-| `pnpm --filter comments seed [--force]` | Demo-User (Rollen) + Kommentare (idempotent; `--force` re-seedet) |
-| `pnpm migrate --app <app> [--layer <layer>]` | Migrationen einer App idempotent ausführen — der eine Weg, immer aus der Wurzel (Production: `--env <datei> --only <layer>-<NNN> --prod`, vorher mit `--dry-run` ansehen) |
-| `pnpm dev:app` · `pnpm dev:core` | Dev-Server (App 3001 · Core-Playground 3000) |
-| `pnpm typecheck` · `pnpm -r lint` · `pnpm -r test` | Qualitäts-Checks über den Workspace |
+| `pnpm dev:app` · `pnpm dev:core` · `pnpm dev:docs` | Dev-Server (App comments 3001 · Core-Playground 3000 · interne Doku 4000) |
+| `pnpm --filter comments bootstrap [--seed]` | Frische Instanz: Datenbank, Ablagen, alle Migrationen der App (mit `--seed` dazu Demo-Daten) |
+| `pnpm --filter comments seed [--force]` | Demo-Konten und Demo-Inhalte (wiederholbar; `--force` legt neu an) |
+| `pnpm migrate --app <app> [--layer <layer>]` | Migrationen einer App wiederholbar ausführen — der eine Weg, immer aus der Wurzel. Production nur nach [docs/runbooks/DEPLOYMENT.md](docs/runbooks/DEPLOYMENT.md) |
+| `pnpm typecheck` · `pnpm lint` · `pnpm test` | Prüfungen über den ganzen Workspace (`lint` fährt die Wächter mit) |
 
 ## Struktur
 
@@ -300,6 +358,6 @@ im Detail in [docs/referenz/WORKFLOW.md](docs/referenz/WORKFLOW.md).
 
 
 - [Conventional Commits](https://www.conventionalcommits.org) · Breaking Changes im Core mit `BREAKING CHANGE(core):` Prefix und eigenem Commit
-- Branches: `main` / `dev` / `feature/*` / `fix/*`
+- Ein Zweig je Vorhaben, Pull Request gegen `main`; zusammengeführt wird erst, wenn die Pflicht-Prüfungen grün sind
 - Im Layer nur relative Pfade (kein `~/` oder `@/`) · Domain-Types in `shared/types/`
 - CRUD nur über `server/api/*` — das Web SDK macht im Browser ausschließlich Realtime

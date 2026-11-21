@@ -1,6 +1,6 @@
-import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { allowProcessStart, runNode } from '../../core/tests/support/processTest'
 
 /**
  * Das Bibliotheks-Werkzeug MUSS LADEN (MV1, 2026-11-09).
@@ -16,11 +16,16 @@ import { describe, expect, it } from 'vitest'
  * Darum hier der echte Start: `--stale` fasst kein Netz an und braucht weder
  * Server noch Appwrite. Gegen ein festes Datum gerechnet, damit der Test nicht
  * mit dem Kalender rot wird.
+ *
+ * Der Test startet ein Programm — Frist und Start kommen deshalb aus der
+ * gemeinsamen Hilfe (unter Last reichten die 5 s der Vorgabe nicht).
  */
 const SCRIPT = fileURLToPath(new URL('../scripts/market-library-compute.mjs', import.meta.url))
 
+allowProcessStart()
+
 function run(now: string) {
-  return spawnSync(process.execPath, [SCRIPT, '--stale', '--now', now], { encoding: 'utf8' })
+  return runNode([SCRIPT, '--stale', '--now', now])
 }
 
 describe('market-library-compute.mjs --stale', () => {

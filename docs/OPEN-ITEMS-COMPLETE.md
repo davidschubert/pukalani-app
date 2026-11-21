@@ -30,6 +30,64 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q20 — Einstieg von null: das README führt vom Klon zur laufenden App mit lokaler Datenbank (DOC-005, DOC-006, DOC-013) ✅ 2026-11-21
+
+**Was.**
+
+- **README, Abschnitt „Setup".** Der Weg beginnt beim Klon-Befehl und endet bei
+  der laufenden App: Wegwerf-Appwrite aus `ci/appwrite` starten,
+  `scripts/ci/appwrite-setup.mjs` (Konto, Projekt, Schlüssel, `.env`),
+  `pnpm --filter comments bootstrap --seed`, `pnpm dev:app`. Das ist der
+  Aufbau, den der E2E-Lauf bei jedem Lauf benutzt — vorher stand er nirgends
+  als Einstieg. Der Schlüssel der Instanz liegt in `ci/appwrite/.env.local`
+  (von Git übersehen), nicht mehr angehängt an die eingecheckte `ci.env`.
+  Die Handarbeit in einer vorhandenen Instanz steht als zweiter Weg da, klar
+  als „braucht jemanden mit Zugang". Berichtigt: keine Werte mehr im README
+  (auch kein Demo-Passwort, nur der Verweis auf die Seed-Datei), kein
+  „Schlüssel mit allen Rechten" für echte Instanzen, keine Liste von vier
+  Layern, `pnpm ops:site-env` (zielt auf Production) ist aus dem Setup
+  heraus, den Zweig `dev` gibt es nicht mehr im Text.
+- **Eine klare Zeile ohne `.env`.** Der Dev-Server prüft beim Start, ob
+  Endpunkt und Projekt gesetzt sind (`packages/core/build/devEnvHint.ts`,
+  Hook `ready` im Core). Fehlen sie, steht da eine Zeile mit dem Namen der
+  Datei, der Vorlage und dem Verweis aufs README. Gefragt wird nur eine App,
+  deren `.env.example` einen Endpunkt nennt — `apps/help` bleibt still. Kein
+  Abbruch, nichts davon läuft bei Build, Typecheck oder in Production.
+  `bootstrap` lädt die Datei jetzt mit `--env-file-if-exists` und nennt sie
+  ebenfalls beim Namen (vorher: „node: .env: not found").
+- **Tests, die ein Programm starten.** `packages/core/tests/support/processTest.ts`
+  gibt die Frist (30 s statt 5 s) und den Start aus einer Hand; benutzt in
+  `packages/market/tests/marketLibraryScript.test.ts`, dem Test, der unter
+  Last durchfiel.
+
+**Beweis.** Frischer Klon im Wegwerf-Ordner, Node aus `.nvmrc`: `pnpm install`
+in 11 s; `pnpm dev:app` ohne `.env` schreibt die eine Zeile und läuft weiter;
+`pnpm --filter comments bootstrap` ohne `.env` endet mit derselben Auskunft.
+`packages/core/tests/devEnvHint.test.ts` hält Wortlaut, Schweigen und den
+Aufruf fest. Den Compose-Befehl hat `docker compose … config` ausgewertet
+(Schlüssel aus der zweiten Datei kommt in allen Diensten an, Port lässt sich
+umstellen). Den Datenbank-Teil selbst beweist der E2E-Lauf der CI mit
+denselben zwei Befehlen.
+
+**Nicht gemacht.** Die Fehlerzeilen je Anfrage („Endpoint must be a valid
+string") bleiben, wie sie sind: Pflicht-Pfade sollen laut scheitern
+(`core/shared/appwriteConfigured.ts`). Die Setup-Seite der internen Doku
+(`docs/content/1.erste-schritte/2.setup.md`) wiederholt das README weiter in
+Teilen.
+
+**Gelernt:** Der Weg zur lokalen Datenbank war seit Monaten im Repo und lief
+bei jedem E2E-Lauf — er stand nur in einer Workflow-Datei, die kein neuer
+Mensch als Anleitung liest. Was die CI ohnehin bei jedem Lauf beweist, ist
+die beste Vorlage für einen Einstieg; ein von Hand gepflegter zweiter Weg
+veraltet daneben still. Und beim Abschreiben fällt auf, was nur dort passt:
+die CI hängt ihren Schlüssel an eine eingecheckte Datei an (für einen
+Wegwerf-Rechner richtig, für einen Arbeitsordner eine Einladung, ihn
+mitzucommitten), und ein Muster wie `=\s*\S` liest über das Zeilenende
+hinweg in die nächste Zeile — eine leere Vorgabe galt dadurch als gesetzt,
+gefunden hat es erst der Test gegen die echte Vorlage von `apps/help`.
+
+---
+
 ### Q09 — Aufbau für Tastatur und Vorleseprogramm: das Dashboard hat einen Hauptbereich und einen Sprunglink (UX-006, UX-011 Teile 2 bis 4, Reste aus UX-005 und UX-010) ✅ 2026-11-21
 
 **Was.**
