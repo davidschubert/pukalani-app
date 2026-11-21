@@ -422,6 +422,10 @@ function formatDay(date: string): string {
             </div>
           </div>
 
+          <!-- KEINE UTable (B6): zwei Rang-Mini-Listen in einer Karte, wie in
+               `statistics.vue` — nichts zu sortieren, auszuwählen oder zu
+               blättern; eine Tabellen-Hülle brächte Kopfzeile und Bedienung
+               für eine Handvoll Zeilen. -->
           <div class="grid gap-6 border-t border-default pt-4 sm:grid-cols-2">
             <div class="flex flex-col gap-2">
               <p class="text-sm font-medium">{{ t('analytics.admin.statsTopPages') }}</p>
