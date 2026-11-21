@@ -49,10 +49,12 @@ Erledigt am 2026-11-21 (COMPLETE „N22"): der DNS-Eintrag
     nächsten Heben von `@nuxt/ui` (über der Frist ab dem 2026-11-21 16:51
     UTC). **Empfehlung:** als eigene Runde — es ist ein Update der Oberfläche
     für alle Apps, kein Nebenbei.
-  - Vier kleine Updates, die am 2026-11-20 noch nicht gingen:
-    `vitest` 5.1.1 (Issue 359, über der Drei-Tage-Frist ab dem 2026-11-21
-    07:35 UTC); `@vercel/nft` 1.11.7 (Issue 356, ab dem 2026-11-20 21:17 UTC;
-    nur im Lockfile, kommt über `nitropack`); MariaDB 10.11.20 im CI-Verbund
+  - Zwei kleine Updates, die noch nicht gehen (`vitest` 5.1.1 und
+    `@vercel/nft` 1.11.7 sind seit dem 2026-11-21 gehoben, Issues 359 und
+    356, Erledigt-Liste „N23"; `@vercel/nft` 1.11.9 bis 1.11.11 kommen ohne
+    eigenen Schritt mit dem nächsten Neuauflösen des Lockfiles, die jüngste
+    ist über der Drei-Tage-Frist ab dem 2026-11-23 20:54 UTC):
+    MariaDB 10.11.20 im CI-Verbund
     (Issue 373 — das offizielle Image gibt es noch nicht, der Tag `10.11`
     zeigt auf 10.11.19; der E2E-Lauf schreibt die laufende Version in sein
     Protokoll, mit dem neuen Image stehen ein zurückgespieltes Test-Backup und
