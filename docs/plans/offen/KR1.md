@@ -5,36 +5,181 @@
 > Ist der Punkt erledigt, zieht der Eintrag nach
 > [OPEN-ITEMS-COMPLETE.md](../../OPEN-ITEMS-COMPLETE.md) und diese Datei wird gelöscht.
 
-**KR1 — Davids Klick-Runde auf den echten Seiten.** Eine Sitzung, ein
-Test-Konto. Was genau zu klicken ist, steht beim jeweiligen Eintrag:
+**KR1 — Davids Klick-Runde auf den echten Seiten.** Eine Sitzung, etwa 70 bis
+80 Minuten. Die Proben sind nach Anmeldung sortiert: du wechselst das Konto
+nur dreimal. Jede Probe sagt: wo, mit wem, was du klickst, was du sehen musst,
+und was du tust, wenn nicht. „Wortlaut kann abweichen" heißt: die Beschreibung
+stammt aus dem Code oder der Sprachdatei, nicht aus einem Blick auf die
+echte Seite — gilt der Sinn, nicht das Wort.
 
-1. **Anmelde-Bremse** — sechsmal ein falsches Passwort, Meldung und Wartezeit
-   ansehen ([AB1 a](AB1.md)).
-2. **Profilbild** — je einmal hochladen auf `admin.pukalani.app`,
-   `portfolio.pukalani.app` und `branding.supply` ([PB1 a](PB1.md)).
-3. **Entferntes Mitglied** — Test-Konto einladen, entfernen, Hinweisseite und
-   Nachricht an die Leitung ansehen ([MM1 a](MM1.md)).
-4. **Einladung und Entziehen** — Einladungslink aus einem Webmail-Fenster
-   öffnen; „Zugang entziehen" mit dem Test-Konto ([SI1 a](SI1.md)).
-5. **Formulare von branding.supply** — Erstgespräch und Warteliste je einmal
-   abschicken ([SR1 a](SR1.md)). Dazu das **Erstgespräch auf pukalani.studio**
-   einmal abschicken: es trägt seit dem 2026-11-18 die Bot-Prüfung (die
-   Schlüssel waren dort schon gesetzt). Lokal mit Test-Schlüsseln geklickt;
-   auf der echten Seite laden Widget und Skript wie bei „Passwort vergessen",
-   ein Mensch hat dort aber noch nicht abgeschickt. Erwartet: im letzten
-   Schritt wird der Knopf nach einem Augenblick frei, die Anfrage kommt an.
-6. **Anmelde-Mail und gestohlenes Passwort** — Sprache und Adresse der Mail
-   ansehen; dazu einmal bei einer Registrierung ein Passwort versuchen, das
-   in einem bekannten Datenleck steht. Erwartet: die Seite lehnt es mit einem
-   eigenen Satz ab, es entsteht kein Konto. Die Prüfung ist seit dem
-   2026-11-18 am Server eingeschaltet; gesehen hat die Ablehnung auf einer
-   echten Seite noch niemand (P29,
-   [ANMELDE-REGELN.md](../../runbooks/ANMELDE-REGELN.md)).
-7. **Anmeldung per Code und neue Community** — auf `account.pukalani.app`
-   einen Code anfordern und damit anmelden; beim Anlegen einer Community das
-   Kästchen der Betreiber-Bedingungen ansehen ([SV1 a](SV1.md)). Der Assistent
-   fragt zuerst nach einem Einladungs-Code (gesehen am 2026-11-21) — vorher
-   im Betreiber-Dashboard einen anlegen.
+**Zeit je Block:** A ohne Anmeldung ≈ 20 Min · B als Wegwerf-Konto ≈ 15 Min ·
+C als Owner mit Wegwerf-Konto zugleich ≈ 25 Min · D als Betreiber ≈ 15 Min ·
+E Neues seit den Paketen (hängt in A–D mit drin, nur Blick) ≈ 10 Min.
+
+**Vorher einmal (5 Min):** ein Wegwerf-Konto auf `account.pukalani.app`
+anlegen (eigene Mail-Adresse mit Postfach, Wegwerf-Passwort, das du sonst nirgends
+nutzt). Zwei Browser-Fenster: eines als du (Owner/Betreiber), eines privat für
+das Wegwerf-Konto. Ein zweites Postfach-Fenster (Webmail) offen halten.
+
+**Wenn eine Probe scheitert:** nichts reparieren. Den Satz auf dem Bildschirm
+(oder ein Foto), die Adresse und die Uhrzeit notieren und hier melden; der
+Leitstand legt daraus einen Punkt an. Ein „hier gerade nicht verfügbar" bei
+einer Anmeldung heißt: Schalter „Email OTP" im Projekt prüfen
+([ANMELDE-REGELN.md](../../runbooks/ANMELDE-REGELN.md)) — erst melden, dann
+anfassen.
+
+## Block A — ohne Anmeldung (Gast, privates Fenster) · ≈ 20 Min
+
+1. **Anmelde-Bremse** ([AB1 a](AB1.md)) · `account.pukalani.app/login` · Gast.
+   Die Mail des Wegwerf-Kontos eintragen, sechsmal ein FALSCHES Passwort,
+   „Anmelden". *Sehen:* erst die Fehlermeldung zu falschen Daten, nach einigen
+   Versuchen „Zu viele Versuche. Warte noch {n} Sekunden/Minuten und versuch es
+   dann noch einmal." (Wortlaut kann abweichen: Zahl und Einheit.) Der Knopf
+   bleibt bedienbar, die Seite stürzt nicht ab. *Sonst:* Wortlaut und ob eine
+   Zeit genannt wurde melden. Anschließend 15 Minuten nichts mit diesem Konto.
+2. **Gestohlenes Passwort** (P29, [ANMELDE-REGELN.md](../../runbooks/ANMELDE-REGELN.md))
+   · `account.pukalani.app/register` · Gast. Neue, noch nicht benutzte Mail
+   eintragen und ein bekanntes Leck-Passwort versuchen (zum Beispiel
+   „Password123!"). *Sehen:* „Dieses Passwort ist in bekannten Datenlecks
+   aufgetaucht. Bitte wähle ein anderes." und KEIN neues Konto (danach
+   Anmeldung mit der Mail geht nicht). *Sonst:* Konto entstanden ⇒ melden,
+   Konto im Betreiber-Dashboard löschen lassen.
+3. **Erstgespräch auf der Studio-Site** · `pukalani.studio/erstgespraech` · Gast.
+   Alle Schritte mit eigener Adresse ausfüllen, im letzten Schritt abschicken.
+   *Sehen:* das Feld der Bot-Prüfung lädt, der Knopf wird nach einem
+   Augenblick frei, eine Bestätigung erscheint, die Mail im Postfach kommt
+   mit Anrede („Hallo …") und Schluss-Zeile mit dem Namen der Marke.
+   *Sonst:* Knopf bleibt grau oder „Bot-Prüfung fehlgeschlagen" ⇒ melden mit
+   Browser und Uhrzeit.
+4. **Formulare von branding.supply** ([SR1 a](SR1.md)) · `branding.supply` (die
+   Knöpfe zum Erstgespräch und zur Warteliste) · Gast. Beide je einmal mit
+   eigener Adresse abschicken. *Sehen:* Feld der Bot-Prüfung, Anfrage geht
+   durch, die Bestätigungs-Mail trägt „Branding Supply" als Schluss-Zeile und
+   enthält nicht deinen eigenen Text. *Sonst:* Anfrage kommt nicht an ⇒ melden.
+5. **Anmeldung per Code, Gast-Seite** ([SV1 a](SV1.md)) · `account.pukalani.app/login`
+   → „Ohne Passwort anmelden (Code per E-Mail)" · Wegwerf-Konto. „Code
+   anfordern". *Sehen:* Mail kommt in deiner Sprache, mit der Sicherheitsphrase
+   („Deine Sicherheitsphrase (steht auch in der Mail):") und einem
+   6-stelligen Code; Absender-Name ist die Marke. Code eintippen, „Anmelden"
+   ⇒ du bist drin. Danach abmelden. *Sonst:* „hier gerade nicht verfügbar" ⇒
+   siehe oben. Dasselbe einmal auf `branding.supply` (dort „ihr" statt „du" in
+   der Mail).
+
+## Block B — als Wegwerf-Konto (privates Fenster) · ≈ 15 Min
+
+6. **Profilbild auf den drei Seiten** ([PB1 a](PB1.md)) · `admin.pukalani.app`,
+   `portfolio.pukalani.app`, `branding.supply` · Wegwerf-Konto (wo eine Seite
+   kein Profil anbietet: überspringen und das notieren). Profil/Einstellungen
+   öffnen, ein kleines Bild hochladen, speichern. *Sehen:* das Bild erscheint
+   im Kopf und nach Neuladen weiter. *Sonst:* Fehlermeldung beim Hochladen ⇒
+   dem Schlüssel fehlt dort das Schreibrecht für Dateien
+   ([APPWRITE-KEYS.md](../../runbooks/APPWRITE-KEYS.md)); melden, nicht
+   anfassen.
+7. **Mitmachen als Mitglied** (Rest MM1, [MM1 a](MM1.md)) · `demo.pukalani.app` ·
+   Wegwerf-Konto, noch KEIN Mitglied. Ein Kommentar schreiben. *Sehen:* die
+   Seite bittet um Beitritt oder lehnt höflich ab (kein Absturz). Danach in
+   Block C wird das Konto Mitglied.
+8. **Passwort-Manager** (Q08) · `account.pukalani.app/login` · Wegwerf-Konto.
+   Beim Anmelden füllt dein Passwort-Manager E-Mail und Passwort von allein
+   (Feld „E-Mail" ist `username`, Passwort `current-password`). *Sonst:*
+   Manager erkennt die Felder nicht ⇒ melden mit Name des Managers.
+
+## Block C — als Owner (du) mit dem Wegwerf-Konto zugleich · ≈ 25 Min
+
+Du bist Owner der Demo-Community `demo.pukalani.app` (eigenes Fenster), das
+Wegwerf-Konto bleibt im privaten Fenster angemeldet.
+
+9. **Einladen, Annehmen, Entziehen** ([SI1 a](SI1.md), [MM1 a](MM1.md)) · als Owner:
+   Dashboard → Mitglieder → die Mail des Wegwerf-Kontos einladen. Im
+   Webmail-Fenster den Link der Einladungs-Mail öffnen. *Sehen:* die Seite
+   zeigt die Einladung (nicht „Link ungültig"); Annehmen ⇒ das Konto ist
+   Mitglied. Dann als Owner „Zugang entziehen" und im Dialog bestätigen.
+   *Sehen (Owner):* die Liste zeigt „entfernt", KEIN Hinweis auf einen offenen
+   Lese-Zugang. *Sehen (Wegwerf-Konto, Seite neu laden):* eine Hinweisseite
+   statt der Community; dort eine Nachricht an die Leitung schreiben ⇒ beim
+   Owner kommt Mail und Glocke. Neue Einladung annehmen ⇒ wieder Mitglied.
+   *Sonst:* jede Abweichung melden.
+10. **Alte Antwort nach dem Entfernen** (N03) · Vorher als Wegwerf-Konto einen
+    Kommentar schreiben (Block B/7 ersatzweise jetzt), Konto entfernen
+    (Probe 9), dann als Owner auf diesen Kommentar antworten. *Sehen:* das
+    entfernte Konto bekommt KEINE Mail, der Kommentar zeigt „Ehemaliges
+    Mitglied".
+11. **Hauptsprache der Community** ([SU1 a](SU1.md)) · als Owner: Dashboard →
+    „Name und Beschreibung" → Hauptsprache wählen (Deutsch) → Speichern.
+    *Sehen:* gespeichert, kein Fehler; Seitenquelltext einer Diskussion
+    enthält `rel="canonical"` mit der Adresse ohne `/en`. Wortlaut kann
+    abweichen.
+12. **Statistik mit eigener Zähl-Seite** ([KK1 b](KK1.md)) · als Owner einer
+    Community mit eigener Zähl-Seite: Kennung speichern, Zahlen-Seite öffnen.
+    *Sehen:* Zahlen erscheinen und gehören der eigenen Adresse, keine fremden.
+    Hast du keine solche Community, überspringen und notieren.
+
+## Block D — als Betreiber (du, `admin.pukalani.app`) · ≈ 15 Min
+
+13. **Personen-Liste exportieren, neu anmelden** ([BP1 a](BP1.md)) · Dashboard →
+    „Personen" → Liste exportieren (Datei kommt). Mehr als zehn Minuten
+    warten (in der Zeit Probe 14, 15), dann noch einmal exportieren.
+    *Sehen:* „Zur Sicherheit neu anmelden"; nach der Anmeldung geht es auf
+    derselben Seite weiter. Ein Konto öffnen: die Karte „Aktivität" zeigt
+    Einträge.
+14. **Einladungs-Code und neue Community** ([SV1 a](SV1.md)) · im
+    Betreiber-Dashboard einen Einladungs-Code anlegen, dann auf
+    `account.pukalani.app` eine Community anlegen (Assistent fragt zuerst nach
+    dem Code). *Sehen:* das Kästchen der Betreiber-Bedingungen ist da und ohne
+    Haken geht es nicht weiter.
+15. **Plan, Testphase, Domain** ([PD1 b](PD1.md)) · (a) Wizard mit einem Konto, das
+    seine Testphase schon hatte: erwartet „Ohne Testphase". (b) Wizard mit einem
+    Konto ohne bestätigte Mail-Adresse: Kasten und Knopf „Mail erneut senden"
+    erscheinen. (c) In der Betreiber-Tabelle den Schalter „freigegeben" an einer
+    Community umlegen und zurück. (d) Die Domain-Seite eines Owners ohne
+    Freigabe öffnen. Wortlaut kann abweichen. *Sonst:* melden, nichts
+    umstellen, was nicht zurückgestellt ist. Hier KEINE echte Zahlung.
+
+## Block E — Neu seit den Paketen (Q01–Q26) · höchstens zwölf, wichtigste zuerst
+
+Dinge, die noch kein Mensch hinter der Anmeldung live gesehen hat. Du machst
+sie nebenbei in den Blöcken A–D.
+
+E1. **Konto-Abrechnung und Plan-Seite (Geld)** (Q14, Q15) · als Owner:
+    Dashboard → Abrechnung und Plan. *Sehen:* Preise und Namen Basic / Personal / Pro
+    stimmen mit der Preis-Seite von `pukalani.app` überein, die Liste lädt ohne den Satz
+    „Keine Einträge" für einen Augenblick, ein Fehler zeigt „Noch einmal
+    versuchen". Keine Buchung auslösen.
+E2. **Betreiber-Listen: Nutzer, Einladungs-Codes, Abos** (Q14) · Block D:
+    jede Liste öffnen, einmal Neuladen. *Sehen:* erst „lädt", dann Daten oder
+    ein leerer Zustand mit Erklärung — nie kurz „leer", dann Daten.
+E3. **Mitglieder: Löschen fragt im eigenen Dialog** (Q14) · Block C/9:
+    „Zugang entziehen" öffnet einen Dialog der Seite, nicht das graue Fenster
+    des Browsers.
+E4. **Anmelde-Mails im Ton der Marke** (Q06) · Block A/5 und die Registrierung
+    aus A/2 mit gültigem Passwort an einer weiteren Wegwerf-Adresse:
+    Bestätigungs-Mail hat die Anrede, den Markennamen des Projekts (nicht
+    „Appwrite") und die Sprache des Kontos.
+E5. **Mails an Mitglieder** (Q06) · Block C/9: die Einladungs-Mail und die
+    Mail „entfernte Person" haben Anrede „Hallo {Name}," und Schluss-Zeile mit
+    der Marke.
+E6. **Zeichen auf der Anmelde-Seite** (Q24) · `account.pukalani.app/login`,
+    `branding.supply`, die Studio-Site: das Zeichen der Marke steht oben,
+    in hellem und in dunklem Modus lesbar, die drei Marken zeigen aufeinander
+    (Fußzeile). Wortlaut kann abweichen.
+E7. **Menü-Knopf in der Community** (Q01) · `demo.pukalani.app` im schmalen
+    Fenster (375 px oder am Handy): links drei Striche, die Schublade zeigt alle
+    Punkte; Feedback-Knopf verdeckt am Seitenende nichts.
+E8. **Deutsche Wörter** (Q16) · beim Durchklicken: „Konto" statt Account,
+    „Marke" und „Marken entdecken" (Menü von branding.supply auf Deutsch
+    deutsch), „Einladungscode". Ein englisches Wort in einer deutschen Seite
+    ⇒ notieren.
+E9. **Vorschaubild „Marken entdecken"** (neu, Bahn 3) · einen Link zu einer
+    Marke unter `branding.supply` (Marken entdecken, eine Marke öffnen; Adresse kann abweichen) in eine Nachrichten-App
+    einfügen: die Vorschau trägt „Marken entdecken · branding.supply".
+E10. **Tastatur** (Q09) · Dashboard: Tab drücken ⇒ ein Sprunglink „Zum
+    Hauptinhalt" erscheint und springt in den Hauptbereich.
+E11. **Dashboard ohne Flackern** (Q15) · eine Dashboard-Seite hart neu laden
+    (Kategorien, Nachrichten, Gemeldete Nachrichten): kein kurzes „keine
+    Einträge", keine rote Konsolenzeile „Hydration".
+E12. **Suchseiten** (Q10) · als Gast eine Diskussion der Demo aufrufen,
+    Quelltext ansehen: `canonical` einmal, auf der Konto-Seite
+    `noindex`. Wortlaut kann abweichen.
 
 Nicht Teil der Runde, weil sie auf den ersten Artikel warten: die Proben aus
 BI2 und IN1 (b), siehe BI5.
