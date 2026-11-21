@@ -18,7 +18,19 @@ export default defineNuxtPlugin(() => {
   const requestUrl = useRequestURL()
   const publicConfig = config.public as { appUrl?: unknown, i18n?: { baseUrl?: unknown } }
 
+  const error = useError()
+  const canonicalLocale = useSeoCanonicalLocaleState()
+
   useHead(() => {
+    // FEHLERSEITE (Q10, SEO-008): eine 404 hat keine maßgebliche Adresse — das
+    // canonical zeigte sonst auf die Adresse, die es nicht gibt.
+    if (error.value) return {}
+    // NUTZERINHALT IN EINER SPRACHE (Q10, SEO-004): die maßgebliche Adresse
+    // ist dann die der Hauptsprache und kommt aus `useLocaleSeoHead()`. Dieses
+    // Plugin kennt nur die EIGENE Adresse — es schweigt, statt mit dem
+    // anderen Eintrag um den einen Tag zu streiten (s. seoOrigin.ts, „ZWEI
+    // EINTRÄGE, EIN TAG": welcher übrig bleibt, hing dort an der Reihenfolge).
+    if (canonicalLocale.value) return {}
     const origin = canonicalPluginOrigin({
       originFromRequest: appConfig.pukalani?.seo?.originFromRequest === true,
       requestOrigin: requestUrl.origin,

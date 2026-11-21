@@ -86,7 +86,8 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
   // Beschreibung (parseSiteProfile lässt leere Strings ohnehin weg).
   const profile = parseSiteProfile(tenant.profile)
   const description = body.description ?? ''
-  const nextProfile = serializeSiteProfile({ ...profile, description })
+  // Hauptsprache (Q10): nur ein mitgeschicktes Feld ändert sie.
+  const nextProfile = serializeSiteProfile({ ...profile, description, ...(body.locale ? { locale: body.locale } : {}) })
 
   const row = await admin.tablesDB.updateRow<TenantRow>({
     databaseId,
@@ -109,5 +110,6 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
     communityId: row.$id,
     name: row.name ?? '',
     description: parseSiteProfile(row.profile).description ?? '',
+    locale: parseSiteProfile(row.profile).locale ?? '',
   }
 })

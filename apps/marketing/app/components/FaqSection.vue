@@ -9,14 +9,14 @@
 //   Vorgabe `single` schlösse beim Öffnen der nächsten Frage die vorige.
 //   `:unmount-on-hide="false"` — PFLICHT und kein Geschmack: die Antworten
 //   müssen im SSR-HTML stehen. Diese Sektion ist der sichtbare Zwilling des
-//   FAQPage-JSON-LD auf /faq und der Startseite; Google verlangt, dass die
+//   FAQPage-JSON-LD auf /faq (nur dort, SEO-008); Google verlangt, dass die
 //   ausgezeichnete Antwort auch im Seiteninhalt vorkommt. Mit der Vorgabe
 //   (true) rendert Reka geschlossene Inhalte GAR NICHT.
 import { FAQ_COUNT } from '#shared/marketing'
 
 const { t } = useI18n()
 // Anzahl aus shared/marketing.ts — die sichtbare Liste und das JSON-LD auf
-// /faq bzw. der Startseite MÜSSEN dieselben Fragen beschreiben.
+// /faq MÜSSEN dieselben Fragen beschreiben.
 const items = computed(() =>
   Array.from({ length: FAQ_COUNT }, (_, i) => ({
     label: t(`marketing.faq.items.${i}.q`),

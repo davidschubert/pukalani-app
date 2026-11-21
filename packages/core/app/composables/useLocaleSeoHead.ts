@@ -1,6 +1,7 @@
 import { ROBOTS_NOINDEX } from '../../shared/communityAudience'
 import { resolveCommunitySeo } from '../../shared/communitySeo'
-import { filterSeoAlternates } from '../../shared/seoAlternates'
+import { collapseSeoToLocale, filterSeoAlternates } from '../../shared/seoAlternates'
+import { routeRobots, stripLocalePrefix } from '../../shared/seoRobots'
 import { rebaseSeoLinks, rebaseSeoMeta, rebaseSeoUrl, resolveSeoOrigin, type SeoHeadMeta } from '../../shared/seoOrigin'
 
 /**
@@ -51,16 +52,19 @@ import { rebaseSeoLinks, rebaseSeoMeta, rebaseSeoUrl, resolveSeoOrigin, type Seo
  */
 export function useLocaleSeoHead(): void {
   const localeHead = useLocaleHead({ seo: true, lang: true, dir: true })
-  const appConfig = useAppConfig() as { pukalani?: { seo?: { originFromRequest?: boolean } } }
+  const appConfig = useAppConfig() as { pukalani?: { seo?: { originFromRequest?: boolean, indexOnly?: string[] } } }
   const requestUrl = useRequestURL()
+  const route = useRoute()
+  const controlHost = useIsControlCenter()
   const publicConfig = useRuntimeConfig().public as { i18n?: { baseUrl?: unknown } }
   const configuredBaseUrl = typeof publicConfig.i18n?.baseUrl === 'string' ? publicConfig.i18n.baseUrl : ''
   const ogImage = useBrandOgImage()
   const brand = useBrandName()
-  const { t } = useI18n()
+  const { t, locales } = useI18n()
   const { membersOnly } = useTenantAudience()
   const communitySeo = useCommunitySeoSettings()
   const hiddenLocales = useSeoHiddenLocalesState()
+  const canonicalLocale = useSeoCanonicalLocaleState()
 
   // '' = kein Umschreiben (Silo-Apps + jeder Fall, in dem kein Origin steht)
   const origin = appConfig.pukalani?.seo?.originFromRequest === true
@@ -115,9 +119,20 @@ export function useLocaleSeoHead(): void {
    */
   const robotsMeta = computed<SeoHeadMeta[]>(() => {
     const communityNoindex = resolveCommunitySeo(communitySeo.value).noindex
-    return membersOnly.value || communityNoindex
-      ? [{ name: 'robots', content: ROBOTS_NOINDEX }]
-      : []
+    if (membersOnly.value || communityNoindex) return [{ name: 'robots', content: ROBOTS_NOINDEX }]
+    // DRITTER GRUND (Q10, SEO-007): die SEITE gehört nicht in eine Suche —
+    // Konto-Seiten, der Kundenbereich, die Betreiber-Oberfläche bis auf das
+    // Changelog. Milder als die zwei darüber (`follow`), und deshalb NACH
+    // ihnen: eine geschlossene Community bleibt bei `nofollow`. Regel und
+    // Begründung: shared/seoRobots.ts.
+    const pageRobots = routeRobots({
+      layout: route.meta.layout,
+      seoNoindex: route.meta.seoNoindex,
+      controlHost,
+      path: stripLocalePrefix(route.path, locales.value.map(entry => entry.code)),
+      indexOnly: appConfig.pukalani?.seo?.indexOnly,
+    })
+    return pageRobots ? [{ name: 'robots', content: pageRobots }] : []
   })
 
   /**
@@ -134,11 +149,30 @@ export function useLocaleSeoHead(): void {
    * fehlt (`useSeoHiddenLocales(quelle)`).
    */
   useHead(() => {
-    const alternates = filterSeoAlternates(localeHead.value.link, localeHead.value.meta, hiddenLocales.value)
+    const filtered = filterSeoAlternates(localeHead.value.link, localeHead.value.meta, hiddenLocales.value)
+    // EINE MASSGEBLICHE FASSUNG (Q10, SEO-004): eine Seite mit Nutzerinhalt
+    // nennt die Sprache ihrer maßgeblichen Adresse (`useSeoCanonicalLocale`);
+    // dann zeigt canonical von JEDER Sprach-Adresse dorthin und die
+    // Sprachfassungen fallen weg. Ebenfalls VOR dem Rebase — die Adresse
+    // stammt aus einem hreflang-Eintrag und wird danach mit umgeschrieben.
+    const alternates = canonicalLocale.value
+      ? collapseSeoToLocale(filtered.links, filtered.meta, canonicalLocale.value)
+      : filtered
     return {
       htmlAttrs: localeHead.value.htmlAttrs,
       link: rebaseSeoLinks(alternates.links, origin),
       meta: [...rebaseSeoMeta(alternates.meta, origin), ...imageMeta.value, ...robotsMeta.value],
     }
   })
+}
+
+declare module '#app' {
+  interface PageMeta {
+    /**
+     * Diese Seite gehört nicht in eine Suche (Q10, SEO-007) — für Konto-Seiten
+     * OHNE das Layout `auth` (das Layout allein genügt sonst). Der Kopf
+     * stempelt `noindex, follow` (shared/seoRobots.ts).
+     */
+    seoNoindex?: boolean
+  }
 }

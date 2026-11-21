@@ -359,14 +359,24 @@ try {
   check('PATCH → 200', noindexOff.status === 200, `Status ${noindexOff.status}`)
   const visible = await page(siteA.host, '/')
   check('SSR: kein robots-Tag mehr', robotsOf(visible.text) === null, String(robotsOf(visible.text)))
-  const visibleSub = await page(siteA.host, '/login')
-  check('SSR Unterseite: ebenfalls keines', robotsOf(visibleSub.text) === null, String(robotsOf(visibleSub.text)))
+  // Seit Q10 (2026-11-21) trägt eine KONTO-Seite wie /login von sich aus
+  // `noindex, follow` (core/shared/seoRobots.ts) — als „beliebige Unterseite"
+  // taugt sie nicht mehr. Geprüft wird eine Inhaltsseite; und die Konto-Seite
+  // darf nicht mehr das STRENGE Tag der Community tragen.
+  const visibleSub = await page(siteA.host, '/feed')
+  check('SSR Unterseite: ebenfalls keines', visibleSub.status === 200 && robotsOf(visibleSub.text) === null, `Status ${visibleSub.status} ${String(robotsOf(visibleSub.text))}`)
+  const visibleLogin = await page(siteA.host, '/login')
+  check('SSR Konto-Seite: nur noch die eigene Regel (noindex, follow), nicht mehr nofollow',
+    robotsOf(visibleLogin.text) === 'noindex, follow', String(robotsOf(visibleLogin.text)))
 
   console.log('\n9. Kontroll-Host: trägt NIE das robots-Tag einer Community')
   await patchSeo(siteA.host, ownerCookieA, { metaDescription: own, noindex: true })
   const controlPage = await page(CONTROL_HOST, '/')
-  check('SSR Kontroll-Host: kein robots-Tag, obwohl kunde-a auf noindex steht',
-    robotsOf(controlPage.text) === null, String(robotsOf(controlPage.text)))
+  // Seit Q10 trägt der Kontroll-Host auf JEDER Seite seine eigene, mildere
+  // Regel (`noindex, follow`). Die Aussage dieser Prüfung bleibt: das strenge
+  // Tag von kunde-a (`nofollow`) kommt hier nie an.
+  check('SSR Kontroll-Host: nicht das Tag der Community, obwohl kunde-a auf noindex steht',
+    !/nofollow/.test(String(robotsOf(controlPage.text) ?? '')), String(robotsOf(controlPage.text)))
   check('SSR Kontroll-Host: auch nicht A’s Beschreibung',
     descriptionOf(controlPage.text) !== own, String(descriptionOf(controlPage.text)))
   const patchOnControl = await patchSeo(CONTROL_HOST, ownerControlCookie, { metaDescription: 'x', noindex: false })

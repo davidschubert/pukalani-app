@@ -10,6 +10,8 @@
         "nameHelp": "Steht im Menükopf, im Browser-Tab, im Vorschaubild und als Absender jeder Benachrichtigungs-Mail.",
         "descriptionLabel": "Beschreibung",
         "descriptionHelp": "Ein oder zwei Sätze, wofür diese Community da ist. Darf leer bleiben.",
+        "localeLabel": "Hauptsprache",
+        "localeHelp": "Die Sprache, in der deine Community schreibt. Unter ihr zählen Diskussionen, Kurse und Termine für Suchmaschinen. Die Bedienoberfläche bleibt für jeden Besucher in seiner Sprache.",
         "addressHint": "Die Adresse deiner Community ändert sich dadurch nicht — die verwaltest du unter „Eigene Domain“.",
         "submit": "Speichern"
       },

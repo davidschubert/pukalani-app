@@ -141,6 +141,86 @@ gefunden hat es erst der Test gegen die echte Vorlage von `apps/help`.
 
 ---
 
+### Q10 — Community-Seiten für die Suche: Beschreibung, Hauptüberschrift, eine maßgebliche Adresse je Beitrag, Sitemap; Konto-Seiten und Betreiber-Oberfläche aus der Suche (SEO-002, SEO-003, SEO-004, SEO-007, Teile von SEO-008) ✅ 2026-11-21
+
+**Was.**
+
+- **Hauptsprache je Community (Davids Entscheidung B1, 2026-11-21).** Jede
+  Community hat eine Hauptsprache, unter der ihre Beiträge für Suchmaschinen
+  zählen. Beim Anlegen ist es die Sprache, in der der Owner den Wizard
+  durchläuft; ändern kann er sie im Dashboard bei „Name und Beschreibung".
+  Gespeichert wird sie im vorhandenen Profil-Feld der Community
+  (`locale` im `profile`-JSON) — additiv, **ohne Migration**. Der Wert reist
+  als `primaryLocale` im Mandanten-Kontext und im SSR-Payload. Regel:
+  `packages/core/shared/primaryLocale.ts`.
+- **Vorgabe für Communities ohne Wahl:** die Grundsprache der App, also die
+  Adresse ohne Vorsatz. Das ist die Adresse, die bisher schon als `x-default`
+  galt und die jeder geteilte Link ohne Sprach-Vorsatz trägt — an der
+  maßgeblichen Adresse ändert sich für sie nichts, nur die zweite fällt weg.
+- **Eine maßgebliche Adresse je Beitrag (`packages/core`).** Eine Seite mit
+  Nutzerinhalt ruft `useCommunityContentSeo()`. Der Kopf
+  (`useLocaleSeoHead`, Regel `collapseSeoToLocale`) zeigt dann `canonical` und
+  `og:url` von BEIDEN Sprach-Adressen auf die Adresse der Hauptsprache und
+  meldet keine Sprachfassungen mehr. Gilt für Diskussion, Kurs und Termin.
+  Übersichten und die eigenen Seiten des Owners behalten ihre zwei
+  verknüpften Adressen. Beide Adressen antworten weiter 200, es gibt keine
+  Umleitung.
+- **Beschreibung und Hauptüberschrift.** Diskussion: der Anfang des Beitrags
+  statt „in Kategorie …", und der Titel ist ein `h1` (die Karte nimmt dafür
+  `title-tag`). Kurs und Termin: der Anfang ihrer Beschreibung. Übersichten
+  „Kurse" und „Termine": ein fester Satz. Die Anriss-Regel ist dafür aus dem
+  pages-Layer in den Core gezogen (`core/shared/markdownExcerpt.ts`).
+- **Sitemap je Community (`apps/platform`).** Dazu kommen die Übersichten,
+  aktive Kategorien, veröffentlichte Themen (jüngste 1000), veröffentlichte
+  Kurse (200) und kommende, nicht geschwärzte Termine (200). Beiträge stehen
+  einmal, unter der Adresse der Hauptsprache, mit Datum. Vier Abfragen über
+  die Datentür, je eine Obergrenze, keine Abfrage je Eintrag.
+- **`noindex, follow` (eine Regel, `core/shared/seoRobots.ts`).** Konto-Seiten
+  (Layout `auth`, dazu `/verify` per `seoNoindex`), jede Seite eines
+  Kontroll-Hosts (Kundenbereich) und in der Betreiber-Oberfläche alles außer
+  dem Changelog (`pukalani.seo.indexOnly`). Die `robots.txt` des
+  Kundenbereichs sperrt nicht mehr alles, sonst läse niemand das `noindex`.
+  Das Changelog nennt im Titel „Pukalani" statt „Pukalani Control".
+- **Landing und Hilfe (SEO-002).** Die geerbten Konto-Seiten leiten mit 301 in
+  den Kundenbereich (`packages/marketing/shared/accountPages.ts`, je App eine
+  Server-Middleware).
+- **Kleines aus SEO-008.** Unbekannter Brand-Check antwortet 404 (die ruhige
+  Seite bleibt), FAQ-Daten nur noch auf `/faq`, `Disallow: /cdn-cgi/` in der
+  `robots.txt` der Landing, Fehlerseiten tragen kein `canonical` mehr.
+
+**Ursache.** Die Kopfdaten der Startseite und der eigenen Seiten wurden im
+Sommer gezielt gebaut; die Produkt-Seiten kamen später und setzten nur den
+Titel. Der eine Kopf-Aufruf behandelte jede Seite gleich — dass ein Beitrag
+von Nutzern nur EINE Sprache hat, wusste er nicht. `noindex` vergab jede Seite
+selbst, wo jemand daran dachte; die Konto-Seiten des Fundaments gab es schon
+vorher.
+
+**Beweis.** `apps/platform/scripts/verify-community-search-pages.mjs` auf der
+Bühne (57 Prüfungen, läuft bei jedem Pull Request): je Seitenart das
+ausgelieferte HTML (eine Beschreibung, ein `h1`, ein `canonical`), die Sitemap
+mit Gegenproben (gelöschtes Thema, Entwürfe, Inhalte der anderen Community),
+`noindex` der Konto-Seiten, und der Wechsel der Hauptsprache über die echte
+Route. Unit-Tests: `core/tests/seoCanonicalLocale.test.ts`,
+`core/tests/seoRobots.test.ts`, `apps/platform/tests/tenantSitemap.test.ts`
+(die Platform-App hat damit einen Test-Lauf).
+
+**Bewusst nicht.** Strukturierte Daten für Diskussion, Kurs und Termin (im
+Befund als zweiter Schritt genannt), `og:site_name`/`og:type` auf
+Community-Seiten, Themen OHNE Titel in der Sitemap (ihr Adress-Name entsteht
+aus dem Text, den die Liste nicht lädt), Lektionen (hinter Anmeldung). Aus
+SEO-008 offen: Titel-Längen auf branding.supply (hängt am Wortlaut, BRD-005),
+`/insights` ohne Beiträge, und die Sprach-Berichtigung bleibt 302 — sie hängt
+am Browser des einzelnen Besuchers, ein 301 würde sie für alle festschreiben.
+Die Marken-Galerie von branding.supply (auch in SEO-004 genannt) hat noch
+keine Hauptsprache.
+
+**Gelernt:** Ein neues Feld braucht nicht immer eine Spalte. Die Hauptsprache
+passt in das Profil-JSON, das die Community-Zeile schon trägt — so gibt es
+keine Migration, die vor dem Ausliefern auf Production laufen müsste, und der
+Datenbank-Stand in `/api/health` bleibt unberührt. Und: Im Beweis-Skript baut
+man erwartete Adressen aus der Host-Kopfzeile OHNE Port, weil die App es auch
+so tut; der erste Lauf war 16-mal rot, obwohl das Produkt stimmte.
+
 ### Q09 — Aufbau für Tastatur und Vorleseprogramm: das Dashboard hat einen Hauptbereich und einen Sprunglink (UX-006, UX-011 Teile 2 bis 4, Reste aus UX-005 und UX-010) ✅ 2026-11-21
 
 **Was.**
