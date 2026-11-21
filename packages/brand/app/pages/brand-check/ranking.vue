@@ -331,7 +331,8 @@ function rankOf(index: number): number {
             />
           </UFormField>
           <div class="ms-auto flex items-center gap-3">
-            <span class="bw-label" style="color: var(--bw-muted)" data-ranking-total>
+            <!-- Ohne Daten ist „0 Präsenzen" falsch: es gibt sie, nur der Abruf fehlte. -->
+            <span v-if="!(error && !data)" class="bw-label" style="color: var(--bw-muted)" data-ranking-total>
               {{ t('brand.checkRanking.total', { count: total }) }}
             </span>
             <UButton

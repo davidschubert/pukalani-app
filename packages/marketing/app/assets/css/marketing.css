@@ -169,7 +169,7 @@
 .marketing-site .mkt-kicker {
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 0.78rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   /* Nicht mehr das rohe Tripel (2026-08-08, WCAG AA): --puka-sun-deep ist
      puka-600 und misst als Schrift nur 2,43–2,83:1 auf den tone-Flächen. Über

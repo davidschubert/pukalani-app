@@ -219,7 +219,7 @@ const zeroEuro = computed(() => euro(0))
 }
 .fee-revenue {
   margin-top: 0.25rem;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 700;
   color: hsl(var(--puka-ink));
   text-align: center;
@@ -238,12 +238,12 @@ const zeroEuro = computed(() => euro(0))
   width: 100%;
   min-width: 42rem;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 .fee-caption {
   caption-side: bottom;
   padding: 0.85rem 1rem;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: hsl(var(--puka-ink-soft) / 0.75);
   text-align: left;
 }
@@ -253,7 +253,7 @@ const zeroEuro = computed(() => euro(0))
   border-bottom: 1px solid var(--puka-card-edge);
 }
 .fee-table thead th {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: hsl(var(--puka-ink-soft) / 0.8);
@@ -277,13 +277,13 @@ const zeroEuro = computed(() => euro(0))
 
 .fee-foot { margin-top: 1.5rem; }
 .fee-claim {
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 600;
   color: hsl(var(--puka-ink));
 }
 .fee-note {
   margin-top: 0.7rem;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   color: hsl(var(--puka-ink-soft) / 0.85);
 }
 .fee-sources {
@@ -291,7 +291,7 @@ const zeroEuro = computed(() => euro(0))
   flex-wrap: wrap;
   gap: 0.5rem 0.85rem;
   margin-top: 0.9rem;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   color: hsl(var(--puka-ink-soft) / 0.85);
 }
 /* Text-Akzent über das Theme-Alias, nicht über das rohe Tripel (WCAG AA —

@@ -120,12 +120,12 @@ const sources = [
   width: 100%;
   min-width: 44rem;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 .cmp-caption {
   caption-side: bottom;
   padding: 0.85rem 1rem;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   color: hsl(var(--puka-ink-soft) / 0.75);
   text-align: left;
 }
@@ -135,7 +135,7 @@ const sources = [
   border-bottom: 1px solid var(--puka-card-edge);
 }
 .cmp-table thead th {
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: hsl(var(--puka-ink-soft) / 0.8);
@@ -161,7 +161,7 @@ const sources = [
 
 .cmp-foot { margin-top: 1.5rem; }
 .cmp-note, .cmp-sources {
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   color: hsl(var(--puka-ink-soft) / 0.85);
 }
 .cmp-sources {

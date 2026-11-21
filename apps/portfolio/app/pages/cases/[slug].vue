@@ -89,7 +89,7 @@ const nextCase = CASES[(CASES.findIndex(c => c.slug === entry.slug) + 1) % CASES
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 0.35rem 0.9rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;

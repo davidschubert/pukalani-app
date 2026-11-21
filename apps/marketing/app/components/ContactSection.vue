@@ -82,7 +82,7 @@ const mailHref = computed(
 
 .contact-address {
   margin-top: 1.4rem;
-  font-size: 0.98rem;
+  font-size: var(--text-base);
   color: hsl(var(--puka-onink) / 0.8);
 }
 .contact-mail {
@@ -95,7 +95,7 @@ const mailHref = computed(
 
 .contact-note {
   margin-top: 0.6rem;
-  font-size: 0.86rem;
+  font-size: var(--text-sm);
   color: hsl(var(--puka-onink) / 0.6);
 }
 </style>

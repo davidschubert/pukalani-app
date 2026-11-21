@@ -44,7 +44,7 @@ async function openPortal() {
   <div class="rounded-xl border border-default p-5" data-testid="subscription-card">
     <template v-if="props.confirming && !subscription">
       <div class="flex items-center gap-3">
-        <UIcon name="i-ph-spinner" class="size-5 animate-spin text-primary" />
+        <UIcon name="i-ph-circle-notch" class="size-5 animate-spin text-primary" />
         <div>
           <p class="font-medium">{{ t('billing.account.confirmingTitle') }}</p>
           <p class="text-sm text-muted">{{ t('billing.account.confirmingText') }}</p>

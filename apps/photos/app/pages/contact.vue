@@ -180,7 +180,7 @@ const submit = async () => {
   padding: 0.9rem 1rem;
   color: var(--text);
   font-family: inherit;
-  font-size: 1rem;
+  font-size: var(--text-base);
   transition: border-color 0.3s var(--ease);
 }
 .field input:focus,

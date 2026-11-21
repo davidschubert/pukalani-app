@@ -166,7 +166,7 @@ const rows = computed(() => ROWS.map(row => ({
      ab hier scrollt der Kasten oben, nicht die Seite. */
   min-width: 30rem;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: var(--text-base);
 }
 
 .compare th,
@@ -180,5 +180,5 @@ const rows = computed(() => ROWS.map(row => ({
 .compare thead th:not(:first-child),
 .compare tbody td { width: 22%; text-align: center; }
 
-.compare-note { margin-top: 0.9rem; font-size: 0.85rem; text-align: center; }
+.compare-note { margin-top: 0.9rem; font-size: var(--text-sm); text-align: center; }
 </style>
