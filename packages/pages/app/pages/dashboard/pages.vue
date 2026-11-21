@@ -97,7 +97,7 @@ const bodyModeItems = computed<TabsItem[]>(() => BODY_MODES.map(mode => ({
   value: mode,
 })))
 
-const { data: listData, refresh: refreshList } = await useFetch<PagesListResponse>('/api/pages', { lazy: true, server: false })
+const { data: listData, error: listError, refresh: refreshList } = await useFetch<PagesListResponse>('/api/pages', { lazy: true, server: false })
 const groups = computed(() => listData.value?.groups ?? [])
 
 interface LocaleForm { title: string, body: string, published: boolean }
@@ -617,7 +617,12 @@ async function deletePage() {
           data-pages-truncated
         />
 
-        <UTable :data="filteredGroups" :columns="columns" data-pages-table>
+        <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+        <div v-if="listError && !listData" role="alert">
+          <CoreLoadError :retry="refreshList" />
+        </div>
+
+        <UTable v-else :data="filteredGroups" :columns="columns" data-pages-table>
           <template #slug-cell="{ row }">
             <button
               type="button"

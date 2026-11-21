@@ -23,14 +23,17 @@ useBrandTitle(() => t('posts.feed.title'), { description: () => t('posts.feed.de
 // useRequestFetch statt $fetch: im Pool entscheidet der Host über den
 // Mandanten — $fetch verlöre ihn im SSR (CLAUDE.md).
 const requestFetch = useRequestFetch()
-const { data: firstPage } = await useFetch<PostListResponse>('/api/posts')
+const { data: firstPage, error: firstPageError, refresh: refreshFirstPage } = await useFetch<PostListResponse>('/api/posts')
 const initialIds = firstPage.value?.rows.map(row => row.$id) ?? []
-const { data: initialCounts } = await useFetch<{ counts: Record<string, number> }>('/api/comments/counts', {
+const { data: initialCounts, error: countsError } = await useFetch<{ counts: Record<string, number> }>('/api/comments/counts', {
   query: { targetType: 'post', targetIds: initialIds.join(',') },
   immediate: initialIds.length > 0,
 })
 
-const replyCounts = ref<Record<string, number>>({ ...(initialCounts.value?.counts ?? {}) })
+// Zusatz-Auskunft, kein Listenzustand: ist der Abruf gescheitert, startet die
+// Zählung leer, und `loadCounts` unten holt die Zahlen beim ersten
+// `rows-changed` nach (die Buttons zeigen bis dahin den Verb-CTA).
+const replyCounts = ref<Record<string, number>>({ ...(countsError.value ? {} : initialCounts.value?.counts ?? {}) })
 
 // Weitere Seiten/neue Posts, sobald der Feed seine Ids meldet — nur die noch
 // unbekannten nachladen (die SSR-Ids sind schon da); best-effort, ohne Counts
@@ -55,7 +58,7 @@ async function loadCounts(ids: string[]) {
     <h1 class="text-2xl font-bold">{{ t('posts.feed.title') }}</h1>
     <p class="mt-1 text-sm text-muted">{{ t('posts.feed.description') }}</p>
 
-    <PostFeed class="mt-6" :first-page="firstPage ?? null" :reply-counts="replyCounts" @rows-changed="loadCounts">
+    <PostFeed class="mt-6" :first-page="firstPage ?? null" :failed="!!firstPageError" :retry="refreshFirstPage" :reply-counts="replyCounts" @rows-changed="loadCounts">
       <template #comments="{ post }">
         <!-- `locked`: ein geschlossenes Thema erscheint auch im Feed — ohne den
              Hinweis böte die Seite dort Antworten, Likes und Reaktionen an, die

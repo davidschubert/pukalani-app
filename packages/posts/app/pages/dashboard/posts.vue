@@ -10,7 +10,7 @@ const { formatRelativeTime } = useFormatRelativeTime()
 
 useBrandTitle(() => t('posts.moderation.title'))
 
-const { data, status, refresh } = await useFetch<PostModerationResponse>('/api/posts/moderation', {
+const { data, status, error, refresh } = await useFetch<PostModerationResponse>('/api/posts/moderation', {
   lazy: true,
   server: false,
 })
@@ -160,6 +160,11 @@ function rowActions(post: CommunityPost): DropdownMenuItem[][] {
 
         <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
           <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
+        </div>
+
+        <!-- Fehler statt „keine Beiträge" (FE-004, LZ1) -->
+        <div v-else-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
         </div>
 
         <div v-else class="space-y-8">

@@ -150,9 +150,16 @@ const requestQuery = computed(() => {
  */
 const { topicCategoryName } = useCategoryText()
 
-const { data, status } = await useFetch<DiscussionListResponse>('/api/posts/discussions', {
+const { data, status, error, refresh } = await useFetch<DiscussionListResponse>('/api/posts/discussions', {
   key: DISCUSSION_TOPICS_KEY,
   query: requestQuery,
+})
+
+// Lädt / Fehler / Daten (FE-004, LZ1): ein Fehler heißt nicht „keine Einträge".
+// „Leer" zeichnet die Tabelle selbst (Filter ohne Treffer ist ein Zustand der Daten).
+const listing = computed(() => {
+  const state = listState({ status: status.value, error: error.value, empty: rows.value.length === 0 })
+  return state === 'empty' ? 'ready' : state
 })
 
 const rows = ref<DiscussionTopic[]>([])
@@ -332,11 +339,8 @@ function resetSearch() {
       :author-name="authorName"
     />
 
-    <div v-if="status === 'pending' && rows.length === 0" class="flex justify-center py-16">
-      <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-    </div>
-
-    <UTable v-else :data="rows" :columns="columns" data-discussions-table>
+    <CoreListState :state="listing" :retry="refresh">
+    <UTable :data="rows" :columns="columns" data-discussions-table>
       <template #topic-cell="{ row }">
         <div class="min-w-0 max-w-lg">
           <!-- Abzeichen VOR dem Titel: sie sind der Grund, warum eine Zeile
@@ -441,6 +445,7 @@ function resetSearch() {
         />
       </template>
     </UTable>
+    </CoreListState>
 
     <div v-if="nextCursor" class="pt-2 text-center">
       <UButton color="neutral" variant="subtle" :loading="loadingMore" @click="loadMore">

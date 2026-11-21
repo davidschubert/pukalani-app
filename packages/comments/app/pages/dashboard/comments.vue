@@ -109,7 +109,7 @@ watch(() => route.query.status, () => {
   }
 })
 
-const { data, refresh } = await useFetch<AdminCommentListResponse>('/api/admin/comments', {
+const { data, error, refresh } = await useFetch<AdminCommentListResponse>('/api/admin/comments', {
   query: computed(() => ({
     status: filter.value,
     page: page.value,
@@ -420,7 +420,12 @@ function rowActions(comment: ModeratedComment): DropdownMenuItem[][] {
         </UButton>
       </div>
 
-      <UTable :data="data?.comments ?? []" :columns="columns" :meta="tableMeta" data-moderation-list>
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="data?.comments ?? []" :columns="columns" :meta="tableMeta" data-moderation-list>
         <template #select-header>
           <UCheckbox
             :model-value="allSelected"

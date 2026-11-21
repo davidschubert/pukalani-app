@@ -64,7 +64,7 @@ const confirm = useConfirm()
 const { planAllows } = useTenantPlan()
 useBrandTitle(() => t('posts.categories.title'))
 
-const { data, status, refresh } = await useFetch<CategoryManageResponse>('/api/posts/categories/manage', {
+const { data, status, error, refresh } = await useFetch<CategoryManageResponse>('/api/posts/categories/manage', {
   lazy: true,
   server: false,
 })
@@ -500,6 +500,11 @@ function categoryPath(category: PostCategory): string {
 
         <div v-if="isFetchLoading(status) && !data" class="flex justify-center py-16">
           <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
+        </div>
+
+        <!-- Fehler statt „keine Kategorien" (FE-004, LZ1) -->
+        <div v-else-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
         </div>
 
         <!-- Der Umschlag trägt die Zug-Ereignisse, weil `UTable` ihr `<tr>`

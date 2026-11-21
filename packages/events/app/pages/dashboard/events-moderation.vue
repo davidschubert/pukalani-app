@@ -28,9 +28,16 @@ const { formatRelativeTime } = useFormatRelativeTime()
 
 useBrandTitle(() => t('events.moderation.title'))
 
-const { data, status, refresh } = await useFetch<EventModerationResponse>('/api/events/moderation', {
+const { data, status, error, refresh } = await useFetch<EventModerationResponse>('/api/events/moderation', {
   lazy: true,
   server: false,
+})
+
+// Lädt / Fehler / Daten (FE-004, LZ1): ein Fehler heißt nicht „keine Einträge".
+// „Leer" zeichnet die Tabelle selbst (Filter ohne Treffer ist ein Zustand der Daten).
+const listing = computed(() => {
+  const state = listState({ status: status.value, error: error.value, empty: !data.value?.rows.length })
+  return state === 'empty' ? 'ready' : state
 })
 
 /**
@@ -186,11 +193,8 @@ function rowActions(row: EventRow): DropdownMenuItem[][] {
           <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
         </template>
 
-        <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
-          <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-        </div>
-
-        <UTable v-else :data="visible" :columns="columns" data-events-mod-table>
+        <CoreListState :state="listing" :retry="refresh">
+          <UTable :data="visible" :columns="columns" data-events-mod-table>
           <template #event-cell="{ row }">
             <div class="max-w-md min-w-0" :data-mod-event="row.original.$id">
               <!-- Geschwärzt (F46): der Titel ist LEER, und leer allein sagt
@@ -273,6 +277,7 @@ function rowActions(row: EventRow): DropdownMenuItem[][] {
             />
           </template>
         </UTable>
+        </CoreListState>
       </ClientOnly>
     </template>
   </UDashboardPanel>

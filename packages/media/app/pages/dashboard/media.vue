@@ -17,7 +17,7 @@ useBrandTitle(() => t('media.admin.title'))
 
 // Verwaltungs-Sicht: ?all=1 (media.manage) liefert ALLE Einträge inkl.
 // Entwürfe in voller Row-Form — die öffentliche Route zeigt nur published.
-const { data, refresh } = await useFetch<{ items: AdminMediaItem[] }>('/api/media', { query: { all: 1 } })
+const { data, error, refresh } = await useFetch<{ items: AdminMediaItem[] }>('/api/media', { query: { all: 1 } })
 
 // Suche und Sortierung laufen hier im BROWSER, nicht auf dem Server: die
 // Route liefert die Mediathek in einem Rutsch (PAGE_LIMIT 100). Eine
@@ -214,7 +214,12 @@ function rowActions(item: AdminMediaItem): DropdownMenuItem[][] {
         Vorschau-Spalte erhalten — das Bild ist die erste Spalte, nicht eine
         Zeile Text.
       -->
-      <UTable :data="rows" :columns="columns" data-media-grid>
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="rows" :columns="columns" data-media-grid>
         <template #title-header>
           <SortableHeader :label="t('media.admin.col.title')" field="title" :active="sortField" :dir="sortDir" @toggle="toggle" />
         </template>
