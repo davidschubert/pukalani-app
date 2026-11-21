@@ -129,6 +129,20 @@ pnpm buehne run --only verify-site-authz      # ein Skript, egal welche Klasse
 # mit branding.supply:     --branding-port 3016 (apps/branding, Start-Zeile unten)
 ```
 
+**Der Soll-Stand der Bühne** (seit 2026-11-21, `scripts/buehne/baseline.mjs`):
+die zwei Probe-Communities sind geteilt — jedes Skript und jeder Browser-Test
+verlässt sich auf das, was `up` zusagt (aktiv, Plan `pro`, öffentlich,
+Registrierung zu bzw. offen, keine Sperre). Ein Skript darf diese Felder
+ändern und stellt sie am Ende auf den vorgefundenen Wert zurück. Der Läufer
+prüft das nach jedem Skript: eine Abweichung macht dieses Skript rot („Bühne
+verändert: B plan free statt pro"), auch wenn alle seine Prüfungen bestanden
+haben; danach stellt der Läufer die Felder zurück und wartet 31 s, bis der
+Platform-Server den Stand neu gelesen hat. `pnpm buehne e2e` prüft dasselbe
+einmal vor den Browser-Tests und stellt zurück, ohne rot zu werden. Anlass war
+der nächtliche Lauf vom 2026-11-21: ein Skript ließ beide Communities ohne
+Plan zurück, und rot wurde 40 Skripte später ein Browser-Test, dem die
+Menüpunkte „Feed", „Discussions" und „Events" fehlten.
+
 **Die Einzel-Instanz im Läufer:** ein Skript mit `env: 'einzel'` und
 `braucht: [..., 'einzel']` bekommt `apps/comments/.env` (`--env-einzel`),
 `EINZEL_URL` und `EINZEL_PORT`. Ohne `--einzel-port` meldet der Läufer es als

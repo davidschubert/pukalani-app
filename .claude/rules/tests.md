@@ -226,7 +226,17 @@ NEUES BEWEIS-SKRIPT ⇒ Zeile in `beweise.mjs` (sonst sind
 rot), dann `pnpm live-beweise`. VIER REGELN FÜR EIN SKRIPT AUF DER BÜHNE, alle
 beim Einzug gemessen: (1) es SETZT seine Annahmen über die Probe-Community
 selbst (Plan, Registrierung) und stellt sie im `finally` zurück — nie
-voraussetzen, was ein anderes Skript gerade geändert haben kann; (2) es räumt
+voraussetzen, was ein anderes Skript gerade geändert haben kann, und
+zurückgestellt wird auf den VORGEFUNDENEN Wert, nie auf einen festen (seit
+2026-11-21 hält das der Läufer: nach jedem Skript vergleicht er Status, Plan,
+Publikum, Registrierung und Sperre der zwei Communities mit dem, was `up`
+zugesagt hat, `scripts/buehne/baseline.mjs` — eine Abweichung macht DIESES
+Skript rot („Bühne verändert: B plan free statt pro"), danach stellt er
+zurück und wartet 31 s; `pnpm buehne e2e` stellt vor den Browser-Tests
+dasselbe her. Anlass: `courses/verify-pool-isolation` ließ beide Communities
+ohne Plan zurück, und im nächtlichen Lauf fehlten einem Browser-Test 40
+Skripte später die Menüpunkte aller Produkte ab `personal` — der rote Test
+nannte weder Verursacher noch Grund); (2) es räumt
 über `createCleanup` auf und ZÄHLT NACH — „✔ aufgeräumt" ohne Zählung stand in
 einem Dutzend Skripten, die Seiten, Beiträge und Protokoll-Zeilen liegen
 ließen; (3) eine Sonde, die „geht das noch?" fragt, darf dabei nichts anlegen

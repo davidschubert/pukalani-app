@@ -12,6 +12,14 @@ import { NARROW_WIDTHS, coveredByFeedback, expectNoSidewaysScroll, expectReachab
  * Navigation wird über die ECHTE Route gesetzt (`PATCH /api/pages/navigation`)
  * und am Ende auf den Stand von vorher zurückgestellt.
  *
+ * VORAUSSETZUNG: Community B steht auf Plan `pro` — ohne Plan gilt `basic`,
+ * und „Feed", „Discussions" und „Events" gibt es erst ab `personal` (dann
+ * fehlen sie in der Schublade, so im nächtlichen Lauf vom 2026-11-21: ein
+ * Beweis-Skript hatte den Plan verstellt hinterlassen). Die Datei kann den
+ * Plan nicht selbst setzen (er steht im Control Plane, sie hat nur den
+ * Pool-Schlüssel); `pnpm buehne e2e` stellt den Soll-Stand der Bühne vor dem
+ * ersten Test her (`scripts/buehne/baseline.mjs`).
+ *
  * Die Namen unten sind FEST und stehen sonst nirgends — die Erwartung kommt
  * also nicht aus der Antwort, die geprüft wird.
  *

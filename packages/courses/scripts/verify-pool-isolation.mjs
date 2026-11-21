@@ -186,11 +186,20 @@ try {
    * und kann die Eingangsprüfung NIE wieder bestehen. Die Verunreinigung
    * erhält sich selbst und sah wie eine Regression aus.
    *
-   * Deshalb: Plan hier aktiv auf basic setzen und den WIEDERHERSTELL-Wert auf
-   * basic festnageln, statt den Vorfund zu übernehmen. Diese beiden Hosts sind
-   * reine Test-Fixtures; ihr Plan gehört dem Beweis.
+   * Deshalb: Plan hier aktiv auf basic setzen — die Eingangsprüfung hängt
+   * damit nicht mehr am Vorfund, auch nicht nach einem abgebrochenen Lauf.
+   *
+   * ZURÜCKGESTELLT WIRD AUF DEN VORFUND (seit 2026-11-21). Bis dahin war der
+   * Wiederherstell-Wert auf „leer" festgenagelt („ihr Plan gehört dem
+   * Beweis"). Das stimmte, solange die zwei Hosts von Hand gepflegte
+   * Fixtures waren. Auf der Bühne (`pnpm buehne up`) sind sie GETEILT und
+   * stehen auf `pro`: dieser Beweis ließ beide ohne Plan zurück, und im
+   * nächtlichen Lauf fehlten einem Browser-Test 40 Skripte später die
+   * Menüpunkte aller Produkte ab `personal`. Den Soll-Stand hält seitdem der
+   * Läufer (`scripts/buehne/baseline.mjs`): ein Skript, das die Bühne
+   * verändert hinterlässt, ist dort rot.
    */
-  cleanup.planRestore.push({ id: tenantA.$id, plan: null }, { id: tenantB.$id, plan: null })
+  cleanup.planRestore.push({ id: tenantA.$id, plan: tenantA.plan ?? null }, { id: tenantB.$id, plan: tenantB.plan ?? null })
   await control.updateRow({ databaseId: controlDb, tableId: 'communities', rowId: tenantA.$id, data: { plan: null } })
   await control.updateRow({ databaseId: controlDb, tableId: 'communities', rowId: tenantB.$id, data: { plan: null } })
 
