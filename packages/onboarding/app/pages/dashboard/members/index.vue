@@ -103,7 +103,7 @@ const roleGuide = computed(() => COMMUNITY_ROLES.map(role => ({
 // `immediate` statt `v-if` am Markup: ein Leser darf diese Route nicht rufen
 // (403), und ein Fehler im Nuxt-Payload färbt die ganze Seite rot, obwohl für
 // ihn alles in Ordnung ist.
-const { data, refresh, status } = await useFetch<CommunityTeamResponse>('/api/community/members', {
+const { data, refresh, status, error } = await useFetch<CommunityTeamResponse>('/api/community/members', {
   immediate: canManageTeam.value,
 })
 
@@ -134,6 +134,13 @@ const showQuotaHint = computed(() => quota.value !== null && quota.value !== und
 
 const members = computed<CommunityMemberView[]>(() => data.value?.members ?? [])
 const invites = computed<CommunityInviteView[]>(() => data.value?.invites ?? [])
+
+/**
+ * Lädt / Fehler / leer / Daten (FE-004, Q14): ein gescheiterter Abruf zeigt
+ * „Konnte nicht geladen werden" mit „Noch einmal versuchen" statt „nur du".
+ * Leer heißt hier: die Liste kam ohne eine einzige Zeile zurück.
+ */
+const membersState = computed(() => listState({ status: status.value, error: error.value, empty: members.value.length === 0 }))
 
 // ── Suche + Sortierung (im Browser: ein Team hat Dutzende Zeilen, keine
 // Tausende — eine Server-Pagination wäre hier Zeremonie ohne Nutzen) ─────────
@@ -546,104 +553,117 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
           </UButton>
         </div>
 
-        <UTable v-if="canManageTeam" :data="filtered" :columns="columns" :loading="status === 'pending'" data-members-table>
-          <template #name-header>
-            <SortableHeader :label="t('members.name')" field="name" :active="sortField" :dir="sortDir" @toggle="toggle" />
-          </template>
-          <template #role-header>
-            <SortableHeader :label="t('members.role')" field="role" :active="sortField" :dir="sortDir" @toggle="toggle" />
-          </template>
-          <template #joinedAt-header>
-            <SortableHeader :label="t('members.joined')" field="joinedAt" :active="sortField" :dir="sortDir" @toggle="toggle" />
-          </template>
-          <template #status-header>
-            <SortableHeader :label="t('members.status')" field="status" :active="sortField" :dir="sortDir" @toggle="toggle" />
-          </template>
+        <CoreListState
+          v-if="canManageTeam"
+          :state="membersState"
+          :retry="refresh"
+          empty-icon="i-ph-users-three"
+          :empty-title="t('members.emptyTitle')"
+          :empty-description="t('members.emptyText')"
+          :empty-action-label="canInvite ? t('members.invite.cta') : undefined"
+          empty-action-icon="i-ph-user-plus"
+          data-members-list
+          @empty-action="openInvite"
+        >
+          <UTable :data="filtered" :columns="columns" :loading="isFetchLoading(status)" data-members-table>
+            <template #name-header>
+              <SortableHeader :label="t('members.name')" field="name" :active="sortField" :dir="sortDir" @toggle="toggle" />
+            </template>
+            <template #role-header>
+              <SortableHeader :label="t('members.role')" field="role" :active="sortField" :dir="sortDir" @toggle="toggle" />
+            </template>
+            <template #joinedAt-header>
+              <SortableHeader :label="t('members.joined')" field="joinedAt" :active="sortField" :dir="sortDir" @toggle="toggle" />
+            </template>
+            <template #status-header>
+              <SortableHeader :label="t('members.status')" field="status" :active="sortField" :dir="sortDir" @toggle="toggle" />
+            </template>
 
-          <template #name-cell="{ row }">
-            <div class="flex items-center gap-2">
-              <!-- `prefs.avatarUrl` ist die Form, die UserAvatar liest (Konto-prefs,
-                   keine profiles-Tabelle) — nicht ein flaches `avatarUrl`. Ohne
-                   hinterlegtes Bild rechnet es Initialen aus Name/E-Mail. -->
-              <UserAvatar
-                :user="{
-                  name: row.original.name || row.original.email,
-                  email: row.original.email,
-                  prefs: { avatarUrl: row.original.avatarUrl },
-                }"
-                size="xs"
-              />
-              <div class="min-w-0">
-                <p class="truncate font-medium text-default">
-                  {{ row.original.name || row.original.email }}
-                  <span v-if="row.original.self" class="text-muted">· {{ t('members.you') }}</span>
-                </p>
-                <p v-if="row.original.name" class="truncate text-xs text-muted">{{ row.original.email }}</p>
-              </div>
-            </div>
-          </template>
-          <template #role-cell="{ row }">
-            <UBadge :color="ROLE_COLOR[row.original.role]" variant="subtle">{{ roleLabel(row.original.role) }}</UBadge>
-          </template>
-          <template #joinedAt-cell="{ row }">
-            <span :title="formatDate(row.original.joinedAt)">{{ formatRelativeTime(row.original.joinedAt) }}</span>
-          </template>
-          <template #status-cell="{ row }">
-            <UBadge v-if="row.original.status === 'active'" color="success" variant="subtle">
-              {{ t('members.statusValues.active') }}
-            </UBadge>
-            <UBadge
-              v-else
-              color="neutral"
-              variant="subtle"
-              icon="i-ph-user-minus"
-              :title="row.original.removedAt ? formatDate(row.original.removedAt) : undefined"
-            >
-              {{ t('members.statusValues.removed') }}
-            </UBadge>
-          </template>
-          <template #actions-cell="{ row }">
-            <div class="flex justify-end">
-              <UDropdownMenu :items="rowActions(row.original)" :content="{ align: 'end' }">
-                <UButton
-                  icon="i-ph-dots-three-vertical"
-                  color="neutral"
-                  variant="ghost"
+            <template #name-cell="{ row }">
+              <div class="flex items-center gap-2">
+                <!-- `prefs.avatarUrl` ist die Form, die UserAvatar liest (Konto-prefs,
+                     keine profiles-Tabelle) — nicht ein flaches `avatarUrl`. Ohne
+                     hinterlegtes Bild rechnet es Initialen aus Name/E-Mail. -->
+                <UserAvatar
+                  :user="{
+                    name: row.original.name || row.original.email,
+                    email: row.original.email,
+                    prefs: { avatarUrl: row.original.avatarUrl },
+                  }"
                   size="xs"
-                  :aria-label="t('members.rowActions')"
-                  :data-member-actions="row.original.id"
                 />
-              </UDropdownMenu>
-            </div>
-          </template>
+                <div class="min-w-0">
+                  <p class="truncate font-medium text-default">
+                    {{ row.original.name || row.original.email }}
+                    <span v-if="row.original.self" class="text-muted">· {{ t('members.you') }}</span>
+                  </p>
+                  <p v-if="row.original.name" class="truncate text-xs text-muted">{{ row.original.email }}</p>
+                </div>
+              </div>
+            </template>
+            <template #role-cell="{ row }">
+              <UBadge :color="ROLE_COLOR[row.original.role]" variant="subtle">{{ roleLabel(row.original.role) }}</UBadge>
+            </template>
+            <template #joinedAt-cell="{ row }">
+              <span :title="formatDate(row.original.joinedAt)">{{ formatRelativeTime(row.original.joinedAt) }}</span>
+            </template>
+            <template #status-cell="{ row }">
+              <UBadge v-if="row.original.status === 'active'" color="success" variant="subtle">
+                {{ t('members.statusValues.active') }}
+              </UBadge>
+              <UBadge
+                v-else
+                color="neutral"
+                variant="subtle"
+                icon="i-ph-user-minus"
+                :title="row.original.removedAt ? formatDate(row.original.removedAt) : undefined"
+              >
+                {{ t('members.statusValues.removed') }}
+              </UBadge>
+            </template>
+            <template #actions-cell="{ row }">
+              <div class="flex justify-end">
+                <UDropdownMenu :items="rowActions(row.original)" :content="{ align: 'end' }">
+                  <UButton
+                    icon="i-ph-dots-three-vertical"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    :aria-label="t('members.rowActions')"
+                    :data-member-actions="row.original.id"
+                  />
+                </UDropdownMenu>
+              </div>
+            </template>
 
-          <!--
-            Zwei Leerzustände (Muster der Nutzerliste, Audit-Befund C11): „Suche
-            ohne Treffer" verlangt Zurücksetzen, „noch niemand da" verlangt eine
-            Einladung. Die Mitgliederliste ist nie WIRKLICH leer — man selbst steht
-            drin —, deshalb heißt der zweite Zustand „nur du".
-          -->
-          <template #empty>
-            <CoreEmptyState
-              v-if="hasActiveFilter"
-              icon="i-ph-funnel"
-              :title="t('ui.empty.noResultsTitle')"
-              :description="t('ui.empty.noResultsText')"
-              :action-label="t('ui.empty.resetFilters')"
-              action-icon="i-ph-arrow-counter-clockwise"
-              @action="resetFilters"
-            />
-            <CoreEmptyState
-              v-else
-              icon="i-ph-users-three"
-              :title="t('members.emptyTitle')"
-              :description="t('members.emptyText')"
-              :action-label="t('members.invite.cta')"
-              action-icon="i-ph-user-plus"
-              @action="openInvite"
-            />
-          </template>
-        </UTable>
+            <!--
+              Zwei Leerzustände (Muster der Nutzerliste, Audit-Befund C11): „Suche
+              ohne Treffer" verlangt Zurücksetzen, „noch niemand da" verlangt eine
+              Einladung. Die Mitgliederliste ist nie WIRKLICH leer — man selbst steht
+              drin —, deshalb heißt der zweite Zustand „nur du".
+            -->
+            <template #empty>
+              <CoreEmptyState
+                v-if="hasActiveFilter"
+                icon="i-ph-funnel"
+                :title="t('ui.empty.noResultsTitle')"
+                :description="t('ui.empty.noResultsText')"
+                :action-label="t('ui.empty.resetFilters')"
+                action-icon="i-ph-arrow-counter-clockwise"
+                @action="resetFilters"
+              />
+              <CoreEmptyState
+                v-else
+                icon="i-ph-users-three"
+                :title="t('members.emptyTitle')"
+                :description="t('members.emptyText')"
+                :action-label="t('members.invite.cta')"
+                action-icon="i-ph-user-plus"
+                @action="openInvite"
+              />
+            </template>
+          </UTable>
+        </CoreListState>
 
         <!-- ROLLEN-ÜBERSICHT (Davids Wahl 2026-08-17). Am ENDE der Seite und für
              JEDE Rolle sichtbar: sie ist Nachschlagewerk, nicht Handlung — oben

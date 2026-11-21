@@ -49,6 +49,8 @@ definePageMeta({
 
 const { t, locale } = useI18n()
 const toast = useToast()
+// Rückfragen über den Dialog der Seite, nie über confirm() des Browsers (UI-005, Q14).
+const askConfirm = useConfirm()
 const localePath = useLocalePath()
 useBrandTitle(() => t('insights.channels.title'))
 
@@ -209,9 +211,13 @@ async function patch(channel: InsightsChannel, body: Record<string, unknown>): P
 }
 
 async function remove(channel: InsightsChannel): Promise<void> {
-  // Entfernen ist der seltene, nicht umkehrbare Weg; ein eigener Dialog für
-  // eine Rückfrage, die in einem Satz passt, wäre mehr Oberfläche als Gewinn.
-  if (!confirm(t('insights.channels.removeConfirm'))) return
+  // Entfernen ist der seltene, nicht umkehrbare Weg — deshalb die Rückfrage.
+  const ok = await askConfirm({
+    title: t('insights.channels.removeConfirmTitle'),
+    description: t('insights.channels.removeConfirm'),
+    confirmLabel: t('insights.channels.remove'),
+  })
+  if (!ok) return
   busyId.value = channel.channelId
   try {
     await $fetch<InsightsChannelDeletedResponse>(`/api/insights/channels/${channel.channelId}`, { method: 'DELETE' })

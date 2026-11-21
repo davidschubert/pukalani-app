@@ -26,7 +26,7 @@ function runLookup() {
   setPage(1)
 }
 
-const { data, status } = await useFetch<{ total: number, rows: BillingAdminSubscriptionRow[] }>('/api/billing/admin/subscriptions', {
+const { data, status, error, refresh } = await useFetch<{ total: number, rows: BillingAdminSubscriptionRow[] }>('/api/billing/admin/subscriptions', {
   query: computed(() => ({ page: page.value, lookup: activeLookup.value, dir: sortDir.value })),
   lazy: true,
   server: false,
@@ -40,6 +40,13 @@ function resetFilters() {
   activeLookup.value = ''
   setPage(1)
 }
+
+/**
+ * Lädt / Fehler / leer / Daten (FE-004, Q14). „Leer" nur ohne Suche — eine
+ * Suche ohne Treffer bleibt der Zustand „keine Treffer" im `#empty` der
+ * Tabelle (mit Zurücksetzen), weil das Suchfeld dafür stehen bleiben muss.
+ */
+const state = computed(() => listState({ status: status.value, error: error.value, empty: !data.value?.rows.length && !hasActiveFilter.value }))
 
 const stripeCustomerUrl = (id: string) => `https://dashboard.stripe.com/test/customers/${id}`
 
@@ -99,11 +106,15 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
           data-testid="billing-admin-disabled"
         />
 
-        <div v-else-if="status === 'pending' && !data" class="flex justify-center py-16">
-          <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-        </div>
-
-        <template v-else>
+        <CoreListState
+          v-else
+          :state="state"
+          :retry="refresh"
+          empty-icon="i-ph-credit-card"
+          :empty-title="t('billing.admin.emptyTitle')"
+          :empty-description="t('billing.admin.empty')"
+          data-testid="billing-admin-state"
+        >
           <form class="mb-4 flex max-w-md gap-2" @submit.prevent="runLookup">
             <UInput
               v-model="lookup"
@@ -115,7 +126,7 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
             <UButton type="submit" color="neutral" variant="subtle">{{ t('billing.admin.lookup') }}</UButton>
           </form>
 
-          <UTable :data="data?.rows ?? []" :columns="columns" data-testid="billing-admin-list">
+          <UTable :data="data?.rows ?? []" :columns="columns" :loading="isFetchLoading(status)" data-testid="billing-admin-list">
             <template #updated-header>
               <SortableHeader :label="t('billing.admin.col.updated')" field="$updatedAt" :active="sortField" :dir="sortDir" @toggle="toggle" />
             </template>
@@ -157,21 +168,14 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
             </template>
 
             <template #empty>
+              <!-- Nur mit Suche erreichbar: ohne Suche zeigt CoreListState den leeren Zustand. -->
               <CoreEmptyState
-                v-if="hasActiveFilter"
                 icon="i-ph-funnel"
                 :title="t('ui.empty.noResultsTitle')"
                 :description="t('ui.empty.noResultsText')"
                 :action-label="t('ui.empty.resetFilters')"
                 action-icon="i-ph-arrow-counter-clockwise"
                 @action="resetFilters"
-              />
-              <CoreEmptyState
-                v-else
-                icon="i-ph-credit-card"
-                :title="t('billing.admin.emptyTitle')"
-                :description="t('billing.admin.empty')"
-                data-testid="billing-admin-empty"
               />
             </template>
           </UTable>
@@ -184,7 +188,7 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
             :items-per-page="50"
             @update:page="setPage"
           />
-        </template>
+        </CoreListState>
       </ClientOnly>
     </template>
   </UDashboardPanel>

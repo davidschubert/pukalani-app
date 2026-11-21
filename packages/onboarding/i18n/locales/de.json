@@ -658,6 +658,8 @@
       "action": "Plan wählen"
     },
     "subscription": {
+      "statusFailedTitle": "Abo-Stand nicht geladen",
+      "statusFailedText": "Ob gerade eine Testphase oder ein Abo läuft, ließ sich nicht abrufen. Bevor du einen Plan wählst: noch einmal versuchen.",
       "title": "Plan & Rechnung",
       "help": "Welcher Plan für deine Community gilt, was er kostet und wo du Rechnungen und Zahlungsmethode findest.",
       "noTenantTitle": "Hier gibt es kein Abo",

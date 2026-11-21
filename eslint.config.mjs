@@ -694,6 +694,25 @@ export default createConfigForNuxt({
 })
 .append({
   /**
+   * KEINE RÜCKFRAGE ÜBER DAS FENSTER DES BROWSERS (UI-005, Q14). `confirm()`,
+   * `alert()` und `prompt()` folgen weder Farbwelt noch Sprache der Seite und
+   * sehen in jedem Browser anders aus. Der Weg ist `useConfirm()` (Dialog
+   * `CoreConfirmDialog`, mit Doppelklick-Schutz über `action`); ein Hinweis
+   * ist ein Toast. Eine Variable namens `confirm` (`const confirm =
+   * useConfirm()`) ist erlaubt — die Regel trifft nur den globalen Namen.
+   */
+  files: ['packages/*/app/**/*.{ts,vue}', 'apps/*/app/**/*.{ts,vue}'],
+  rules: {
+    'no-restricted-globals': ['error',
+      ...['confirm', 'alert', 'prompt'].map(name => ({ name, message: `Kein ${name}() des Browsers (UI-005, Q14): Rückfragen über useConfirm() (CoreConfirmDialog), Hinweise über useToast().` })),
+    ],
+    'no-restricted-properties': ['error',
+      ...['confirm', 'alert', 'prompt'].map(property => ({ object: 'window', property, message: `Kein window.${property}() (UI-005, Q14): Rückfragen über useConfirm() (CoreConfirmDialog), Hinweise über useToast().` })),
+    ],
+  },
+})
+.append({
+  /**
    * KEIN STILLES `.catch` IM SERVER-CODE (Q13) — Regel und Begründung stehen
    * oben am Plugin (`no-silent-catch`). Das Plugin wird hier noch einmal
    * genannt, weil der Block oben nur `packages/**` kennt und die Server-Ordner
