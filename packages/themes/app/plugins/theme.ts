@@ -184,6 +184,9 @@ export default defineNuxtPlugin(async () => {
           ]
         : []),
       { rel: 'stylesheet' as const, href: '/themes/neutral.css', id: 'pk-neutral-css' },
+      // Schrift-Kontrast (Q07): blasse Textfarben je Palette + Statusfarben,
+      // erzeugt aus neutral.css — immer geladen, NACH ihr.
+      { rel: 'stylesheet' as const, href: '/themes/contrast.css', id: 'pk-contrast-css' },
       ...(theme.value.file
         ? [{ rel: 'stylesheet' as const, href: theme.value.file, id: 'pk-theme-css' }]
         : []),

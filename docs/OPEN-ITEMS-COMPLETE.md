@@ -102,6 +102,76 @@ geschieht — er fiel erst beim Zählen der Liste auf.
 
 ---
 
+### Q07 — Kontrast der Textfarben im Pool: blasser Text, Rot, Grün und die Links der Hilfe erreichen als Schrift 4,5 zu 1 (UX-002) ✅ 2026-11-21
+
+**Was.** Vier Farben waren als Schrift zu blass (WCAG 2.2 AA verlangt für
+normalen Text 4,5 zu 1). Gemessen vorher, Palette `mist`:
+
+| Farbe | wo | vorher | nachher |
+| --- | --- | --- | --- |
+| `text-dimmed` hell | Zeitangaben, Fußzeilen, Hinweise unter Feldern | 2,2 bis 2,4 zu 1 (`#9ca8ab`) | 4,6 bis 5,1 zu 1 (`#657073`) |
+| `text-muted` hell | Menüpunkte der Seitenleiste, Hilfetexte, Tabellen | 4,1 bis 4,6 zu 1 (`#67787c`) | 5,6 bis 6,2 zu 1 (`#546468`) |
+| `text-dimmed` dunkel | wie oben | 3,2 bis 3,8 zu 1 (`#67787c`) | 4,6 bis 5,4 zu 1 (`#819296`) |
+| Rot hell | Knopf „Account löschen", Fehlertext, Etiketten | Weiß darauf 3,8 zu 1 (`#fb2c36`) | 6,1 zu 1 (`#c6001d`) |
+| Grün hell | Etiketten wie „Kostenlos" und „Aktiv" | Weiß darauf 2,3 zu 1, als Schrift auf der eigenen hellen Fläche 1,9 bis 2,0 zu 1 (`#00c950`) | 5,9 zu 1 bzw. mindestens 4,5 zu 1 (`#007432`) |
+| Sonne als Schrift, Hilfe hell | Links im Text, aktiver Menüpunkt | 1,6 bis 1,8 zu 1 (`#fbb337`) | 6,4 bis 7,0 zu 1 (`#983912`) |
+
+- **Themes (`packages/themes`).** Der Generator schreibt eine zweite Datei,
+  `public/themes/contrast.css`: die zwei blassen Textfarben für jede der neun
+  neutralen Paletten und die zwei Statusfarben, je hell und dunkel. Gerechnet
+  wird aus der handgepflegten `neutral.css`; die Regel steht in
+  `shared/textContrast.ts`: Farbton und Sättigung bleiben, die Helligkeit
+  rückt in kleinen Schritten, bis die Farbe auf jeder Fläche besteht, auf der
+  sie als Schrift steht (Seite, gedämpfte und erhöhte Fläche; bei Rot und
+  Grün zusätzlich Weiß auf der Fläche und die Farbe auf ihrer eigenen
+  10-Prozent-Fläche). `text-muted` liegt im Hellen in der Mitte zwischen dem
+  neuen `dimmed` und der 600er Stufe, damit die drei Abstufungen sichtbar
+  bleiben. Im Dunkeln bleibt `muted`, wie es war (bestand schon).
+- **Das Gate.** Nach dem Erzeugen rechnet der Generator jede Paarung nach und
+  bricht ab, wenn eine unter 4,5 zu 1 liegt. `--check` vergleicht die Datei
+  wie die Farbwelten byte-genau. Gegenproben in
+  `packages/themes/tests/textContrast.test.ts`: die Vorgabe von Nuxt UI, die
+  Tailwind-Stufe 500 und ein einzelner von Hand aufgehellter Wert machen das
+  Gate rot.
+- **Custom Themes.** Die getönte Palette eines eigenen Themes entsteht erst zur
+  Laufzeit; `customThemeCss()` hängt ihr dieselbe Rechnung an. Getestet über
+  alle Farbtöne in 5-Grad-Schritten. Themes ohne getönte Palette ändern sich
+  nicht.
+- **Hilfe (`apps/help`).** Die Hilfe hat den Themes-Layer nicht. Eine eigene
+  kleine Datei `app/assets/css/help.css` setzt dort die zwei Textfarben und
+  lässt `text-primary` auf die Schrift-Stufe zeigen, die `puka-theme.css`
+  schon kennt (hell `puka-800`, dunkel `puka-400`). Flächen bleiben die Sonne.
+  Das dunkle Band der Fußzeile ist ausgenommen. Wächter:
+  `apps/help/tests/helpContrast.test.ts`.
+- **Visual-Seite.** `/visual` der Test-App zeigt jetzt auch Rot und Grün als
+  Fläche und die drei Text-Abstufungen; die neun Vergleichsbilder sind neu.
+
+**Beweis.** axe-core über Playwright, lokal, hell und dunkel, jeweils dieselbe
+Seite mit und ohne `contrast.css`: 51 Pool-Seiten (30 Dashboard, 14 Community
+als Mitglied und Gast, 7 Konto-Seiten der Betreiber-App) 627 → 2
+Kontrast-Meldungen; Visual-Seite in vier Farbwelten 103 → 27; drei
+Hilfe-Seiten 96 → 40. Was übrig ist, steht unten.
+
+**Nicht Teil dieses Pakets (gemessen, offen).** Gelb und Blau als Schrift
+(Etiketten „Moderator/in" 1,8 zu 1, „Administrator/in" 3,3 zu 1; Hinweis-Kästen
+der Hilfe). Die Hauptfarbe einer Farbwelt als Schrift oder als Knopf mit
+weißer Schrift: das alte Gate verlangt dort 3 zu 1, 285 von 286 Stellungen
+liegen im Hellen irgendwo unter 4,5 zu 1 (Beispiel `forest` 3,2 zu 1). Die
+Farben der Code-Beispiele in der Hilfe. Die Marketing-Seite (ohne
+Themes-Layer). Der Fokus-Rahmen.
+
+**Gelernt:** Die Text-Farben hängen an der NEUTRALEN Palette (neun Stück,
+eigene Achse), nicht an den 26 Farbwelten; die Farbwelten tragen nur die
+Hauptfarbe. Wer „in allen Farbwelten" prüft, misst deshalb zweimal dasselbe
+und übersieht die acht anderen Paletten. Und: eine unlayered Regel auf
+`:root` schlägt auch die `.dark`-Regel von Nuxt UI (die liegt in einem
+Layer) — jede helle Überschreibung braucht ihr dunkles Gegenstück in
+derselben Datei, sonst gilt der helle Wert im Dunkeln. Eine Schrift-Klasse
+global umzubiegen trifft auch dunkle Bänder im hellen Schema (die Fußzeile
+der Hilfe fiel so von 8 auf 2,4 zu 1); erst der zweite axe-Lauf zeigte es.
+
+---
+
 ### Q08 — Formulare und Ansagen: Felder haben Namen, Fehler werden angesagt, der Browser darf Anmelde-Felder ausfüllen (UX-004, UX-005, UX-007, UX-009, UX-010) ✅ 2026-11-21
 
 **Was.** Fünf Dinge, die man nur mit Hilfsmittel, Tastatur oder

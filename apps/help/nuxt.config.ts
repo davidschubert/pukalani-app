@@ -14,6 +14,11 @@ export default defineNuxtConfig({
   // @nuxt/ui, @pinia/nuxt und @nuxtjs/i18n kommen aus dem Core-Layer.
   modules: ['@nuxt/content'],
 
+  // Schrift-Kontrast der Hilfe (Q07): blasse Textfarben und die Sonne als
+  // Schrift — Begründung und Werte in der Datei, Wächter in
+  // tests/helpContrast.test.ts.
+  css: ['~/assets/css/help.css'],
+
   // Port pro App eindeutig (3001 comments · 3002 template · 3003 photos ·
   // 3004 control · 3005 portfolio · 3006 platform · 3007 marketing).
   // 3005 war in der Tagesliste genannt, ist aber von portfolio belegt.
