@@ -139,7 +139,13 @@ oder Browser-Sprache, `redirectOn: 'all'`) für den nächsten Besucher
 überschrieben. Der Schlüssel muss das ERGEBNIS der Spracherkennung tragen,
 und deren Kopie braucht einen Test gegen das Original. Und: ein Test, der die
 Konstante liest, die er prüft, blieb bei 10 statt 60 Minuten grün — die
-Zahl gehört ausgeschrieben in den Test (Beweis-Regel 1).
+Zahl gehört ausgeschrieben in den Test (Beweis-Regel 1). Und: der
+Gewichts-Wächter lief nur auf dem Mac, bevor er ins Ausliefern kam — dort
+liegt Nuxts Build-Ordner unter `node_modules/.cache/nuxt/.nuxt/`, in der CI
+unter `.nuxt/`. Das erste Ausliefern nach dem Merge brach mit „kein Build"
+ab (Production blieb unberührt, nichts wurde übertragen); der Wächter sucht
+jetzt an beiden Orten. Ein Schritt, der erst im Ausliefern läuft, gehört
+vor dem Merge einmal in der CI-Umgebung gestartet.
 ### Q16 — Wörter und Anrede: ein Wort je Sache, keine Entwickler-Wörter vor Kundschaft (BRD-007, BRD-008, BRD-012, UX-013) ✅ 2026-11-21
 
 **Was.** Davids Ja zu R5 (Menü der deutschen Seite von branding.supply

@@ -39,9 +39,9 @@ describe('startPageScripts', () => {
 })
 
 describe('measureApp', () => {
-  function fakeApp(sizes: Record<string, number>): string {
+  function fakeApp(sizes: Record<string, number>, buildDir = 'node_modules/.cache/nuxt/.nuxt'): string {
     const dir = mkdtempSync(join(tmpdir(), 'q22-weight-'))
-    const manifestDir = join(dir, 'node_modules/.cache/nuxt/.nuxt/dist/server')
+    const manifestDir = join(dir, buildDir, 'dist/server')
     const publicDir = join(dir, '.output/public/_nuxt')
     mkdirSync(manifestDir, { recursive: true })
     mkdirSync(publicDir, { recursive: true })
@@ -59,6 +59,19 @@ describe('measureApp', () => {
     expect(r.files).toBe(5)
     expect(r.kb).toBeGreaterThanOrEqual(97)
     expect(r.kb).toBeLessThanOrEqual(100)
+  })
+
+  it('findet den Build auch unter `.nuxt/` (so baut die CI)', async () => {
+    const r = await measureApp('x', { roots: ['pages/index.vue', 'layouts/site.vue'], maxScriptGzipKB: 120 }, fakeApp(files, '.nuxt'))
+    expect(r.built).toBe(true)
+    expect(r.ok).toBe(true)
+  })
+
+  it('GEGENPROBE: ohne Manifest an beiden Orten gilt „kein Build"', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'q22-weight-leer-'))
+    mkdirSync(join(dir, '.output/public/_nuxt'), { recursive: true })
+    const r = await measureApp('x', { roots: ['pages/index.vue'], maxScriptGzipKB: 120 }, dir)
+    expect(r.built).toBe(false)
   })
 
   it('GEGENPROBE: über der Grenze rot', async () => {
