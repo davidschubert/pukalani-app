@@ -58,6 +58,8 @@ definePageMeta({
 
 const { t, locale } = useI18n()
 const toast = useToast()
+// Rückfragen über den Dialog der Seite, nie über confirm() des Browsers (UI-005, Q14).
+const askConfirm = useConfirm()
 const localePath = useLocalePath()
 useBrandTitle(() => t('insights.finds.title'))
 
@@ -196,7 +198,12 @@ async function remove(item: InsightsWatchItem): Promise<void> {
   // Wegnehmen ist nicht umkehrbar, aber auch nicht schwer wiederzubeschaffen
   // (der Link steht daneben). Eine Rückfrage genügt; „Uninteressant" ist der
   // Weg für alle, die die Zeile behalten wollen.
-  if (!confirm(t('insights.finds.removeConfirm'))) return
+  const ok = await askConfirm({
+    title: t('insights.finds.removeConfirmTitle'),
+    description: t('insights.finds.removeConfirm'),
+    confirmLabel: t('insights.finds.remove'),
+  })
+  if (!ok) return
   busyId.value = item.videoId
   try {
     await $fetch<InsightsWatchDeletedResponse>(`/api/insights/watchlist/${item.videoId}`, { method: 'DELETE' })
@@ -232,7 +239,13 @@ async function remove(item: InsightsWatchItem): Promise<void> {
 const briefingId = ref('')
 
 async function makeBrief(item: InsightsWatchItem): Promise<void> {
-  if (!confirm(t('insights.finds.briefConfirm'))) return
+  const ok = await askConfirm({
+    title: t('insights.finds.briefConfirmTitle'),
+    description: t('insights.finds.briefConfirm'),
+    confirmLabel: t('insights.finds.briefMake'),
+    color: 'primary',
+  })
+  if (!ok) return
   briefingId.value = item.videoId
   busyId.value = item.videoId
   try {

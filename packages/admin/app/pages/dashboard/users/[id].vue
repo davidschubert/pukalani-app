@@ -18,7 +18,13 @@ const { formatRelativeTime } = useFormatRelativeTime()
 
 const userId = computed(() => String(route.params.id))
 
-const { data, refresh } = await useFetch<AdminUserDetailResponse>(() => `/api/admin/users/${userId.value}`)
+const { data, refresh, error } = await useFetch<AdminUserDetailResponse>(() => `/api/admin/users/${userId.value}`)
+
+/**
+ * „Nicht gefunden" nur bei 404 (FE-004, Q14) — jeder andere Fehler ist eine
+ * Störung und bekommt „Noch einmal versuchen" statt einer falschen Auskunft.
+ */
+const loadFailed = computed(() => !data.value && !!error.value && error.value.statusCode !== 404)
 
 const user = computed(() => data.value?.user ?? null)
 const isSelf = computed(() => user.value?.$id === me.value?.$id)
@@ -276,7 +282,7 @@ async function runUserAction(type: UserAction) {
     </template>
 
     <template #body>
-      <div v-if="user" class="mx-auto flex w-full max-w-(--ui-container) flex-col gap-4 sm:gap-6">
+      <div v-if="user" class="mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-6">
         <!-- Hero: Identität + Status/Rollen + benigne Schnellaktionen -->
         <UPageCard variant="subtle">
           <div class="flex flex-wrap items-center gap-4 sm:gap-5">
@@ -562,7 +568,10 @@ async function runUserAction(type: UserAction) {
         </div>
       </div>
 
-      <div v-else class="py-16 text-center text-muted">
+      <div role="alert">
+        <CoreLoadError v-if="loadFailed" :retry="refresh" class="py-16" data-user-load-error />
+      </div>
+      <div v-if="!user && !loadFailed" class="py-16 text-center text-muted">
         {{ t('admin.users.notFound') }}
       </div>
 

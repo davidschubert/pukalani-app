@@ -31,7 +31,7 @@ interface InviteDto {
 
 interface StockSummary { total: number, free: number, assigned: number, redeemed: number, expired: number, revoked: number }
 
-const { data, refresh } = await useFetch<{
+const { data, refresh, status, error } = await useFetch<{
   total: number
   inviteRequired: boolean
   stock: StockSummary
@@ -40,6 +40,13 @@ const { data, refresh } = await useFetch<{
   codes: InviteDto[]
 }>('/api/control/invites', { lazy: true, server: false })
 const stock = computed(() => data.value?.stock)
+
+/**
+ * Lädt / Fehler / leer / Daten (FE-004, Q14). Vorher stand während des
+ * Ladens und nach einem Fehler „noch keine Codes" mit dem Knopf „Neuer Code".
+ * `server: false`: auf dem Server `idle` ⇒ auch dort „lädt" (Q15).
+ */
+const codesState = computed(() => listState({ status: status.value, error: error.value, empty: !(data.value?.codes.length) }))
 
 /**
  * DAS TOR (U2, Davids Entscheidung 1 vom 2026-08-10). Die Code-Pflicht bleibt,
@@ -317,61 +324,61 @@ const columns = computed<TableColumn<InviteDto>[]>(() => [
         </div>
       </div>
 
-      <UTable :data="codes" :columns="columns" data-invites-list>
-        <template #label-cell="{ row }">
-          <span class="font-medium">{{ row.original.label || t('control.invites.noLabel') }}</span>
-        </template>
-        <template #state-cell="{ row }">
-          <UBadge :color="STATE_COLORS[row.original.state]" variant="subtle" size="sm">
-            {{ t(`control.invites.state.${row.original.state}`) }}
-          </UBadge>
-        </template>
-        <!-- An wen ging er, und kam er an? -->
-        <template #boundEmail-cell="{ row }">
-          <div v-if="row.original.boundEmail" class="min-w-0">
-            <p class="truncate text-sm">{{ row.original.boundEmail }}</p>
-            <p v-if="row.original.redeemedAt" class="text-xs text-muted">
-              {{ t('control.invites.redeemedOn', { date: formatDate(row.original.redeemedAt) }) }}
-            </p>
-          </div>
-          <span v-else class="text-muted">—</span>
-        </template>
-        <template #uses-cell="{ row }">
-          <span class="whitespace-nowrap text-sm text-muted">
-            {{ row.original.maxUses === 0
-              ? t('control.invites.usesUnlimited', { uses: row.original.uses })
-              : t('control.invites.uses', { uses: row.original.uses, max: row.original.maxUses }) }}
-          </span>
-        </template>
-        <template #expires-cell="{ row }">
-          <span class="whitespace-nowrap text-sm text-muted">
-            {{ row.original.expiresAt ? formatDate(row.original.expiresAt) : t('control.invites.noExpiry') }}
-          </span>
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex justify-end">
-            <UButton
-              :label="t(row.original.status === 'revoked' ? 'control.invites.reactivate' : 'control.invites.revoke')"
-              :color="row.original.status === 'revoked' ? 'neutral' : 'error'"
-              variant="ghost"
-              size="xs"
-              @click="setStatus(row.original, row.original.status === 'revoked' ? 'active' : 'revoked')"
-            />
-          </div>
-        </template>
-
-        <template #empty>
-          <CoreEmptyState
-            icon="i-ph-key"
-            :title="t('control.invites.emptyTitle')"
-            :description="stock?.free ? t('control.invites.stock.onlyFree', { count: stock.free }) : t('control.invites.empty')"
-            :action-label="t('control.invites.new')"
-            action-icon="i-ph-plus"
-            data-invites-empty
-            @action="openCreate"
-          />
-        </template>
-      </UTable>
+      <CoreListState
+        :state="codesState"
+        :retry="refresh"
+        empty-icon="i-ph-key"
+        :empty-title="t('control.invites.emptyTitle')"
+        :empty-description="stock?.free ? t('control.invites.stock.onlyFree', { count: stock.free }) : t('control.invites.empty')"
+        :empty-action-label="t('control.invites.new')"
+        empty-action-icon="i-ph-plus"
+        data-invites-state
+        @empty-action="openCreate"
+      >
+        <UTable :data="codes" :columns="columns" :loading="isFetchLoading(status)" data-invites-list>
+          <template #label-cell="{ row }">
+            <span class="font-medium">{{ row.original.label || t('control.invites.noLabel') }}</span>
+          </template>
+          <template #state-cell="{ row }">
+            <UBadge :color="STATE_COLORS[row.original.state]" variant="subtle" size="sm">
+              {{ t(`control.invites.state.${row.original.state}`) }}
+            </UBadge>
+          </template>
+          <!-- An wen ging er, und kam er an? -->
+          <template #boundEmail-cell="{ row }">
+            <div v-if="row.original.boundEmail" class="min-w-0">
+              <p class="truncate text-sm">{{ row.original.boundEmail }}</p>
+              <p v-if="row.original.redeemedAt" class="text-xs text-muted">
+                {{ t('control.invites.redeemedOn', { date: formatDate(row.original.redeemedAt) }) }}
+              </p>
+            </div>
+            <span v-else class="text-muted">—</span>
+          </template>
+          <template #uses-cell="{ row }">
+            <span class="whitespace-nowrap text-sm text-muted">
+              {{ row.original.maxUses === 0
+                ? t('control.invites.usesUnlimited', { uses: row.original.uses })
+                : t('control.invites.uses', { uses: row.original.uses, max: row.original.maxUses }) }}
+            </span>
+          </template>
+          <template #expires-cell="{ row }">
+            <span class="whitespace-nowrap text-sm text-muted">
+              {{ row.original.expiresAt ? formatDate(row.original.expiresAt) : t('control.invites.noExpiry') }}
+            </span>
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex justify-end">
+              <UButton
+                :label="t(row.original.status === 'revoked' ? 'control.invites.reactivate' : 'control.invites.revoke')"
+                :color="row.original.status === 'revoked' ? 'neutral' : 'error'"
+                variant="ghost"
+                size="xs"
+                @click="setStatus(row.original, row.original.status === 'revoked' ? 'active' : 'revoked')"
+              />
+            </div>
+          </template>
+        </UTable>
+      </CoreListState>
 
       <UModal v-model:open="showCreate" :title="t('control.invites.new')">
         <template #body>

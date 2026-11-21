@@ -13,6 +13,9 @@
  *     Dashboard-Seitenleiste, frisch geladen, ohne Abweichung zwischen Server-
  *     und Browser-Fassung (Q15, Community B; die Mitglieder-Verwaltung gibt es
  *     nur im Pool);
+ *   - `apps/comments/e2e/list-states-pool.spec.ts` — Mitglieder und
+ *     Vertrauensstufen zeigen bei gestörtem Abruf „Fehler" mit funktionierendem
+ *     „Noch einmal versuchen" und bei leerer Antwort „leer" (Q14, Community B);
  *   - `apps/control/e2e/smoke.spec.ts` — die eine E2E-Datei der Betreiber-App.
  *
  * Die Variablen kommen aus dem Stand der Bühne (`.buehne/state.json`) und der
@@ -57,6 +60,7 @@ export const E2E_AUF_DER_BUEHNE = [
   { app: 'comments', datei: 'e2e/community-removed.spec.ts', server: 'platform' },
   { app: 'comments', datei: 'e2e/narrow-screens-pool.spec.ts', server: 'platform' },
   { app: 'comments', datei: 'e2e/dashboard-hydration-pool.spec.ts', server: 'platform' },
+  { app: 'comments', datei: 'e2e/list-states-pool.spec.ts', server: 'platform' },
   { app: 'control', datei: 'e2e/smoke.spec.ts', server: 'control' },
 ]
 
