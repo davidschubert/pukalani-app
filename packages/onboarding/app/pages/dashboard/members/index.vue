@@ -520,7 +520,7 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
           <!-- Team zuerst, alle auf einen Klick. Kein Dropdown: es sind zwei
                Zustände, und beide sollen sichtbar sein — samt Anzahl, damit man
                weiß, was der andere Klick bringt. -->
-          <UButtonGroup size="sm" data-members-scope>
+          <UFieldGroup size="sm" data-members-scope>
             <UButton
               v-for="item in scopeItems"
               :key="item.value"
@@ -532,7 +532,7 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
             >
               {{ item.label }}
             </UButton>
-          </UButtonGroup>
+          </UFieldGroup>
 
           <!-- Der Einladen-Knopf bleibt in der Werkzeug-Reihe direkt über der
                Liste, obwohl die Seite seit dem zweiten Umzug (2026-08-23) wieder

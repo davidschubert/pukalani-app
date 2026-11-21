@@ -439,6 +439,16 @@ export default defineAppConfig({
        */
       originFromRequest: false,
       /**
+       * NUR DAS DARF IN DIE SUCHE (Q10, SEO-007): Pfade ohne Sprach-Vorsatz
+       * (`['/changelog']`). Steht hier etwas, bekommt JEDE andere Seite der
+       * App `noindex, follow` — für Apps, die fast nur Arbeitsflächen sind
+       * (Betreiber-Oberfläche: öffentlich gewollt ist nur das Changelog).
+       * Core-Default LEER = keine Einschränkung. Regel:
+       * `shared/seoRobots.ts`. Die `robots.txt` der App darf die Seiten nicht
+       * sperren, sonst liest niemand das `noindex`.
+       */
+      indexOnly: [] as string[],
+      /**
        * Bildmarke pro Mandant (Audit-Befund K2): `<link rel="icon">` auf die
        * serverseitig generierte `/favicon.svg` (Kreis in der Primärfarbe des
        * Mandanten-Themes + Initial) plus `<meta name="theme-color">` in

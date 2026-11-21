@@ -4,7 +4,7 @@
  * hier gefangen werden, sind still — nichts geht kaputt, es fehlt nur etwas:
  *
  * 1. `FAQ_COUNT` gegen die tatsächliche Zahl der Fragen. Die Konstante steuert
- *    die sichtbare Liste UND das FAQPage-JSON-LD auf zwei Seiten. Steht sie zu
+ *    die sichtbare Liste UND das FAQPage-JSON-LD auf /faq. Steht sie zu
  *    niedrig, fehlt die letzte Frage überall; steht sie zu hoch, rendert
  *    vue-i18n den ROHEN SCHLÜSSEL als Frage — und der stünde dann als
  *    strukturierte Daten bei Google. Bis U17 war diese Kopplung ungeprüft.

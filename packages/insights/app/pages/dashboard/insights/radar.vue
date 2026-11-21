@@ -333,7 +333,7 @@ async function runNow(): Promise<void> {
               :label="t('insights.radar.run')"
               icon="i-ph-play"
               :loading="running"
-              :disabled="!configured || running || (status === 'pending' && !data)"
+              :disabled="!configured || running || (isFetchLoading(status) && !data)"
               @click="runNow"
             />
             <p v-if="running" class="text-xs text-muted">

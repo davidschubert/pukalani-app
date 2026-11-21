@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { groupTimezonesByRegion, supportedTimezones } from '../../../../../core/shared/timezone'
 import { createCommunityProfileSchema } from '../../../../../control/schemas/communityProfile'
+import { DEFAULT_PRIMARY_LOCALE, PRIMARY_LOCALES, resolvePrimaryLocale, type PrimaryLocale } from '../../../../../core/shared/primaryLocale'
 import type { CommunityDeleteResponse } from '../../../../shared/types/communityDelete'
 
 /**
@@ -97,7 +98,16 @@ const isTenantHost = computed(() => openRegistration.value !== null)
 // ändern", und wer das hier erwartet und nicht findet, sucht es nicht auf dem
 // Reiter „Eigene Domain" — er hält es für kaputt.
 const profileSchema = createCommunityProfileSchema(t)
-const profileState = reactive({ name: '', description: '' })
+const profileState = reactive<{ name: string, description: string, locale: PrimaryLocale }>({ name: '', description: '', locale: DEFAULT_PRIMARY_LOCALE })
+
+/**
+ * HAUPTSPRACHE (Q10, Davids Entscheidung B1): die Sprache, unter der die
+ * Beiträge dieser Community für Suchmaschinen zählen. Steht bei Name und
+ * Beschreibung, weil es dieselbe Frage ist — „was ist diese Community" — und
+ * derselbe Speicherort (das Profil im Control Plane). Die Namen der Sprachen
+ * sind Eigennamen und stehen in ihrer eigenen Sprache.
+ */
+const primaryLocaleItems = PRIMARY_LOCALES.map(code => ({ value: code, label: code === 'de' ? 'Deutsch' : 'English' }))
 
 /**
  * Der SSR-Name steht über `useTenantBrand()` bereit, die BESCHREIBUNG bewusst
@@ -117,22 +127,30 @@ const requestFetch = useRequestFetch()
 const { data: profile } = await useAsyncData(
   'community-profile',
   () => isTenantHost.value
-    ? requestFetch<{ name: string, description: string }>('/api/community/profile')
+    ? requestFetch<{ name: string, description: string, locale?: string }>('/api/community/profile')
     : Promise.resolve(null),
   { watch: [isTenantHost] },
 )
 watchEffect(() => {
   profileState.name = profile.value?.name ?? ''
   profileState.description = profile.value?.description ?? ''
+  profileState.locale = resolvePrimaryLocale(profile.value?.locale)
 })
 
 const savingProfile = ref(false)
 async function saveProfile() {
   savingProfile.value = true
   try {
-    const result = await $fetch<{ name: string, description: string }>('/api/community/profile', {
+    // Die Hauptsprache reist nur mit, wenn sie GEÄNDERT wurde: wer nur den
+    // Namen ändert, soll aus „keine eigene Wahl" nicht still eine Wahl machen.
+    const localeChanged = profileState.locale !== resolvePrimaryLocale(profile.value?.locale)
+    const result = await $fetch<{ name: string, description: string, locale?: string }>('/api/community/profile', {
       method: 'PATCH',
-      body: { name: profileState.name, description: profileState.description },
+      body: {
+        name: profileState.name,
+        description: profileState.description,
+        ...(localeChanged ? { locale: profileState.locale } : {}),
+      },
     })
     // Aus der ANTWORT übernehmen — dieselbe Regel wie beim Schalter darunter.
     profile.value = result
@@ -493,6 +511,19 @@ async function deleteCommunity() {
           :rows="3"
           class="w-full"
           data-community-profile-description
+        />
+      </UFormField>
+
+      <UFormField
+        name="locale"
+        :label="t('dashboard.community.profile.localeLabel')"
+        :description="t('dashboard.community.profile.localeHelp')"
+      >
+        <USelect
+          v-model="profileState.locale"
+          :items="primaryLocaleItems"
+          class="w-full sm:w-64"
+          data-community-profile-locale
         />
       </UFormField>
 

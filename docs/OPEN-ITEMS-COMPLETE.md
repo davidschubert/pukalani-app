@@ -30,6 +30,140 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q15 — Dashboard: sechs Seiten weichen nicht mehr von der Server-Fassung ab, und ein Test hält das fest (FE-003) ✅ 2026-11-21
+
+**Was.** Auf sechs Dashboard-Seiten meldete der Browser „Hydration completed
+but contains mismatches": er übernahm die Seite vom Server nicht, sondern
+baute einen Teil neu. Gemessen wurde lokal auf der Bühne, als Owner einer
+Probe-Community, im Dev-Server (dort nennt Vue die Stelle) und im
+Production-Build. Es sind zwei Ursachen:
+
+| Seite | Was Vue meldete | Ursache | Änderung |
+| --- | --- | --- | --- |
+| Mitglieder (`onboarding`, `dashboard/members`) | Server: Kommentar, Browser: `UButtonGroup` | Den Baustein gibt es seit Nuxt UI 4 nicht mehr (er heißt `UFieldGroup`). Vue löst den Namen nicht auf: der Server schreibt nichts, der Browser ein unbekanntes Element. | `UFieldGroup` |
+| Statistik (`analytics`, `dashboard/community/statistics`) | dasselbe | dieselbe | `UFieldGroup` |
+| Kategorien (`posts`, `dashboard/categories`) | Server: Tabelle, Browser: Lade-Kreisel | Der Abruf läuft nur im Browser (`server: false`). Auf dem Server steht sein Zustand auf `idle`, im Browser beim Übernehmen schon auf `pending`; die Vorlage verzweigte nur auf `pending`. | `isFetchLoading(status)` |
+| Vertrauensstufen (`posts`, `dashboard/trust-levels`) | dasselbe | dieselbe | `isFetchLoading(status)` |
+| Nachrichten (`messages`, `dashboard/messages`) | Server: „Keine Gespräche", Browser: Lade-Platzhalter | dieselbe | `isFetchLoading(status)` |
+| Gemeldete Nachrichten (`messages`, `dashboard/message-reports`) | Server: „Nichts gemeldet", Browser: Tabelle im Ladezustand | dieselbe | `isFetchLoading(status)` |
+
+- **Neue Hilfe im Core:** `packages/core/app/utils/fetchLoading.ts` —
+  `isFetchLoading(status)` ist wahr bei `idle` und `pending`. Der Server
+  zeichnet damit denselben Lade-Zweig wie der Browser; vorher stand im
+  ausgelieferten HTML kurz „nichts da", obwohl noch gar nicht gefragt war.
+- **Dieselbe Ursache, weitere Seiten:** sieben Dashboard-Seiten der
+  Betreiber-App und von branding.supply hatten dasselbe Muster ohne
+  `ClientOnly` und haben dieselbe Korrektur bekommen (`requests`, `abuse`,
+  `market-signal`, `intro-calls`, `waitlist`, `brand-unlocks`,
+  `insights/radar`) — dort ohne Messung im Browser, siehe „Nicht geprüft".
+  Die übrigen Seiten mit Abruf nur im Browser stehen in `ClientOnly` oder
+  verzweigen nicht auf den Zustand; sie waren in der Messung unauffällig.
+- **Kein pauschales `ClientOnly`, kein abgeschaltetes Server-Rendern:** beide
+  Ursachen sind an der Stelle behoben.
+- **Der alte Eintrag „Such-Knopf der Bibliothek, auf JEDER Dashboard-Seite"**
+  (bewusst zurückgestellt seit 2026-09-08) ist gestrichen: auf 19
+  Dashboard-Seiten im Pool und auf allen Seiten der Seitenleiste in der
+  Einzel-Instanz meldet die Konsole nichts mehr, auch nicht am Such-Knopf.
+
+**Tests.**
+
+- `apps/comments/e2e/dashboard-landmarks.spec.ts`, neuer vierter Fall im
+  Seitenlauf von Q09 (Pflicht-Lauf E2E): lädt jede Seite der Seitenleiste und
+  die Statistik frisch vom Server und wird rot bei einer Warnung oder einem
+  Fehler mit „Hydration" oder „Failed to resolve component". Hilfe:
+  `e2e/support/hydration.ts`. Gegenprobe gegen die Seiten davor: rot mit fünf
+  Seiten (die sechste, Mitglieder, gibt es in der Einzel-Instanz nicht).
+- `apps/comments/e2e/dashboard-hydration-pool.spec.ts`, auf der Bühne
+  (`pnpm buehne e2e`, nachts): dasselbe im Pool als Owner, verlangt die
+  Mitglieder-Seite in der Liste. Gegenprobe: rot mit genau den sechs Seiten.
+- `packages/core/tests/nuxtUiComponentNamesGuard.test.ts`: jeder `<U…>`-Name
+  in einer Vorlage muss eine Datei der installierten Bibliothek sein — nach
+  einem Versions-Sprung mit Umbenennung wird er von selbst rot. Gegenprobe im
+  Test (`UButtonGroup` fällt auf).
+- `packages/core/tests/fetchLoading.test.ts`.
+- Der Rauchtest (`smoke.spec.ts`) überhört „Hydration completed" auf der
+  Startseite nicht mehr.
+
+**Gemessen (lokal, Probe-Community der Bühne, Owner).**
+
+| Lauf | vorher | nachher |
+| --- | --- | --- |
+| Dev-Server, 19 Dashboard-Seiten im Pool | Meldung auf genau den sechs Seiten | 0 auf allen |
+| Production-Build, die sechs Seiten | je einmal „Hydration completed but contains mismatches" | 0 |
+| Production-Build, 19 Dashboard-Seiten | — | 0 auf allen |
+
+**Nicht geprüft.** Live hinter der Anmeldung ist nichts geklickt. Die sieben
+mitgenommenen Seiten der Betreiber-App und von branding.supply sind nicht im
+Browser gemessen, und der Seitenlauf kennt diese zwei Dashboards nicht (offen
+als BT1 g). Die Probe-Community ist fast leer: eine Abweichung, die nur mit
+bestimmten Daten entsteht, sähe der Lauf nicht. Der Test fährt gegen den
+Dev-Server; der Production-Build ist einmal von Hand gemessen.
+
+**Gelernt:** Die Meldung galt zehn Wochen als „Fehler der Bibliothek, auf
+jeder Seite" — niemand hat sie je mit Einzelheiten gelesen, und so deckte ein
+angenommener Grund zwei echte zu. Eine Abweichungs-Meldung wird erst im
+Dev-Server gelesen (er nennt Knoten und beide Fassungen), bevor sie einen
+Grund bekommt. Zwei Regeln daraus: (1) Ein Abruf mit `server: false` ist auf
+dem Server `idle` und im Browser beim Übernehmen schon `pending` (Nuxt
+startet ihn in `onBeforeMount`); „lädt" fragt man deshalb mit
+`isFetchLoading(status)`, nie mit `status === 'pending'` allein. (2) Ein
+Baustein-Name, den es nicht gibt, fällt weder im Typecheck noch im Lint auf —
+nur als „Failed to resolve component" in der Browser-Konsole; nach einem
+Sprung der Bibliothek hält der Wächter die Namen.
+
+### RU1 (b) — Runner: das Budget-Feld nimmt wieder eine Zahl an ✅ 2026-11-21
+
+**Was.** Im Formular „Lauf starten" lehnte das Feld „Budget (USD)" jede
+getippte Zahl ab („Invalid input: expected string, received number"), der
+Start-Knopf blieb gesperrt; ein Lauf ging nur mit leerem Feld und bekam den
+Deckel des Rechners. Gefunden bei der Klick-Probe auf der echten Seite
+(Eintrag „KR1 — Teil 1" weiter unten).
+
+- **Ursache.** `UInput type="number"` wandelt die Eingabe selbst in eine ZAHL
+  um und lässt nur das geleerte Feld als `''` stehen. Das Schema des
+  Formulars (`packages/runner/schemas/runStart.ts`) verlangte an der Stelle
+  einen Text — sein Kommentar sagte ausdrücklich, ein Zahlenfeld liefere
+  einen Text. Das stimmt für das rohe HTML-Feld, nicht für `UInput`.
+- **Behebung.** Das Schema nimmt Text ODER Zahl und liest beides über EINE
+  Funktion, `budgetFromInput` (leer = 0 = kein eigener Deckel, 0 bis 100,
+  sonst ungültig). Das Formular (`RunnerRunForm.vue`) rechnet beim Abschicken
+  mit derselben Funktion um — vorher prüfte es etwas anderes, als es
+  schickte. Scheitert der Wert schon am Typ, steht jetzt der eigene Satz aus
+  den Sprachdateien da, nicht mehr die rohe englische Meldung.
+- **Beweis.** `packages/runner/tests/runStartSchema.test.ts` (21 Fälle):
+  die Zahl, die das Feld wirklich liefert, geht durch; negativ, über 100,
+  Text ohne Zahl und falsche Typen scheitern mit der Budget-Meldung. Tests
+  des Pakets, ESLint und der Typecheck der Betreiber-Konsole sind grün.
+
+**Offen bleibt** RU1 (c): der Editor macht aus `README.md` einen Link.
+
+**Gelernt:** Das Schema war nie mit dem Wert geprüft worden, den das Feld
+zur Laufzeit liefert — die Typen sagten „Text" (so tippt `UInput` sein
+`v-model`), die Laufzeit schrieb eine Zahl. Bei `UInput type="number"` gilt:
+im Zustand steht eine Zahl oder `''`, was auch immer der Typ behauptet; ein
+Schema für so ein Feld nimmt beides an und bekommt einen Test mit einer
+echten Zahl.
+
+---
+
+### AW30 (d) — die letzten Reste der alten Appwrite-Patches sind vom Server ✅ 2026-11-21
+
+**Was.** Im Ordner `patches/` auf dem Appwrite-Server lagen noch neun
+Dateien `registers-*` aus der Zeit vor 2.7 (der Mail-Patch für 1.9.5 bis
+2.7.1, je mit Original). Seit 2.7 braucht Appwrite den Patch nicht mehr.
+Mit Davids Ja gelöscht. Vorher nur lesend geprüft: keine Einstellungs-Datei
+und kein laufender Container verweist auf eine dieser Dateien. Die zehnte
+Datei dort, `clickhouse-logging.xml`, ist in Benutzung und unberührt.
+Danach liefen alle Container wie vorher.
+
+Dazu aufgeräumt, ebenfalls mit Davids Ja: die Reste der Runner-Klick-Probe
+vom selben Tag (das Test-Ticket in der Betreiber-Konsole, der Arbeitsordner
+und der Zweig des Laufs auf dem Mac).
+
+**Offen bleibt** von AW30: (b), (c) und (e).
+
+---
+
 ### Q20 — Einstieg von null: das README führt vom Klon zur laufenden App mit lokaler Datenbank (DOC-005, DOC-006, DOC-013) ✅ 2026-11-21
 
 **Was.**
@@ -87,6 +221,86 @@ hinweg in die nächste Zeile — eine leere Vorgabe galt dadurch als gesetzt,
 gefunden hat es erst der Test gegen die echte Vorlage von `apps/help`.
 
 ---
+
+### Q10 — Community-Seiten für die Suche: Beschreibung, Hauptüberschrift, eine maßgebliche Adresse je Beitrag, Sitemap; Konto-Seiten und Betreiber-Oberfläche aus der Suche (SEO-002, SEO-003, SEO-004, SEO-007, Teile von SEO-008) ✅ 2026-11-21
+
+**Was.**
+
+- **Hauptsprache je Community (Davids Entscheidung B1, 2026-11-21).** Jede
+  Community hat eine Hauptsprache, unter der ihre Beiträge für Suchmaschinen
+  zählen. Beim Anlegen ist es die Sprache, in der der Owner den Wizard
+  durchläuft; ändern kann er sie im Dashboard bei „Name und Beschreibung".
+  Gespeichert wird sie im vorhandenen Profil-Feld der Community
+  (`locale` im `profile`-JSON) — additiv, **ohne Migration**. Der Wert reist
+  als `primaryLocale` im Mandanten-Kontext und im SSR-Payload. Regel:
+  `packages/core/shared/primaryLocale.ts`.
+- **Vorgabe für Communities ohne Wahl:** die Grundsprache der App, also die
+  Adresse ohne Vorsatz. Das ist die Adresse, die bisher schon als `x-default`
+  galt und die jeder geteilte Link ohne Sprach-Vorsatz trägt — an der
+  maßgeblichen Adresse ändert sich für sie nichts, nur die zweite fällt weg.
+- **Eine maßgebliche Adresse je Beitrag (`packages/core`).** Eine Seite mit
+  Nutzerinhalt ruft `useCommunityContentSeo()`. Der Kopf
+  (`useLocaleSeoHead`, Regel `collapseSeoToLocale`) zeigt dann `canonical` und
+  `og:url` von BEIDEN Sprach-Adressen auf die Adresse der Hauptsprache und
+  meldet keine Sprachfassungen mehr. Gilt für Diskussion, Kurs und Termin.
+  Übersichten und die eigenen Seiten des Owners behalten ihre zwei
+  verknüpften Adressen. Beide Adressen antworten weiter 200, es gibt keine
+  Umleitung.
+- **Beschreibung und Hauptüberschrift.** Diskussion: der Anfang des Beitrags
+  statt „in Kategorie …", und der Titel ist ein `h1` (die Karte nimmt dafür
+  `title-tag`). Kurs und Termin: der Anfang ihrer Beschreibung. Übersichten
+  „Kurse" und „Termine": ein fester Satz. Die Anriss-Regel ist dafür aus dem
+  pages-Layer in den Core gezogen (`core/shared/markdownExcerpt.ts`).
+- **Sitemap je Community (`apps/platform`).** Dazu kommen die Übersichten,
+  aktive Kategorien, veröffentlichte Themen (jüngste 1000), veröffentlichte
+  Kurse (200) und kommende, nicht geschwärzte Termine (200). Beiträge stehen
+  einmal, unter der Adresse der Hauptsprache, mit Datum. Vier Abfragen über
+  die Datentür, je eine Obergrenze, keine Abfrage je Eintrag.
+- **`noindex, follow` (eine Regel, `core/shared/seoRobots.ts`).** Konto-Seiten
+  (Layout `auth`, dazu `/verify` per `seoNoindex`), jede Seite eines
+  Kontroll-Hosts (Kundenbereich) und in der Betreiber-Oberfläche alles außer
+  dem Changelog (`pukalani.seo.indexOnly`). Die `robots.txt` des
+  Kundenbereichs sperrt nicht mehr alles, sonst läse niemand das `noindex`.
+  Das Changelog nennt im Titel „Pukalani" statt „Pukalani Control".
+- **Landing und Hilfe (SEO-002).** Die geerbten Konto-Seiten leiten mit 301 in
+  den Kundenbereich (`packages/marketing/shared/accountPages.ts`, je App eine
+  Server-Middleware).
+- **Kleines aus SEO-008.** Unbekannter Brand-Check antwortet 404 (die ruhige
+  Seite bleibt), FAQ-Daten nur noch auf `/faq`, `Disallow: /cdn-cgi/` in der
+  `robots.txt` der Landing, Fehlerseiten tragen kein `canonical` mehr.
+
+**Ursache.** Die Kopfdaten der Startseite und der eigenen Seiten wurden im
+Sommer gezielt gebaut; die Produkt-Seiten kamen später und setzten nur den
+Titel. Der eine Kopf-Aufruf behandelte jede Seite gleich — dass ein Beitrag
+von Nutzern nur EINE Sprache hat, wusste er nicht. `noindex` vergab jede Seite
+selbst, wo jemand daran dachte; die Konto-Seiten des Fundaments gab es schon
+vorher.
+
+**Beweis.** `apps/platform/scripts/verify-community-search-pages.mjs` auf der
+Bühne (57 Prüfungen, läuft bei jedem Pull Request): je Seitenart das
+ausgelieferte HTML (eine Beschreibung, ein `h1`, ein `canonical`), die Sitemap
+mit Gegenproben (gelöschtes Thema, Entwürfe, Inhalte der anderen Community),
+`noindex` der Konto-Seiten, und der Wechsel der Hauptsprache über die echte
+Route. Unit-Tests: `core/tests/seoCanonicalLocale.test.ts`,
+`core/tests/seoRobots.test.ts`, `apps/platform/tests/tenantSitemap.test.ts`
+(die Platform-App hat damit einen Test-Lauf).
+
+**Bewusst nicht.** Strukturierte Daten für Diskussion, Kurs und Termin (im
+Befund als zweiter Schritt genannt), `og:site_name`/`og:type` auf
+Community-Seiten, Themen OHNE Titel in der Sitemap (ihr Adress-Name entsteht
+aus dem Text, den die Liste nicht lädt), Lektionen (hinter Anmeldung). Aus
+SEO-008 offen: Titel-Längen auf branding.supply (hängt am Wortlaut, BRD-005),
+`/insights` ohne Beiträge, und die Sprach-Berichtigung bleibt 302 — sie hängt
+am Browser des einzelnen Besuchers, ein 301 würde sie für alle festschreiben.
+Die Marken-Galerie von branding.supply (auch in SEO-004 genannt) hat noch
+keine Hauptsprache.
+
+**Gelernt:** Ein neues Feld braucht nicht immer eine Spalte. Die Hauptsprache
+passt in das Profil-JSON, das die Community-Zeile schon trägt — so gibt es
+keine Migration, die vor dem Ausliefern auf Production laufen müsste, und der
+Datenbank-Stand in `/api/health` bleibt unberührt. Und: Im Beweis-Skript baut
+man erwartete Adressen aus der Host-Kopfzeile OHNE Port, weil die App es auch
+so tut; der erste Lauf war 16-mal rot, obwohl das Produkt stimmte.
 
 ### Q09 — Aufbau für Tastatur und Vorleseprogramm: das Dashboard hat einen Hauptbereich und einen Sprunglink (UX-006, UX-011 Teile 2 bis 4, Reste aus UX-005 und UX-010) ✅ 2026-11-21
 
@@ -884,6 +1098,27 @@ für Notizen ohne Plan gedacht und trug am Ende vier Fünftel der Datei; eine
 Datei je Kürzel endet mit ihrem Punkt. (4) **Vor dem Verschieben das Dokument
 selbst lesen.** Zwei Pläne sahen nach dem Kopf „gebaut" aus; einer sagte
 weiter unten ausdrücklich, warum er bleibt.
+
+---
+
+### N22 — Die tote Adresse `changelog.pukalani.app` ist bei Cloudflare gelöscht (AR1 a) ✅ 2026-11-21
+
+**Was geschah.** Der A-Eintrag `changelog` in der Zone `pukalani.app` zeigte
+seit dem 2026-11-15 ins Leere: Function, Code und Webhook dahinter waren
+entfernt, der Eintrag blieb, weil Cloudflare in keinem Browser angemeldet war.
+Am 2026-11-21 mit Davids Ja im Panel gelöscht. Der Name bleibt für Kunden
+gesperrt (`RESERVED_SUBDOMAINS`); die Zeile in der Host-Tabelle der Doku ist
+gestrichen.
+
+**Beweis.** Beide Nameserver der Zone und zwei öffentliche Resolver nennen für
+den Namen nicht mehr den Datenbank-Server, sondern die Adresse des
+Platzhalter-Eintrags `*.pukalani.app` (der App-Server); der antwortet dort mit
+404 `unknown_host`.
+
+**Gelernt:** In einer Zone mit Platzhalter-Eintrag „löst" ein gelöschter Name
+weiter auf — er fällt auf den Platzhalter. Der Beweis für das Löschen ist
+deshalb nicht „keine Antwort", sondern die GEÄNDERTE Adresse bei den
+Nameservern der Zone und die Antwort des Servers dahinter.
 
 ---
 
