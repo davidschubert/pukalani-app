@@ -90,7 +90,14 @@ Hauptordner rot, erlaubte Importe grün; ohne `typescript: true` werden 4 von
 `pnpm -r lint` 32,8 s). Der Unterschied ist Last auf dem Rechner, nicht die
 Änderung: abwechselnd gemessen brauchte `pnpm -r lint` mit der alten
 Konfiguration 37 und 49 s, mit der neuen 30 und 56 s. `check:manifests` mit
-den Prüfungen 11 und 12: 1,2 s. CI: CI_PLATZHALTER
+den Prüfungen 11 und 12: 1,2 s. CI (Job `lint`, ohne
+Einrichtung): vorher 102 s (die letzten vier Läufe auf `main` lagen zwischen
+94 und 167 s), im Pull Request 134 s, davon `pnpm check` 114 s
+(`pnpm -r lint` 58 s statt 40 s, `lint:typed` 25 statt 17 s). Auch das
+unveränderte `lint:prepare` war um denselben Anteil langsamer (15 statt
+10 s) — die Läufer schwanken; ein Mehraufwand durch die Änderung ist nicht
+belegt, aber auch nicht ausgeschlossen. Wer das nachmisst, vergleicht die
+Tabelle am Ende von `pnpm check` über mehrere Läufe auf `main`.
 
 **Nicht geprüft.** Der Produkt-Katalog im Control Plane (`product_catalog.requires`)
 wird von `scripts/control-jobs.mjs` geschrieben und trägt die neuen
