@@ -202,7 +202,7 @@ const urlPlaceholder = 'https://'
     <template #header>
       <UDashboardNavbar :title="course?.title ?? '…'">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton :to="localePath('/dashboard/courses')" color="neutral" variant="ghost" size="sm" icon="i-ph-arrow-left">

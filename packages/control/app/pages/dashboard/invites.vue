@@ -226,7 +226,7 @@ const columns = computed<TableColumn<InviteDto>[]>(() => [
     <template #header>
       <UDashboardNavbar :title="t('control.invites.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

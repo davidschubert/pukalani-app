@@ -108,7 +108,7 @@ async function afterChange(conversationId?: string) {
     <template #header>
       <UDashboardNavbar :title="t('messages.inbox.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #trailing>
           <UBadge v-if="unreadTotal > 0" :label="String(unreadTotal)" variant="subtle" />

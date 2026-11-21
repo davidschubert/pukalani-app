@@ -376,7 +376,7 @@ async function importTheme(event: Event) {
     <template #header>
       <UDashboardNavbar :title="t('themes.customize.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton icon="i-ph-tray-arrow-down" color="neutral" variant="ghost" :disabled="busy" @click="importInput?.click()">

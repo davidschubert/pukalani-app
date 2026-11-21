@@ -171,7 +171,7 @@ function removeOrphans() {
     <template #header>
       <UDashboardNavbar :title="t('admin.storage.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

@@ -265,7 +265,7 @@ async function runUserAction(type: UserAction) {
     <template #header>
       <UDashboardNavbar :title="t('admin.users.detail.profile')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton icon="i-ph-arrow-left" color="neutral" variant="ghost" :to="localePath('/dashboard/users')">

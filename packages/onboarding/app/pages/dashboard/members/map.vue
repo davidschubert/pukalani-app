@@ -96,7 +96,7 @@ const geonamesUrl = 'https://www.geonames.org'
     <template #header>
       <UDashboardNavbar :title="t('members.map.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
 

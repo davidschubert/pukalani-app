@@ -145,7 +145,7 @@ const STAT_KEYS = ['open', 'suspended', 'dismissed', 'total'] as const
     <template #header>
       <UDashboardNavbar :title="t('control.abuse.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

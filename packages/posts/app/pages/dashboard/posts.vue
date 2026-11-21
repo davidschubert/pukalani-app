@@ -143,7 +143,7 @@ function rowActions(post: CommunityPost): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('posts.moderation.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
 

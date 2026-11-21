@@ -421,7 +421,7 @@ const reportColumns = computed<TableColumn<BrandPublicationReport>[]>(() => [
     <template #header>
       <UDashboardNavbar :title="t('brand.discoverAdmin.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

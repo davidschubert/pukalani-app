@@ -50,7 +50,7 @@ const columns = computed<TableColumn<ReportedMessageView>[]>(() => ([
     <template #header>
       <UDashboardNavbar :title="t('messages.reports.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
     </template>

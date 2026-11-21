@@ -81,7 +81,7 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
     <template #header>
       <UDashboardNavbar :title="`${t('billing.admin.title')} (${data?.total ?? 0})`">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
     </template>

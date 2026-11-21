@@ -191,7 +191,7 @@ async function confirmDecline(): Promise<void> {
     <template #header>
       <UDashboardNavbar :title="t('insights.corrections.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

@@ -290,7 +290,7 @@ async function ensureWebhook(recreate = false) {
     <template #header>
       <UDashboardNavbar :title="t('control.stripe.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

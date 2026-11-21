@@ -456,7 +456,7 @@ async function createBrand(): Promise<void> {
     <template #header>
       <UDashboardNavbar :title="t('insights.brands.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

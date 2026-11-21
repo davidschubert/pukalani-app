@@ -358,7 +358,7 @@ const appUrlPlaceholder = 'http://localhost:3003'
     <template #header>
       <UDashboardNavbar :title="t('control.websites.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton icon="i-ph-plus" color="neutral" variant="outline" data-sites-register @click="() => { showRegister = true }">

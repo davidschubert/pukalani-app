@@ -30,6 +30,95 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q09 — Aufbau für Tastatur und Vorleseprogramm: das Dashboard hat einen Hauptbereich und einen Sprunglink (UX-006, UX-011 Teile 2 bis 4, Reste aus UX-005 und UX-010) ✅ 2026-11-21
+
+**Was.**
+
+- **Dashboard (`packages/admin`, Layout `dashboard`).** Der Seiten-Slot liegt
+  in `<main id="dashboard-main">`, genau einmal. Davor steht als erstes
+  Element der Oberfläche der Sprunglink „Zum Inhalt springen": unsichtbar,
+  bis er den Fokus hat, Enter setzt den Fokus in den Hauptbereich. Die
+  Seitenleiste ist ein benannter Bereich, ihre zwei Menüs heißen „Hauptmenü"
+  und „Verwaltung und Einstellungen". Auf der Übersicht ist die Begrüßung
+  eine Überschrift zweiter Ebene (vorher zwei erste Ebenen), die
+  Zeitraum-Auswahl hat einen Namen.
+- **Umschalter der Seitenleiste (`packages/core`).** Neuer Baustein
+  `CoreSidebarCollapse`: eine Hülle um den Knopf der Bibliothek, die den
+  Zustand aus dem Dashboard-Kontext liest und `aria-expanded` setzt. Alle 51
+  Einbindungen in 18 Layern nehmen jetzt die Hülle.
+- **Termin-Karte (`packages/events`).** Nur der Titel ist der Link; er
+  streckt seine Klickfläche über die Karte. „Hochvoten", „Runtervoten" und
+  „Teilen" liegen darüber und sind eigene Tab-Schritte.
+- **Werkstatt (`packages/brand`).** Der Kapitel-Name ist die Hauptüberschrift,
+  die Kapitel des Logs sind zweite Ebene, ihre Felder dritte. Jeder
+  Karten-Knopf nennt sein Feld („Bestätigen: Gründungsimpuls"). Der
+  Status-Punkt ist ein Bild mit Namen.
+- **Namen, die zum sichtbaren Text passen.** Logo-Link von branding.supply
+  (das Beta-Schildchen steht jetzt neben dem Link statt darin), Konto-Menü
+  dort, Marken-Umschalter der Werkstatt, Benutzermenü der Kopfzeile
+  (`packages/core`), Konto-Menü des Onboardings: der Name kommt aus dem
+  Inhalt plus verstecktem Zweck statt aus einem `aria-label`, das den
+  sichtbaren Text nicht enthält.
+- **Termin-Formular (`packages/events`).** Fehler stehen am Feld und sind mit
+  ihm verbunden; nach einem gescheiterten Speichern steht der Fokus im
+  obersten fehlerhaften Feld. Der flüchtige Hinweis oben rechts bleibt nur
+  für Fehler ohne sichtbares Feld.
+- **Erstgespräch (`apps/portfolio`).** Nach dem Absenden steht der Fokus auf
+  „Danke — Ihre Anfrage ist da."
+- **Neue Texte (de + en):** `dashboard.a11y.skipToContent/sidebar/mainNav/
+  secondaryNav`, `admin.analytics.range` (admin),
+  `brand.workspace.slotActionName` (brand).
+
+**Ursache.** Die Dashboard-Bausteine der Bibliothek zeichnen keinen
+Hauptbereich aus, und das Layout tat es nicht selbst. Eine Seite kann es nicht
+nachholen: `UDashboardPanel` ist mehrwurzelig. Bei Karte, Werkstatt und
+Menü-Knöpfen sind es von Hand gebaute Bedienelemente — ein `aria-label`
+ERSETZT den Namen aus dem Inhalt, und wer es an einen Knopf mit sichtbarem
+Text hängt, nimmt der Sprachsteuerung das Wort, das dasteht. Das
+Termin-Formular prüfte von Hand und meldete nur per Hinweis.
+
+**Beweis.** `apps/comments/e2e/dashboard-landmarks.spec.ts` (läuft im
+Pflicht-Lauf E2E): Seitenlauf per Klick über alle Punkte der Seitenleiste,
+auf jeder Seite genau ein `main` mit Überschrift; ein Tab-Schritt bis zum
+Sprunglink, Enter, Fokus im Hauptbereich; Umschalter wechselt
+`aria-expanded`. Gegenprobe gegen das Layout davor: alle drei Fälle rot.
+Dazu der Wächter `packages/core/tests/dashboardLandmarksGuard.test.ts`
+(keine Dashboard-Seite mit eigenem `main`, Umschalter nur über die Hülle,
+Sprunglink vor der Seitenleiste). Lokal mit axe-core über Playwright
+gemessen: 18 Dashboard-Seiten der Einzel-Instanz im Production-Build —
+Regel `region` vorher 20 bis 231 Treffer je Seite, danach 0; bis zum Inhalt
+vorher 23 Tab-Schritte, danach 2. Dieselben 17 Seitenwechsel im
+Production-Build per Klick: jede Seite gezeichnet, kein Seitenfehler.
+Werkstatt mit Wegwerf-Konto und Probe-Marke: `page-has-heading-one`,
+`aria-prohibited-attr` (11) und `label-content-name-mismatch` (3) weg, kein
+Knopf-Name mehr doppelt (vorher 6 × „Beantworten", 5 × „Entwerfen", 11 ×
+„Bestätigen"). Termin-Karte: kein Knopf mehr in einem Link, Klick ins Bild
+öffnet den Termin, „Teilen" nicht. Termin-Formular und Erstgespräch je
+einmal durchgespielt, je mit Gegenprobe gegen den Stand davor (Fokus auf dem
+Knopf bzw. auf der Seite).
+
+**Nicht gemacht.** Der Menü-Knopf der Schublade im schmalen Fenster
+(`UDashboardSidebarToggle`) sitzt IN der Kopfzeile der Bibliothek und trägt
+weiter kein `aria-expanded`. In der Werkstatt liegen Kopfzeile der Bühne
+(mit der neuen Hauptüberschrift) und Eingabefeld außerhalb von `main`, die
+zwei Seitenspalten haben keinen eigenen Namen (`BwWorkspace`, vier Zweige).
+Beim Messen aufgefallen, außerhalb des Pakets: `aria-prohibited-attr` auf
+`/dashboard/categories` (94), `image-redundant-alt` auf zwei
+Moderations-Seiten, unbenannte Filter-Leisten (`landmark-unique`) auf drei
+Dashboard-Seiten und in der öffentlichen Kopfzeile.
+
+**Gelernt:** Die Kopfzeile der Bibliothek (`UHeader`) baut den Namen ihres
+Logo-Links aus dem TEXT des `#title`-Slots — alles, was im Slot steht, wird
+Name oder fehlt im Namen. Im Dev-Server zählen sogar die HTML-Kommentare des
+Slots mit (Vue behält sie dort als Knoten mit Text): der Link hieß lokal wie
+der Kommentar darüber. Wer neben die Wortmarke etwas stellt, nimmt den
+`#left`-Slot und baut den Link selbst. Und: ein Name aus `aria-label` an
+einem Knopf mit sichtbarem Text ist fast immer falsch — sichtbarer Text plus
+ein verstecktes `sr-only`-Wort ergibt denselben Zweck UND enthält, was
+dasteht.
+
+---
+
 ### Q19 — Runbooks, Referenz und Doku-Ordnung (DOC-004, DOC-007 bis DOC-011, DOC-014) ✅ 2026-11-21
 
 **Was.** Ein Durchgang durch die Doku nach dem zweiten Durchlauf des Gesamtaudits:

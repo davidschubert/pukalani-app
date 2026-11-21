@@ -1036,6 +1036,7 @@
       "dontKnow": "Weiß ich nicht",
       "help": "Warum wir das fragen",
       "contentLocale": "Inhaltssprache",
+      "slotActionName": "{action}: {field}",
       "confirmSlot": "Bestätigen",
       "confirmedSlot": "Bestätigt",
       "confirmedBadge": "Bestätigt",

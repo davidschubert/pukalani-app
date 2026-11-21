@@ -75,9 +75,16 @@ async function share() {
 </script>
 
 <template>
-  <NuxtLink
-    :to="localePath(`/events/${event.$id}`)"
-    class="flex h-full flex-col overflow-hidden rounded-xl border transition-colors hover:bg-elevated/40"
+  <!-- NUR DER TITEL IST DER LINK (UX-011, Q09). Vorher war die ganze Karte ein
+       Link, in dem die Knöpfe „Hochvoten", „Runtervoten" und „Teilen" lagen:
+       Knöpfe in einem Link sind kein gültiger Aufbau, und vorgelesen wurde ein
+       einziger langer Link-Name aus allem, was auf der Karte steht. Jetzt
+       streckt der Titel-Link seine Klickfläche per `::after` über die Karte
+       (`relative` hier, `after:absolute after:inset-0` am Link); die Knöpfe
+       liegen mit `relative z-10` darüber und sind eigene Tab-Schritte. Der
+       Fokusring des Links zeichnet sich um die ganze Karte. -->
+  <article
+    class="relative flex h-full flex-col overflow-hidden rounded-xl border transition-colors hover:bg-elevated/40 has-[[data-card-link]:focus-visible]:ring-2 has-[[data-card-link]:focus-visible]:ring-primary"
     :class="highlighted ? 'border-primary/60 bg-elevated/40 ring-2 ring-primary/30' : 'border-default'"
     :data-event-card="event.$id"
     :data-card-highlighted="highlighted || undefined"
@@ -135,7 +142,13 @@ async function share() {
 
     <div class="flex flex-1 flex-col gap-1 p-3">
       <h3 class="font-semibold" :class="{ 'line-through opacity-60': event.status === 'cancelled' }">
-        {{ event.title }}
+        <NuxtLink
+          :to="localePath(`/events/${event.$id}`)"
+          class="outline-none after:absolute after:inset-0 after:content-['']"
+          data-card-link
+        >
+          {{ event.title }}
+        </NuxtLink>
       </h3>
 
       <p class="text-sm text-muted" data-testid="card-date">
@@ -178,7 +191,7 @@ async function share() {
           </UBadge>
         </div>
 
-        <div class="flex items-center gap-0.5">
+        <div class="relative z-10 flex items-center gap-0.5">
           <EventVoteButtons :event="event" :my-vote="event.myVote" @updated="onVoted" />
           <UButton
             size="xs"
@@ -192,5 +205,5 @@ async function share() {
         </div>
       </div>
     </div>
-  </NuxtLink>
+  </article>
 </template>

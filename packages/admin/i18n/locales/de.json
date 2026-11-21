@@ -84,6 +84,7 @@
       "unavailableText": "Dem Runtime-Key die Scopes buckets.read, files.read + files.write geben, dann neu laden."
     },
     "analytics": {
+      "range": "Zeitraum",
       "title": "Aktivität",
       "subtitle": "Letzte {days} Tage",
       "users": "Registrierungen",
@@ -589,6 +590,12 @@
     "loadMore": "Mehr laden"
   },
   "dashboard": {
+    "a11y": {
+      "sidebar": "Seitenleiste",
+      "skipToContent": "Zum Inhalt springen",
+      "mainNav": "Hauptmenü",
+      "secondaryNav": "Verwaltung und Einstellungen"
+    },
     "search": {
       "label": "Gehe zu",
       "settings": "Einstellungen",

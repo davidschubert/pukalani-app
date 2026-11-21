@@ -188,7 +188,7 @@ function rowActions(item: AdminMediaItem): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('media.admin.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" multiple class="hidden" data-media-file-input @change="upload(($event.target as HTMLInputElement).files)">

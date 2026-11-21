@@ -424,7 +424,7 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('members.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
       </UDashboardNavbar>
 

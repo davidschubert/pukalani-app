@@ -79,7 +79,7 @@ watch(detailOpen, (open) => { if (!open) void refresh() })
     <template #header>
       <UDashboardNavbar :title="t('feedback.roadmap.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

@@ -2422,6 +2422,14 @@ const logChapters = computed<LogChapter[]>(() => store.railSteps.map((entry) => 
 }))
 
 /**
+ * Der Name eines Karten-Knopfs für Hilfsmittel (UX-011): sichtbarer Text
+ * ZUERST, dann das Feld — „Bestätigen: Gründungsimpuls".
+ */
+function slotActionName(action: string, field: string): string {
+  return t('brand.workspace.slotActionName', { action, field })
+}
+
+/**
  * Die Zähl-Subline eines Kapitels. Der Zähler zählt NUR Pflicht-Slots —
  * neben „10/10 bestätigt" stand deshalb eine unbestätigte (bernsteinfarbene)
  * Tonalitäts-Karte, und das las sich wie ein Widerspruch. Davids Zuschnitt
@@ -3989,7 +3997,10 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                — die eine Stelle, an der die Werkstatt behauptet hätte, Brand
                Design sei ein Kapitel der Foundation. -->
           <p class="bw-label uppercase tracking-wider" style="color: var(--bw-muted)">{{ t(currentLayerLabelKey) }}</p>
-          <p class="truncate font-semibold">{{ stepKey ? t(`brand.steps.${stepKey}`) : '' }}</p>
+          <!-- DIE HAUPTÜBERSCHRIFT DER SEITE (UX-011, Q09): die Werkstatt hatte
+               keine einzige Überschrift. Der Kapitel-Name ist die erste Ebene,
+               die Kapitel des Logs sind die zweite, ihre Felder die dritte. -->
+          <h1 class="truncate font-semibold">{{ stepKey ? t(`brand.steps.${stepKey}`) : '' }}</h1>
         </div>
         <!-- Der Log-Toggle wirkt nur, wo es eine Log-SPALTE gibt: unter 768 px
              ist das Raster einspaltig, und der Stand kommt über den
@@ -4856,31 +4867,34 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
       <div class="flex min-h-0 flex-1 flex-col">
         <div class="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <div v-for="chapter in logChapters" :key="chapter.stepKey" class="bw-log-chapter">
-            <button
-              class="flex w-full items-start gap-2.5 py-1 text-left"
-              :aria-expanded="logChaptersOpen.has(chapter.stepKey)"
-              @click="toggleChapter(chapter)"
-            >
-              <UIcon :name="chapterGlyph(chapter).name" class="mt-0.5 size-5 flex-none" :style="chapterGlyph(chapter).style" />
-              <span class="min-w-0 flex-1 leading-tight">
-                <span class="block text-sm font-medium">{{ chapter.label }}</span>
-                <span class="bw-label block tabular-nums" style="color: var(--bw-muted)">
-                  {{ chapterCountLine(chapter) }}
+            <h2>
+              <button
+                type="button"
+                class="flex w-full items-start gap-2.5 py-1 text-left"
+                :aria-expanded="logChaptersOpen.has(chapter.stepKey)"
+                @click="toggleChapter(chapter)"
+              >
+                <UIcon :name="chapterGlyph(chapter).name" class="mt-0.5 size-5 flex-none" :style="chapterGlyph(chapter).style" />
+                <span class="min-w-0 flex-1 leading-tight">
+                  <span class="block text-sm font-medium">{{ chapter.label }}</span>
+                  <span class="bw-label block tabular-nums" style="color: var(--bw-muted)">
+                    {{ chapterCountLine(chapter) }}
+                  </span>
+                  <!-- Der Befund-Zähler steht in SEINER Farbe und nur, wenn es
+                       etwas zu zählen gibt (§8) — beratend, nicht alarmierend. -->
+                  <span
+                    v-if="chapter.findings > 0"
+                    class="bw-label block tabular-nums" style="color: var(--bw-stale)"
+                  >{{ t('brand.finding.openCount', { count: chapter.findings }, chapter.findings) }}</span>
                 </span>
-                <!-- Der Befund-Zähler steht in SEINER Farbe und nur, wenn es
-                     etwas zu zählen gibt (§8) — beratend, nicht alarmierend. -->
-                <span
-                  v-if="chapter.findings > 0"
-                  class="bw-label block tabular-nums" style="color: var(--bw-stale)"
-                >{{ t('brand.finding.openCount', { count: chapter.findings }, chapter.findings) }}</span>
-              </span>
-              <UIcon
-                name="i-ph-caret-down"
-                class="mt-1 size-4 flex-none transition-transform"
-                :class="logChaptersOpen.has(chapter.stepKey) ? '' : '-rotate-90'"
-                style="color: var(--bw-muted)"
-              />
-            </button>
+                <UIcon
+                  name="i-ph-caret-down"
+                  class="mt-1 size-4 flex-none transition-transform"
+                  :class="logChaptersOpen.has(chapter.stepKey) ? '' : '-rotate-90'"
+                  style="color: var(--bw-muted)"
+                />
+              </button>
+            </h2>
 
             <div v-if="logChaptersOpen.has(chapter.stepKey)" class="mt-2 space-y-3">
               <!-- Jede Karte liest sich wie der Erklär-Layer: Ampel + Headline,
@@ -4891,9 +4905,12 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                 v-for="card in chapterCards(chapter)" :key="card.id"
                 class="bw-log-card rounded-xl px-3 py-2.5" style="background: var(--bw-surface-hi)"
               >
-                <p class="flex items-center gap-2 text-sm font-medium">
+                <!-- Der Status-Punkt ist ein BILD mit Namen (`role="img"`): ein
+                     nacktes `span` darf keinen `aria-label` tragen (UX-011). -->
+                <h3 class="flex items-center gap-2 text-sm font-medium">
                   <span
                     class="bw-dot"
+                    role="img"
                     :class="card.confirmed ? 'bw-dot--confirmed' : card.value ? 'bw-dot--draft' : ''"
                     :title="t(card.confirmed ? 'brand.workspace.slotState.confirmed' : card.value ? 'brand.workspace.slotState.draft' : 'brand.workspace.slotState.empty')"
                     :aria-label="t(card.confirmed ? 'brand.workspace.slotState.confirmed' : card.value ? 'brand.workspace.slotState.draft' : 'brand.workspace.slotState.empty')"
@@ -4901,7 +4918,7 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                     <UIcon v-if="card.confirmed" name="i-ph-check-bold" class="size-2.5" />
                   </span>
                   <span class="min-w-0">{{ card.label }}</span>
-                </p>
+                </h3>
                 <p v-if="card.note" class="mt-0.5 text-xs" style="color: var(--bw-muted)">{{ card.note }}</p>
 
                 <!-- GESCHLOSSENE AUSWAHL: „Korrigieren" führt zurück auf die
@@ -4975,6 +4992,12 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                   {{ t('brand.review.unreviewed') }}
                 </p>
 
+                <!-- JEDER KNOPF NENNT SEIN FELD (UX-011, Q09): elf Mal
+                     „Bestätigen" mit gleichem Namen sagt einem
+                     Vorleseprogramm nicht, WAS bestätigt wird. Der Name
+                     beginnt mit dem sichtbaren Text („Bestätigen:
+                     Gründungsimpuls"), damit Sprachsteuerung den Knopf über
+                     das Wort findet, das dasteht. -->
                 <div class="mt-1 flex items-center justify-end gap-2">
                   <!-- Ein Kapitel, das NICHT offen ist, wird nicht hier
                        korrigiert: der Weg dorthin ist der Baustein selbst. -->
@@ -4982,6 +5005,7 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                     v-if="!card.controls"
                     size="xs" color="neutral" variant="ghost" class="bw-fix rounded-full"
                     icon="i-ph-pencil-simple" :label="t('brand.workspace.reviseSlot')"
+                    :aria-label="slotActionName(t('brand.workspace.reviseSlot'), card.label)"
                     :disabled="!store.canEnter(chapter.stepKey)"
                     @click="goToStep(chapter.stepKey)"
                   />
@@ -4989,6 +5013,7 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                     v-else-if="card.confirmed"
                     size="xs" color="neutral" variant="ghost" class="bw-fix rounded-full"
                     icon="i-ph-pencil-simple" :label="t('brand.workspace.reviseSlot')"
+                    :aria-label="slotActionName(t('brand.workspace.reviseSlot'), card.label)"
                     @click="reviseSlot(card.id)"
                   />
                   <template v-else-if="card.controls.showConfirm">
@@ -5003,6 +5028,7 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                       size="xs" color="neutral" variant="ghost" class="rounded-full"
                       :icon="card.action === 'answer' ? 'i-ph-chat-circle-dots' : 'i-ph-pen-nib'"
                       :label="card.action === 'answer' ? t('brand.workspace.answerSlot') : t('brand.workspace.draftSlot')"
+                      :aria-label="slotActionName(card.action === 'answer' ? t('brand.workspace.answerSlot') : t('brand.workspace.draftSlot'), card.label)"
                       @click="goToSession(card.id)"
                     />
                     <!-- Dieselben zwei Ausgänge wie auf der Bühne (Befund 3). -->
@@ -5023,11 +5049,13 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                       size="xs" color="neutral" variant="ghost" class="rounded-full"
                       icon="i-ph-pencil-simple"
                       :label="t('brand.workspace.reviseSlot')"
+                      :aria-label="slotActionName(t('brand.workspace.reviseSlot'), card.label)"
                       @click="openEditor(card.id)"
                     />
                     <button
                       type="button" class="bw-confirm bw-confirm--open bw-confirm--xs"
                       :disabled="!card.controls.confirmEnabled"
+                      :aria-label="slotActionName(t('brand.workspace.confirmSlot'), card.label)"
                       @click="confirmSlot(card.id)"
                     >
                       <UIcon name="i-ph-check" class="size-3.5" /> {{ t('brand.workspace.confirmSlot') }}

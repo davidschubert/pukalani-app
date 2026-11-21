@@ -193,7 +193,7 @@ function rowActions(item: BrandUnlockItem): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('brand.admin.unlocks.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton

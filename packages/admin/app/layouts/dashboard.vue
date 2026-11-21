@@ -338,6 +338,12 @@ const settingsTabsHere = computed(() => resolveSettingsTabs(
   tabFilter,
 ))
 
+/** Ziel des Sprunglinks (UX-006): der Fokus geht in den Hauptbereich. */
+const mainEl = ref<HTMLElement | null>(null)
+function focusMain() {
+  mainEl.value?.focus()
+}
+
 const searchGroups = computed(() => {
   const navGroup: PaletteGroup = {
     id: 'links',
@@ -363,9 +369,23 @@ const searchGroups = computed(() => {
 
 <template>
   <UDashboardGroup unit="rem" :class="sidebarVariant === 'inset' ? 'bg-elevated/50' : undefined">
+    <!-- SPRUNGLINK (UX-006, Q09): das ERSTE Element der Oberfläche. Unsichtbar,
+         bis der Fokus darauf liegt; ein Tab-Schritt, Enter, und der Fokus steht
+         im Hauptbereich statt nach über zwanzig Schritten durch die
+         Seitenleiste. Kein `href="#…"`-Sprung über den Router: der Klick setzt
+         den Fokus selbst, die Adresse bleibt, wie sie ist. -->
+    <a
+      href="#dashboard-main"
+      data-testid="skip-to-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:start-2 focus:top-2 focus:z-[60] focus:rounded-md focus:bg-default focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-highlighted focus:shadow-lg focus:ring-2 focus:ring-primary"
+      @click.prevent="focusMain"
+    >{{ t('dashboard.a11y.skipToContent') }}</a>
+
     <UDashboardSidebar
       id="dashboard"
       v-model:open="open"
+      role="complementary"
+      :aria-label="t('dashboard.a11y.sidebar')"
       collapsible
       :resizable="sidebarVariant === 'sidebar'"
       :class="sidebarClass"
@@ -387,9 +407,9 @@ const searchGroups = computed(() => {
           <UDashboardSearchButton :collapsed="collapsed" :label="t('dashboard.search.button')" class="grow bg-transparent ring-default" />
           <NotificationBell v-if="accountBell && auth.user" />
         </div>
-        <UNavigationMenu :collapsed="collapsed" :items="links" orientation="vertical" tooltip popover :ui="{ label: 'mt-4' }" />
+        <UNavigationMenu :aria-label="t('dashboard.a11y.mainNav')" :collapsed="collapsed" :items="links" orientation="vertical" tooltip popover :ui="{ label: 'mt-4' }" />
         <div class="flex-1" />
-        <UNavigationMenu :collapsed="collapsed" :items="bottomLinks" orientation="vertical" tooltip popover />
+        <UNavigationMenu :aria-label="t('dashboard.a11y.secondaryNav')" :collapsed="collapsed" :items="bottomLinks" orientation="vertical" tooltip popover />
       </template>
 
       <template #footer="{ collapsed }">
@@ -411,13 +431,22 @@ const searchGroups = computed(() => {
       </div>
     </ClientOnly>
 
-    <!-- inset: Hauptinhalt sitzt als abgesetzte Karte im gedämpften Hintergrund -->
-    <div
-      v-if="sidebarVariant === 'inset'"
-      class="m-2 flex min-w-0 flex-1 overflow-hidden rounded-xl bg-default shadow-sm ring ring-default"
+    <!-- DER HAUPTBEREICH (UX-006, Q09). Die Dashboard-Bausteine der Bibliothek
+         zeichnen keinen aus, und eine Seite kann es nicht selbst tun:
+         `UDashboardPanel` ist mehrwurzelig. Deshalb sitzt `main` HIER, genau
+         einmal, um den Seiten-Slot. Er ist ein Flex-Kind der Gruppe und selbst
+         eine Flex-Zeile — die Panels einer Seite liegen darin wie vorher
+         direkt in der Gruppe (auch zwei nebeneinander mit Ziehgriff).
+         `tabindex="-1"`: Ziel des Sprunglinks, aber kein eigener Tab-Schritt.
+         inset: derselbe Bereich als abgesetzte Karte im gedämpften Hintergrund. -->
+    <main
+      id="dashboard-main"
+      ref="mainEl"
+      tabindex="-1"
+      class="flex min-w-0 flex-1 outline-none"
+      :class="sidebarVariant === 'inset' ? 'm-2 overflow-hidden rounded-xl bg-default shadow-sm ring ring-default' : undefined"
     >
       <slot />
-    </div>
-    <slot v-else />
+    </main>
   </UDashboardGroup>
 </template>

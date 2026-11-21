@@ -172,6 +172,34 @@ const form = reactive<EventForm>(emptyForm())
 const saving = ref(false)
 
 /**
+ * FEHLER STEHEN AM FELD (UX-005, Q09). Vorher meldete sich ein leeres
+ * Pflichtfeld nur als Hinweis oben rechts, der nach Sekunden verschwand; das
+ * Feld selbst blieb unmarkiert. Jetzt trägt jedes Feld seinen Fehlertext
+ * (`UFormField` verbindet ihn mit dem Feld: `aria-invalid`,
+ * `aria-describedby`), und der Fokus geht ins ERSTE fehlerhafte Feld — ein
+ * Vorleseprogramm liest den Text damit sofort vor. Schlüssel ist das erste
+ * Glied des Schema-Pfads; je Feld zählt die erste Meldung.
+ */
+const fieldErrors = ref<Record<string, string>>({})
+const formEl = ref<HTMLFormElement | null>(null)
+
+function showFieldErrors(issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>, message: string }>) {
+  const errors: Record<string, string> = {}
+  for (const issue of issues) {
+    const name = String(issue.path[0] ?? '')
+    if (name && !errors[name]) errors[name] = issue.message
+  }
+  fieldErrors.value = errors
+  // Reihenfolge des FORMULARS, nicht des Schemas: der Fokus soll in das
+  // oberste fehlerhafte Feld. Erst nach dem Zeichnen — vorher trägt das Feld
+  // weder Fehlertext noch `aria-invalid`.
+  void nextTick(() => {
+    const fields = Array.from(formEl.value?.querySelectorAll<HTMLElement>('[name]') ?? [])
+    fields.find(field => errors[field.getAttribute('name') ?? ''])?.focus()
+  })
+}
+
+/**
  * Beim OEFFNEN befuellen, nicht beim Prop-Wechsel: die Detailseite haelt ihre
  * Row in einem Realtime-Ref, das sich auch waehrend des Ausfuellens aendert
  * (ein fremdes RSVP genuegt fuer ein Update von `attendeeCount`). Haenge das
@@ -184,6 +212,7 @@ watch(open, (isOpen) => {
   editingCoverFileId.value = row?.coverFileId ?? null
   paidChoosable.value = paidAccessChoosable(ticketCheckoutPath.value, row?.access)
   timezoneOverride.value = ''
+  fieldErrors.value = {}
   Object.assign(form, emptyForm())
   if (!row) return
   /**
@@ -393,9 +422,15 @@ async function save() {
   }
   const parsed = createEventSchema(t).safeParse(payload)
   if (!parsed.success) {
-    toast.add({ title: parsed.error.issues[0]?.message ?? t('events.admin.saveFailed'), color: 'error' })
+    showFieldErrors(parsed.error.issues)
+    // Ein Fehler ohne sichtbares Feld (Preis im Pool, Serie beim Bearbeiten)
+    // darf nicht stumm bleiben — dann wie bisher als Hinweis.
+    const shown = Array.from(formEl.value?.querySelectorAll('[name]') ?? []).map(field => field.getAttribute('name'))
+    const hidden = parsed.error.issues.find(issue => !shown.includes(String(issue.path[0] ?? '')))
+    if (hidden) toast.add({ title: hidden.message, color: 'error' })
     return
   }
+  fieldErrors.value = {}
 
   saving.value = true
   try {
@@ -476,18 +511,18 @@ const recurrenceChoice = computed({
 <template>
   <UModal v-model:open="open" :title="editingId ? t('events.admin.editTitle') : t('events.admin.createTitle')">
     <template #body>
-      <form class="space-y-4" data-testid="event-form" @submit.prevent="save">
-        <UFormField :label="t('events.admin.form.title')" required>
+      <form ref="formEl" class="space-y-4" data-testid="event-form" novalidate @submit.prevent="save">
+        <UFormField :label="t('events.admin.form.title')" required name="title" :error="fieldErrors.title">
           <UInput v-model="form.title" class="w-full" :maxlength="200" data-testid="event-form-title" />
         </UFormField>
-        <UFormField :label="t('events.admin.form.description')" :help="t('events.admin.form.descriptionHelp')" required>
+        <UFormField :label="t('events.admin.form.description')" :help="t('events.admin.form.descriptionHelp')" required name="description" :error="fieldErrors.description">
           <UTextarea v-model="form.description" class="w-full" :rows="5" data-testid="event-form-description" />
         </UFormField>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <UFormField :label="t('events.admin.form.startAt')" :help="timezoneNote || undefined" required>
+          <UFormField :label="t('events.admin.form.startAt')" :help="timezoneNote || undefined" required name="startAt" :error="fieldErrors.startAt">
             <UInput v-model="form.startAt" type="datetime-local" class="w-full" data-testid="event-form-start" />
           </UFormField>
-          <UFormField :label="t('events.admin.form.endAt')">
+          <UFormField :label="t('events.admin.form.endAt')" name="endAt" :error="fieldErrors.endAt">
             <UInput v-model="form.endAt" type="datetime-local" class="w-full" />
           </UFormField>
         </div>
@@ -496,7 +531,7 @@ const recurrenceChoice = computed({
           <UFormField :label="t('events.admin.form.recurrence')" :help="t('events.admin.form.recurrenceHelp')">
             <USelect v-model="recurrenceChoice" :items="recurrenceItems" class="w-full" data-testid="event-form-recurrence" />
           </UFormField>
-          <UFormField v-if="form.recurrence" :label="t('events.admin.form.seriesUntil')" :help="t('events.admin.form.seriesUntilHelp')">
+          <UFormField v-if="form.recurrence" :label="t('events.admin.form.seriesUntil')" :help="t('events.admin.form.seriesUntilHelp')" name="seriesUntil" :error="fieldErrors.seriesUntil">
             <UInput v-model="form.seriesUntil" type="date" class="w-full" data-testid="event-form-series-until" />
           </UFormField>
         </div>
@@ -510,12 +545,14 @@ const recurrenceChoice = computed({
             data-testid="event-form-location-type"
           />
         </UFormField>
-        <UFormField v-if="form.locationType === 'venue'" :label="t('events.admin.form.location')">
+        <UFormField v-if="form.locationType === 'venue'" :label="t('events.admin.form.location')" name="location" :error="fieldErrors.location">
           <UInput v-model="form.location" class="w-full" :maxlength="255" />
         </UFormField>
         <UFormField
           v-if="form.locationType === 'venue'"
           :label="t('events.admin.form.address')"
+          name="address"
+          :error="fieldErrors.address"
           :help="t('events.admin.form.addressHelp')"
         >
           <UInput v-model="form.address" class="w-full" :maxlength="255" data-testid="event-form-address" />
@@ -572,20 +609,24 @@ const recurrenceChoice = computed({
         <UFormField
           v-if="form.locationType === 'venue'"
           :label="t('events.admin.form.locationNotes')"
+          name="locationNotes"
+          :error="fieldErrors.locationNotes"
           :help="t('events.admin.form.locationNotesHelp')"
         >
           <UTextarea v-model="form.locationNotes" class="w-full" :rows="2" :maxlength="1000" />
         </UFormField>
         <UFormField
           :label="t('events.admin.form.url')"
+          name="url"
+          :error="fieldErrors.url"
           :help="form.locationType === 'online' ? t('events.admin.form.urlHelp') : undefined"
         >
           <UInput v-model="form.url" type="url" class="w-full" :maxlength="500" :placeholder="urlPlaceholder" />
         </UFormField>
-        <UFormField :label="t('events.admin.form.replayUrl')" :help="t('events.admin.form.replayHelp')">
+        <UFormField :label="t('events.admin.form.replayUrl')" :help="t('events.admin.form.replayHelp')" name="replayUrl" :error="fieldErrors.replayUrl">
           <UInput v-model="form.replayUrl" type="url" class="w-full" :maxlength="500" :placeholder="urlPlaceholder" />
         </UFormField>
-        <UFormField :label="t('events.admin.form.capacity')" :help="t('events.admin.form.capacityHelp')">
+        <UFormField :label="t('events.admin.form.capacity')" :help="t('events.admin.form.capacityHelp')" name="capacity" :error="fieldErrors.capacity">
           <UInputNumber v-model="form.capacity" :min="1" class="w-full" data-testid="event-form-capacity" />
         </UFormField>
 
@@ -605,10 +646,10 @@ const recurrenceChoice = computed({
           />
         </UFormField>
         <div v-if="form.access === 'paid'" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <UFormField :label="t('events.admin.form.priceEur')">
+          <UFormField :label="t('events.admin.form.priceEur')" name="priceAmount" :error="fieldErrors.priceAmount">
             <UInputNumber v-model="form.priceEur" :min="0" :step="0.5" class="w-full" data-testid="event-form-price" />
           </UFormField>
-          <UFormField :label="t('events.admin.form.priceLookupKey')" :help="priceLookupKeyHelp" required>
+          <UFormField :label="t('events.admin.form.priceLookupKey')" :help="priceLookupKeyHelp" required name="priceLookupKey" :error="fieldErrors.priceLookupKey">
             <UInput
               v-model="form.priceLookupKey"
               class="w-full"

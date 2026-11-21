@@ -158,7 +158,7 @@ function rowActions(request: RequestDto): DropdownMenuItem[][] {
     <template #header>
       <UDashboardNavbar :title="t('control.requests.title')">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <CoreSidebarCollapse />
         </template>
         <template #right>
           <UButton
