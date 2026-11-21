@@ -10,6 +10,8 @@ paths:
   - "packages/core/shared/aiCrawlers.ts"
   - "**/*sonLd.ts"
   - "scripts/check-i18n-keys.mjs"
+  - "**/product.manifest.ts"
+  - "scripts/lib/customer-words.mjs"
   - "packages/core/shared/seoOrigin.ts"
   - "packages/core/app/composables/useLocaleSeoHead*"
 ---
@@ -42,6 +44,28 @@ paths:
   zusammengesetzte Schlüssel (t(`a.${x}`)), `te()`, `server/` (dort heißt auch
   eine eigene Hilfe `t`) und Felder wie `labelKey:` im Code — dort selbst
   prüfen.
+- EIN WORT JE SACHE (Q16): Kundentexte (Werte der Sprachdateien,
+  `customerDescription` im Manifest) halten die Wortliste; rot macht
+  `pnpm check:customer-words` (Liste, Ausnahmen mit Grund:
+  `scripts/lib/customer-words.mjs`). Kern:
+
+  | de | nicht | en | nicht |
+  | --- | --- | --- | --- |
+  | Konto | Account | account | prefs |
+  | Einladungscode | Einladungs-Code | invite code | invitation code |
+  | Markenberater | — | brand advisor | brand consultant |
+  | Marke, Marken entdecken | Brand(s), Discover Brands | brand | — |
+  | Brand Score | Brand-Score | Brand Score | — |
+  | Upvote · Downvote | Hochvoten | upvote · downvote | — |
+  | hier · diese Site · eigene Plattform | Instanz | here · this site | instance |
+
+  Dazu ß statt ss, deutsche Menüpunkte auf deutschen Seiten (Produkte,
+  Über uns), keine Schicht-Nummern. ANREDE je Site: Pool „du“ (die Community
+  „ihr“), pukalani.studio „Sie“ und „wir“, branding.supply Werbung „ihr“,
+  hinter der Anmeldung die Weiche `profile.team`; Knöpfe auf Werbeseiten ohne
+  Anrede („Branding starten“). Mehrzahl als `{count} Zusage | {count} Zusagen`
+  und `t(key, { count }, count)`. Ein optionales Produkt braucht
+  `customerDescription` — `description` ist der Entwickler-Text.
 - EIN NAME JE SPRACHE IN DER ADRESSE BRAUCHT DEN RÜCKWEG (Q03): die
   Sprach-Erkennung (`redirectOn: 'all'`) übersetzt nur den FESTEN Teil einer
   Adresse, bevor die Seite lädt (`/products/posts` → `/de/produkte/posts`).

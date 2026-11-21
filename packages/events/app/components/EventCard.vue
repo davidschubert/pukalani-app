@@ -181,7 +181,7 @@ async function share() {
             <span v-for="i in placeholderCount" :key="i" class="size-5 rounded-full bg-accented blur-[2px] ring-1 ring-default" />
           </div>
           <span class="text-xs text-muted" data-testid="attendee-count">
-            {{ t('events.card.attendees', { count: event.attendeeCount }) }}
+            {{ t('events.card.attendees', { count: event.attendeeCount }, event.attendeeCount) }}
           </span>
           <UBadge v-if="event.replayUrl" color="neutral" variant="subtle" size="sm" data-testid="card-replay">
             {{ t('events.card.replay') }}

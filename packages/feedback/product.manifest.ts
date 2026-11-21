@@ -24,5 +24,9 @@ export default {
     en: 'Central feedback across all communities: submit, vote, discuss, roadmap.',
     de: 'Zentrales Feedback aus allen Communities: senden, wählen, mitreden, Roadmap.',
   },
+  customerDescription: {
+    en: 'Feedback to us: send ideas, vote, discuss and follow the roadmap.',
+    de: 'Feedback an uns: Wünsche senden, abstimmen, mitreden und die Roadmap verfolgen.',
+  },
   icon: 'i-ph-megaphone',
 } satisfies ProductManifest

@@ -25,5 +25,9 @@ export default {
     en: 'Direct 1:1 messages between two members of the same community — with reporting, blocking, trust-level gate and an owner switch.',
     de: 'Direkte 1:1-Nachrichten zwischen zwei Mitgliedern derselben Community — mit Meldeweg, Sperre, Vertrauensstufen-Schwelle und Owner-Schalter.',
   },
+  customerDescription: {
+    en: 'Direct messages between members, with reporting and blocking; you decide whether they are on.',
+    de: 'Direkte Nachrichten zwischen Mitgliedern, mit Melden und Blockieren; du entscheidest, ob es sie gibt.',
+  },
   icon: 'i-ph-envelope-simple',
 } satisfies ProductManifest

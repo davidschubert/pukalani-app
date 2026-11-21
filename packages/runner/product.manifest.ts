@@ -22,5 +22,9 @@ export default {
     en: 'Runs tickets as Claude Code runs on a registered runner.',
     de: 'Führt Tickets als Claude-Code-Läufe auf einem registrierten Runner aus.',
   },
+  customerDescription: {
+    en: 'Has tasks worked on automatically by an assistant.',
+    de: 'Lässt Aufgaben automatisch von einem Assistenten bearbeiten.',
+  },
   icon: 'i-ph-rocket-launch',
 } satisfies ProductManifest

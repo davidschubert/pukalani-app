@@ -80,7 +80,15 @@ export interface ProductManifest {
   /** Katalog-Texte (F7) — bewusst im Manifest, nicht in Layer-Locales:
    *  das Control Plane liest Manifeste später ohne Nuxt-/i18n-Kontext. */
   title: ManifestText
+  /** Text für Betreiber und Entwickler (Katalog des Betreibers). */
   description: ManifestText
+  /**
+   * Text für KUNDSCHAFT (Q16/BRD-012): der eine Satz, den ein Owner im Reiter
+   * „Produkte“ seiner Community liest — in den Worten der Marketing-Site,
+   * ohne Entwickler-Wörter. PFLICHT für `tier: 'optional'`; das hält
+   * `core/tests/customerWords.test.ts`, zusammen mit der Wortliste.
+   */
+  customerDescription?: ManifestText
   /** Icon für den Produkt-Katalog, z. B. 'i-ph-chat-circle'. */
   icon?: string
   /**

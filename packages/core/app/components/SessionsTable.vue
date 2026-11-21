@@ -2,6 +2,7 @@
 import type { TableColumn } from '@nuxt/ui'
 import type { SessionRow } from '../../shared/types/session'
 import { formatSessionLocation } from '../../shared/sessionLocation'
+import { sessionMethodLabel } from '../../shared/sessionMethod'
 
 const props = defineProps<{ sessions: SessionRow[] }>()
 
@@ -79,11 +80,11 @@ const dbIpUrl = 'https://db-ip.com'
         <div class="flex flex-col gap-1">
           <UBadge color="neutral" variant="subtle" size="sm" class="w-fit">
             <UIcon :name="row.original.provider === 'email' ? 'i-ph-envelope-simple' : 'i-ph-plugs-connected'" class="size-3.5" />
-            {{ row.original.provider || '—' }}
+            {{ sessionMethodLabel(row.original.provider, t) }}
           </UBadge>
           <UBadge v-if="row.original.factors.length" color="info" variant="subtle" size="sm" class="w-fit" :title="t('account.sessions.factors')">
             <UIcon name="i-ph-shield-check" class="size-3.5" />
-            {{ row.original.factors.join(', ') }}
+            {{ row.original.factors.map(f => sessionMethodLabel(f, t)).join(', ') }}
           </UBadge>
         </div>
       </template>
@@ -108,13 +109,13 @@ const dbIpUrl = 'https://db-ip.com'
       <template #times-cell="{ row }">
         <div class="flex flex-col gap-0.5 text-xs">
           <span class="flex items-center gap-1 whitespace-nowrap text-muted" :title="t('account.sessions.created')">
-            <UIcon name="i-ph-plus-circle" class="size-3.5 shrink-0" />{{ dateTime(row.original.$createdAt) }}
+            <UIcon name="i-ph-plus-circle" class="size-3.5 shrink-0" />{{ t('account.sessions.created') }}: {{ dateTime(row.original.$createdAt) }}
           </span>
           <span class="flex items-center gap-1 whitespace-nowrap text-muted" :title="t('account.sessions.updated')">
-            <UIcon name="i-ph-clock" class="size-3.5 shrink-0" />{{ dateTime(row.original.$updatedAt) }}
+            <UIcon name="i-ph-clock" class="size-3.5 shrink-0" />{{ t('account.sessions.updated') }}: {{ dateTime(row.original.$updatedAt) }}
           </span>
           <span v-if="row.original.expire" class="flex items-center gap-1 whitespace-nowrap text-dimmed" :title="t('account.sessions.expires')">
-            <UIcon name="i-ph-hourglass" class="size-3.5 shrink-0" />{{ dateTime(row.original.expire) }}
+            <UIcon name="i-ph-hourglass" class="size-3.5 shrink-0" />{{ t('account.sessions.expires') }}: {{ dateTime(row.original.expire) }}
           </span>
         </div>
       </template>

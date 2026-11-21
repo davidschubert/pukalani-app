@@ -303,7 +303,7 @@ function rowActions(row: EventRow): DropdownMenuItem[][] {
           </template>
           <template #attendees-cell="{ row }">
             <span class="whitespace-nowrap text-sm tabular-nums text-muted">
-              {{ t('events.card.attendees', { count: row.original.attendeeCount }) }}<template v-if="row.original.capacity !== null">/{{ row.original.capacity }}</template>
+              {{ t('events.card.attendees', { count: row.original.attendeeCount }, row.original.attendeeCount) }}<template v-if="row.original.capacity !== null">/{{ row.original.capacity }}</template>
             </span>
           </template>
           <template #status-cell="{ row }">

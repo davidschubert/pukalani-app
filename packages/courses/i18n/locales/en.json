@@ -4,7 +4,7 @@
       "title": "Courses",
       "description": "Learn at your own pace — lesson by lesson.",
       "empty": "No courses published yet.",
-      "lessons": "{count} lessons",
+      "lessons": "{count} lesson | {count} lessons",
       "enrolled": "Enrolled",
       "manage": "Manage",
       "create": "New course"

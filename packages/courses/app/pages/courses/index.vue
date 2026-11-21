@@ -106,7 +106,7 @@ const accessColor = (access: CourseAccess) =>
         <p class="mt-3 flex items-center gap-3 text-xs text-muted">
           <span class="inline-flex items-center gap-1">
             <UIcon name="i-ph-list-numbers" class="size-4" />
-            {{ t('courses.list.lessons', { count: course.lessonCount }) }}
+            {{ t('courses.list.lessons', { count: course.lessonCount }, course.lessonCount) }}
           </span>
           <span v-if="course.authorName" class="inline-flex items-center gap-1">
             <UIcon name="i-ph-user" class="size-4" />

@@ -65,7 +65,7 @@
       "notFoundTitle": "Diesen Beitrag gibt es nicht",
       "notFoundBody": "Die Adresse führt ins Leere. Vielleicht wurde der Beitrag umbenannt oder zurückgezogen — im Journal steht, was heute da ist.",
       "previewBadge": "Vorschau",
-      "ctaArticle": "Starte dein Branding",
+      "ctaArticle": "Branding starten",
       "topicEyebrow": "Themencluster",
       "topicTitle": "{topic} — Brand Insights",
       "topicLead": "Alle Beiträge zu {topic}: Markenprofile, Duelle, Artikel und Rankings.",
@@ -183,9 +183,9 @@
         "emptyTitle": "Noch steht niemand auf der Liste",
         "emptyText": "Sobald sich jemand eingetragen und bestätigt hat, steht hier der Knopf.",
         "notPublicTitle": "Erst freigeben",
-        "notPublicText": "Ein Entwurf hat draussen keine Adresse. Nach der Freigabe steht der Knopf hier.",
+        "notPublicText": "Ein Entwurf hat draußen keine Adresse. Nach der Freigabe steht der Knopf hier.",
         "noAddressTitle": "Keine öffentliche Adresse",
-        "noAddressText": "Dieser Beitrag ist freigegeben, hat draussen aber keine Seite — das Format ist zugeriegelt oder die Marken-Zeile fehlt. Eine Mail würde ins Leere zeigen."
+        "noAddressText": "Dieser Beitrag ist freigegeben, hat draußen aber keine Seite — das Format ist zugeriegelt oder die Marken-Zeile fehlt. Eine Mail würde ins Leere zeigen."
       }
     },
     "profile": {
@@ -356,7 +356,7 @@
         "youtube_unavailable": "YouTube hat nicht geantwortet.",
         "brief_exists": "Zu diesem Video gibt es schon einen Beitrag. Der Knopf daneben führt hin.",
         "video_not_citable": "Zu diesem Video fehlen Kanal oder Veröffentlichungsdatum — ohne beides lässt es sich nicht als Quelle angeben. Der nächste tägliche Lauf trägt sie nach.",
-        "ai_disabled": "Die KI ist auf dieser Instanz gerade abgeschaltet.",
+        "ai_disabled": "Die KI ist hier gerade abgeschaltet.",
         "ai_hourly_limit": "Für diese Stunde sind genug Läufe gemacht. Später noch einmal.",
         "ai_daily_limit": "Für heute sind genug Läufe gemacht. Morgen wieder.",
         "slug_taken": "Zu diesem Arbeitstitel ist keine freie Adresse zu finden. Benenne das Video um oder lege den Beitrag von Hand an.",
@@ -556,7 +556,7 @@
       "prototypeOnly": "Prototyp — nichts wird gespeichert, kein Modell wird gerufen.",
       "error": {
         "validation": "Eingaben unvollständig — die Prüfregeln rechts zeigen die Stelle.",
-        "aiDisabled": "Die KI ist auf dieser Instanz abgeschaltet.",
+        "aiDisabled": "Die KI ist hier abgeschaltet.",
         "aiHourlyLimit": "Zu viele Läufe in dieser Stunde — gleich wieder.",
         "aiDailyLimit": "Das Tageskontingent ist aufgebraucht.",
         "aiTruncated": "Das Modell hat mitten im Text aufgehört — der Lauf ist unbrauchbar. Bestelle einen kürzeren Umfang und versuche es noch einmal.",
@@ -569,8 +569,8 @@
         "storageUnavailable": "Die Ablage ist gerade nicht erreichbar.",
         "gateSkipped": "Die Prüfung ist nicht gelaufen – nichts wurde geändert. Bitte neu laden.",
         "alreadySent": "Dieser Beitrag ist schon an die Liste gegangen — ein zweites Mal gibt es nicht.",
-        "notPublic": "Erst freigeben: ein Entwurf hat draussen keine Adresse.",
-        "noPublicAddress": "Dieser Beitrag hat draussen keine Seite — eine Mail würde ins Leere zeigen.",
+        "notPublic": "Erst freigeben: ein Entwurf hat draußen keine Adresse.",
+        "noPublicAddress": "Dieser Beitrag hat draußen keine Seite — eine Mail würde ins Leere zeigen.",
         "budgetExhausted": "Das Mail-Budget des Tages ist aufgebraucht. Der Versand hält an, damit Anmeldung und Bestätigung weiter Mails verschicken können — morgen denselben Knopf noch einmal drücken, es geht an der Stelle weiter.",
         "budgetUnknown": "Wir können das Mail-Budget gerade nicht abfragen und schicken deshalb nichts. Fehlt der Resend-Schlüssel in der Server-Umgebung? Siehe Runbook „Resend-Webhook“.",
         "generic": "Das hat nicht geklappt.",

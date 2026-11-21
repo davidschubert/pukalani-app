@@ -399,7 +399,7 @@ const startTarget = computed(() =>
 
         <div class="flex flex-wrap items-center gap-3">
           <span class="bw-label" style="color: var(--bw-muted)" data-discover-total>
-            {{ t('brand.discover.total', { count: total }) }}
+            {{ t('brand.discover.total', { count: total }, total) }}
           </span>
           <UButton
             v-if="hasFilter" :label="t('brand.discover.filter.reset')"

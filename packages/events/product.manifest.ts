@@ -16,5 +16,9 @@ export default {
     en: 'Events with series, RSVPs, tickets and AI translation — including an embeddable event view.',
     de: 'Events mit Serien, Zusagen, Tickets und KI-Übersetzung — inklusive einbettbarer Event-Ansicht.',
   },
+  customerDescription: {
+    en: 'Events with series and RSVPs — translatable and embeddable on other websites.',
+    de: 'Termine mit Serien und Zusagen — übersetzbar und auf anderen Websites einbettbar.',
+  },
   icon: 'i-ph-calendar',
 } satisfies ProductManifest

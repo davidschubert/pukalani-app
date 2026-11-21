@@ -128,7 +128,7 @@
         "date": "Date",
         "scheduled": "Scheduled for"
       },
-      "reports": "{count} reports",
+      "reports": "{count} report | {count} reports",
       "hiddenBadge": "Hidden",
       "hide": "Hide",
       "restore": "Restore",

@@ -55,7 +55,7 @@
       "galleryEmptyText": "This is where the built-in themes live. If the list is empty, create your own.",
       "galleryHint": "Clicking a row switches the theme live — variants via the color dots. The choice applies to YOUR browser (cookie), like the display menu.",
       "previewLockedTitle": "Live preview not available here",
-      "previewLockedText": "On a community's own host its colour world applies to every visitor — a theme cookie is not read there. Creating, editing, the default setting and ordering still work; use an instance host to try themes out.",
+      "previewLockedText": "On a community's own host its colour world applies to every visitor — a theme cookie is not read there. Creating, editing, the default setting and ordering still work; use an address without a community to try themes out.",
       "col": {
         "preview": "Preview",
         "theme": "Theme"

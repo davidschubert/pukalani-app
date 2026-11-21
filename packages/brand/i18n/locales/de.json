@@ -198,7 +198,7 @@
       "unlocks": {
         "nav": "Freischaltungen",
         "title": "Freischaltungen",
-        "subtitle": "Zwei Schranken je Marke: Brand Design (Schicht 2) und die Ableitung — ein Feld, das Brand Book & Kit und den Marktvergleich zugleich öffnet. Beides ist studio-begleitet: eine Marke bekommt es, wenn das Erstgespräch gelaufen ist. Beta-Konten haben die Ableitung dauerhaft frei, auch ohne Eintrag.",
+        "subtitle": "Zwei Schranken je Marke: Brand Design und die Ableitung — ein Feld, das Brand Book & Kit und den Marktvergleich zugleich öffnet. Beides ist studio-begleitet: eine Marke bekommt es, wenn das Erstgespräch gelaufen ist. Beta-Konten haben die Ableitung dauerhaft frei, auch ohne Eintrag.",
         "refresh": "Neu laden",
         "rowActions": "Aktionen für dieses Branding",
         "emptyTitle": "Noch kein Branding",
@@ -371,11 +371,11 @@
       "send": "Senden"
     },
     "nav": {
-      "products": "Products",
+      "products": "Produkte",
       "brandCheck": "Brand-Check",
-      "discover": "Discover Brands",
+      "discover": "Marken entdecken",
       "insights": "Brand Insights",
-      "about": "About",
+      "about": "Über uns",
       "team": "Team",
       "product": {
         "wizard": "Die Marke entsteht im Gespräch mit einem persönlichen Markenberater.",
@@ -657,7 +657,7 @@
           "solo": "Welches Schriftpaar passt zu dir?",
           "team": "Welches Schriftpaar passt zu euch?"
         },
-        "scale": "Grössen-Hierarchie",
+        "scale": "Größen-Hierarchie",
         "rules": "Schrift-Regeln"
       },
       "j": {
@@ -961,7 +961,7 @@
         },
         "sample": {
           "label": "Stichprobe",
-          "hint": "Jeder fünfte Text wird geprüft. Schneller, aber der Fehler steht dann schon draussen.",
+          "hint": "Jeder fünfte Text wird geprüft. Schneller, aber der Fehler steht dann schon draußen.",
           "example": "Freitags werden fünf Beiträge der Woche gegengelesen."
         },
         "channel": {
@@ -1152,7 +1152,7 @@
         "send": "Senden"
       },
       "stage": {
-        "title": "Dein Brand-Dokument",
+        "title": "Dein Markendokument",
         "empty": "Hier steht noch nichts — es füllt sich, während du antwortest.",
         "pending": "Noch offen — kommt im Gespräch.",
         "draftAnswer": "Was soll {voice} für „{field}“ wissen? Schreib es hier hinein — daraus entsteht der Entwurf.",
@@ -1717,7 +1717,7 @@
         "errors": {
           "empty": "Bestätigt zuerst Felder im Fundament. Ohne bestätigte Antworten gibt es nichts zu prüfen.",
           "accountLimit": "Heute sind die 10 Neu-Ermittlungen aufgebraucht. Morgen geht es weiter.",
-          "notFound": "Diese Brand ist unter diesem Konto nicht verfügbar.",
+          "notFound": "Diese Marke ist unter diesem Konto nicht verfügbar.",
           "unavailable": "Der Check ist gerade nicht erreichbar. Versucht es in ein paar Minuten noch einmal.",
           "paused": "Der Check ist gerade pausiert. Schaut bitte später noch einmal vorbei.",
           "generic": "Das hat gerade nicht geklappt. Versucht es in einem Moment noch einmal."
@@ -1725,12 +1725,12 @@
       }
     },
     "myScores": {
-      "title": "Brand-Score",
+      "title": "Brand Score",
       "subtitle": "Wo diese Marke heute steht — von außen gemessen und im Fundament geprüft.",
-      "back": "Zurück zu den Brands",
+      "back": "Zurück zu den Marken",
       "loading": "Die Stände werden geholt …",
-      "missingTitle": "Diese Brand gibt es hier nicht.",
-      "missingText": "Der Link zeigt auf eine Brand, die es nicht mehr gibt oder die zu einem anderen Konto gehört.",
+      "missingTitle": "Diese Marke gibt es hier nicht.",
+      "missingText": "Der Link zeigt auf eine Marke, die es nicht mehr gibt oder die zu einem anderen Konto gehört.",
       "sources": {
         "website": "Website",
         "document": "Fundament"
@@ -1740,11 +1740,11 @@
         "lead": "Der Außen-Check der Startseite — dieselben 40 Kriterien wie im öffentlichen Brand-Check.",
         "stand": "Geprüft am {date}",
         "open": "Ergebnis ansehen",
-        "recheck": "Brand-Score neu ermitteln",
+        "recheck": "Brand Score neu ermitteln",
         "running": "Die Website wird geprüft …",
-        "none": "Für diese Brand gibt es noch keinen Website-Check.",
+        "none": "Für diese Marke gibt es noch keinen Website-Check.",
         "start": "Website prüfen",
-        "noUrl": "Für diese Brand ist noch keine Website hinterlegt.",
+        "noUrl": "Für diese Marke ist noch keine Website hinterlegt.",
         "addUrl": "Website hinterlegen",
         "urlLabel": "Website der Marke",
         "urlPlaceholder": "beispiel-marke.de",
@@ -1786,28 +1786,28 @@
       },
       "history": {
         "title": "Verlauf",
-        "lead": "Jeder Stand, den wir für diese Brand gespeichert haben.",
+        "lead": "Jeder Stand, den wir für diese Marke gespeichert haben.",
         "date": "Datum",
         "source": "Quelle",
         "score": "Score",
         "open": "Ansehen",
-        "empty": "Für diese Brand ist noch kein Stand gespeichert."
+        "empty": "Für diese Marke ist noch kein Stand gespeichert."
       },
       "card": {
-        "score": "Brand-Score: {score}",
-        "empty": "Brand-Score: noch keiner",
+        "score": "Brand Score: {score}",
+        "empty": "Brand Score: noch keiner",
         "open": "Score ansehen",
         "addUrl": "Website hinterlegen"
       },
       "list": {
-        "nav": "Brand-Scores",
-        "all": "Alle Brand-Scores",
-        "title": "Brand-Scores",
-        "subtitle": "Alle Brands mit ihren zwei Zahlen — von außen gemessen und im Fundament geprüft.",
-        "summary": "{count} Brands · Ø Website-Score {avg}",
-        "summaryEmpty": "{count} Brands · noch kein Website-Score",
+        "nav": "Brand Scores",
+        "all": "Alle Brand Scores",
+        "title": "Brand Scores",
+        "subtitle": "Alle Marken mit ihren zwei Zahlen — von außen gemessen und im Fundament geprüft.",
+        "summary": "{count} Marke · Ø Website-Score {avg} | {count} Marken · Ø Website-Score {avg}",
+        "summaryEmpty": "{count} Marke · noch kein Website-Score | {count} Marken · noch kein Website-Score",
         "col": {
-          "brand": "Brand",
+          "brand": "Marke",
           "website": "Website",
           "websiteScore": "Website-Score",
           "documentScore": "Fundament-Reife",
@@ -1820,14 +1820,14 @@
         "runDocument": "Fundament prüfen",
         "done": "Der neue Stand ist da.",
         "failed": "Das hat nicht geklappt",
-        "emptyTitle": "Noch keine Brand",
-        "empty": "Noch keine Brand angelegt — danach steht hier ihr Score.",
-        "emptyCta": "Brand anlegen"
+        "emptyTitle": "Noch keine Marke",
+        "empty": "Noch keine Marke angelegt — danach steht hier ihr Score.",
+        "emptyCta": "Marke anlegen"
       },
       "errors": {
         "accountLimit": "Heute sind die 10 Neu-Ermittlungen aufgebraucht. Morgen geht es weiter.",
         "documentEmpty": "Bestätigt zuerst Felder im Fundament. Ohne bestätigte Antworten gibt es nichts zu prüfen.",
-        "notFound": "Diese Brand ist unter diesem Konto nicht verfügbar.",
+        "notFound": "Diese Marke ist unter diesem Konto nicht verfügbar.",
         "invalidUrl": "Diese Adresse können wir nicht lesen. Bitte so schreiben, wie sie im Browser steht.",
         "blockedTarget": "Diese Adresse dürfen wir nicht abrufen. Bitte die öffentliche Adresse der Website angeben.",
         "fetchFailed": "Die Seite hat nicht geantwortet. Prüft die Adresse und versucht es gleich noch einmal.",
@@ -1954,8 +1954,8 @@
         "title": "Aus den Befunden wird die Reihenfolge der Arbeit",
         "body": "Euer Markenberater kennt euren Auftritt dann schon — ihr steigt mit dem Ergebnis ein statt bei null. Und euer neues Branding lässt sich später noch einmal durch denselben Check schicken.",
         "cta": "Marken-Relaunch starten",
-        "brands": "Meine Brands",
-        "brandsHint": "Ihr seid angemeldet: eure Brands liegen im Dashboard."
+        "brands": "Meine Marken",
+        "brandsHint": "Ihr seid angemeldet: eure Marken liegen im Dashboard."
       },
       "faq": {
         "eyebrow": "Häufige Fragen",
@@ -2064,7 +2064,7 @@
         "title": "Fundament-Reife — die zweite Zahl",
         "body": "Wer bei uns ein Branding erarbeitet, kann statt einer Website das eigene Fundament prüfen lassen: die bestätigten Antworten aus dem Wizard. Gerechnet wird mit derselben Formel und demselben Kriterienkatalog.",
         "labelBody": "Diese Zahl heißt deshalb anders und wird überall getrennt beschriftet. Die {measured} gerechneten Kriterien sind dort durchweg nicht bewertbar — Favicon und Überschriften-Aufbau sind Eigenschaften einer Seite, nicht eines Fundaments. Eine Fundament-Reife von 78 und ein Website-Score von 78 sagen Verschiedenes; die Gegenüberstellung verweigert den Vergleich über diese Grenze hinweg.",
-        "note": "Die Fundament-Reife gibt es nur zur eigenen Brand. Über einen fremden Auftritt lässt sie sich nicht erheben."
+        "note": "Die Fundament-Reife gibt es nur zur eigenen Marke. Über einen fremden Auftritt lässt sie sich nicht erheben."
       },
       "public": {
         "title": "Was öffentlich ist — und was nicht",
@@ -2837,7 +2837,7 @@
         "published": "Öffentlich seit",
         "score": "Zahl",
         "reports": "Meldungen",
-        "featured": "Brand of the Day",
+        "featured": "Marke des Tages",
         "example": "Beispiel",
         "status": "Status",
         "reason": "Grund",
@@ -2872,9 +2872,9 @@
       "declinedKept": "Aktualisierung abgelehnt — der alte Stand bleibt öffentlich.",
       "hiddenToast": "Aus der Galerie genommen.",
       "unhiddenToast": "Wieder öffentlich.",
-      "featuredOn": "Brand of the Day gesetzt.",
-      "featuredReplaced": "Brand of the Day gesetzt — die vorige wurde abgelöst.",
-      "featuredOff": "Brand of the Day entfernt.",
+      "featuredOn": "Marke des Tages gesetzt.",
+      "featuredReplaced": "Marke des Tages gesetzt — die vorige wurde abgelöst.",
+      "featuredOff": "Marke des Tages entfernt.",
       "exampleOn": "Als Beispiel markiert.",
       "exampleOff": "Beispiel-Markierung entfernt.",
       "reportResolved": "Meldung erledigt.",
@@ -2886,7 +2886,7 @@
       "error": {
         "already_decided": "Diese Einreichung wurde schon entschieden. Ladet die Liste neu.",
         "publication_state": "Der Zustand dieser Marke erlaubt das nicht mehr.",
-        "not_published": "Nur eine öffentliche Marke kann Brand of the Day sein.",
+        "not_published": "Nur eine öffentliche Marke kann Marke des Tages sein.",
         "publication_not_found": "Diese Veröffentlichung gibt es nicht mehr.",
         "not_found": "Diesen Eintrag gibt es nicht mehr.",
         "publication_admin_unavailable": "Die Ablage antwortet gerade nicht. Bitte später noch einmal.",
@@ -2919,7 +2919,7 @@
     "publication": {
       "button": "Veröffentlichen",
       "eyebrow": "Veröffentlichen",
-      "title": "In Discover Brands zeigen",
+      "title": "Unter „Marken entdecken“ zeigen",
       "intro": "Wir frieren den bestätigten Stand ein und legen ihn dem Team zur Freigabe vor. Erst danach ist die Marke öffentlich und für Suchmaschinen sichtbar.",
       "summary": {
         "title": "So steht sie in der Galerie",
@@ -2962,8 +2962,8 @@
         "hiddenHint": "Diese Marke wurde vom Team aus der Galerie genommen. Schreibt uns, wenn ihr das klären möchtet."
       },
       "card": {
-        "public": "Öffentlich in Discover",
-        "publicSince": "Öffentlich in Discover · seit {date}",
+        "public": "Öffentlich unter „Marken entdecken“",
+        "publicSince": "Öffentlich unter „Marken entdecken“ · seit {date}",
         "pending": "Wartet auf Freigabe",
         "declined": "Veröffentlichung abgelehnt",
         "hidden": "Aus der Galerie genommen"
@@ -2975,13 +2975,13 @@
       "failed": "Hat nicht geklappt. Bitte noch einmal versuchen."
     },
     "discover": {
-      "seoTitle": "Discover Brands — Marken, gebaut mit eurem persönlichen Markenberater",
+      "seoTitle": "Marken entdecken — gebaut mit eurem persönlichen Markenberater",
       "seoDescription": "Öffentliche Markenfundamente aus Branding Supply: Purpose, Werte, Archetyp, Stimme und Farbwelt — jede Marke mit ihrer ganzen Anatomie.",
-      "eyebrow": "Discover Brands",
+      "eyebrow": "Marken entdecken",
       "title": "Marken, gebaut mit eurem persönlichen Markenberater",
       "lead": "Jede mit ihrer ganzen Anatomie: Purpose, Werte, Archetyp, Stimme, Farbwelt.",
       "featured": {
-        "label": "Brand of the Day",
+        "label": "Marke des Tages",
         "cta": "Anatomie ansehen",
         "prev": "Vorheriges Branding",
         "next": "Nächstes Branding"
@@ -3015,15 +3015,15 @@
         "relaunch": "Relaunch",
         "preview": "Vorschau — wartet auf Freigabe"
       },
-      "total": "{count} Marken",
+      "total": "{count} Marke | {count} Marken",
       "emptyTitle": "Noch keine veröffentlichte Marke — die erste könnte eure sein.",
-      "emptyCta": "Starte deine eigene",
+      "emptyCta": "Eigene Marke starten",
       "note": "Jedes Branding hier ist freiwillig öffentlich und vom Team freigegeben.",
       "entry": {
-        "seoTitle": "{brand} — Anatomie einer Marke · Discover Brands",
+        "seoTitle": "{brand} — Anatomie einer Marke · Marken entdecken",
         "seoDescription": "Die Anatomie von {brand}: Purpose, Werte, Archetyp, Stimme und Farbwelt — öffentlich gezeigt mit Zustimmung der Marke.",
         "eyebrow": "Anatomie",
-        "back": "Discover Brands",
+        "back": "Marken entdecken",
         "profile": "Steckbrief",
         "field": {
           "industry": "Branche",
@@ -3052,7 +3052,7 @@
         },
         "cta": {
           "body": "Gefällt euch, wie das gebaut ist? Marken sind keine Vorlagen — aber der Weg dorthin steht euch offen.",
-          "button": "Starte deine eigene"
+          "button": "Eigene Marke starten"
         },
         "share": "Teilen",
         "copy": "Link kopieren",
@@ -3062,7 +3062,7 @@
         "notFoundCta": "Zur Galerie"
       },
       "teaser": {
-        "eyebrow": "Discover Brands",
+        "eyebrow": "Marken entdecken",
         "title": "Seht, wie ein Markenfundament aussieht",
         "body": "Marken, die auf Branding Supply gebaut wurden und ihre Anatomie freiwillig zeigen — Purpose, Werte, Archetyp, Stimme, Farbwelt.",
         "cta": "Alle Marken ansehen"
@@ -3082,7 +3082,7 @@
         "s2Title": "Wir melden uns",
         "s2Body": "Mit ein paar Terminvorschlägen — per Mail, oder telefonisch, wenn ihr eine Nummer hinterlasst.",
         "s3Title": "Wir sprechen",
-        "s3Body": "Dreissig bis vierzig Minuten. Danach wisst ihr, was wir empfehlen — auch wenn das heisst: noch nicht jetzt."
+        "s3Body": "Dreißig bis vierzig Minuten. Danach wisst ihr, was wir empfehlen — auch wenn das heißt: noch nicht jetzt."
       },
       "form": {
         "name": "Name",
@@ -3090,7 +3090,7 @@
         "email": "E-Mail-Adresse",
         "emailPlaceholder": "Eure E-Mail-Adresse",
         "company": "Unternehmen oder Marke (optional)",
-        "companyPlaceholder": "Wie heisst eure Marke?",
+        "companyPlaceholder": "Wie heißt eure Marke?",
         "brand": "Um welches Branding geht es?",
         "noBrand": "Keine bestimmte Marke",
         "untitledBrand": "Branding ohne Namen",
@@ -3101,7 +3101,7 @@
         "phonePlaceholder": "Telefonnummer, falls ihr lieber telefoniert",
         "submit": "Gespräch anfragen",
         "sending": "Wird gesendet …",
-        "consent": "Wir nutzen eure Angaben ausschliesslich, um auf diese Anfrage zu antworten. Mehr dazu:",
+        "consent": "Wir nutzen eure Angaben ausschließlich, um auf diese Anfrage zu antworten. Mehr dazu:",
         "error": {
           "too_fast": "Einen Moment noch — dann schickt es bitte erneut ab.",
           "rate_limited": "Das waren gerade viele Anfragen. Versucht es in einer Minute noch einmal.",
@@ -3185,7 +3185,7 @@
       "limits": "Bis {max} Läufe je Marke und Tag",
       "remaining": "Heute noch {count} von {max} Läufen",
       "error": {
-        "unavailable": "Das Lesen von Bildern ist auf dieser Instanz gerade nicht eingerichtet. Das Kapitel geht trotzdem weiter — Frida schlägt die Richtung aus der Foundation vor.",
+        "unavailable": "Das Lesen von Bildern ist hier gerade nicht eingerichtet. Das Kapitel geht trotzdem weiter — Frida schlägt die Richtung aus der Foundation vor.",
         "noImages": "Es liegt kein Vorbild da, das gelesen werden könnte.",
         "rateLimited": "Das ging zu schnell hintereinander. Wartet einen Moment und versucht es noch einmal.",
         "notFound": "Diese Marke gibt es nicht mehr.",
