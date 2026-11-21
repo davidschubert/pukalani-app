@@ -7,6 +7,54 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-21 — KI-Crawler: eigene Seiten alles, Kunden-Communities kein Training (Q11, B2)
+
+**Anlass:** Was KI-Crawler dürfen, stand nur auf der Studio-Site; alle anderen
+Hosts sagten nichts, und für die Beiträge in Kunden-Communities gab es keine
+Regel (GEO-001). Ob Texte von Mitgliedern zum Training fremder Modelle
+offenstehen, ist eine Produkt-Aussage, die bis dahin niemand getroffen hatte.
+
+**Davids Entscheidung** (2026-11-21, Frage B2): Eigene Seiten (pukalani.app,
+Hilfe, Studio, branding.supply): Suche, Antworten und Training erlaubt.
+Kunden-Communities: Suche und Antworten erlaubt, Training nicht; später ein
+Schalter für den Owner.
+
+**Umsetzung:** EINE Regel für alle Hosts in
+`packages/core/shared/aiCrawlers.ts` (Art `own`, `community`, `closed`), aus
+der jede robots-Route baut; dazu je Host eine `Content-Signal`-Zeile. Der
+tägliche Blick `scripts/ops/verify-delivery.mjs` prüft, dass jede
+ausgelieferte robots.txt dasselbe sagt. Preise der Pläne stehen jetzt in den
+strukturierten Daten und in `/llms.txt` (pukalani.app, branding.supply), aus
+derselben Quelle wie die Preisseite.
+
+**Ohne Rückfrage entschieden** (klein und umkehrbar):
+- **Welcher Crawler wozu gehört**, nach der Dokumentation der Anbieter vom
+  2026-11-21 (Quelle je Eintrag im Code). Grenzfälle: `Google-Extended` steht
+  bei Training, obwohl Google darüber auch die Gemini-Antworten aus
+  Suchinhalten steuert (Google trennt das nicht); `Amazonbot` bei Training,
+  weil Amazon für Suche und Antworten eigene Namen nennt; `Applebot` bei
+  Suche, Apples Training-Schalter ist `Applebot-Extended`. `Googlebot` steht
+  nicht in der Liste (die KI-Übersichten der Google-Suche hängen an ihm).
+  Unbekannte Crawler folgen der allgemeinen Regel.
+- **Kundenbereich und Konsole** zählen als eigene Seiten (`own`); eine
+  geschlossene Community sperrt auch die KI-Gruppen (`closed`).
+- **Die KI-Gruppen tragen dieselben Sperren wie `*`** (`/api/`, `/dashboard/`):
+  ein Crawler mit eigener Gruppe liest nur diese. Die alte Studio-Datei gab
+  ihnen ein leeres `Disallow:` und damit auch `/api/` frei.
+- **`llms.txt` nur auf den zwei Marketing-Sites**, englisch mit den deutschen
+  Adressen daneben, jeder Satz aus der Sprachdatei. Nicht auf Hilfe,
+  Communities, Kundenbereich und Konsole; das Studio behält seine deutsche
+  Datei.
+- **Nicht in den Angaben:** wer Anbieter ist (Name, Rechtsform, Sitz,
+  Anschrift) und jede Steuer-Aussage — beides wartet auf den Anwalt
+  (OPEN-ITEMS).
+
+**Ehrlich dazu:** robots.txt und Content-Signals sind Bitten, keine Sperre;
+mehrere Abrufer, die ein Mensch auslöst, beachten sie nach eigener Angabe nicht
+immer. Die Grenze bleiben die Rechte an den Zeilen.
+
+---
+
 ## 2026-11-18 — Node: eine Version an drei Orten (Linie 24, exakt in `.nvmrc`)
 
 **Anlass:** Ein Update-Issue wollte nur den Patch-Stand der 22er-Linie
