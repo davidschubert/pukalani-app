@@ -13,7 +13,7 @@ const toast = useToast()
 const route = useRoute()
 const localePath = useLocalePath()
 
-const [{ data: lesson, error }, { data: course, refresh: refreshCourse }] = await Promise.all([
+const [{ data: lesson, error }, { data: course, error: courseError, refresh: refreshCourse }] = await Promise.all([
   useFetch<LessonRow & { courseSlug: string }>(`/api/lessons/${route.params.id}`),
   useFetch<CourseDetailResponse>(`/api/courses/${route.params.slug}`),
 ])
@@ -26,7 +26,7 @@ const notMember = computed(() => {
   const err = error.value as { statusCode?: number, data?: { reason?: string } } | null | undefined
   return err?.statusCode === 403 && err.data?.reason === COURSE_NOT_A_MEMBER_CODE
 })
-if (!notMember.value && (error.value || !lesson.value || !course.value)) {
+if (!notMember.value && (error.value || courseError.value || !lesson.value || !course.value)) {
   throw createError({ status: 404, statusText: 'Lesson not found' })
 }
 

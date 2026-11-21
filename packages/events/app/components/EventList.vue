@@ -79,11 +79,14 @@ const listQuery = computed<Record<string, string>>(() => eventListQuery(filter.v
  * einem Klick, also im Browser, und dort ist der Host echt.
  */
 const requestFetch = useRequestFetch()
-const { data, status } = await useAsyncData<EventListResponse>(
+const { data, status, error, refresh } = await useAsyncData<EventListResponse>(
   'events:list',
   () => requestFetch<EventListResponse>('/api/events', { query: listQuery.value }),
   { watch: [filter, debouncedSearch] },
 )
+
+// Lädt / Fehler / leer / Daten (FE-004, LZ1): ein Fehler heißt nicht „keine Termine".
+const listing = computed(() => listState({ status: status.value, error: error.value, empty: rows.value.length === 0 }))
 
 watch(data, (value) => {
   rows.value = value?.rows ?? []
@@ -195,18 +198,18 @@ const groups = computed(() => {
         data-testid="events-search"
       />
 
-      <div v-if="status === 'pending' && rows.length === 0" class="flex justify-center py-16">
-        <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-      </div>
-
-      <p v-else-if="rows.length === 0" class="py-16 text-center text-sm text-muted" data-testid="events-empty">
-        {{ debouncedSearch
-          ? t('events.list.searchEmpty')
-          : filter.view === 'archive' ? t('events.list.pastEmpty')
-            : filter.view === 'upcoming' && !filter.going ? t('events.list.empty') : t('events.list.filterEmpty') }}
-      </p>
-
-      <div v-else class="mt-4 space-y-6" data-testid="events-list">
+      <CoreListState :state="listing" :retry="refresh">
+        <template #empty>
+          <CoreEmptyState
+            icon="i-ph-calendar-blank"
+            :title="debouncedSearch
+              ? t('events.list.searchEmpty')
+              : filter.view === 'archive' ? t('events.list.pastEmpty')
+                : filter.view === 'upcoming' && !filter.going ? t('events.list.empty') : t('events.list.filterEmpty')"
+            data-testid="events-empty"
+          />
+        </template>
+      <div class="mt-4 space-y-6" data-testid="events-list">
         <section v-for="group in groups" :key="group.label">
           <h2 class="mb-2 text-sm font-semibold text-muted capitalize" data-testid="events-month">{{ group.label }}</h2>
           <div class="space-y-4">
@@ -222,6 +225,7 @@ const groups = computed(() => {
           </div>
         </section>
       </div>
+      </CoreListState>
 
       <div v-if="nextCursor" class="mt-4 flex justify-center">
         <UButton color="neutral" variant="outline" size="sm" :loading="loadingMore" @click="loadMore">

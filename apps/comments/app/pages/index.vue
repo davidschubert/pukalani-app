@@ -14,10 +14,10 @@ const DEMO_TARGET = { id: 'demo-post', type: 'post' } as const
 // SSR-geladen: Online-Pill + Statistik stehen schon im ersten HTML → kein
 // Layout-Shift. useFetch überträgt den Server-Wert via Payload, daher kein
 // Hydration-Mismatch trotz dynamischer Zahlen.
-const { data: presence } = useFetch<{ count: number }>('/api/presence/count', {
+const { data: presence, error: presenceError } = useFetch<{ count: number }>('/api/presence/count', {
   query: { scope: 'global' },
 })
-const { data: stats } = useFetch<{ comments: number, members: number }>('/api/stats')
+const { data: stats, error: statsError } = useFetch<{ comments: number, members: number }>('/api/stats')
 const online = computed(() => presence.value?.count ?? 0)
 
 // Statistik-Box läuft mit dem Live-Kommentarzähler mit: die Demo-Sektion
@@ -48,13 +48,14 @@ function scrollToDemo() {
 // nicht, `stats` bleibt null — dann fallen die zwei Projekt-Zahlen aus der
 // Box, statt als „0" etwas Falsches zu behaupten; „online" bleibt.
 const statItems = computed(() => [
-  ...(stats.value
+  ...(stats.value && !statsError.value
     ? [
         { label: t('home.stats.comments'), value: stats.value.comments },
         { label: t('home.stats.members'), value: stats.value.members },
       ]
     : []),
-  { label: t('home.stats.online'), value: online.value },
+  // Zusatz-Auskunft: ein gescheiterter Abruf lässt die Zahl weg statt „0 online" zu behaupten
+  ...(presenceError.value ? [] : [{ label: t('home.stats.online'), value: online.value }]),
 ])
 
 const fmt = (n: number | undefined) => (n ?? 0).toLocaleString()

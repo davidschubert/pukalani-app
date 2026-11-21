@@ -9,9 +9,16 @@ const localePath = useLocalePath()
 
 useBrandTitle(() => t('courses.admin.title'))
 
-const { data, status } = await useFetch<CourseManageResponse>('/api/courses/manage', {
+const { data, status, error, refresh } = await useFetch<CourseManageResponse>('/api/courses/manage', {
   lazy: true,
   server: false,
+})
+
+// Lädt / Fehler / Daten (FE-004, LZ1): ein Fehler heißt nicht „keine Einträge".
+// „Leer" zeichnet die Tabelle selbst (Filter ohne Treffer ist ein Zustand der Daten).
+const listing = computed(() => {
+  const state = listState({ status: status.value, error: error.value, empty: !data.value?.rows.length })
+  return state === 'empty' ? 'ready' : state
 })
 
 const modalOpen = ref(false)
@@ -84,11 +91,8 @@ const columns = computed<TableColumn<CourseRow>[]>(() => [
           <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
         </template>
 
-        <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
-          <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-        </div>
-
-        <UTable v-else :data="data?.rows ?? []" :columns="columns" data-testid="courses-admin-list">
+        <CoreListState :state="listing" :retry="refresh">
+          <UTable :data="data?.rows ?? []" :columns="columns" data-testid="courses-admin-list">
           <template #title-cell="{ row }">
             <ULink
               :to="localePath(`/dashboard/courses/${row.original.$id}`)"
@@ -132,6 +136,7 @@ const columns = computed<TableColumn<CourseRow>[]>(() => [
             />
           </template>
         </UTable>
+        </CoreListState>
       </ClientOnly>
 
       <CourseFormModal v-model:open="modalOpen" :paid-available="paidAvailable" @created="onCreated" />

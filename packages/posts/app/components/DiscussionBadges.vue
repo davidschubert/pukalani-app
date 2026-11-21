@@ -22,7 +22,12 @@ import type { DiscussionBadge, DiscussionBadgesResponse } from '../../shared/typ
 const { t } = useI18n()
 const { formatRelativeTime } = useFormatRelativeTime()
 
-const { data, status } = await useFetch<DiscussionBadgesResponse>('/api/posts/discussions/badges')
+const { data, status, error, refresh } = await useFetch<DiscussionBadgesResponse>('/api/posts/discussions/badges')
+// Lädt / Fehler / Daten (FE-004, LZ1); ohne Daten gibt es hier keinen Leerzustand
+const listing = computed(() => {
+  const state = listState({ status: status.value, error: error.value, empty: !data.value })
+  return state === 'empty' ? 'ready' : state
+})
 
 const facts = computed(() => data.value?.facts ?? null)
 const rows = computed(() => data.value?.rows ?? [])
@@ -93,16 +98,13 @@ function trustValues(entry: TrustLevelProgressEntry): Record<string, number> {
       <p v-if="facts" class="mt-2 text-sm text-muted">
         {{ t('posts.discussions.badges.earnedSummary', { earned: earnedCount, total: rows.length }) }}
       </p>
-      <p v-else-if="status !== 'pending'" class="mt-2 text-sm text-muted">
+      <p v-else-if="listing === 'ready'" class="mt-2 text-sm text-muted">
         {{ t('posts.discussions.badges.guestHint') }}
       </p>
     </div>
 
-    <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
-      <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-    </div>
-
-    <div v-else class="space-y-8">
+    <CoreListState :state="listing" :retry="refresh">
+    <div class="space-y-8">
       <section v-for="group in BADGE_GROUPS" :key="group" class="space-y-3">
         <h2 class="text-sm font-semibold tracking-wide text-dimmed uppercase">
           {{ t(`posts.discussions.badges.group.${group}`) }}
@@ -198,5 +200,6 @@ function trustValues(entry: TrustLevelProgressEntry): Record<string, number> {
         </ul>
       </section>
     </div>
+    </CoreListState>
   </div>
 </template>

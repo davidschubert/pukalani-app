@@ -44,9 +44,16 @@ const { formatRelativeTime } = useFormatRelativeTime()
 // und Social-Tags für eine Verwaltungsseite wären Rauschen.
 useBrandTitle(() => t('posts.mine.title'))
 
-const { data, status, refresh } = await useFetch<PostMineResponse>('/api/posts/mine', {
+const { data, status, error, refresh } = await useFetch<PostMineResponse>('/api/posts/mine', {
   lazy: true,
   server: false,
+})
+
+// Lädt / Fehler / Daten (FE-004, LZ1): ein Fehler heißt nicht „keine Einträge".
+// „Leer" zeichnet die Tabelle selbst (Filter ohne Treffer ist ein Zustand der Daten).
+const listing = computed(() => {
+  const state = listState({ status: status.value, error: error.value, empty: !data.value?.rows.length })
+  return state === 'empty' ? 'ready' : state
 })
 
 const rows = computed(() => data.value?.rows ?? [])
@@ -143,11 +150,8 @@ function rowActions(post: CommunityPost): DropdownMenuItem[][] {
           <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
         </template>
 
-        <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
-          <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-        </div>
-
-        <UTable v-else :data="rows" :columns="columns" data-mine-table>
+        <CoreListState :state="listing" :retry="refresh">
+          <UTable :data="rows" :columns="columns" data-mine-table>
           <template #post-cell="{ row }">
             <p class="max-w-md truncate" :title="row.original.title || row.original.body" :data-mine-post="row.original.$id">
               {{ snippet(row.original) }}
@@ -197,6 +201,7 @@ function rowActions(post: CommunityPost): DropdownMenuItem[][] {
             />
           </template>
         </UTable>
+        </CoreListState>
       </ClientOnly>
     </template>
   </UDashboardPanel>

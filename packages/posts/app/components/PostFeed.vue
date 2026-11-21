@@ -21,6 +21,10 @@ const props = defineProps<{
    * Server UND im Browser). Ohne Prop holt der Feed sie selbst.
    */
   firstPage?: PostListResponse | null
+  /** Die Seite hat die erste Seite geladen und der Abruf ist gescheitert (FE-004, LZ1) */
+  failed?: boolean
+  /** Neuer Versuch der Seite (nur mit `firstPage`) */
+  retry?: () => unknown | Promise<unknown>
 }>()
 
 const emit = defineEmits<{
@@ -76,6 +80,9 @@ onBeforeUnmount(() => {
 const own = props.firstPage === undefined ? await useFetch<PostListResponse>('/api/posts') : null
 const firstPage = computed(() => (own ? own.data.value : props.firstPage) ?? null)
 const pending = computed(() => own?.pending.value ?? false)
+// Fehler der ersten Seite: ein Fehlschlag heißt nicht „noch keine Beiträge" (FE-004, LZ1)
+const loadFailed = computed(() => (own ? own.status.value === 'error' : props.failed === true))
+const retryFirst = () => (own ? own.refresh() : props.retry?.())
 function applyFirstPage(value: PostListResponse | null) {
   if (!value) return
   rows.value = value.rows
@@ -141,7 +148,11 @@ function onUpdated(post: FeedPost) {
       </UButton>
     </div>
 
-    <p v-if="!pending && rows.length === 0" class="py-12 text-center text-sm text-muted" data-posts-empty>
+    <div v-if="loadFailed && rows.length === 0" role="alert" data-posts-error>
+      <CoreLoadError :retry="retryFirst" />
+    </div>
+
+    <p v-else-if="!pending && rows.length === 0" class="py-12 text-center text-sm text-muted" data-posts-empty>
       {{ t('posts.feed.empty') }}
     </p>
 

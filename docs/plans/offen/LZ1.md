@@ -20,7 +20,7 @@ eine Datei dazukommt, eine Zahl steigt, oder ein Eintrag nicht mehr stimmt
 (Datei weg, weniger Abrufe offen) — die Liste schrumpft also mit jeder
 Umstellung, von Hand im selben Commit.
 
-**Stand am 2026-11-21:** 110 Dateien mit 136 Abrufen. Nach Layer (Dateien):
+**Stand am 2026-11-21 (nach Schub 1):** 92 Dateien mit 116 Abrufen (Ausgang: 110 Dateien, 136 Abrufe). Schub 1 = Community-Seiten und Moderations-Listen (Kurse, Termine, Feed, Diskussionen, Nachrichten, Medien, Kommentare, Seiten, Rückmeldungen). Bewusst offen aus Schub 1: Hilfs-Listen der Diskussionen (Seitenleiste, Filter, Eröffnen-Knopf, Composer — Ausfall blendet nur die Auswahl aus), `LessonView` und `CommentSection` (Fehler geht über 404 beziehungsweise den Store). Der Rest unten gilt vom Ausgang. Nach Layer (Dateien):
 brand 17, onboarding 14, posts 11, admin 10, insights 10, control 6,
 blueprint 4, comments 4, core 4, courses 4, messages 4, events 3, feedback 3,
 pages 3, apps/help 3, apps/control 2, je 1 in analytics, billing, market,
