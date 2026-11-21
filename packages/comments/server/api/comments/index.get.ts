@@ -182,7 +182,9 @@ export default defineEventHandler(async (event): Promise<CommentListResponse> =>
 
   // Soft-gelöschte bleiben als Thread-Platzhalter in der Antwort, aber Inhalt/
   // Autor werden SERVER-seitig geblankt — der „[gelöscht]"-Text der UI wäre
-  // sonst reine Kosmetik (Original-Content per direktem API-Call weiter lesbar).
+  // sonst reine Kosmetik (Original-Content per direktem Aufruf DIESER Route
+  // weiter lesbar). Die Zeile selbst leert das nicht — das tut seit SEC-032
+  // erst das Löschen in der Datenbank (unten).
   //
   // SEC-032 (2026-11-15): über eine FELDAUSWAHL statt `{ ...row, content: '' }`
   // — die Kopie trug den Übersetzungs-Cache und `$permissions` (darin der

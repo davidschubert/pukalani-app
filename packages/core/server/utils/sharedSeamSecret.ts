@@ -3,7 +3,8 @@ import type { H3Event } from 'h3'
 import { readInstanceSecret, type InstanceSecretKind } from './instanceSecrets'
 
 /**
- * DIE GETEILTEN NAHT-GEHEIMNISSE — dieselbe Zeichenkette auf ZWEI Deployments
+ * DIE GETEILTEN NAHT-GEHEIMNISSE — dieselbe Zeichenkette auf JEDEM Deployment
+ * an der Naht, gemessen DREI: platform, admin, portfolio (Tabelle unten)
  * (Davids Entscheidung 2026-08-18, der Rest von A0).
  *
  * Eine Naht fällt darunter:

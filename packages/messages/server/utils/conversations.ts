@@ -39,10 +39,12 @@ import { softFail } from '../../../core/server/utils/softFail'
  *  - M13 greift dadurch ohne Zusatzarbeit — eine Nachricht ist INHALT, eine
  *    wegen Zahlungsverzug stillgelegte Community kann keine neuen verschicken,
  *    LESEN bleibt offen (Konzept § 2.7).
- *  - Der A5-Beitritts-Auslöser feuert ebenfalls, und er ist STRUKTURELL ein
- *    No-op: `messages.write` hängt an Vertrauensstufe 1, und wer TL1 hat, ist
- *    seit mindestens zwei Tagen Mitglied. Wer senden darf, IST längst
- *    Mitglied. Genau darauf ist ein Test genagelt
+ *  - Der A5-Beitritts-Auslöser feuert ebenfalls. Beim ERÖFFNEN ist er
+ *    STRUKTURELL ein No-op: `messages.write` hängt an Vertrauensstufe 1, und
+ *    wer TL1 hat, ist seit mindestens zwei Tagen Mitglied. Das ANTWORTEN hat
+ *    kein TL-Gate (`api/messages/[id].post.ts`); dort hält seit SEC-030
+ *    `requireCommunityMembership` vor jedem Datenbankzugriff — wer antwortet,
+ *    ist damit schon Mitglied. Auf das TL-Gate ist ein Test genagelt
  *    (`tests/trustGate.test.ts`) — würde `messages.write` je bei Stufe 0
  *    stehen, könnte sich ein Fremder durch das Anschreiben EINES Mitglieds das
  *    Lese-Label einer geschlossenen Community verschaffen (Konzept § 3).

@@ -50,7 +50,7 @@ export const RESERVED_SUBDOMAINS = new Set([
   // Davids Entscheidung vom 2026-08-11 freelancer.pukalani.app — die kurze
   // Streichung von `master` (9701bfa9) ist damit gegenstandslos und rückgängig.
   // `control` ist der Maschinenraum und seit AH-4 zusätzlich der ABGESCHALTETE
-  // Name der Konsole (301 auf `admin`). ABGESCHALTETE Altnamen bleiben gesperrt —
+  // Name der Konsole (antwortet 404, keine 301). ABGESCHALTETE Altnamen bleiben gesperrt —
   // ein zurückgegebener Plattform-Name ist der beste Phishing-Köder, den es
   // gibt: `app` und `studio` (oben) sowie `my` und `start`, die seit AH-1
   // nur noch 301 auf `account` weiterleiten.
