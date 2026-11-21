@@ -225,7 +225,7 @@ catalog:
   # `typescript ^5.9.3` (Komponenten-Doku zur Build-Zeit) — harmlos, weil
   # dort nichts Typen mit unserem Code austauscht.
   typescript: ^6.0.3
-  vitest: ^5.1.0
+  vitest: ^5.1.1
   # GENAU GEPINNT, NICHT `^3.3.11` (2026-11-08, CI rot erwischt): 3.3.14
   # erzeugt für `reactive()`-Objekte im Template stellenweise `form.value.x`
   # und meldet dann TS2339 „Property 'value' does not exist" — sechsmal in
