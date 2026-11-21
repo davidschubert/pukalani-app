@@ -4,6 +4,8 @@ import { INVITE_CODES_TABLE, type InviteCodeRow } from '../../shared/types/invit
 import { INVITE_REQUESTS_TABLE, evaluateReminder, type InviteRequestRow } from '../../shared/types/inviteRequest'
 import { hashInviteCode, issueCodeValue } from './inviteCodes'
 import { softFail, softFailWith } from '../../../core/server/utils/softFail'
+import { frameMail } from '../../../core/shared/mailFrame'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * Die Warteschlange: Anfrage annehmen, Code zuweisen, erinnern (control-017).
@@ -286,11 +288,16 @@ export async function notifyOperators(event: H3Event, request: InviteRequestRow)
     await sendMail(event, {
       to: config.alertEmail,
       subject: `[pukalani] Early-Access-Anfrage von ${request.email}`,
-      text: [
-        `${request.email} möchte Early Access.`,
-        request.note ? `\n„${request.note}"\n` : '',
-        `Zuweisen im Dashboard: ${appUrl}${link}`,
-      ].filter(Boolean).join('\n'),
+      // Rahmen (Q06): Betreiber-Mail auf Deutsch, ohne Namen.
+      text: frameMail({
+        brand: resolveMailBrand(event),
+        locale: 'de',
+        lines: [
+          `${request.email} möchte Early Access.`,
+          request.note ? `„${request.note}"` : '',
+          `Zuweisen im Dashboard: ${appUrl}${link}`,
+        ],
+      }).text,
     }).catch(softFail('control:utils/inviteRequests:sendMail', false))
   }
 

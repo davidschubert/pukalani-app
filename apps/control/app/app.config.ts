@@ -8,7 +8,9 @@ export default defineAppConfig({
   //   auth: { providers: ['github'], termsUrl: '/agb', otp: true },
   // }
   pukalani: {
-    brand: { name: 'Pukalani Control' },
+    // Kopf-Name im Dashboard ≠ Name vor der Kundschaft: Einladungs-Mails
+    // unterschreibt „Pukalani" (Q06, `core/server/utils/mailBrand.ts`).
+    brand: { name: 'Pukalani Control', mailName: 'Pukalani' },
     // FRISTEN-LAUF DER EIGENEN DOMAIN (BE-014): SCHARF seit 2026-11-17 —
     // Davids Ja nach der Zählung auf Production (eine eigene Domain,
     // freigegeben: nichts zu tun). `apply` stempelt die Frist, schaltet nach

@@ -10,6 +10,7 @@ import { insightsPublicKopf } from '../../shared/insightsPost'
 // den ein Testlauf nicht auflöst, wäre still ein leerer String gewesen — die
 // Mail ginge raus, nur wieder von der Hauptdomain, und kein Test sähe es.
 import { insightsNewsletterAuth, insightsNewsletterSender } from './insightsPublic'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * DIE ZWEI TOKEN DES NEWSLETTERS UND DIE ZWEI MAILS, DIE ER VERSCHICKT —
@@ -303,7 +304,7 @@ export async function sendInsightsNewsletterConfirmMail(
   const copy = insightsNewsletterConfirmMailCopy(input.locale, {
     confirmUrl: insightsNewsletterConfirmUrl(event, input.token, input.locale),
     unsubscribeUrl: insightsNewsletterUnsubscribeUrl(event, unsubToken, input.locale),
-  })
+  }, resolveMailBrand(event))
 
   try {
     return await sendMail(event, {
@@ -393,7 +394,7 @@ export async function sendInsightsNewsletterIssueMail(
   const copy = insightsNewsletterIssueCopy(input.post, input.intros, input.locale, {
     postUrl: insightsNewsletterPostUrl(event, input.href, fassung.locale),
     unsubscribeUrl,
-  })
+  }, resolveMailBrand(event))
 
   try {
     const ok = await sendMail(event, {
