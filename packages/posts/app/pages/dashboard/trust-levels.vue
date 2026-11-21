@@ -27,7 +27,7 @@ const toast = useToast()
 const confirm = useConfirm()
 useBrandTitle(() => t('posts.trustLevels.title'))
 
-const { data, status, refresh } = await useFetch<TrustLevelMembersResponse>('/api/posts/trust-levels', {
+const { data, status, error, refresh } = await useFetch<TrustLevelMembersResponse>('/api/posts/trust-levels', {
   lazy: true,
   server: false,
 })
@@ -35,6 +35,14 @@ const { data, status, refresh } = await useFetch<TrustLevelMembersResponse>('/ap
 const leaders = computed(() => data.value?.leaders ?? [])
 const members = computed(() => data.value?.members ?? [])
 const truncated = computed(() => data.value?.truncated ?? false)
+
+/**
+ * Lädt / Fehler / leer / Daten (FE-004, Q14). Vorher stand nach einem
+ * gescheiterten Abruf „Noch niemand ernannt" über einer leeren Tabelle.
+ * `server: false`: auf dem Server ist der Abruf `idle`, `listState` sagt dort
+ * wie im Browser „lädt" (Q15).
+ */
+const state = computed(() => listState({ status: status.value, error: error.value, empty: !leaders.value.length && !members.value.length }))
 
 const search = ref('')
 /**
@@ -135,11 +143,14 @@ async function setLeader(entry: TrustLevelMember, leader: boolean) {
     <template #body>
       <p class="mb-6 max-w-3xl text-sm text-muted">{{ t('posts.trustLevels.description') }}</p>
 
-      <div v-if="isFetchLoading(status) && !data" class="flex justify-center py-16">
-        <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
-      </div>
-
-      <template v-else>
+      <CoreListState
+        :state="state"
+        :retry="refresh"
+        empty-icon="i-ph-medal"
+        :empty-title="t('posts.trustLevels.emptyTitle')"
+        :empty-description="t('posts.trustLevels.emptyText')"
+        data-trust-list
+      >
         <!-- Die Ernannten zuerst und vollständig: sie sind die Antwort auf
              „wer hat hier zusätzliche Rechte?" -->
         <section class="mb-8">
@@ -263,7 +274,7 @@ async function setLeader(entry: TrustLevelMember, leader: boolean) {
         <p v-if="truncated" class="mt-3 text-xs text-dimmed">
           {{ t('posts.trustLevels.truncated') }}
         </p>
-      </template>
+      </CoreListState>
     </template>
   </UDashboardPanel>
 </template>

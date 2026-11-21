@@ -115,6 +115,66 @@ sonst nicht) und „Secure protocol" nachlesen — einmal blieb es auf „None".
 Und zweimal zsh/pnpm: `for c in "-r lint"` gibt EIN Wort „-r lint", und
 `set -- $e` trennt in zsh nicht an Leerzeichen — beides sieht aus wie ein
 Fehler im Code.
+### Q14 — Zustände einer Liste: lädt, Fehler mit „Noch einmal versuchen“, leer oder Daten; keine Rückfrage mehr über das Browser-Fenster (FE-004, UI-005, Teile von UI-004, UI-008, UX-012) ✅ 2026-11-21
+
+**Was.** Vorher lasen die meisten Seiten aus einem Abruf nur `data` und
+`status`. Ein gescheiterter Abruf lieferte den Vorgabewert, also eine leere
+Liste, und die Seite sagte „nichts vorhanden“ — auf der Abrechnungs-Seite
+etwa „Du besitzt keine Community“.
+
+- **Bausteine im Core:** `listState({ status, error, empty })`
+  (`packages/core/app/utils/listState.ts`) macht aus einem Abruf genau einen
+  von vier Zuständen; er baut auf `isFetchLoading` (Q15) auf, Server und
+  Browser rechnen dasselbe. `CoreListState` zeichnet ihn: lädt
+  (`CoreLoadingState`, Symbol aus `ui.icons.loading`), Fehler
+  (`CoreLoadError` mit „Noch einmal versuchen“, ruft `refresh`), leer
+  (`CoreEmptyState` mit nächstem Schritt), sonst die Tabelle. Lädt, Fehler
+  und leer haben dieselbe Mindesthöhe; der Fehler steht in `role="alert"`,
+  lädt und leer in `role="status"` — beide Bereiche gibt es immer.
+  Texte `ui.listState.*` in de und en.
+- **Umgestellt (Geld und Mitglieder):** Abrechnungs-Übersicht des Kontos,
+  Plan-Seite (Abo-Stand nicht geladen ⇒ Hinweis mit Neuversuch statt „kein
+  Abo“), Mitglieder-Liste, Mitglieds-Profil und Nutzer-Detail („nicht
+  gefunden“ nur noch bei 404), Nutzer-Liste, Einladungs-Codes der
+  Betreiber-App, Abo-Liste im Betreiber-Dashboard, Vertrauensstufen.
+- **Kein `confirm()` mehr:** die drei Stellen in Insights (Fund wegnehmen,
+  Brief erzeugen, Kanal entfernen) laufen über `useConfirm()`. ESLint
+  verbietet `confirm`, `alert`, `prompt` und `window.*` davon in `app/`-Code;
+  eine Variable namens `confirm` bleibt erlaubt.
+- **Rest-Liste LZ1:** `packages/core/tests/support/listStateBacklog.ts`
+  (110 Dateien, 136 Abrufe ohne Fehler-Zweig) mit Wächter
+  `listStateBacklogGuard.test.ts`; Einzelheiten `docs/plans/offen/LZ1.md`.
+- **Tests:** `listState.test.ts` (vier Zustände, Ansage-Bereiche,
+  Neuversuch ohne Doppelklick) und `confirmDialog.test.ts` laden die echten
+  Komponenten mit dem Vue-Compiler ohne neues Paket
+  (`tests/support/sfc.ts`). Im Browser `apps/comments/e2e/list-states-pool.spec.ts`
+  auf der Bühne (`pnpm buehne e2e`): Vertrauensstufen und Mitglieder zeigen
+  bei gestörtem Abruf „Fehler“, „Noch einmal versuchen“ holt die Daten, eine
+  leere Antwort zeigt „leer“. Der Q15-Test bleibt grün.
+- **Gegenproben (alle rot):** alte Rechnung (Fehler ⇒ leer) im Unit-Test und
+  im Browser-Test (beide Fehler-Fälle); `role="alert"` entfernt; Neuversuch
+  ohne Sperre; Dialog ohne Sperre; Lint gegen die drei alten Insights-Stellen;
+  Wächter mit neuer Seite, gestiegener Zahl und ausgedachtem Eintrag.
+- **Von Q25 übernommen** (lagen in Dateien dieses PR): der abgeschnittene
+  Satz der Karte „Offene Einladungen" (UI-011, Teil 1; `min-w-0` am inneren
+  Container der Karte, bei 375 px mit einer gestellten Einladung geprüft:
+  der Satz bricht um, die Tabelle rollt für sich) und die Breite der
+  Nutzer-Detailseite (UI-002, `max-w-7xl` wie das übrige Dashboard). Die
+  Ausnahme dafür im Breiten-Wächter `pageWidthGuard.test.ts` ist gelöscht;
+  Gegenprobe mit der alten Breite rot.
+
+**Nicht geprüft:** die Betreiber-Seiten (Nutzer, Einladungs-Codes, Abos), die
+Konto-Abrechnung, die Plan-Seite und die Detail-Seiten nicht im Browser,
+nur Lint, Typecheck und Lesen; die Insights-Dialoge nicht geklickt; kein
+Vorleseprogramm, nur die Rollen im HTML.
+
+**Gelernt:** Ein Abruf, der beim frischen Laden auf dem Server läuft, ist im
+Browser-Test nur abfangbar, wenn die Seite im Browser gewechselt wird — und
+ein Klick vor dem Übernehmen der Seite ist ein voller Aufruf. Über den
+Router der App (`__vue_app__…$router.push`) wechseln und zählen, dass der
+Abruf wirklich abgefangen wurde; sonst ist der Test grün, ohne etwas zu
+prüfen.
+
 ### Q25 — Kleine UI-Korrekturen: Seitenbreiten, Farben aus der Farbwelt, ein Symbol, die Umfrage-Karte (UI-002, UI-006, UI-010, UI-011) ✅ 2026-11-21
 
 **Was.** Nur Darstellung, kein Verhalten. UI-007 (154 Schriftgrößen) entfällt

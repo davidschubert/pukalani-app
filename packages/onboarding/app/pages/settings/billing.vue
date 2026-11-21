@@ -34,12 +34,20 @@ import type { MyCommunityView } from '../../../../control/shared/myCommunities'
 definePageMeta({ layout: 'onboarding', middleware: 'auth' })
 
 const { t } = useI18n()
+const localePath = useLocalePath()
 
-const { data, status } = useMyCommunities()
+const { data, status, error, refresh } = useMyCommunities()
 
 const owned = computed(() =>
   (data.value?.communities ?? []).filter(community => communityRoleHasCapability(community.role, 'community.billing')),
 )
+
+/**
+ * Lädt / Fehler / leer / Daten (FE-004, Q14). Vorher hieß jeder gescheiterte
+ * Abruf „Du besitzt keine Community" — die Liste fällt bei einem Fehler auf
+ * ihren Vorgabewert zurück (leer).
+ */
+const state = computed(() => listState({ status: status.value, error: error.value, empty: owned.value.length === 0 }))
 
 const now = ref<number | null>(null)
 onMounted(() => { now.value = Date.now() })
@@ -72,85 +80,89 @@ useBrandTitle(() => t('onboarding.account.billing.title'))
       :description="t('onboarding.account.billing.note')"
     />
 
-    <CoreEmptyState
-      v-if="status !== 'pending' && !owned.length"
-      icon="i-ph-receipt"
-      :title="t('onboarding.account.billing.emptyTitle')"
-      :description="t('onboarding.account.billing.emptyText')"
-    />
-
-    <UTable
-      v-else
-      :data="owned"
-      :columns="columns"
-      :loading="status === 'pending'"
-      data-billing-table
+    <CoreListState
+      :state="state"
+      :retry="refresh"
+      empty-icon="i-ph-receipt"
+      :empty-title="t('onboarding.account.billing.emptyTitle')"
+      :empty-description="t('onboarding.account.billing.emptyText')"
+      :empty-action-label="t('onboarding.communities.create')"
+      empty-action-icon="i-ph-plus"
+      :empty-action-to="localePath('/start')"
+      data-billing-list
     >
-      <template #name-cell="{ row }">
-        <div class="min-w-0">
-          <p class="truncate font-medium text-default">{{ row.original.name }}</p>
-          <p class="truncate text-xs text-muted">{{ row.original.host }}</p>
-        </div>
-      </template>
+      <UTable
+        :data="owned"
+        :columns="columns"
+        :loading="isFetchLoading(status)"
+        data-billing-table
+      >
+        <template #name-cell="{ row }">
+          <div class="min-w-0">
+            <p class="truncate font-medium text-default">{{ row.original.name }}</p>
+            <p class="truncate text-xs text-muted">{{ row.original.host }}</p>
+          </div>
+        </template>
 
-      <template #plan-cell="{ row }">
-        <UBadge color="primary" variant="subtle" size="sm" :data-billing-plan="row.original.plan">
-          {{ t(`onboarding.subscription.plans.${row.original.plan}.name`) }}
-        </UBadge>
-      </template>
+        <template #plan-cell="{ row }">
+          <UBadge color="primary" variant="subtle" size="sm" :data-billing-plan="row.original.plan">
+            {{ t(`onboarding.subscription.plans.${row.original.plan}.name`) }}
+          </UBadge>
+        </template>
 
-      <!--
-        DASS vor WARUM, wie auf der Community-Karte: `readOnly` trägt jede
-        Zeile, der GRUND steht nur dort, wo ihn das Control Plane
-        mitgeschickt hat. Die Sperre schlägt den Testphasen-Hinweis — wer
-        gesperrt ist, hat keine Testphase mehr.
-      -->
-      <template #state-cell="{ row }">
-        <span
-          v-if="row.original.readOnly"
-          class="flex items-center gap-1.5 text-sm text-error"
-          data-billing-state="locked"
-        >
-          <UIcon name="i-ph-lock-simple" class="size-4 shrink-0" />
-          {{ row.original.suspension === 'billing'
-            ? t('onboarding.communities.suspendedBilling')
-            : row.original.suspension === 'abuse'
-              ? t('onboarding.communities.suspendedAbuse')
-              : t('onboarding.communities.readOnly') }}
-        </span>
-        <span
-          v-else-if="noticeFor(row.original)"
-          class="flex items-center gap-1.5 text-sm"
-          :class="noticeFor(row.original)?.kind === 'ending' ? 'text-warning' : 'text-muted'"
-          data-billing-state="trial"
-        >
-          <UIcon
-            :name="noticeFor(row.original)?.kind === 'ending' ? 'i-ph-hourglass-medium' : 'i-ph-info'"
-            class="size-4 shrink-0"
-          />
-          {{ noticeFor(row.original)?.kind === 'ending'
-            ? t('onboarding.communities.trialEnding', noticeFor(row.original)!.daysLeft)
-            : t('onboarding.communities.trialEnded') }}
-        </span>
-        <span v-else class="flex items-center gap-1.5 text-sm text-muted" data-billing-state="active">
-          <UIcon name="i-ph-check-circle" class="size-4 shrink-0" />
-          {{ t('onboarding.account.billing.stateActive') }}
-        </span>
-      </template>
+        <!--
+          DASS vor WARUM, wie auf der Community-Karte: `readOnly` trägt jede
+          Zeile, der GRUND steht nur dort, wo ihn das Control Plane
+          mitgeschickt hat. Die Sperre schlägt den Testphasen-Hinweis — wer
+          gesperrt ist, hat keine Testphase mehr.
+        -->
+        <template #state-cell="{ row }">
+          <span
+            v-if="row.original.readOnly"
+            class="flex items-center gap-1.5 text-sm text-error"
+            data-billing-state="locked"
+          >
+            <UIcon name="i-ph-lock-simple" class="size-4 shrink-0" />
+            {{ row.original.suspension === 'billing'
+              ? t('onboarding.communities.suspendedBilling')
+              : row.original.suspension === 'abuse'
+                ? t('onboarding.communities.suspendedAbuse')
+                : t('onboarding.communities.readOnly') }}
+          </span>
+          <span
+            v-else-if="noticeFor(row.original)"
+            class="flex items-center gap-1.5 text-sm"
+            :class="noticeFor(row.original)?.kind === 'ending' ? 'text-warning' : 'text-muted'"
+            data-billing-state="trial"
+          >
+            <UIcon
+              :name="noticeFor(row.original)?.kind === 'ending' ? 'i-ph-hourglass-medium' : 'i-ph-info'"
+              class="size-4 shrink-0"
+            />
+            {{ noticeFor(row.original)?.kind === 'ending'
+              ? t('onboarding.communities.trialEnding', noticeFor(row.original)!.daysLeft)
+              : t('onboarding.communities.trialEnded') }}
+          </span>
+          <span v-else class="flex items-center gap-1.5 text-sm text-muted" data-billing-state="active">
+            <UIcon name="i-ph-check-circle" class="size-4 shrink-0" />
+            {{ t('onboarding.account.billing.stateActive') }}
+          </span>
+        </template>
 
-      <template #actions-cell="{ row }">
-        <UButton
-          :to="planLink(row.original)"
-          external
-          size="sm"
-          color="neutral"
-          variant="subtle"
-          icon="i-ph-arrow-square-out"
-          data-billing-plan-link
-        >
-          {{ t('onboarding.account.billing.manage') }}
-        </UButton>
-      </template>
-    </UTable>
+        <template #actions-cell="{ row }">
+          <UButton
+            :to="planLink(row.original)"
+            external
+            size="sm"
+            color="neutral"
+            variant="subtle"
+            icon="i-ph-arrow-square-out"
+            data-billing-plan-link
+          >
+            {{ t('onboarding.account.billing.manage') }}
+          </UButton>
+        </template>
+      </UTable>
+    </CoreListState>
   </div>
 </template>

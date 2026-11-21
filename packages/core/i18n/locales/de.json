@@ -205,6 +205,12 @@
     "confirm": {
       "confirm": "Bestätigen"
     },
+    "listState": {
+      "loading": "Lädt …",
+      "errorTitle": "Konnte nicht geladen werden",
+      "errorText": "Die Daten ließen sich gerade nicht abrufen. Versuch es noch einmal; klappt es dann nicht, lade die Seite neu.",
+      "retry": "Noch einmal versuchen"
+    },
     "empty": {
       "noResultsTitle": "Keine Treffer",
       "noResultsText": "Zu deinen Filtern passt gerade nichts.",

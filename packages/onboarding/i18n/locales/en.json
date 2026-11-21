@@ -658,6 +658,8 @@
       "action": "Choose a plan"
     },
     "subscription": {
+      "statusFailedTitle": "Subscription status not loaded",
+      "statusFailedText": "We could not fetch whether a trial or subscription is running. Before you choose a plan: try again.",
       "title": "Plan & billing",
       "help": "Which plan applies to your community, what it costs, and where to find invoices and payment details.",
       "noTenantTitle": "No subscription here",

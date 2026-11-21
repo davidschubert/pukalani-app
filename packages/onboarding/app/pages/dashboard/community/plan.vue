@@ -131,7 +131,7 @@ function planPrice(key: PlanKey): string {
  * (dieselbe Behandlung wie in CommunityTrialNotice.global.vue). Nur im
  * Browser, weil die Tageszahl an `Date.now()` hängt.
  */
-const { data: trial } = await useFetch<{ trialEndsAt: string | null, billingStatus: string }>('/api/community/billing/trial', {
+const { data: trial, error: trialError, refresh: refreshTrial } = await useFetch<{ trialEndsAt: string | null, billingStatus: string }>('/api/community/billing/trial', {
   lazy: true,
   server: false,
   default: () => ({ trialEndsAt: null, billingStatus: '' }),
@@ -152,6 +152,13 @@ const { data: trial } = await useFetch<{ trialEndsAt: string | null, billingStat
  * `past_due` zählt bewusst mit: ein Abo besteht, es ist nur die Zahlung offen.
  * Dort ist die Antwort das Stripe-Portal, nicht ein zweiter Kauf.
  */
+/**
+ * Ein gescheiterter Abruf des Abo-Stands sah vorher aus wie „kein Abo, keine
+ * Testphase" (FE-004, Q14) — auf der Seite, auf der man daraufhin bezahlt.
+ * 404 bleibt „kein Pool-Mandant" (siehe oben) und ist kein Fehler.
+ */
+const trialFailed = computed(() => !!trialError.value && trialError.value.statusCode !== 404)
+
 const hasSubscription = computed(() => ['active', 'past_due'].includes(trial.value?.billingStatus ?? ''))
 
 /** Erst im Browser gesetzt — SSR darf keine Tageszahl behaupten. */
@@ -289,6 +296,16 @@ onMounted(() => {
       >
         {{ planLabel }}
       </UBadge>
+    </div>
+
+    <div role="alert">
+      <CoreLoadError
+        v-if="isTenantHost && trialFailed"
+        :retry="refreshTrial"
+        :title="t('onboarding.subscription.statusFailedTitle')"
+        :description="t('onboarding.subscription.statusFailedText')"
+        data-subscription-status-error
+      />
     </div>
   </UPageCard>
 
