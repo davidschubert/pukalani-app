@@ -223,7 +223,10 @@
       "activityEmpty": "Noch keine Aktivität",
       "activityEmptyHint": "Hier steht, was du und dein Team in der Verwaltung tut.",
       "viewAll": "Alle ansehen",
-      "statOf": "{value} von {limit}"
+      "statOf": "{value} von {limit}",
+      "memberTitle": "Schön, dass du da bist",
+      "memberHint": "Deine Bereiche stehen links in der Seitenleiste. Name, Bild und Benachrichtigungen stellst du in den Einstellungen ein.",
+      "memberAction": "Zu den Einstellungen"
     },
     "users": {
       "name": "Name",

@@ -62,9 +62,11 @@ const toast = useToast()
  * hat keine Brands, weil es keine anlegen DARF — der Leerzustand mit dem Knopf
  * „Brand anlegen" wäre dort eine Einladung ins Nichts.
  */
-const denied = ref(false)
+// `useState` statt `ref`: der Abruf läuft auf dem Server, und nur so sieht der
+// Browser beim Übernehmen denselben Zustand.
+const denied = useState('brand-scores-denied', () => false)
 
-const { data, refresh, status } = await useAsyncData<BrandProfileScoresResponse | null>(
+const { data, refresh, status, error } = await useAsyncData<BrandProfileScoresResponse | null>(
   'brand-scores-list',
   async () => {
     try {
@@ -74,6 +76,9 @@ const { data, refresh, status } = await useAsyncData<BrandProfileScoresResponse 
     }
     catch (error) {
       denied.value = statusOf(error) === 404
+      // Jeder andere Fehler ist „gerade nicht abrufbar", nicht „keine Brands"
+      // (FE-004, LZ1): weiterwerfen, die Seite liest `error`.
+      if (!denied.value) throw error
       return null
     }
   },
@@ -417,6 +422,11 @@ useBrandTitle(() => t('brand.myScores.list.title'))
           class="mt-4" icon="i-ph-envelope-open" variant="outline"
           :label="t('brand.workspace.noAccess.action')" :to="localePath('/invite')"
         />
+      </div>
+
+      <!-- Fehler statt „keine Brands" (FE-004, LZ1) -->
+      <div v-else-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
       </div>
 
       <section v-else data-scores-table>

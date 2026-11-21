@@ -137,9 +137,12 @@ export default defineEventHandler(async (event) => {
         locale,
         title: site.name,
         description: site.description,
+        // Der Satz steht ÖFFENTLICH, also spricht er den Besucher an, nicht
+        // den Owner (UX-012); den Owner führt seine Liste der ersten Schritte
+        // zur Startseite.
         fallbackBody: locale === 'en'
-          ? `Welcome to ${site.name}. This page is yours — edit it in the dashboard whenever you like.`
-          : `Willkommen bei ${site.name}. Diese Seite gehört dir — du kannst sie im Dashboard jederzeit ändern.`,
+          ? `Welcome to ${site.name}. A new community is taking shape here — come back soon.`
+          : `Willkommen bei ${site.name}. Hier entsteht gerade eine neue Community — schau bald wieder vorbei.`,
       }).catch((error) => {
         logEvent('error', 'onboarding.home_page_failed', {
           communityId: result.communityId,

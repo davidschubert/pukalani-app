@@ -193,6 +193,47 @@ ihr Cache bleiben gültig.
 **Nicht geprüft:** das deutsche Bild live (erst nach dem Ausliefern).
 
 
+### Bahn 4 / Paket 3 — Nachgesehen im Browser: Abrechnung, Plan, Betreiber-Seiten, Insights-Rückfragen, KI-Schalter, Einladungs-Anfragen ✅ 2026-11-21
+
+**Was.** Was in Q14 und Bahn 2 nur durch Lint und Tests belegt war, lokal mit
+Test-Konten angesehen (Bühne: Owner und Mitglied; Betreiber-Konsole mit einem
+Wegwerf-Betreiber-Konto; branding.supply mit Probe-Konto als Betreiber).
+Fehler-Zustände über einen im Browser mit 500 beantworteten Abruf und
+clientseitigen Seitenwechsel.
+
+- **Konto-Abrechnung** (`/settings/billing`, Kontroll-Host): Liste der eigenen
+  Communities mit Plan und Zustand; bei Fehler „Konnte nicht geladen werden"
+  mit Neuversuch, danach wieder die Liste.
+- **Plan-Seite** (`/dashboard/community/plan`): bei gestörtem Abo-Abruf „Abo-
+  Stand nicht geladen" mit Neuversuch, „Plan wählen" ist solange weg;
+  danach normal.
+- **Betreiber: Einladungscodes und Abos** — Fehler, Neuversuch, Daten
+  stimmen. Gefunden und behoben: die Kopfzeile der Abo-Liste zeigte bei einem
+  Fehler „Abos (0)"; dasselbe Muster stand in der Nutzer-Liste und bei den
+  Kommentaren (3 Stellen). Die Zahl steht jetzt nur mit Daten.
+- **Drei Rückfragen in Insights** (Kanal entfernen, Fund wegnehmen, Brief
+  erzeugen): Dialog der Seite erscheint mit klarem Text, „Abbrechen" schließt
+  ohne Abruf, nichts geändert. „Brief erzeugen" über eine gestellte Liste
+  (der einzige lokale Fund hat schon einen Brief), ohne KI-Lauf.
+- **Schalter „KI-Training"**: an ⇒ `robots.txt` der Probe-Community sagt
+  „AI training: allowed" und `Allow: /` für die Trainings-Crawler; aus ⇒
+  wieder `Disallow: /`. Wirkt nach höchstens rund 30 s (Cache des Mandanten).
+  Zurückgeschaltet.
+- **Einladungs-Anfragen**: die Seite las das Feld `incomplete` nicht.
+  Ergänzt: Hinweis „Angaben unvollständig" (de/en) mit dem, was fehlt; im
+  Browser mit gestellter Antwort belegt, „Erinnern" ist bei der Anfrage
+  gesperrt.
+
+**Nicht geprüft:** kein echter Stripe-Weg (Kauf, Portal), kein
+Vorleseprogramm; die Roadmap-Seite antwortet lokal 403, weil der
+Kontroll-Dienst die Bühnen-Community nicht kennt.
+
+**Gelernt:** Eine Prüfung „steht der Crawler-Name noch drin?" ist bei
+`robots.txt` falsch — der Name bleibt, nur die Regel darunter wechselt
+zwischen `Allow` und `Disallow`; und der Mandant ist bis zu 30 s
+zwischengespeichert, eine Prüfung direkt nach dem Klick sieht den alten
+Stand. Erst die Regel lesen, dann nach Ablauf des Caches messen.
+
 ### TY1 Nachtrag — Rundung im Browser geprüft, CSS auf Stufen, Wächter liest CSS (UI-007) ✅ 2026-11-21
 
 **Was.**
@@ -265,6 +306,52 @@ führt sie als Ausnahme statt sie hochzurunden. Und `font-size` in CSS-Dateien
 schlägt Klassen aus dem Utility-Layer — ein Inline-Stil kann deshalb ein
 gewollter Überschreiber sein und gehört nicht blind in eine Klasse. Im Browser
 angesehen nur: Marketing (1440 und 375 px); Brand-Seiten nicht.
+
+### LZ1 Nachtrag — Stichprobe im Browser, Sackgassen, ein Lade-Zeichen, Listen-Gründe (FE-004, UX-012, UI-008, UI-009) ✅ 2026-11-21
+
+**Was.**
+
+- **Stichprobe im Browser** (lokal: Bühne mit Owner-, Mitglieds- und
+  Betreiber-Konto, branding.supply mit Probe-Konto; Abruf im Browser mit 500
+  beantwortet, dann „Noch einmal versuchen"): je Schub vier Seiten — Beiträge,
+  Kategorien, Termine, Kurse; Nachrichten-Einstellung, gemeldete Nachrichten,
+  Roadmap, Weiterleitungen; Produkte, Speicher, Insights-Marken,
+  Freischaltungen; Marken entdecken, Ranking, Insights, Brand-Scores. Fehler,
+  Neuversuch und danach „leer" oder Daten stimmen überall bis auf:
+  - **Fehlerzweig im Daten-Zweig** (2 Seiten: Insights-Kanäle und -Funde):
+    `<CoreLoadError>` stand in `v-else-if="rows.length > 0"` — ohne Daten
+    ist die Liste leer, die Seite sagte „leer" statt „Fehler". Zweig vor den
+    Leer-Zustand gezogen; neuer Wächter `loadErrorBranchGuard.test.ts` (mit
+    Gegenprobe) hält das für alle Seiten fest.
+  - **Zähler im Fehlerfall** (3 Seiten: Ranking, Marken entdecken,
+    Insights-Marken): „0 Präsenzen" / „Alle 0" neben der Fehlermeldung —
+    ausgeblendet, solange ohne Daten ein Fehler steht.
+  - Roadmap blieb nach dem Neuversuch rot — kein Muster-Fehler: der echte
+    Abruf antwortet lokal 403, weil der Kontroll-Dienst die Bühnen-Community
+    nicht kennt.
+- **(e) Sackgassen UX-012:** Nachrichten aus — wer sie einschalten darf
+  (`messages.manage`), liest „Du kannst sie … einschalten" mit Knopf zur
+  Einstellung, „Neue Nachricht" ist ausgeblendet; Dashboard eines Mitglieds
+  ohne Team-Rolle zeigt einen Leer-Zustand mit Weg in die Seitenleiste und
+  Knopf zu den Einstellungen (der admin-Layer kennt die Bereiche nicht
+  einzeln, daher kein Link dorthin); der Startseiten-Satz einer NEUEN
+  Community spricht den Besucher an („Hier entsteht gerade …"). Bestehende
+  Startseiten bleiben, wie ihr Owner sie hat.
+- **(f) UI-008:** 24 Seiten-Ladezeichen sind `CoreLoadingState`, 6 kleine
+  Zeichen nehmen den offenen Kreis aus `icons.loading`; `i-ph-spinner` ist
+  weg, ein Wächter hält es fest.
+- **(g) UI-009:** alle vier Stellen tragen den Grund mit „B6" (Rang-Mini-
+  Listen, fester Preiskatalog, Gegenüberstellung zweier Messungen,
+  Plan-Matrix mit Zwischenüberschriften) — keine ist ein Datenbestand.
+- **Rest-Liste:** 59 → 56 Dateien (Insights-Rankings und -Themen,
+  Brand-Scores; dort hielt ein `catch` jeden Fehler für „leer"). Die übrigen
+  Begründungen im Kopf von `listStateBacklog.ts` gelesen; sie stimmen.
+
+**Gelernt:** Ein Wächter, der zählt, ob `error` gelesen wird, sieht nicht,
+WO der Fehlerzweig steht — „gelesen, aber nie gezeigt" fand erst der
+blockierte Abruf im Browser. Die Prüfung im Browser braucht keinen
+Fremddienst: `window.fetch` für EINE Adresse mit 500 beantworten und
+clientseitig navigieren zeigt Fehler, Neuversuch und Erholung in einem Lauf.
 
 ### LZ1 — Listen-Zustände: Rest-Liste nach Q14 von 110 auf 59 Dateien (FE-004, UI-005) ✅ 2026-11-21
 

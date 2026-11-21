@@ -17,7 +17,9 @@
       "count": "{count} Gespräche",
       "loadFailed": "Der Posteingang konnte nicht geladen werden.",
       "disabled": "Diese Community hat private Nachrichten nicht eingeschaltet.",
-      "disabledHint": "Der Owner kann sie in den Einstellungen aktivieren."
+      "disabledHint": "Der Owner kann sie in den Einstellungen aktivieren.",
+      "disabledHintManager": "Du kannst sie in den Einstellungen der Community einschalten.",
+      "disabledAction": "Nachrichten einschalten"
     },
     "thread": {
       "placeholder": "Nachricht schreiben …",

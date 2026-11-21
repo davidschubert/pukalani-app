@@ -36,7 +36,7 @@ const readerLocale = computed<InsightsLocale>(() => (locale.value === 'de' ? 'de
 const publicFormats = computed(() => readInsightsPublicFormats(appConfig.pukalani?.insights?.publicFormats))
 const rankingAllowed = computed(() => insightsFormatIsPublic('ranking', publicFormats.value))
 
-const { data } = await useFetch<InsightsPublicRankingsResponse>('/api/insights/public/rankings', {
+const { data, error, refresh } = await useFetch<InsightsPublicRankingsResponse>('/api/insights/public/rankings', {
   key: 'insights-public-rankings',
   // Bei gesperrtem Format gibt es nichts zu holen — die Route antwortet
   // ohnehin 404, und ein Fehler im Log wäre hier nur Rauschen.
@@ -92,7 +92,12 @@ if (!rankingAllowed.value && requestEvent) setResponseStatus(requestEvent, 404)
         </p>
       </div>
 
-      <div class="mt-10">
+      <!-- Fehler statt „keine Beiträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" class="mt-10" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <div v-else class="mt-10">
         <InPostList :posts="posts" :locale="readerLocale" :localize="localePath" />
       </div>
     </template>

@@ -202,3 +202,25 @@ export function workshopVersions(slotId: string): BrandGenerationVersionsRespons
     latestDraft: WORKSHOP_FIRST_DRAFT,
   }
 }
+
+/** Ein fremdes Kapitel für den Log: aufgeklappt zeigt es seine Felder lesend. */
+export const WORKSHOP_FOREIGN_STEP: BrandStepKey = 'pvm'
+export const WORKSHOP_FOREIGN_SLOT = 'b.whyStarted'
+export const WORKSHOP_FOREIGN_VALUE = 'Weil Marken Ordnung brauchen.'
+
+export function workshopForeignStepDetail(): BrandStepDetailResponse {
+  return {
+    ...workshopStepDetail(),
+    stepKey: WORKSHOP_FOREIGN_STEP,
+    sessions: {},
+    slots: {
+      [WORKSHOP_FOREIGN_SLOT]: {
+        firstDraft: null,
+        latestDraft: null,
+        confirmed: WORKSHOP_FOREIGN_VALUE,
+        confidence: null,
+        updatedAt: NOW,
+      },
+    },
+  }
+}
