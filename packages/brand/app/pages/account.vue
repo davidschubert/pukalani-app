@@ -3,7 +3,7 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 
 /**
  * `/account` — die KONTO-Seite für Kundinnen und Kunden von branding.supply
- * (Davids Entscheidung 2026-11-09, Plan docs/plans/BRAND-INSIGHTS-KURATION.md
+ * (Davids Entscheidung 2026-11-09, Plan docs/archiv/BRAND-INSIGHTS-KURATION.md
  * §20 „Befunde").
  *
  * ── WARUM ES DIESE HÜLLE GIBT ────────────────────────────────────────────

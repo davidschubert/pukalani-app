@@ -3,7 +3,7 @@
  *
  * ── WARUM EINE KONSTANTE UND KEIN TEXT IN DER LOCALE-DATEI ────────────────
  * Der Betrag steht auf ZWEI Marketing-Seiten (Marktvergleich und Book & Kit —
- * „ein Preis, zweimal genannt", Plan docs/plans/PRODUCTS-SEITE.md §5) und wird
+ * „ein Preis, zweimal genannt", Plan docs/archiv/PRODUCTS-SEITE.md §5) und wird
  * mit Paket Z1 ein DRITTES Mal gebraucht, dann im Stripe-Katalog. Stünde er
  * als Zeichenkette in `de.json` und `en.json`, wären das vier Orte, an denen
  * eine Preisänderung stimmen muss — und der Katalog wäre der eine, den man

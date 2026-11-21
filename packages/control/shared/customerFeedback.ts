@@ -1,7 +1,7 @@
 import type { Models } from 'node-appwrite'
 
 /**
- * Zentrales Kunden-Feedback (E10, docs/plans/CUSTOMER-FEEDBACK.md) — der
+ * Zentrales Kunden-Feedback (E10, docs/archiv/CUSTOMER-FEEDBACK.md) — der
  * VERTRAG. Pure Regeln + Typen, ohne h3 und ohne Appwrite-Aufrufe, weil sie an
  * DREI Stellen dieselbe Wahrheit sein müssen:
  *

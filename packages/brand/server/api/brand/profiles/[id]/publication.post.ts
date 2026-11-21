@@ -30,7 +30,7 @@ import {
 } from '../../../../utils/brandStore'
 
 /**
- * ZUR FREIGABE EINREICHEN (docs/plans/DISCOVER-BRANDS.md §4.3, Davids
+ * ZUR FREIGABE EINREICHEN (docs/archiv/DISCOVER-BRANDS.md §4.3, Davids
  * Entscheidung §9.1: Freigabe VOR Veröffentlichung).
  *
  * ── ES WIRD NICHTS ÖFFENTLICH, WAS HIER PASSIERT ─────────────────────────

@@ -3,7 +3,7 @@ import { runTransitionAllowed } from '../../../../shared/runGuards'
 import { RUNS_TABLE, type ClaimResponse, type RunRow } from '../../../../shared/types/runner'
 
 /**
- * „Hast du was für mich?" — docs/plans/AI-RUNNER.md § 5, Runner-Seite.
+ * „Hast du was für mich?" — docs/archiv/AI-RUNNER.md § 5, Runner-Seite.
  *
  * Der Kern der Naht: der Rechner ZIEHT sich Arbeit, sie wird ihm nie
  * zugeschoben (§ 3.2 — Polling statt Realtime, weil ein Hintergrunddienst

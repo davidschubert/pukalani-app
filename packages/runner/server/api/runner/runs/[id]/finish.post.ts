@@ -5,7 +5,7 @@ import { RUNS_TABLE, type RunFinishResponse, type RunRow } from '../../../../../
 import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
- * Der Abschluss — docs/plans/AI-RUNNER.md § 5/§ 7.2 Schritt 9.
+ * Der Abschluss — docs/archiv/AI-RUNNER.md § 5/§ 7.2 Schritt 9.
  *
  * `succeeded` ist hier eine BEHAUPTUNG DES RUNNERS, keine Messung des
  * Servers: nur der Elternprozess auf dem Mac sieht `permission_denials` und

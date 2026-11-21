@@ -6,7 +6,7 @@ import { log } from './log.ts'
 import { PERMISSION_MODES, type PermissionMode } from './protocol.ts'
 
 /**
- * Die lokale Allowlist — docs/plans/AI-RUNNER.md § 7.1/§ 8.1.
+ * Die lokale Allowlist — docs/archiv/AI-RUNNER.md § 7.1/§ 8.1.
  *
  * DIE WICHTIGSTE EINZELREGEL DES GANZEN SYSTEMS: die Datenbank darf
  * AUSWÄHLEN, was diese Datei ERLAUBT — nie umgekehrt. Deshalb reist über die

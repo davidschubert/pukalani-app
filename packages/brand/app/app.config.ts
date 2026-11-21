@@ -229,7 +229,7 @@ export default defineAppConfig({
         },
         /**
          * DIE MODERATION DER ÖFFENTLICHEN GALERIE (Paket D3,
-         * docs/plans/DISCOVER-BRANDS.md §4.4) — der dritte Betreiber-Eintrag
+         * docs/archiv/DISCOVER-BRANDS.md §4.4) — der dritte Betreiber-Eintrag
          * dieses Layers, direkt unter den Korrekturen (`order: 132`): alle
          * drei sind Arbeitslisten desselben Menschen, und zwischen ihnen
          * gehört keine fremde Sache.

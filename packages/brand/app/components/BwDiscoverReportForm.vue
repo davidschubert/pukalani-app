@@ -8,7 +8,7 @@ import type { BrandPublicationReportResponse } from '../../shared/types/brand'
 
 /**
  * „MELDEN" — die Beanstandung einer Marke in der öffentlichen Galerie
- * (docs/plans/DISCOVER-BRANDS.md §3.4, §4.2 „Melden").
+ * (docs/archiv/DISCOVER-BRANDS.md §3.4, §4.2 „Melden").
  *
  * Sie ist die Gegenseite der Veröffentlichung: öffentlich zeigen dürfen wir
  * nur, was auch jemand beanstanden kann. Wie beim Korrekturvorschlag trägt die

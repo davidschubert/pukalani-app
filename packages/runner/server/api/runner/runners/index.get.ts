@@ -3,7 +3,7 @@ import { toRunnerPublic } from '../../../../shared/runnerPublic'
 import { RUNNERS_TABLE, type RunnerRow, type RunnersListResponse } from '../../../../shared/types/runner'
 
 /**
- * Die registrierten Rechner — docs/plans/AI-RUNNER.md § 5, Board-Seite.
+ * Die registrierten Rechner — docs/archiv/AI-RUNNER.md § 5, Board-Seite.
  *
  * Gibt `RunnerPublic` zurück, nicht die Zeile: `secretHash` bleibt auf dem
  * Server (Begründung am Typ). Das ist die zweite Schicht — die erste ist,

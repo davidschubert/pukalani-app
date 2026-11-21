@@ -25,7 +25,7 @@ import { canReadBrandCheck } from './brandCheckVisibility'
 import { BRAND_PUBLICATIONS_TABLE, type BrandPublicationRow } from './brandPublications'
 
 /**
- * WAS DIE ÖFFENTLICHE GALERIE LIEST (docs/plans/DISCOVER-BRANDS.md §4.1/§4.2,
+ * WAS DIE ÖFFENTLICHE GALERIE LIEST (docs/archiv/DISCOVER-BRANDS.md §4.1/§4.2,
  * Paket D2) — die Datenbank-Hälfte der puren Regeln aus
  * `shared/brandDiscover.ts`.
  *

@@ -2,7 +2,7 @@
 import { formatDerivationPrice } from '../utils/productPricing'
 
 /**
- * DER RAHMEN JEDER PRODUKTSEITE (PS1, Plan docs/plans/PRODUCTS-SEITE.md §4).
+ * DER RAHMEN JEDER PRODUKTSEITE (PS1, Plan docs/archiv/PRODUCTS-SEITE.md §4).
  *
  * ── WARUM EIN BAUTEIL UND NICHT FÜNF SEITEN ───────────────────────────────
  * Die fünf Produktseiten haben denselben Aufbau — Hero · „Was ihr bekommt" ·

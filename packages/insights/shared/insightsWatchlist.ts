@@ -4,7 +4,7 @@ import { INSIGHTS_TOPIC_KEYS } from './insightsPost'
 
 /**
  * DIE EIGENE VIDEO-LISTE DER REDAKTION (BI2 K4, Plan
- * docs/plans/BRAND-INSIGHTS-KURATION.md §4 und §5).
+ * docs/archiv/BRAND-INSIGHTS-KURATION.md §4 und §5).
  *
  * ── ZWEI LISTEN, EIN RECHENWEG, ZWEI LEBENSDAUERN ───────────────────────
  * Der Themenradar und die Fundstücke zeigen dieselben Spalten und rechnen

@@ -1,5 +1,5 @@
 /**
- * Anhang-Prüfung des AI-Runners — docs/plans/AI-RUNNER.md § 6.
+ * Anhang-Prüfung des AI-Runners — docs/archiv/AI-RUNNER.md § 6.
  *
  * EIGENE Datei, obwohl `tickets` mit `detectTicketFileType` fast dasselbe tut:
  * `runner` kennt `tickets` NICHT (A14), und ein Auto-Import über die

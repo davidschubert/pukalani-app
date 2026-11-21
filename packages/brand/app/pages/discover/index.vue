@@ -17,7 +17,7 @@ import type { BrandDiscoverItem, BrandDiscoverListResponse } from '../../../shar
 
 /**
  * DIE ÖFFENTLICHE GALERIE — `/discover`
- * (Konzept docs/plans/DISCOVER-BRANDS.md §4.1, Form abgenommen am Klickdummy
+ * (Konzept docs/archiv/DISCOVER-BRANDS.md §4.1, Form abgenommen am Klickdummy
  * `/brand/demo/discover`, Davids Entscheidungen 5, 6 und 8 vom 2026-09-08).
  *
  * Die Seite RECHNET nichts: „Brand of the Day", Filtern, Sortieren und

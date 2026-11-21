@@ -16,7 +16,7 @@ import { isProductStateEnabled } from '../../../core/shared/types/config'
  * nur im Layout (`packages/admin/app/layouts/dashboard.vue`). Solange die
  * Seitenleiste der einzige Leser war, war das richtig. Seit die Konto-Seite
  * „Navigation" dieselbe Liste zum Sortieren anbietet
- * (docs/plans/DASHBOARD-NAV-JE-PERSON.md), gibt es einen ZWEITEN Leser — und
+ * (docs/archiv/DASHBOARD-NAV-JE-PERSON.md), gibt es einen ZWEITEN Leser — und
  * zwei Kopien derselben Filterrechnung wären genau der Bruch, den der Editor
  * der Site-Navigation schon einmal hatte: er böte Einträge an, die die Leiste
  * nie zeigt, oder verschwiege welche, die sie zeigt.
@@ -110,7 +110,7 @@ export function useDashboardNavModules(): DashboardNavModulesContext {
   const can = (capability: Capability) => canAsOperator(capability) || canAsMember(capability)
 
   /**
-   * DER ORT (E9, docs/plans/DASHBOARD-IA.md): Betreiber-Einträge verschwinden
+   * DER ORT (E9, docs/archiv/DASHBOARD-IA.md): Betreiber-Einträge verschwinden
    * auf einem Mandanten-Host, Community-Einträge erscheinen nur dort — und im
    * Silo-/Einzelbetrieb bleibt alles wie vorher, weil es dort keine zweite Ebene
    * gibt. Die Regel selbst ist pur und getestet (core/shared/dashboardNav.ts);

@@ -38,7 +38,7 @@ export function createBrandSharePublishSchema() {
 }
 
 /**
- * IN DIE ÖFFENTLICHE GALERIE EINREICHEN (docs/plans/DISCOVER-BRANDS.md §4.3).
+ * IN DIE ÖFFENTLICHE GALERIE EINREICHEN (docs/archiv/DISCOVER-BRANDS.md §4.3).
  *
  * ── DAS HÄKCHEN MUSS AM SERVER ANKOMMEN ───────────────────────────────────
  * „Ich darf diese Marke veröffentlichen und weiss, dass sie nach Freigabe

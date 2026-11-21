@@ -1,6 +1,6 @@
 /**
  * Migration brand-001: `brand_profiles` — der KOPF eines Brandings
- * (docs/plans/BRAND-WIZARD-SCHEMA.md §1).
+ * (docs/archiv/BRAND-WIZARD-SCHEMA.md §1).
  *
  * ── DIE REGELN, DIE FÜR ALLE SIEBEN brand_*-TABELLEN GELTEN ───────────────
  * (Schema-Anhang „Gemeinsame Regeln" — hier EINMAL ausgeschrieben, die

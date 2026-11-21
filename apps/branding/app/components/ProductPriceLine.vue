@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * DIE PREIS-ZEILE EINER PRODUKTSEITE (PS1, Plan docs/plans/PRODUCTS-SEITE.md §5).
+ * DIE PREIS-ZEILE EINER PRODUKTSEITE (PS1, Plan docs/archiv/PRODUCTS-SEITE.md §5).
  *
  * GENAU EINE AUSSAGE JE PRODUKT, und daneben die Voraussetzung — mehr steht
  * hier nicht. Der Zuschnitt ist Absicht: eine Preis-TABELLE mit fünf Spalten

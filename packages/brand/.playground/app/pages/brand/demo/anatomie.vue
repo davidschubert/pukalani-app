@@ -3,7 +3,7 @@ import { BRAND_GRADIENTS } from '../../../../../shared/brandPalette'
 
 /**
  * KLICKDUMMY „ANATOMIE" — die öffentliche Seite EINER Marke
- * (docs/plans/DISCOVER-BRANDS.md §4.2, angeglichen 2026-09-08).
+ * (docs/archiv/DISCOVER-BRANDS.md §4.2, angeglichen 2026-09-08).
  *
  * Form bleibt das DOSSIER: sticky Steckbrief links, rechts ein fließendes
  * Dokument mit Linien statt Karten (bewusst anders als die Galerie-Wand und

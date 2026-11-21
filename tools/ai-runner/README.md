@@ -1,6 +1,6 @@
 # AI-Runner — der Rechner-Dienst
 
-Der Mac-Daemon zu [docs/plans/AI-RUNNER.md](../../docs/plans/AI-RUNNER.md)
+Der Mac-Daemon zu [docs/archiv/AI-RUNNER.md](../../docs/archiv/AI-RUNNER.md)
 (Paket 4). Er holt sich Läufe bei `admin.pukalani.app` ab, startet die
 Claude-Code-CLI in einem eigenen Worktree, meldet den Fortschritt zurück und
 schreibt am Ende Commit, Diffstat, Testergebnisse und Kosten in den Lauf.

@@ -22,7 +22,7 @@ import {
 import { BRAND_PALETTES, brandPaletteId, brandPaletteName } from '../shared/brandPalette'
 
 /**
- * DIE REGELN DER VERÖFFENTLICHUNG (docs/plans/DISCOVER-BRANDS.md §3/§4.3,
+ * DIE REGELN DER VERÖFFENTLICHUNG (docs/archiv/DISCOVER-BRANDS.md §3/§4.3,
  * Paket D1).
  *
  * Was hier festgenagelt wird, sind drei Zusagen, die man später nicht

@@ -7,7 +7,7 @@ import {
 import { loadOwnedProfile, requireProfileIdParam } from '../../../../utils/brandStore'
 
 /**
- * DER ZUSTAND DER VERÖFFENTLICHUNG (docs/plans/DISCOVER-BRANDS.md §4.3) — die
+ * DER ZUSTAND DER VERÖFFENTLICHUNG (docs/archiv/DISCOVER-BRANDS.md §4.3) — die
  * Frage der Leseansicht und der Brands-Karte: „steht diese Marke öffentlich,
  * wartet sie, oder wurde sie abgelehnt?"
  *

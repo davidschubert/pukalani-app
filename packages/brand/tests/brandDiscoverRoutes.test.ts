@@ -8,7 +8,7 @@ import type {
 
 /**
  * DIE ÖFFENTLICHE DISCOVER-FLÄCHE, DURCHGESPIELT — gefälschte Ablage, ECHTE
- * Handler (docs/plans/DISCOVER-BRANDS.md §4.1/§4.2/§6, Paket D2).
+ * Handler (docs/archiv/DISCOVER-BRANDS.md §4.1/§4.2/§6, Paket D2).
  *
  * Sechs Aussagen hängen NICHT an einer puren Funktion, sondern an der
  * Reihenfolge in den Routen — und genau die verrutscht beim Umbauen still:

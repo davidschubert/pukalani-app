@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Sicherung des ALTEN Silo-Feedbacks vor dem Layer-Umzug (E10, Davids
- * Entscheidungen 6+7 in docs/plans/CUSTOMER-FEEDBACK.md).
+ * Entscheidungen 6+7 in docs/archiv/CUSTOMER-FEEDBACK.md).
  *
  * Entscheidung 6 sagt: die Zeilen in `apps/comments` sind Rückmeldungen zu
  * EINER Installation, kein Produkt-Feedback zur Plattform — sie werden NICHT

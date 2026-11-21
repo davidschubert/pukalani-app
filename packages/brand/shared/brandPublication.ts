@@ -1,5 +1,5 @@
 /**
- * DIE REGELN DER VERÖFFENTLICHUNG (docs/plans/DISCOVER-BRANDS.md §3, §4.3, §5,
+ * DIE REGELN DER VERÖFFENTLICHUNG (docs/archiv/DISCOVER-BRANDS.md §3, §4.3, §5,
  * Davids Entscheidung §9.1 „Freigabe VOR Veröffentlichung") — pur, ohne h3,
  * ohne Appwrite, ohne Vue.
  *

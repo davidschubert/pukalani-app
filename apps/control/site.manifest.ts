@@ -17,7 +17,7 @@ export default {
     'feedback',
     'billing',
     'tickets',
-    // AI-Runner (docs/plans/AI-RUNNER.md): die Ausführungs-Schicht zum Board.
+    // AI-Runner (docs/archiv/AI-RUNNER.md): die Ausführungs-Schicht zum Board.
     // Betreiber-Werkzeug — läuft NUR hier, nie auf einer Kunden-Site.
     'runner',
     'pages',

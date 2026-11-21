@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { AppwriteException } from 'node-appwrite'
 
 /**
- * DIE DREI EIGENTÜMER-ROUTEN DER VERÖFFENTLICHUNG (docs/plans/DISCOVER-BRANDS.md
+ * DIE DREI EIGENTÜMER-ROUTEN DER VERÖFFENTLICHUNG (docs/archiv/DISCOVER-BRANDS.md
  * §4.3, Paket D1).
  *
  *  1. `GET …/profiles/:id/publication`    — Zustand + „darf eingereicht werden?"

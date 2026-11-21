@@ -1,6 +1,6 @@
 /**
  * Migration brand-004: `brand_shares` — eingefrorene Veröffentlichungen
- * (docs/plans/BRAND-WIZARD-SCHEMA.md §4). Gemeinsame Regeln aller
+ * (docs/archiv/BRAND-WIZARD-SCHEMA.md §4). Gemeinsame Regeln aller
  * brand_*-Tabellen: Kopf von `001-brand-profiles.ts`.
  *
  * ── DER ROHE TOKEN STEHT NIRGENDS ─────────────────────────────────────────

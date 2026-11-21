@@ -12,7 +12,7 @@ import {
 
 /**
  * BETREIBER: DIE VERÖFFENTLICHUNGEN LESEN (`users.manage`,
- * docs/plans/DISCOVER-BRANDS.md §4.4).
+ * docs/archiv/DISCOVER-BRANDS.md §4.4).
  *
  * ── DER STANDARD-FILTER IST `pending` ─────────────────────────────────────
  * Das ist die Arbeitsliste (Davids Entscheidung §9.1: Freigabe VOR

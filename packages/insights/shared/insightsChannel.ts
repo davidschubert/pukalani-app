@@ -5,7 +5,7 @@ import { insightsUploadsPlaylistId } from './insightsRadar'
 
 /**
  * EIN KURATIERTER KANAL DES THEMENRADARS (BI2 K3, Plan
- * docs/plans/BRAND-INSIGHTS-KURATION.md §1).
+ * docs/archiv/BRAND-INSIGHTS-KURATION.md §1).
  *
  * ── WARUM DIESE DATEI ÜBERHAUPT ENTSTEHT ────────────────────────────────
  * Bis BI2 stand die Kanalliste in `apps/branding/app/app.config.ts`, und der

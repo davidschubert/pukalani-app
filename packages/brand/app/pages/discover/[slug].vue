@@ -7,7 +7,7 @@ import type { BrandDiscoverEntryResponse } from '../../../shared/types/brand'
 
 /**
  * DIE ANATOMIE EINER MARKE — `/discover/<slug>`
- * (Konzept docs/plans/DISCOVER-BRANDS.md §4.2, Form abgenommen am Klickdummy
+ * (Konzept docs/archiv/DISCOVER-BRANDS.md §4.2, Form abgenommen am Klickdummy
  * `/brand/demo/anatomie`).
  *
  * Form ist das DOSSIER: sticky Steckbrief links, rechts das Fundament als

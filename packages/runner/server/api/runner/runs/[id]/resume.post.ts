@@ -7,7 +7,7 @@ import { RUNNERS_TABLE, RUNS_TABLE, type RunRow, type RunnerRow } from '../../..
 import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
- * Eine `needs_input`-Rückfrage beantworten — docs/plans/AI-RUNNER.md § 4 / § 9.
+ * Eine `needs_input`-Rückfrage beantworten — docs/archiv/AI-RUNNER.md § 4 / § 9.
  *
  * `needs_input` ist TERMINAL (§ 4): der alte Lauf wird NICHT wiederbelebt —
  * sonst hätte er zwei Berichte, zwei Kostenzeilen und keine ehrliche Dauer.

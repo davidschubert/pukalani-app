@@ -1,6 +1,6 @@
 /**
  * Migration brand-003: `brand_messages` — der Gesprächsverlauf
- * (docs/plans/BRAND-WIZARD-SCHEMA.md §3). Gemeinsame Regeln aller
+ * (docs/archiv/BRAND-WIZARD-SCHEMA.md §3). Gemeinsame Regeln aller
  * brand_*-Tabellen: Kopf von `001-brand-profiles.ts`.
  *
  * ── DER VERLAUF HÄNGT AM BAUSTEIN, NICHT AM BRANDING ──────────────────────

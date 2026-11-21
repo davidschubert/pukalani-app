@@ -8,7 +8,7 @@ import type { RunAttachmentSource } from '../../../../packages/runner/shared/typ
  * DIE VERDRAHTUNG (A14): dieser Override füllt den Platzhalter
  * `TicketModalRunner` des tickets-Layers mit dem Lauf-Bereich des
  * runner-Layers. Nur DIESE App darf das — `tickets` kennt `runner` nicht und
- * `runner` kennt `tickets` nicht (docs/plans/AI-RUNNER.md § 3.1); beide treffen
+ * `runner` kennt `tickets` nicht (docs/archiv/AI-RUNNER.md § 3.1); beide treffen
  * sich erst hier, wo die Site ihre Produkte komponiert. Dasselbe Muster ist für
  * `TicketModalComments` vorgesehen.
  *

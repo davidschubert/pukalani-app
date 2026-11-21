@@ -1,7 +1,7 @@
 import { PERMISSION_MODES, type PermissionMode, type RunStatus } from './types/runner'
 
 /**
- * Die zwei puren Regeln des AI-Runners — docs/plans/AI-RUNNER.md § 4 (der
+ * Die zwei puren Regeln des AI-Runners — docs/archiv/AI-RUNNER.md § 4 (der
  * Zustandsautomat) und § 8.2 (die Modus-Sperre für ungeprüfte Prompts).
  *
  * BEWUSST PUR UND BEWUSST HIER: beide Regeln werden an mehreren Stellen

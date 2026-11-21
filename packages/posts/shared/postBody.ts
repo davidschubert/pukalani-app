@@ -31,7 +31,7 @@
  * serialisiert: `@tiptap/markdown` macht aus getipptem `snake_case` ein
  * gespeichertes `snake\_case`. Diese Lücke bleibt offen und lässt sich hier
  * auch nicht schließen — die Spalte fasst nun einmal 10000 Zeichen. Wer beim
- * Composer-Umbau (docs/plans/COMPOSER-UEDITOR.md) 10000 GETIPPTE Zeichen
+ * Composer-Umbau (docs/archiv/COMPOSER-UEDITOR.md) 10000 GETIPPTE Zeichen
  * zusagen will, braucht eine größere Spalte (Muster: pages-002, MEDIUMTEXT),
  * und das ist eine Migration und eine eigene Entscheidung.
  */

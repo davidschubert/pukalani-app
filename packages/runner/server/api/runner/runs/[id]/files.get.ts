@@ -2,7 +2,7 @@ import { parseRunAttachments } from '../../../../../shared/runAttachments'
 import { RUNS_TABLE, type RunAttachmentsResponse, type RunRow } from '../../../../../shared/types/runner'
 
 /**
- * Die Anhänge eines Laufs — docs/plans/AI-RUNNER.md § 6, RUNNER-Seite
+ * Die Anhänge eines Laufs — docs/archiv/AI-RUNNER.md § 6, RUNNER-Seite
  * (Bearer-Secret, kein Session-Cookie).
  *
  * Der Runner fragt sie EINMAL nach dem Claim und legt sie in

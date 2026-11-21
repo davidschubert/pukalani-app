@@ -12,7 +12,7 @@ import type {
 
 /**
  * DIE MODERATION, DURCHGESPIELT — gefälschte Ablage, echte Handler
- * (docs/plans/DISCOVER-BRANDS.md §4.4, Paket D3).
+ * (docs/archiv/DISCOVER-BRANDS.md §4.4, Paket D3).
  *
  * Acht Aussagen hängen NICHT an einer puren Funktion, sondern an der
  * Reihenfolge und den geschriebenen Spalten — und genau die verrutscht beim

@@ -23,7 +23,7 @@ import type { BrandFoundationView } from '../shared/brandFoundation'
 import type { BrandDiscoverItem } from '../shared/types/brand'
 
 /**
- * DIE REGELN DER GALERIE (docs/plans/DISCOVER-BRANDS.md §4.1/§4.2, Davids
+ * DIE REGELN DER GALERIE (docs/archiv/DISCOVER-BRANDS.md §4.1/§4.2, Davids
  * Entscheidungen 5, 6 und 8) — pur geprüft, ohne Server.
  *
  * Fünf Aussagen, die man beim Umbauen still kaputt macht:

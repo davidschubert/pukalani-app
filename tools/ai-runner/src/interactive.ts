@@ -1,5 +1,5 @@
 /**
- * Der interaktive Modus — docs/plans/AI-RUNNER.md § 7.3.
+ * Der interaktive Modus — docs/archiv/AI-RUNNER.md § 7.3.
  *
  * Für Läufe, bei denen David zuschauen und genehmigen will: der Runner öffnet
  * ein Terminal-Fenster (Terminal.app, `open -a Terminal`) mit dem fertigen
@@ -138,7 +138,7 @@ export function buildHookScript(input: HookScriptInput): string {
   const url = `${input.endpoint.replace(/\/+$/, '')}/api/runner/runs/${input.runId}/session-end`
   return [
     '#!/bin/bash',
-    '# SessionEnd-Rückkanal des AI-Runners — docs/plans/AI-RUNNER.md § 7.3.',
+    '# SessionEnd-Rückkanal des AI-Runners — docs/archiv/AI-RUNNER.md § 7.3.',
     '# Das Secret reist nur als 0600-Headerdatei, nie als Argument oder Log.',
     'set -u',
     `SECRET_FILE=${shellQuote(input.secretFile)}`,

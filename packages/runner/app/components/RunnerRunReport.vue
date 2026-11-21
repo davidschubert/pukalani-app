@@ -6,7 +6,7 @@ import { checkInheritedTestCommands, offeredTestCommands } from '../../shared/te
 import type { RunRow, RunnersListResponse } from '../../shared/types/runner'
 
 /**
- * Der Abschlussbericht eines Laufs — docs/plans/AI-RUNNER.md § 3.4/§ 9.
+ * Der Abschlussbericht eines Laufs — docs/archiv/AI-RUNNER.md § 3.4/§ 9.
  *
  * Branch, Commit, Diffstat, Tests, Dauer, Kosten und Session-Id sind
  * STRUKTURIERTE Daten, keine Fließtext-Nachricht — deshalb eine

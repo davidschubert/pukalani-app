@@ -1,6 +1,6 @@
 /**
  * DIE SLOT-REGISTRY — der Code-Vertrag des P0-Slot-Katalogs (Plan §3e,
- * Inhalte aus docs/plans/BRAND-WIZARD-CONTENT-SPEC.md §§3–11).
+ * Inhalte aus docs/archiv/BRAND-WIZARD-CONTENT-SPEC.md §§3–11).
  *
  * „Navigation, Fortschritt, Validierung, Abhängigkeiten und Prompt-Aufbau
  * entstehen aus DIESER einen Registry — nicht aus fünf getrennten

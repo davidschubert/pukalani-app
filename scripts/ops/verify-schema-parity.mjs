@@ -264,7 +264,7 @@ const MODERATION_TABLES = ['reports']
 const TICKETS_TABLES = ['tickets', 'ticket_files', 'ticket_lists', 'ticket_watchers']
 
 /**
- * `runner`-Layer — der AI-Runner (docs/plans/AI-RUNNER.md), angelegt von
+ * `runner`-Layer — der AI-Runner (docs/archiv/AI-RUNNER.md), angelegt von
  * `runner-001`. NUR `control`: das ist ein Betreiber-Werkzeug, es läuft
  * ausschließlich in `apps/control` und gehört auf keine Kunden-Instanz.
  *
@@ -351,7 +351,7 @@ const CONTROL_SOLL = [
  * AUSSCHLIESSLICH auf `branding` (branding.supply) und stehen deshalb NUR im
  * BRANDING_SOLL; ihre Spalten prüft der Soll-Vergleich nur dort (Layer
  * `brand` steht nur im Manifest von `apps/branding`).
- * Schema: docs/plans/BRAND-WIZARD-SCHEMA.md.
+ * Schema: docs/archiv/BRAND-WIZARD-SCHEMA.md.
  *
  * BIS 2026-08-31 STANDEN SIE IM PORTFOLIO_SOLL — das war der P1b-Zwischenstand
  * („eine Site, eine Login-Welt"). Mit Davids Kehrtwende
@@ -375,16 +375,16 @@ const BRAND_TABLES = [
   // Felder und Lücken. Eigene Tabelle, weil sie einen STATUS haben und
   // kapitelübergreifend sind.
   'brand_findings',
-  // brand-016: der kostenlose Aussen-Check (docs/plans/BRAND-CHECK.md). Die
+  // brand-016: der kostenlose Aussen-Check (docs/archiv/BRAND-CHECK.md). Die
   // einzige brand_*-Tabelle ohne Konto — sie ist zugleich der 7-Tage-
   // Zwischenspeicher, der die KI-Kosten der öffentlichen Route deckelt.
   'brand_checks',
   // brand-017: die Korrekturvorschläge zum öffentlichen Ranking
-  // (docs/plans/BRAND-CHECK-SEITE.md §3b). Ebenfalls ohne Konto — ein
+  // (docs/archiv/BRAND-CHECK-SEITE.md §3b). Ebenfalls ohne Konto — ein
   // Vorschlag hat einen eigenen Status, einen freiwilligen Absender und es
   // kann mehrere je Check geben; deshalb eine Tabelle und keine Spalte.
   'brand_check_corrections',
-  // brand-020: die öffentliche Markengalerie (docs/plans/DISCOVER-BRANDS.md
+  // brand-020: die öffentliche Markengalerie (docs/archiv/DISCOVER-BRANDS.md
   // §5). EINE Zeile je Branding (rowId = profileId) mit dem eingefrorenen
   // Stand, dem Steckbrief der Galerie und dem Freigabe-Zustand.
   'brand_publications',
@@ -398,13 +398,13 @@ const BRAND_TABLES = [
   // Tabelle, in die jemand OHNE Konto schreibt, aber mit optionaler `userId`
   // und optionalem Branding-Bezug.
   'brand_intro_requests',
-  // brand-024: die Vorbilder des Kunden (docs/plans/BRAND-DESIGN.md §2.2
+  // brand-024: die Vorbilder des Kunden (docs/archiv/BRAND-DESIGN.md §2.2
   // Schritt 2). EINE Zeile je Bild, Zeilen-Id = Datei-Id im Bucket
   // `brand-inspiration`; an ihr hängt ab D2b auch die Lesung des
   // Vision-Modells. Sie steht hier, damit eine fehlende Migration auffällt,
   // BEVOR der erste Kunde auf „Screenshots hinzufügen" klickt.
   'brand_inspiration',
-  // brand-023: die KI-Entwürfe des Zeichens (docs/plans/BRAND-DESIGN.md §2.5
+  // brand-023: die KI-Entwürfe des Zeichens (docs/archiv/BRAND-DESIGN.md §2.5
   // Stufe 3). EINE Zeile je Entwurf, Zeilen-Id = Datei-Id im Bucket
   // `brand-drafts`; sie trägt die HERKUNFT (Modell, Prompt-Hash) und das
   // `kept` des Menschen. Sie steht hier aus demselben Grund wie die Zeile

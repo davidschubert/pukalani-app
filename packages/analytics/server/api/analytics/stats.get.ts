@@ -14,7 +14,7 @@ import { analyticsRequestHost } from '../../utils/analyticsRequestHost'
 import { resolveOwnScriptSite } from '../../utils/verifyAnalyticsScriptOwner'
 
 /**
- * DIE ZAHLEN EINER COMMUNITY — Paket 2 der v2 (docs/plans/ANALYTICS-V2.md).
+ * DIE ZAHLEN EINER COMMUNITY — Paket 2 der v2 (docs/archiv/ANALYTICS-V2.md).
  *
  * Die Lücke, die sie schließt: die Messung lief seit v1, ihre Ergebnisse sah
  * der Owner aber nur in Plausible — wo er kein Konto hat. Ein Produkt, dessen

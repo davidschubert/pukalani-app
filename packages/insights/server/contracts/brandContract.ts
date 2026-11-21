@@ -264,7 +264,7 @@ export { fetchBrandSiteForCheck } from '../../../brand/server/utils/brandCheckFe
  * Inspirationslesung im brand-Layer (Kundenbilder) und, seit BI2 K5, das
  * VIDEOLESEN der Redaktion. Davids Entscheidung vom 2026-10-27 („nur für
  * Bild und Video pinnen") — Hergang und Messwerte in Plan
- * docs/plans/BRAND-INSIGHTS-KURATION.md §13.
+ * docs/archiv/BRAND-INSIGHTS-KURATION.md §13.
  *
  * Auch hier KEINE eigene Fassung für insights: der Ort ist eine Zusage des
  * Hauses, nicht eine Vorliebe eines Layers.

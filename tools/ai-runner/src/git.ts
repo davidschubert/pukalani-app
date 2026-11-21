@@ -1,7 +1,7 @@
 import { runCommand } from './exec.ts'
 
 /**
- * Der Commit gehört dem RUNNER — docs/plans/AI-RUNNER.md § 7.2 Schritt 8 und
+ * Der Commit gehört dem RUNNER — docs/archiv/AI-RUNNER.md § 7.2 Schritt 8 und
  * § 11 (gemessen 2026-08-17): `acceptEdits` erlaubt Dateiänderungen, aber kein
  * `git commit`. Dem Agenten dafür `Bash(git *)` freizugeben wäre mehr Rechte
  * für weniger Kontrolle — so ist die Commit-Nachricht deterministisch und

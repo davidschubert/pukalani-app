@@ -11,7 +11,7 @@ import {
 } from '../shared/brandPublication'
 
 /**
- * DIE RÜMPFE UND ABFRAGEN DER MODERATION (docs/plans/DISCOVER-BRANDS.md §4.4,
+ * DIE RÜMPFE UND ABFRAGEN DER MODERATION (docs/archiv/DISCOVER-BRANDS.md §4.4,
  * §6 — Paket D3).
  *
  * Die REGELN (Zustände, Deckel, Fenster) stehen pur in

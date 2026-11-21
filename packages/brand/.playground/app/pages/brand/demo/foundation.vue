@@ -199,7 +199,7 @@ function copyShareUrl(): void {
  * der Share-Seite; hier bekommt er nur seine Hülle (UPageAside, s. Template). */
 
 /**
- * VERÖFFENTLICHEN (docs/plans/DISCOVER-BRANDS.md §4.3, Davids Entscheidung
+ * VERÖFFENTLICHEN (docs/archiv/DISCOVER-BRANDS.md §4.3, Davids Entscheidung
  * §9.1) — der Weg der Marke in die öffentliche Galerie.
  *
  * WARUM ER NEBEN „TEILEN" WOHNT UND NICHT DARIN: beide frieren denselben

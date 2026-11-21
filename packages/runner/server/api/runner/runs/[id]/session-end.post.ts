@@ -2,7 +2,7 @@ import { ID, Query } from 'node-appwrite'
 import { INTERACTIVE_SESSION_END_MARKER, RUNS_TABLE, RUN_EVENTS_TABLE, type RunEventRow, type RunRow, type SessionEndReportResponse } from '../../../../../shared/types/runner'
 
 /**
- * Der RÜCKKANAL eines interaktiven Laufs — docs/plans/AI-RUNNER.md § 7.3.
+ * Der RÜCKKANAL eines interaktiven Laufs — docs/archiv/AI-RUNNER.md § 7.3.
  *
  * Ein interaktiver Lauf läuft in Terminal.app im Vordergrund; kein
  * Elternprozess liest seinen Ausgang mit. Deshalb meldet ein SessionEnd-Hook

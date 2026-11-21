@@ -2,7 +2,7 @@ import { MAX_RUN_ATTACHMENTS, type RunAttachment } from './types/runner'
 
 /**
  * `runs.attachmentsJson` lesen und schreiben — die EINE Stelle
- * (docs/plans/AI-RUNNER.md § 6).
+ * (docs/archiv/AI-RUNNER.md § 6).
  *
  * Bewusst PUR und bewusst geteilt: gelesen wird die Spalte an vier Stellen
  * (Upload-Route, Liste für den Runner, Auslieferung einer einzelnen Datei,
