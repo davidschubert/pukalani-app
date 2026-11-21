@@ -579,7 +579,7 @@ useBrandTitle(() => (store.profile?.title || view.value?.title || t('brand.docum
           <p class="bw-label uppercase tracking-wider" style="color: var(--bw-muted)">
             {{ t('brand.workspace.railLayer') }}
           </p>
-          <h1 class="mt-1 text-[26px] font-extralight leading-tight tracking-tight">
+          <h1 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">
             {{ t('brand.document.title') }}
           </h1>
           <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
@@ -610,7 +610,7 @@ useBrandTitle(() => (store.profile?.title || view.value?.title || t('brand.docum
           class="flex flex-col gap-3"
         >
           <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <h2 class="text-[20px] font-extralight leading-tight tracking-tight">
+            <h2 class="text-xl font-extralight leading-tight tracking-tight">
               {{ t(`brand.steps.${chapter.stepKey}`) }}
             </h2>
             <button
@@ -651,7 +651,7 @@ useBrandTitle(() => (store.profile?.title || view.value?.title || t('brand.docum
              ist ihr Ergebnis, nicht eines davon. -->
         <section v-if="design" id="visuell" class="flex flex-col gap-3">
           <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <h2 class="text-[20px] font-extralight leading-tight tracking-tight">
+            <h2 class="text-xl font-extralight leading-tight tracking-tight">
               {{ t('brand.foundation.design.title') }}
             </h2>
             <NuxtLink

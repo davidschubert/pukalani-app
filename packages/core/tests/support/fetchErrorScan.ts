@@ -19,23 +19,28 @@ export const REPO = resolve(import.meta.dirname, '../../../..')
 const SKIP_DIRS = new Set(['node_modules', '.nuxt', '.output', '.playground'])
 const CALL = /\b(?:useFetch|useLazyFetch|useAsyncData|useLazyAsyncData)\s*[<(]/g
 
-function vueFilesUnder(dir: string, out: string[]): void {
+function vueFilesUnder(dir: string, out: string[], extensions: readonly string[]): void {
   for (const name of readdirSync(dir)) {
     if (SKIP_DIRS.has(name)) continue
     const full = join(dir, name)
-    if (statSync(full).isDirectory()) vueFilesUnder(full, out)
-    else if (name.endsWith('.vue')) out.push(full)
+    if (statSync(full).isDirectory()) vueFilesUnder(full, out, extensions)
+    else if (extensions.some(ext => name.endsWith(ext))) out.push(full)
   }
 }
 
 export function appVueFiles(): string[] {
+  return appSourceFiles(['.vue'])
+}
+
+/** Quelldateien unter `packages/* /app` und `apps/* /app` mit einer der Endungen. */
+export function appSourceFiles(extensions: readonly string[]): string[] {
   const out: string[] = []
   for (const root of ['packages', 'apps']) {
     const base = join(REPO, root)
     for (const unit of readdirSync(base)) {
       const app = join(base, unit, 'app')
       try {
-        if (statSync(app).isDirectory()) vueFilesUnder(app, out)
+        if (statSync(app).isDirectory()) vueFilesUnder(app, out, extensions)
       }
       catch { /* Ordner ohne app/ */ }
     }

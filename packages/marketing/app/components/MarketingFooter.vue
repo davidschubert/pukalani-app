@@ -273,9 +273,9 @@ const COLS_UI = {
   // je Stufe einzeln.
   root: 'xl:block',
   center: 'block lg:block',
-  label: 'text-[0.78rem] font-normal uppercase tracking-[0.1em] text-inverted/60',
+  label: 'text-xs font-normal uppercase tracking-[0.1em] text-inverted/60',
   list: 'mt-2 space-y-2.5',
-  link: 'items-start text-[0.95rem] font-normal text-inverted/85 hover:text-primary',
+  link: 'items-start text-sm font-normal text-inverted/85 hover:text-primary',
   linkLabel: 'whitespace-normal leading-[1.45]',
 }
 
@@ -290,7 +290,7 @@ const FOOTER_UI = {
   container: [
     'mt-10 py-0 pt-6 lg:py-0 lg:pt-6',
     'flex flex-wrap items-center justify-between gap-x-6 gap-y-2 lg:gap-x-6',
-    'border-t border-white/12 text-[0.85rem] text-inverted/60',
+    'border-t border-white/12 text-sm text-inverted/60',
   ].join(' '),
   // `order-*` OHNE Präfix ist Pflicht: die Vorgabe ordnet die Basiszeile erst
   // ab 1024px (`lg:order-1/3`) und rendert im Markup RECHTS ZUERST — darunter
@@ -326,18 +326,18 @@ const FOOTER_UI = {
           <div>
             <div class="flex items-center gap-2">
               <PukaMark :size="24" />
-              <span class="text-[1.1rem] font-extrabold text-inverted">Pukalani</span>
+              <span class="text-lg font-extrabold text-inverted">Pukalani</span>
             </div>
-            <p class="mt-3 max-w-[22rem] text-[0.95rem]/[1.55] text-inverted/75">
+            <p class="mt-3 max-w-[22rem] text-sm/[1.55] text-inverted/75">
               {{ t('marketing.footer.tagline') }}
             </p>
             <!-- Die Anführungszeichen stehen IM i18n-Text: „…" ist deutsche
                  Typografie, EN setzt “…”. -->
-            <p class="mt-3 text-[0.95rem] italic text-primary">
+            <p class="mt-3 text-sm italic text-primary">
               {{ t('marketing.footer.refrain') }}
             </p>
             <!-- Die zwei anderen Marken, ruhig (Q24, R9). -->
-            <CoreBrandFamily current="pukalani" class="mt-4 text-[0.85rem]/[1.6] text-inverted/75" />
+            <CoreBrandFamily current="pukalani" class="mt-4 text-sm/[1.6] text-inverted/75" />
           </div>
 
           <UFooterColumns
@@ -393,17 +393,17 @@ const FOOTER_UI = {
           color="neutral" variant="ghost" size="sm"
           trailing-icon="i-ph-caret-down-bold"
           :aria-label="t('marketing.footer.aria.language')"
-          class="gap-1.5 px-2 text-[0.85rem] font-semibold text-inverted hover:bg-inverted/10 hover:text-inverted active:bg-inverted/10"
+          class="gap-1.5 px-2 text-sm font-semibold text-inverted hover:bg-inverted/10 hover:text-inverted active:bg-inverted/10"
         >
           <!-- Die Flagge ist Zierde, kein Inhalt: sie wiederholt nur, was
                direkt daneben steht. Ein Screenreader soll „Deutsch" sagen und
                nicht „Flagge Deutschland Deutsch". -->
-          <span class="text-[1.05rem] leading-none" aria-hidden="true">{{ currentLanguage.flag }}</span>
+          <span class="text-base leading-none" aria-hidden="true">{{ currentLanguage.flag }}</span>
           {{ currentLanguage.label }}
         </UButton>
 
         <template #item-leading="{ item }">
-          <span class="text-[1.05rem] leading-none" aria-hidden="true">{{ item.flag }}</span>
+          <span class="text-base leading-none" aria-hidden="true">{{ item.flag }}</span>
         </template>
         <template #item-trailing="{ item }">
           <UIcon v-if="item.current" name="i-ph-check-bold" class="size-3.5 text-primary-600" />

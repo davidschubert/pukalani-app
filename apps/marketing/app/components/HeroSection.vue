@@ -131,7 +131,7 @@ const trust = computed(() => [
             root: 'items-center gap-1.5',
             leading: 'p-0',
             leadingIcon: 'size-[1.05rem] text-primary-600',
-            title: 'text-[0.9rem] font-medium text-toned',
+            title: 'text-sm font-medium text-toned',
           }"
         />
       </ul>
@@ -164,7 +164,7 @@ const trust = computed(() => [
     </div>
 
     <template #bottom>
-      <p class="relative pb-[clamp(3rem,6vw,5rem)] pt-14 text-center text-[1.05rem] italic text-primary-600">
+      <p class="relative pb-[clamp(3rem,6vw,5rem)] pt-14 text-center text-base italic text-primary-600">
         {{ t('marketing.hero.refrain') }}
       </p>
     </template>

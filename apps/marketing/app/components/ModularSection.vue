@@ -44,7 +44,7 @@ const active = ref<string | number>('only')
  * zusammengesetzte Strings nicht findet.
  */
 const TRIGGER_CLASS = [
-  'grow-0 rounded-full px-4 py-[0.45rem] text-[0.9rem] font-semibold',
+  'grow-0 rounded-full px-4 py-[0.45rem] text-sm font-semibold',
   'data-[state=inactive]:text-toned data-[state=active]:text-primary-600',
   'in-[[data-slot=list]:not(:has([data-slot=indicator]))]:data-[state=active]:before:bg-(--puka-solid-bg)',
   'in-[[data-slot=list]:not(:has([data-slot=indicator]))]:data-[state=active]:before:rounded-full',

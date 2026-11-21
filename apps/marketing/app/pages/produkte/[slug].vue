@@ -181,7 +181,7 @@ useMarketingSeo({
           color="primary" variant="subtle" icon="i-ph-seal-warning-bold"
           :description="t('marketing.products.eaBannerText')"
           :ui="{
-            title: 'text-[0.95rem] font-extrabold uppercase tracking-wide',
+            title: 'text-sm font-extrabold uppercase tracking-wide',
             description: 'text-base/relaxed opacity-100',
           }"
         >
