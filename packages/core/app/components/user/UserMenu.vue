@@ -38,8 +38,12 @@ const items = computed<DropdownMenuItem[]>(() => [
 
 <template>
   <UDropdownMenu :items="items">
-    <UButton color="neutral" variant="ghost" class="rounded-full p-1" :aria-label="t('ui.userMenu')">
+    <!-- Der Name kommt aus dem INHALT: Avatar (Initialen oder Bild-Text) plus
+         versteckter Zweck. Ein `aria-label` ohne die sichtbaren Initialen
+         passte nicht zum sichtbaren Text (UX-011, Q09). -->
+    <UButton color="neutral" variant="ghost" class="rounded-full p-1">
       <UserAvatar size="sm" />
+      <span class="sr-only">{{ t('ui.userMenu') }}</span>
     </UButton>
   </UDropdownMenu>
 </template>
