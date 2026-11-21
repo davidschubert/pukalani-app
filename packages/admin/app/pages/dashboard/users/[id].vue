@@ -282,7 +282,7 @@ async function runUserAction(type: UserAction) {
     </template>
 
     <template #body>
-      <div v-if="user" class="mx-auto flex w-full max-w-(--ui-container) flex-col gap-4 sm:gap-6">
+      <div v-if="user" class="mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-6">
         <!-- Hero: Identität + Status/Rollen + benigne Schnellaktionen -->
         <UPageCard variant="subtle">
           <div class="flex flex-wrap items-center gap-4 sm:gap-5">

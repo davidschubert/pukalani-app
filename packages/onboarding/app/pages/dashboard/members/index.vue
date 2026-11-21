@@ -484,7 +484,12 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
           :description="t('members.invites.description')"
           variant="subtle"
           class="mb-6"
+          :ui="{ container: 'min-w-0' }"
         >
+          <!-- `min-w-0` am inneren Container (UI-011): er ist ein Flex-Kind und
+               wurde sonst von der Tabelle über die Handy-Breite gezogen — der
+               Satz der Karte war abgeschnitten. So bricht er um, und die Tabelle
+               rollt in ihrem eigenen Rahmen. -->
           <UTable :data="invites" :columns="inviteColumns" data-invites-table>
             <template #role-cell="{ row }">
               <UBadge :color="ROLE_COLOR[row.original.role]" variant="subtle">{{ roleLabel(row.original.role) }}</UBadge>
