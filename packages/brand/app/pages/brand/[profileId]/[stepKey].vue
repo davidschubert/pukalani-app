@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type { BwSidebarBrand } from '../../../components/BwWorkspaceSidebar.vue'
-import type { BwRailLayer, BwRailSession, BwRailStep, BwRailStepInfo } from '../../../components/BwProgressRail.vue'
 import {
-  type BrandJourneyStep,
   type BrandNextSessionRef,
   brandStepCompletion,
   resolveNextQuestion,
@@ -11,9 +8,6 @@ import {
 import {
   BRAND_ACCEPTANCE_VIEW,
   type BrandNavSession,
-  chapterEffortMinutes,
-  chapterRemainingMinutes,
-  countChapterSessions,
   countOpenFindings,
   decideAutoAdvance,
   isAcceptanceView,
@@ -22,7 +16,7 @@ import {
   resolveActiveSession,
   resolveContinueTarget,
 } from '../../../../shared/brandWorkspaceNav'
-import { brandDerivedDividerSlot, brandSessionIsAskable } from '../../../../shared/brandSessionGroups'
+import { brandSessionIsAskable } from '../../../../shared/brandSessionGroups'
 import { teamTextKeyFor } from '../../../../shared/brandTeamText'
 import { affectsView, brandAnswerWritesSlot, nextCollectPart } from '../../../../shared/brandSessions'
 import {
@@ -35,7 +29,6 @@ import {
   type BrandTeamKind,
   exampleKeyFor,
   isBrandDesignStep,
-  isBrandKitStep,
   partKeyFor,
   partLabelKeyFor,
   questionKeyFor,
@@ -56,8 +49,8 @@ import {
   brandChoiceDisplayLabel,
 } from '../../../../shared/brandChoiceOptions'
 import type { BwChoiceCard } from '../../../components/BwChoiceCards.vue'
+import type { BwDirectionChoice, BwLogCard, BwLogChapter } from '../../../components/BwWorkshopLog.vue'
 import {
-  type BrandDirection,
   brandDirectionById,
   suggestBrandDirections,
 } from '../../../../shared/brandDirections'
@@ -81,7 +74,6 @@ import {
   slotReadiness,
 } from '../../../../shared/brandSlotReadiness'
 import {
-  type BrandCardAction,
   type BrandSlotControls,
   brandLogCardAction,
   brandSlotControls,
@@ -102,14 +94,14 @@ import type {
   BrandSessionAcceptResponse,
   BrandSessionCloseResponse,
   BrandSlotView,
-  BrandStepDetailResponse,
 } from '../../../../shared/types/brand'
 import { useBrandWorkspaceStore } from '../../../stores/brandWorkspace'
 import { useBrandAutosave } from '../../../composables/useBrandAutosave'
 import { useBrandFieldLabel } from '../../../composables/useBrandFieldLabel'
 import { useBrandConversation } from '../../../composables/useBrandConversation'
 import { useBrandGeneration } from '../../../composables/useBrandGeneration'
-import { useBrandFoundationRailStep } from '../../../composables/useBrandFoundationRailStep'
+import { useBrandWorkshopLayout } from '../../../composables/useBrandWorkshopLayout'
+import { useBrandWorkshopRail } from '../../../composables/useBrandWorkshopRail'
 
 /**
  * DIE WERKSTATT — „GESPRÄCH ALS BÜHNE" (Davids Konzept-Revision 2026-09-02,
@@ -2195,13 +2187,6 @@ const choiceCards = computed<BwChoiceCard[]>(() =>
 
 // ── Die drei Richtungen (Paket G4) ────────────────────────────────────────
 
-interface BwDirectionChoice {
-  direction: BrandDirection
-  name: string
-  reason: string
-  match: string
-}
-
 /**
  * DREI RICHTUNGEN, PASSEND ZU HAUPT- UND NEBEN-ARCHETYP (Konzept §11 b).
  *
@@ -2266,66 +2251,6 @@ function slotDisplayValue(slotId: string, value: string): string {
 
 // ── Der Log: Kapitel-Sektionen und ihre Karten ────────────────────────────
 
-/**
- * EINE KARTE IM LOG. Für das LAUFENDE Kapitel kommt sie aus `slotCards`
- * (voll bedienbar); für ein anderes Kapitel aus einem eigenen, LESENDEN Abruf
- * derselben GET-Route — der Store darf dafür nicht benutzt werden, denn
- * `applyStepDetail` würde den offenen Baustein ersetzen.
- */
-interface LogCard {
-  id: string
-  label: string
-  note: string
-  /** Der ROHE Wert — er geht ins Feld und wird zurückgeschrieben. */
-  value: string
-  /**
-   * Was der Mensch LIEST. Für fast alle Slots derselbe Text; für eine
-   * geschlossene Auswahl der Name statt der gespeicherten Id (P4). Zwei
-   * Felder, weil die Karte beides braucht: das Etikett zum Lesen, den Wert
-   * zum Bearbeiten.
-   */
-  display: string
-  confirmed: boolean
-  /**
-   * Was statt eines Wertes dasteht. Für fast alle Slots „kommt im Gespräch";
-   * für den PAARVERGLEICH (`d.pairs`) der Satz, dass sein Instrument noch
-   * nicht gebaut ist (P4). Ohne ihn stand dort eine leere Karte ohne Weg —
-   * und die Zeile war die einzige Verwendung von `stage.pairsPlaceholder`,
-   * das seit dem Werkstatt-Umbau verwaist im Katalog lag (Audit A11).
-   */
-  placeholder: string
-  /** Nur im laufenden Kapitel: die Bedienelemente. */
-  controls: BrandSlotControls | null
-  /**
-   * WELCHER KNOPF AUF DIESER KARTE STEHT (Davids Befund 18, 2026-09-09) —
-   * „Korrigieren", „Beantworten", „Entwerfen" oder keiner. Die Regel ist pur
-   * (`brandLogCardAction`) und dort begründet; hier steht nur ihr Ergebnis.
-   * Für ein FREMDES Kapitel bleibt es 'none': dort führt der Weg über den
-   * Baustein selbst, nicht über eine Karte.
-   */
-  action: BrandCardAction
-  /**
-   * DIE OFFENEN BEFUNDE AN DIESEM FELD (§8, Paket 5) — gefiltert über die
-   * Slot-Id, nicht über das Kapitel: ein Konflikt gehört zwei Feldern, und der
-   * Chip steht an beiden. Der Store trägt die Befunde des OFFENEN Kapitels;
-   * berührt einer davon ein Feld eines fremden Kapitels, erscheint er auch
-   * dort — mehr weiss der Browser über fremde Kapitel nicht, und mehr
-   * behauptet er auch nicht.
-   */
-  findings: BrandFindingView[]
-  /** Die Notizen des Schliess-Aufrufs (§4) — eingeklappt, grau. */
-  reviewNotes: string
-  /** Was der Spezialist am Ziel vermisst hat (§7) — Hinweis, keine Sperre. */
-  missing: string[]
-  /**
-   * Der Schliess-Aufruf ist gelaufen. `false` heisst fail-soft ausgefallen
-   * (§7) — ein stilles Etikett, kein Knopf: der Prüfblick (§10, Paket 7) holt
-   * genau diese Sessions nach.
-   */
-  reviewed: boolean
-}
-
-/** Die offenen Befunde, an denen GENAU dieses Feld beteiligt ist (§8). */
 function findingsForSlot(slotId: string): BrandFindingView[] {
   return store.findings.filter(finding => finding.slots.includes(slotId))
 }
@@ -2352,45 +2277,19 @@ function findingDecided(decision: BrandFindingDecisionResponse): void {
   store.applyFindingDecision(decision)
 }
 
-/** Der Ersatztext einer leeren Karte — s. `LogCard.placeholder`. */
+/** Der Ersatztext einer leeren Karte — s. `BwLogCard.placeholder`. */
 function slotPlaceholder(slot: BrandSlot): string {
   return slotIsConfirmable(slot)
     ? t('brand.workspace.stage.pending')
     : t('brand.workspace.stage.pairsPlaceholder')
 }
 
-const logChaptersOpen = ref<Set<string>>(new Set())
-const foreignSlots = ref<Record<string, Record<string, BrandSlotView>>>({})
-
-watch(routeStepKey, (key) => {
-  logChaptersOpen.value = new Set(key ? [key] : [])
-  foreignSlots.value = {}
-}, { immediate: true })
-
-interface LogChapter {
-  stepKey: string
-  label: string
-  state: BrandJourneyStep['state']
-  confirmed: number
-  total: number
-  /** Optionale Slots des Kapitels (Registry-Zahl, unabhängig vom Stand). */
-  optional: number
-  current: boolean
-  /**
-   * Wie viele OFFENE Befunde dieses Kapitel berühren (§8). Gerechnet über die
-   * Slots (`countOpenFindings`), nicht über den Kapitel-Stempel des Befunds:
-   * ein Konflikt zwischen B und C zählt in beiden — genau so, wie er auch
-   * beide Abnahmen sperrt.
-   */
-  findings: number
-}
-
-const logChapters = computed<LogChapter[]>(() => store.railSteps.map((entry) => {
+const logChapters = computed<BwLogChapter[]>(() => store.railSteps.map((entry) => {
   const current = entry.stepKey === stepKey.value
   const confirmed = current
     ? (completion.value?.confirmed ?? 0)
     : entry.progress.requiredTotal - entry.missingRequired.length
-  return {
+  const chapter = {
     stepKey: entry.stepKey,
     label: t(`brand.steps.${entry.stepKey}`),
     state: entry.state,
@@ -2400,24 +2299,14 @@ const logChapters = computed<LogChapter[]>(() => store.railSteps.map((entry) => 
     current,
     findings: countOpenFindings(store.findings, entry.stepKey),
   }
+  return { ...chapter, countLine: chapterCountLine(chapter) }
 }))
 
 /**
  * Der Name eines Karten-Knopfs für Hilfsmittel (UX-011): sichtbarer Text
  * ZUERST, dann das Feld — „Bestätigen: Gründungsimpuls".
  */
-function slotActionName(action: string, field: string): string {
-  return t('brand.workspace.slotActionName', { action, field })
-}
-
-/**
- * Die Zähl-Subline eines Kapitels. Der Zähler zählt NUR Pflicht-Slots —
- * neben „10/10 bestätigt" stand deshalb eine unbestätigte (bernsteinfarbene)
- * Tonalitäts-Karte, und das las sich wie ein Widerspruch. Davids Zuschnitt
- * (2026-09-03): optionale Felder als eigenes Anhängsel benennen
- * („10/10 bestätigt + 1 optional") statt sie in den Zähler zu mischen.
- */
-function chapterCountLine(chapter: LogChapter): string {
+function chapterCountLine(chapter: Omit<BwLogChapter, 'countLine'>): string {
   const values = { confirmed: chapter.confirmed, total: chapter.total, optional: chapter.optional }
   if (chapter.current) {
     const line = t(chapter.optional > 0 ? 'brand.workspace.log.confirmedOfOptional' : 'brand.workspace.log.confirmedOf', values)
@@ -2433,7 +2322,14 @@ function chapterCountLine(chapter: LogChapter): string {
   return t(chapter.optional > 0 ? 'brand.workspace.log.countOptional' : 'brand.workspace.log.count', values)
 }
 
-function chapterCards(chapter: LogChapter): LogCard[] {
+/**
+ * EINE KARTE IM LOG (`BwWorkshopLog`). Für das LAUFENDE Kapitel kommt sie aus
+ * `slotCards` (voll bedienbar); für ein anderes Kapitel aus einem eigenen,
+ * LESENDEN Abruf derselben GET-Route, den der Log beim Aufklappen macht und
+ * hier hereinreicht (`loaded`) — der Store darf dafür nicht benutzt werden,
+ * denn `applyStepDetail` würde den offenen Baustein ersetzen.
+ */
+function chapterCards(chapter: BwLogChapter, loaded: Record<string, BrandSlotView> | undefined): BwLogCard[] {
   if (chapter.current) {
     return slotCards.value.map(entry => ({
       id: entry.slot.id,
@@ -2460,7 +2356,6 @@ function chapterCards(chapter: LogChapter): LogCard[] {
       reviewed: store.sessions[entry.slot.id]?.reviewed !== false,
     }))
   }
-  const loaded = foreignSlots.value[chapter.stepKey]
   if (!loaded) return []
   return slotsForStep(chapter.stepKey as BrandStepKey).map(slot => ({
     id: slot.id,
@@ -2488,34 +2383,6 @@ function chapterCards(chapter: LogChapter): LogCard[] {
  * niemand aufgeschlagen hat. FAIL-SOFT — bleibt der Abruf aus, ist die
  * Sektion eben leer.
  */
-async function toggleChapter(chapter: LogChapter): Promise<void> {
-  const open = new Set(logChaptersOpen.value)
-  if (open.has(chapter.stepKey)) {
-    open.delete(chapter.stepKey)
-    logChaptersOpen.value = open
-    return
-  }
-  open.add(chapter.stepKey)
-  logChaptersOpen.value = open
-  if (chapter.current || foreignSlots.value[chapter.stepKey]) return
-  try {
-    const detail = await $fetch<BrandStepDetailResponse>(
-      `/api/brand/profiles/${profileId.value}/steps/${chapter.stepKey}`,
-    )
-    foreignSlots.value = { ...foreignSlots.value, [chapter.stepKey]: detail.slots }
-  }
-  catch {
-    foreignSlots.value = { ...foreignSlots.value, [chapter.stepKey]: {} }
-  }
-}
-
-function chapterGlyph(chapter: LogChapter): { name: string, style: string } {
-  if (chapter.state === 'done') return { name: 'i-ph-check-circle-fill', style: 'color: var(--bw-accent)' }
-  if (chapter.state === 'locked') return { name: 'i-ph-lock-simple', style: 'color: var(--bw-muted)' }
-  if (chapter.state === 'active' || chapter.current) return { name: 'i-ph-circle-half-fill', style: 'color: var(--bw-ink)' }
-  return { name: 'i-ph-circle', style: 'color: var(--bw-muted)' }
-}
-
 // ── Frühere Fassungen ─────────────────────────────────────────────────────
 
 /**
@@ -2541,543 +2408,35 @@ function useVersion(slotId: string, text: string): void {
 // ── Leiste, Balken, Fortschritt ───────────────────────────────────────────
 
 /**
- * Der Journey-Zustand in der Sprache der Leiste. `locked` wurde bis zum
- * Audit-Befund A9 auf `open` abgebildet — das Schloss des Plans erschien in
- * der Leiste damit NIE, obwohl der Log daneben es an derselben Stelle zeigt.
- * `skipped` kommt hier nicht an (`store.railSteps` filtert es heraus).
+ * Die Leiste und der Gesamtfortschritt rechnet `useBrandWorkshopRail`, das
+ * Ein- und Ausklappen der Spalten `useBrandWorkshopLayout` (WS1, Kapitel g).
+ * Die Seite reicht die Rechnungen herein, die Bühne und Leiste teilen.
  */
-function railState(state: string): BwRailStep['state'] {
-  if (state === 'done') return 'done'
-  if (state === 'active') return 'active'
-  if (state === 'locked') return 'locked'
-  return 'open'
-}
-
-/**
- * DAS INFO-PAKET EINES BAUSTEINS kommt aus der Slot-Registry: die
- * Entscheidungen sind seine Pflicht-Slots, „erledigt" ist bestätigt. Für den
- * OFFENEN Baustein steht der Live-Stand darin, für die anderen der Stand aus
- * der Journey (`missingRequired`) — mehr weiss der Browser über sie nicht,
- * und mehr behauptet der Layer auch nicht.
- */
-function railInfo(entry: BrandJourneyStep): BwRailStepInfo {
-  const done = new Set(
-    entry.stepKey === stepKey.value
-      ? slots.value.filter(slot => store.slotConfirmed(slot.id)).map(slot => slot.id)
-      : slotsForStep(entry.stepKey).filter(slot => slot.required && !entry.missingRequired.includes(slot.id)).map(slot => slot.id),
-  )
-  return {
-    // Der Erklär-Absatz je Baustein (Nacht 2026-09-03): die sieben im Dummy
-    // ABGENOMMENEN Texte, wörtlich übernommen, plus architecture/result im
-    // selben Stil — der Layer fiel vorher ehrlich auf „kein Absatz" zurück.
-    description: t(`brand.stepInfo.${entry.stepKey}`),
-    bausteine: slotsForStep(entry.stepKey)
-      .filter(slot => slot.required)
-      // „Wofür brauchen wir das?" (§3a) steht am FELD, nicht am Kapitel: der
-      // Mensch fragt es, während er antwortet.
-      .map(slot => ({
-        label: slotLabel(slot),
-        note: slotNote(slot),
-        done: done.has(slot.id),
-        affects: affectsLine(slot.id),
-      })),
-  }
-}
-
-/**
- * DIE UNTERPUNKTE EINES KAPITELS (§11) — nur für das OFFENE, denn „nur das
- * aktive Kapitel aufgeklappt" ist eine Aussage über die DATEN und keine
- * zweite Regel in der Leiste.
- *
- * Der ZUSTAND einer Zeile hat drei Quellen, in dieser Rangfolge: die Session,
- * in der der Mensch gerade steht (`active`), das Merkzeichen „vertagt" und
- * erst dann der abgeleitete Server-Zustand. Vertagt schlägt `open`, weil es
- * genau die Auskunft ist, die jemand sucht, der die Zeile wiederfindet.
- *
- * GESPERRT heisst NICHT ANKLICKBAR (3a-Befund 3): der Server wiese den Zug mit
- * 409 `session_locked` ab, und ein Knopf, der garantiert in eine Absage läuft,
- * ist kein Angebot.
- */
-function railSessions(entry: BrandJourneyStep): BwRailSession[] {
-  /**
-   * DER TRENNER „Daraus abgeleitet" (Davids Klick-Test 2026-09-09) — die
-   * Grenze zwischen den Fragen des Kapitels und dem, was George daraus macht.
-   * WELCHE Zeile ihn trägt, rechnet die pure Regel; hier steht nur, wie er
-   * heisst. Kapitel ohne Ableitung, ohne Frage oder mit gemischter Ordnung
-   * bekommen `null` und damit keinen — eine Überschrift, unter der wieder
-   * gefragt wird, wäre eine falsche Zusage.
-   */
-  const divider = brandDerivedDividerSlot(entry.stepKey)
-  const list: BwRailSession[] = slotsForStep(entry.stepKey).map((slot) => {
-    const view = store.sessions[slot.id]
-    const state = view?.state ?? 'locked'
-    return {
-      id: slot.id,
-      label: slotLabel(slot),
-      ...(slot.id === divider ? { groupLabel: t('brand.nav.derivedGroup') } : {}),
-      // Die Minuten sind eine VORSCHAU auf Arbeit — eine bestätigte Session hat
-      // keine mehr (Davids Klick-Test 2026-09-09: „die Zeit verschwindet dann
-      // auch hinten dran"). `stale` behält sie: dort steht Arbeit wieder an.
-      effort: state === 'done' ? '' : t('brand.session.minutes', { minutes: slot.effort.minutes }),
-      state: slot.id === activeSessionKey.value
-        ? 'active'
-        : view?.deferred ? 'deferred' : state,
-      disabled: state === 'locked',
-      // Das bernsteinfarbene Merkzeichen (§8): an dieser Session hängt ein
-      // offener Befund. Es ersetzt die Glyphe NICHT — der Zustand der Session
-      // („bestätigt", „veraltet") bleibt die Hauptauskunft der Zeile.
-      ...(findingsForSlot(slot.id).length ? { finding: true } : {}),
-      ...(state === 'locked' ? { title: t('brand.nav.sessionLocked') } : {}),
-    }
-  })
-  /**
-   * DIE FINALE ABNAHME ist der letzte Eintrag jedes Kapitels (§11) — seit
-   * Paket 3c-ii mit Ziel.
-   *
-   * FREI, SOBALD JEDER PFLICHT-WERT BESTÄTIGT IST (`completion.slotsReady`):
-   * dieselbe Bedingung, die auch `resolveNextStop` auf die Abnahme zeigen
-   * lässt. Vorher steht sie gesperrt mit ihrem Grund im `title` — die Seite
-   * fände sonst eine Liste ohne einen einzigen abnehmbaren Block.
-   *
-   * DREI ZUSTÄNDE, DREI AUSSAGEN: `done` heisst „abgenommen" (das Kapitel ist
-   * abgeschlossen), `active` heisst „diese Ansicht ist gerade offen", `open`
-   * heisst „frei". Die Id trägt das Kapitel mit (`<stepKey>:acceptance`),
-   * damit die Leiste sie nie mit einer Slot-Id verwechselt; in die ADRESSE
-   * geht `?s=acceptance` (s. `selectSession`).
-   */
-  /**
-   * DER GRUND STEHT SICHTBAR DARUNTER (Testlauf-Befund M, 2026-09-09).
-   *
-   * Er stand als `title` im Markup — ein Hover-Tooltip, den auf einem
-   * Touchgerät niemand sieht und den eine Tastatur nie erreicht. Der Eintrag
-   * ist der letzte jedes Kapitels und der einzige dauerhaft gesperrte; ein
-   * abgeschalteter Knopf ohne sichtbare Begründung ist genau die Sackgasse, die
-   * Befund J am Anlage-Modal gefunden hat. `note` rendert die Leiste als kleine
-   * Zeile und hängt sie per `aria-describedby` an den Knopf.
-   */
-  const ready = completion.value?.slotsReady === true
-  const done = entry.state === 'done'
-  list.push({
-    id: `${entry.stepKey}:${BRAND_ACCEPTANCE_VIEW}`,
-    label: t('brand.nav.acceptance'),
-    state: done ? 'done' : acceptanceView.value ? 'active' : ready ? 'open' : 'locked',
-    kind: 'acceptance',
-    disabled: !ready && !done,
-    highlight: ready && !acceptanceView.value && !done,
-    ...(ready || done ? {} : { note: t('brand.nav.acceptancePending') }),
-  })
-  return list
-}
-
-/**
- * DER ZÄHLER EINES KAPITELS („7 von 11 bestätigt · 2 neu besprechen", §11).
- *
- * ── ZWEI QUELLEN, WEIL DER BROWSER ZWEI WISSENSSTÄNDE HAT ────────────────
- * Für das OFFENE Kapitel liegt die `sessions`-Karte vor: dort steht jeder
- * Zustand, also auch „veraltet". Über die anderen weiss der Browser nur, was
- * die Journey sagt — die Zahl der noch offenen PFLICHT-Felder. Der Nenner
- * bleibt in beiden Fällen die Zahl der Sessions; „neu besprechen" gibt es nur
- * dort, wo es auch bekannt ist.
- *
- * Die Ungenauigkeit ist damit einseitig: ein bestätigtes OPTIONALES Feld eines
- * fremden Kapitels zählt nicht mit. Zu wenig zu zeigen ist die richtige
- * Richtung — ein Zähler, der zu viel behauptet, schickt niemanden mehr hin.
- * Neun Abrufe beim Betreten der Werkstatt, nur damit die Leiste vollständig
- * ist, wären der falsche Preis (dieselbe Regel wie im Log: fremde Kapitel
- * werden beim AUFKLAPPEN gelesen).
- */
-/**
- * DER BEFUND-ZÄHLER DER LEISTE (§8) — er hängt sich HINTEN an die zweite Zeile
- * eines Kapitels, und nur wenn es etwas zu zählen gibt: „7 von 11 bestätigt ·
- * 1 Befund offen".
- *
- * An BEIDE Fassungen der Zeile, denn die Leiste tauscht sie: das aufgeklappte
- * (aktive) Kapitel zeigt den UMFANG, die eingeklappten den ZÄHLER
- * (`stepSubline`). Hinge er nur am Zähler, verschwände er ausgerechnet dort,
- * wo der Mensch gerade arbeitet.
- *
- * Er ersetzt nichts — „bestätigt" und „offener Befund" sind zwei Aussagen über
- * zwei Mengen, genau wie „neu besprechen" daneben.
- */
-function railFindingSuffix(stepKey: BrandStepKey): string {
-  const findings = countOpenFindings(store.findings, stepKey)
-  return findings > 0 ? ` · ${t('brand.finding.openCount', { count: findings }, findings)}` : ''
-}
-
-/**
- * DIE RESTZEIT DES OFFENEN KAPITELS (Testlauf-Befund 7, 2026-09-09) — sie
- * hängt hinten an den Zähler, statt ihn zu ERSETZEN.
- *
- * Vorher stand im Kopf des aktiven Kapitels der Registry-Umfang („11 Sessions,
- * ~14 Min"), und der bleibt nach vier Bestätigungen buchstäblich derselbe: die
- * einzige Zahl der Leiste, die vom Fortschritt nichts weiss. Der Umfang steht
- * weiterhin im Info-Layer — dort fragt man ihn, BEVOR man anfängt.
- *
- * Der Befund-Zusatz fehlt hier bewusst: er hängt schon am Zähler
- * (`railCounter`), und der steht seit dieser Runde auch am offenen Kapitel.
- */
-function railRemaining(stepKey: BrandStepKey): string {
-  return t('brand.session.minutes', {
-    minutes: chapterRemainingMinutes(stepKey, navSessions.value),
-  })
-}
-
-/**
- * DIE ZÄHL-ZEILE EINES KAPITELS — bestätigte PFLICHT-Sessions, optionale
- * getrennt (Testlauf-Befund L, 2026-09-09).
- *
- * Vorher stand hier der Nenner „alle Sessions" (`slotsForStep(...).length`) und
- * im Notizblock daneben der Nenner „bestätigbare Pflicht-Sessions": „Werte 0
- * von 9 bestätigt" gegen „0/8 + 1 optional". Beide Zeilen lesen jetzt dieselbe
- * Rechnung (`countChapterSessions` bzw. `brandStepCompletion`) und hängen die
- * optionalen als Anhängsel an — mit demselben Wortlaut wie der Notizblock.
- */
-function railCounter(entry: BrandJourneyStep, current: boolean): string {
-  const suffix = railFindingSuffix(entry.stepKey)
-  const optional = slotsForStep(entry.stepKey).filter(slot => !slot.required).length
-  if (current) {
-    const counts = countChapterSessions(entry.stepKey, navSessions.value)
-    // Als LITERAL und nicht als Objekt weitergereicht: `t()` verlangt einen
-    // Index-Signatur-Typ, ein Interface hat keine.
-    const values = {
-      confirmed: counts.confirmed,
-      total: counts.total,
-      stale: counts.stale,
-      optional: counts.optional,
-    }
-    if (counts.stale > 0) return t('brand.nav.chapterCountStale', values) + suffix
-    return t(
-      counts.optional > 0 ? 'brand.nav.chapterCountOptional' : 'brand.nav.chapterCount',
-      values,
-    ) + suffix
-  }
-  const values = {
-    confirmed: entry.progress.requiredTotal - entry.missingRequired.length,
-    total: entry.progress.requiredTotal,
-    optional,
-  }
-  return t(
-    optional > 0 ? 'brand.nav.chapterCountOptional' : 'brand.nav.chapterCount',
-    values,
-  ) + suffix
-}
-
-/**
- * „EUER BRANDING" — DER LETZTE EINTRAG DER LEISTE (BW2 Paket 7, §10/§11).
- *
- * Er steht UNTER den Kapiteln, hinter `result`, und ist IMMER klickbar: Lesen
- * ist immer erlaubt, und ein Dokument, das erst am Ende aufginge, sähe niemand
- * wachsen. Er trägt seine eigene ADRESSE (`to`) statt eines `select` — die
- * Sidebar navigiert dann selbst, und der Autosave spült trotzdem aus, weil der
- * Sprung den Route-Record wechselt (`onBeforeRouteLeave`, s. `useBrandAutosave`).
- *
- * Sein Zähler nennt nur, was es zu zählen gibt: offene Befunde über ALLE
- * Kapitel. Eine Zeile „0 Befunde offen" wäre eine Beruhigung, nach der niemand
- * gefragt hat.
- */
-const openFindingsTotal = computed(
-  () => store.findings.filter(finding => finding.status === 'open').length,
-)
-
-function railDocumentStep(): BwRailStep {
-  return {
-    id: 'document',
-    label: t('brand.nav.document'),
-    icon: '',
-    state: 'open',
-    kind: 'document',
-    to: localePath(`/brand/${profileId.value}/document`),
-    ...(openFindingsTotal.value > 0
-      ? {
-          counter: t(
-            'brand.finding.openCount',
-            { count: openFindingsTotal.value },
-            openFindingsTotal.value,
-          ),
-        }
-      : {}),
-  }
-}
-
-/**
- * DIE ZUSATZ-EINTRÄGE (MV1 M4) — angemeldet von fremden Layern über
- * `pukalani.brand.workspaceNavExtras`, gerechnet an EINER Stelle. Ohne einen
- * solchen Layer ist die Liste leer und die Leiste sieht aus wie vorher.
- */
-const navExtras = useBrandWorkspaceNavExtras({
+const {
+  railLayers,
+  currentLayerLabelKey,
+  sidebarBrands,
+  overallProgress,
+  overallProgressCount,
+  remainingTime,
+  workspaceSync,
+  workspaceSyncLabel,
+} = useBrandWorkshopRail({
   profileId,
-  findings: () => store.findings,
+  stepKey,
+  slots,
+  activeSessionKey,
+  acceptanceView,
+  completion,
+  navSessions,
+  serverSlotFacts,
+  slotLabel,
+  slotNote,
+  affectsLine,
+  findingsForSlot,
 })
 
-/** Der Einstieg in die Brand Foundation — s. Composable (Paket G2). */
-const foundationStep = useBrandFoundationRailStep({ profileId })
-
-const railLayers = computed<BwRailLayer[]>(() => [{
-  id: 'foundation',
-  label: t('brand.workspace.railLayer'),
-  steps: [
-    // ALLE Kapitel, „Ergebnis" eingeschlossen (Testlauf-Befund 8, 2026-09-09):
-    // es hat echte Sessions (`result.direction` als Pflicht, `result.rating`
-    // optional), Notizblock und Balken zählen es — eine Leiste ohne seine Zeile
-    // machte es unerreichbar. Die LESEANSICHT steht weiterhin unten als „Brand
-    // Foundation" (Konzept §6 d), nach dem Dokument (§2.6), mit eigener Id.
-    ...store.railSteps.map((entry): BwRailStep => {
-      const current = entry.stepKey === stepKey.value
-      return {
-        id: entry.stepKey,
-        label: t(`brand.steps.${entry.stepKey}`),
-        icon: '',
-        state: current && entry.state !== 'done' ? 'active' : railState(entry.state),
-        info: railInfo(entry),
-        counter: railCounter(entry, current),
-        // Die Unterpunkte und der Umfang gehören dem OFFENEN Kapitel: „nur das
-        // aktive aufgeklappt" (§11) ist damit eine Aussage über die Daten und
-        // keine zweite Regel in der Leiste.
-        ...(current
-          ? {
-              sessions: railSessions(entry),
-              effort: railRemaining(entry.stepKey),
-            }
-          : {}),
-      }
-    }),
-    railDocumentStep(),
-    // Die Leseansicht desselben Dokuments (Paket G2) — gebaut an EINER Stelle,
-    // damit sie hier, im Dokument und in ihr selbst dieselbe bleibt.
-    foundationStep.value,
-    // Zusatz-Einträge fremder Layer (MV1 M4) — heute „Markt". Sie stehen
-    // NACH dem Dokument: das Dokument ist der Abschluss der Foundation, ein
-    // Zusatzprodukt kommt danach.
-    ...navExtras.value,
-  ],
-}, designRailLayer.value, kitRailLayer.value])
-
-/**
- * DER ZWEITE LAYER: BRAND DESIGN (Konzept §2.1/§2.10, Paket D1, Prototyp
- * `demoRail.ts` + `demoRailWithDesign`).
- *
- * ── ER STEHT BEI JEDER MARKE DA ──────────────────────────────────────────
- * Auch bei einer, die ihn nicht hat. Gesperrt ist er dann mit Erklär-Text und
- * Info-Layer — genau das abgenommene Verhalten des Prototyps: eine Schicht,
- * die nicht existiert, kann man nicht wollen, und die Auskunft „das gibt es,
- * so kommt ihr dran" ist die halbe Produktseite. `store.designOpen` fragt die
- * JOURNEY (Freischaltung UND `result` fertig), nicht das Profil-Feld allein.
- *
- * ── ZWEI FORTSCHRITTE, WEIL ES ZWEI PRODUKTE SIND ────────────────────────
- * `note` trägt „N von 6 Kapiteln" — der eigene Stand der Schicht. Der grosse
- * Balken unten rechts (`overallProgress`) bleibt die FOUNDATION; die
- * Begründung steht bei `resolveProfileProgress` und im Store.
- *
- * ── DER ERGEBNIS-PUNKT HAT SEINE EIGENE ANSICHT (D8) ─────────────────────
- * „Visuelle Identität" führt auf `/brand/:id/design` — das Ergebnis-Board als
- * eigene Seite (§2.8). Die Adresse steht IMMER da, auch solange die sechs
- * Kapitel nicht fertig sind: die Seite zeigt dann den Stand („x von 6") statt
- * eines 404. Der Punkt selbst wird trotzdem erst bei `done` freigegeben
- * (`BwProgressRail` rendert ihn als Knopf) — die Seite ist der Weg dorthin,
- * nicht die Belohnung dafür.
- */
-const designRailLayer = computed<BwRailLayer>(() => {
-  const doneCount = store.designSteps.filter(entry => entry.state === 'done').length
-  const info: BwRailStepInfo = {
-    description: t('brand.designLayer.info'),
-    minutes: t('brand.session.minutes', {
-      minutes: store.designSteps.reduce((sum, entry) => sum + chapterEffortMinutes(entry.stepKey), 0),
-    }),
-    bausteine: store.designSteps.map(entry => ({
-      label: t(`brand.steps.${entry.stepKey}`),
-      note: t(`brand.stepInfo.${entry.stepKey}`),
-    })),
-  }
-
-  if (!store.designOpen) {
-    return {
-      id: 'design',
-      label: t('brand.designLayer.label'),
-      locked: true,
-      lockedNote: t('brand.designLayer.lockedNote'),
-      info,
-      // Die Punkte stehen auch gesperrt komplett da (Runde 85, David): mit
-      // Schloss im Status-Kreis statt versteckter Liste.
-      steps: store.designSteps.map((entry): BwRailStep => ({
-        id: entry.stepKey,
-        label: t(`brand.steps.${entry.stepKey}`),
-        icon: '',
-        state: 'locked',
-        info: railInfo(entry),
-      })),
-    }
-  }
-
-  return {
-    id: 'design',
-    label: t('brand.designLayer.label'),
-    note: t('brand.designLayer.progress', { done: doneCount, total: store.designSteps.length }),
-    info,
-    steps: [
-      ...store.designSteps.map((entry): BwRailStep => {
-        const current = entry.stepKey === stepKey.value
-        return {
-          id: entry.stepKey,
-          label: t(`brand.steps.${entry.stepKey}`),
-          icon: '',
-          state: current && entry.state !== 'done' ? 'active' : railState(entry.state),
-          info: railInfo(entry),
-          counter: railCounter(entry, current),
-          ...(canEnterStep(entry) ? { to: localePath(`/brand/${profileId.value}/${entry.stepKey}`) } : {}),
-          // Dieselbe Regel wie in der Foundation: die Unterpunkte gehören dem
-          // OFFENEN Kapitel.
-          ...(current
-            ? {
-                sessions: railSessions(entry),
-                effort: railRemaining(entry.stepKey),
-              }
-            : {}),
-        }
-      }),
-      {
-        id: 'design-result',
-        kind: 'result',
-        label: t('brand.designLayer.result'),
-        icon: '',
-        state: doneCount === store.designSteps.length ? 'done' : 'open',
-        to: localePath(`/brand/${profileId.value}/design`),
-      },
-    ],
-  }
-})
-
-/**
- * WELCHE SCHICHT STEHT ÜBER DEM KAPITEL-NAMEN? — drei Produkte, drei Namen
- * (K0; bis dahin waren es zwei).
- *
- * Sie steht als Rechnung und nicht als verschachtelter Ausdruck im Markup: mit
- * der dritten Schicht wäre das dort ein zweifach geschachtelter Bedingungs-
- * Ausdruck in einer Zeile, die ohnehin schon 200 Zeichen lang ist.
- */
-const currentLayerLabelKey = computed(() => {
-  if (stepKey.value && isBrandKitStep(stepKey.value)) return 'brand.kitLayer.label'
-  if (stepKey.value && isBrandDesignStep(stepKey.value)) return 'brand.designLayer.label'
-  return 'brand.workspace.railLayer'
-})
-
-/**
- * DER DRITTE LAYER: BRAND BOOK & KIT (Konzept docs/plans/BRAND-BOOK-KIT.md
- * §2.7, Paket K0, Prototyp `demoRail.ts` Layer `book` + `demoRailWithKit`).
- *
- * ── K0 BAUT NUR DIE SCHRANKE ─────────────────────────────────────────────
- * Er steht bei jeder Marke da, und heute steht er bei JEDER Marke GESPERRT:
- * die Freischaltung („Ableitung") gibt es erst mit K1, die drei Kapitel
- * bekommen ihre Seiten mit K5 und die Lieferseite „Kit" mit K6. Der gesperrte
- * Zustand ist trotzdem schon der richtige — eine Schicht, die man nicht sieht,
- * kann man nicht wollen, und die Auskunft „das gibt es, so kommt ihr dran" ist
- * die halbe Produktseite (dieselbe Begründung wie bei Brand Design D1).
- *
- * Der offene Zweig ist deshalb bewusst NICHT vorweggenommen: er hätte heute
- * keine Adresse, auf die er zeigen könnte, und ein Punkt ohne Ziel ist die
- * Sorte Vorschuss, die niemand einlöst.
- *
- * ── DIE COPY IST DIE DES PROTOTYPS ───────────────────────────────────────
- * Kein „Templates", kein „Strategy Playbook" (die gehören zu Produkt 04,
- * §2.16): Brand Book · Kit & Brand Context · Pressekit. Der Sperrsatz ist
- * „Teil der Ableitung" (§2.7) und nicht „baut auf eurer Foundation auf" — das
- * ist der Satz von Schicht 2 und hier schlicht falsch.
- */
-const kitRailLayer = computed<BwRailLayer>(() => {
-  /**
-   * ÜBERSPRUNGENE KAPITEL ZÄHLEN NICHT MIT (K1): `nomenclature` läuft nur auf
-   * dem B2-Weg (§2.20 Nr. 4). Auf einer Solo-Marke stünde sonst dauerhaft „0
-   * von 3" mit einem Punkt, den niemand öffnen kann. Der Filter fragt den
-   * ZUSTAND und nicht die Weiche selbst — die Rechnung dazu steht in der
-   * Journey, hier steht nur ihr Ergebnis (dieselbe Regel wie bei `railSteps`).
-   */
-  const onPath = store.kitSteps.filter(entry => entry.state !== 'skipped')
-  const doneCount = onPath.filter(entry => entry.state === 'done').length
-  const info: BwRailStepInfo = {
-    description: t('brand.kitLayer.info'),
-    minutes: t('brand.session.minutes', {
-      minutes: store.kitSteps.reduce((sum, entry) => sum + chapterEffortMinutes(entry.stepKey), 0),
-    }),
-    bausteine: store.kitSteps.map(entry => ({
-      label: t(`brand.steps.${entry.stepKey}`),
-      note: t(`brand.stepInfo.${entry.stepKey}`),
-    })),
-  }
-
-  if (!store.kitOpen) {
-    return {
-      id: 'kit',
-      label: t('brand.kitLayer.label'),
-      locked: true,
-      lockedNote: t('brand.kitLayer.lockedNote'),
-      info,
-      // Die Punkte stehen auch gesperrt komplett da (Runde 85, David) — mit
-      // Schloss im Status-Kreis statt versteckter Liste. Hier ALLE drei: was
-      // es gibt, soll man sehen, auch das Kapitel, das die eigene Weiche
-      // später überspringt.
-      steps: store.kitSteps.map((entry): BwRailStep => ({
-        id: entry.stepKey,
-        label: t(`brand.steps.${entry.stepKey}`),
-        icon: '',
-        state: 'locked',
-        info: railInfo(entry),
-      })),
-    }
-  }
-
-  return {
-    id: 'kit',
-    label: t('brand.kitLayer.label'),
-    note: t('brand.kitLayer.progress', { done: doneCount, total: onPath.length }),
-    info,
-    steps: onPath.map((entry): BwRailStep => {
-      const current = entry.stepKey === stepKey.value
-      return {
-        id: entry.stepKey,
-        label: t(`brand.steps.${entry.stepKey}`),
-        icon: '',
-        state: current && entry.state !== 'done' ? 'active' : railState(entry.state),
-        info: railInfo(entry),
-        counter: railCounter(entry, current),
-        ...(canEnterStep(entry) ? { to: localePath(`/brand/${profileId.value}/${entry.stepKey}`) } : {}),
-        // Dieselbe Regel wie in Foundation und Schicht 2: die Unterpunkte
-        // gehören dem OFFENEN Kapitel.
-        ...(current
-          ? {
-              sessions: railSessions(entry),
-              effort: railRemaining(entry.stepKey),
-            }
-          : {}),
-      }
-    }).concat([
-      /*
-       * DER ERGEBNIS-PUNKT „KIT" (K6) — die Lieferseite `/brand/:id/kit`.
-       *
-       * Er ist KEIN Baustein der Registry: er steht in keiner Journey, in
-       * keinem Fortschritts-Nenner und in keiner Abnahme. Er ist ein LINK am
-       * Ende der Schicht, genau wie `design-result` am Ende von Schicht 2 —
-       * deshalb liest ihn auch keiner der vier Registry-Leser (Rail, Dokument,
-       * Leseansicht, Fortschritts-Cache) als Kapitel.
-       *
-       * `done`, sobald alle Kapitel DIESES Weges stehen: dann ist das Kit
-       * vollständig, was es zu holen gibt. Vorher `open` — die Dateien gibt es
-       * trotzdem schon, nur eben mit weniger darin.
-       */
-      {
-        id: 'kit-result',
-        kind: 'result',
-        label: t('brand.kitLayer.result'),
-        icon: '',
-        state: doneCount === onPath.length && onPath.length > 0 ? 'done' : 'open',
-        to: localePath(`/brand/${profileId.value}/kit`),
-      },
-    ]),
-  }
-})
-
-/** Ein Kapitel ist anklickbar, sobald die pure Regel den Eintritt erlaubt. */
-function canEnterStep(entry: BrandJourneyStep): boolean {
-  return store.canEnter(entry.stepKey)
-}
+const { railCollapsed, logCollapsed, navOverlayOpen, navVisible, toggleNav } = useBrandWorkshopLayout()
 
 /**
  * DIE SPERR-FLÄCHE HAT ZWEI SÄTZE (Brand Design D1) — die Fläche bleibt eine.
@@ -3539,123 +2898,6 @@ function applyKitPick(slotId: string, value: string): void {
   onInput(slotId, value)
 }
 
-/** Die Marken des Kontos für den Wähler oben in der Sidebar. */
-const LOCALE_FLAGS: Record<string, string> = { en: 'i-circle-flags-us', de: 'i-circle-flags-de' }
-
-const sidebarBrands = computed<BwSidebarBrand[]>(() => store.profiles.map(profile => ({
-  id: profile.id,
-  title: profile.title || t('brand.brands.card.untitled'),
-  path: t(`brand.brands.card.path.${profile.pathKind}`),
-  flag: LOCALE_FLAGS[profile.contentLocale],
-  to: localePath(`/brand/${profile.id}/${profile.currentStepKey}`),
-  current: profile.id === profileId.value,
-})))
-
-/**
- * DER GESAMT-FORTSCHRITT unten rechts. Er zählt über ALLE Bausteine auf dem
- * Weg; für den OFFENEN nimmt er den LIVE-Stand (aus denselben Slot-Tatsachen
- * wie die Bühne), für die anderen den der Journey. Der Server-Cache
- * `profile.progressPct` bewegt sich erst beim Speichern — hier soll sich der
- * Balken mit der Arbeit bewegen.
- *
- * ── EINE ZÄHLWEISE: BESTÄTIGTE PFLICHTFELDER (Testlauf-Befund L) ─────────
- * Bis hierher zählte der Fuss BEFÜLLTE Felder (`stepProgress` — Entwurf ODER
- * Bestätigung), Leiste und Notizblock daneben BESTÄTIGTE. Im Live-Test stand
- * unten „10 % · 6/59" über einem Notizblock mit „3/10 bestätigt": drei Zahlen
- * über denselben Stand, von denen zwei etwas anderes meinten. Gezählt wird
- * jetzt überall dasselbe — bestätigte Pflichtfelder, optionale getrennt
- * daneben (`optional`, s. `brand.workspace.log.confirmedOfOptional`).
- */
-const overallProgress = computed(() => {
-  let total = 0
-  let confirmed = 0
-  let optional = 0
-  for (const entry of store.railSteps) {
-    optional += slotsForStep(entry.stepKey).filter(slot => !slot.required).length
-    if (entry.stepKey === stepKey.value) {
-      const live = brandStepCompletion(entry.stepKey, serverSlotFacts.value)
-      total += live.total
-      confirmed += live.confirmed
-      continue
-    }
-    total += entry.progress.requiredTotal
-    // `missingRequired` ist genau die Gegenmenge (bestätigbare Pflicht-Slots
-    // ohne Bestätigung) — dieselbe Rechnung wie `brandStepCompletion`.
-    confirmed += entry.progress.requiredTotal - entry.missingRequired.length
-  }
-  return {
-    total,
-    confirmed,
-    optional,
-    pct: total === 0 ? 100 : Math.round((confirmed / total) * 100),
-  }
-})
-
-/** „6/59 bestätigt" — und, wo es welche gibt, „+ 12 optional" (Befund L). */
-const overallProgressCount = computed(() => t(
-  overallProgress.value.optional > 0
-    ? 'brand.workspace.log.confirmedOfOptional'
-    : 'brand.workspace.log.confirmedOf',
-  {
-    confirmed: overallProgress.value.confirmed,
-    total: overallProgress.value.total,
-    optional: overallProgress.value.optional,
-  },
-))
-
-/** Grobe Restzeit — dieselbe Zahl wie auf der Übersicht (Interaktionsbilanz). */
-const TOTAL_MINUTES = 45
-const remainingTime = computed(() => t('brand.brands.card.remaining', {
-  minutes: Math.max(1, Math.round(((100 - overallProgress.value.pct) / 100) * TOTAL_MINUTES)),
-}))
-
-/** `BwWorkspace` zeigt nur ABWEICHUNGEN — Stille heisst gespeichert (§3e). */
-const workspaceSync = computed<'saving' | 'offline' | 'conflict' | 'error' | null>(
-  () => (store.syncState === 'saved' ? null : store.syncState),
-)
-const workspaceSyncLabel = computed(() =>
-  (store.syncState === 'saved' ? undefined : t(`brand.workspace.sync.${store.syncState}`)))
-
-/* Runde 20/33 (David): beide Spalten sind über den Bühnen-Balken einklappbar. */
-const railCollapsed = ref(false)
-const logCollapsed = ref(false)
-
-/**
- * DERSELBE KNOPF, ZWEI GESTALTEN (Audit A7, Davids Entscheidung 2026-09-02).
- *
- * Ab 768 px klappt der Nav-Toggle im Bühnen-Balken die SPALTE ein — daran
- * ändert sich nichts. Darunter gab es die Spalte gar nicht (`.bw-rail
- * { display: none }`), der Knopf war ein Blindgänger und die Werkstatt ohne
- * jede Baustein-Navigation. Mobil öffnet er die Sidebar jetzt als Overlay.
- *
- * ZWEI Zustände statt eines: die Vorgaben sind entgegengesetzt (die Spalte
- * ist offen, bis man sie einklappt — das Overlay ist zu, bis man es öffnet),
- * ein gemeinsames Flag stünde beim Laden auf einer der beiden Seiten falsch.
- * Wer beim Verkleinern aus dem Overlay-Bereich herausfährt, verliert es
- * (`onNarrow`) — sonst hinge ein `role="dialog"` an einer normalen Spalte.
- */
-const navOverlayOpen = ref(false)
-const isNarrow = ref(false)
-let narrowMq: MediaQueryList | null = null
-const onNarrow = (event: MediaQueryListEvent | MediaQueryList): void => {
-  isNarrow.value = event.matches
-  if (!event.matches) navOverlayOpen.value = false
-}
-onMounted(() => {
-  narrowMq = window.matchMedia('(max-width: 767px)')
-  onNarrow(narrowMq)
-  narrowMq.addEventListener('change', onNarrow)
-})
-onBeforeUnmount(() => narrowMq?.removeEventListener('change', onNarrow))
-
-/** Ist die Navigation gerade sichtbar? (Für Beschriftung + aria-expanded.) */
-const navVisible = computed(() => (isNarrow.value ? navOverlayOpen.value : !railCollapsed.value))
-
-function toggleNav(): void {
-  if (isNarrow.value) navOverlayOpen.value = !navOverlayOpen.value
-  else railCollapsed.value = !railCollapsed.value
-}
-
 // ── Navigation ────────────────────────────────────────────────────────────
 
 async function goToStep(key: string | null): Promise<void> {
@@ -3832,37 +3074,13 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
          Nav-Icon, dann zweizeilig BEREICH über Kapitel, rechts das
          gespiegelte Gegenstück für den Log. -->
     <template #stage-bar>
-      <div class="flex min-w-0 flex-1 items-center gap-1.5">
-        <UButton
-          size="sm" color="neutral" variant="ghost"
-          icon="i-ph-sidebar-simple"
-          :aria-label="navVisible ? t('brand.workspace.bar.hideNav') : t('brand.workspace.bar.showNav')"
-          :aria-expanded="navVisible"
-          @click="toggleNav"
-        />
-        <div class="min-w-0 leading-tight">
-          <!-- DIE SCHICHT ÜBER DEM KAPITEL-NAMEN (Brand Design D1): sie sagt,
-               in WELCHEM Produkt man gerade steht. Fest verdrahtet auf „Brand
-               Foundation" stand über „Moodboard" der Name der falschen Schicht
-               — die eine Stelle, an der die Werkstatt behauptet hätte, Brand
-               Design sei ein Kapitel der Foundation. -->
-          <p class="bw-label uppercase tracking-wider" style="color: var(--bw-muted)">{{ t(currentLayerLabelKey) }}</p>
-          <!-- DIE HAUPTÜBERSCHRIFT DER SEITE (UX-011, Q09): die Werkstatt hatte
-               keine einzige Überschrift. Der Kapitel-Name ist die erste Ebene,
-               die Kapitel des Logs sind die zweite, ihre Felder die dritte. -->
-          <h1 class="truncate font-semibold">{{ stepKey ? t(`brand.steps.${stepKey}`) : '' }}</h1>
-        </div>
-        <!-- Der Log-Toggle wirkt nur, wo es eine Log-SPALTE gibt: unter 768 px
-             ist das Raster einspaltig, und der Stand kommt über den
-             Modus-Umschalter. Neben dem jetzt lebendigen Nav-Toggle wäre er
-             dort ein toter Knopf — also mobil gar nicht erst anbieten. -->
-        <UButton
-          size="sm" color="neutral" variant="ghost" class="ml-auto max-md:hidden"
-          icon="i-ph-sidebar-simple" :ui="{ leadingIcon: '-scale-x-100' }"
-          :aria-label="logCollapsed ? t('brand.workspace.bar.showLog') : t('brand.workspace.bar.hideLog')"
-          @click="logCollapsed = !logCollapsed"
-        />
-      </div>
+      <BwStageBar
+        v-model:log-collapsed="logCollapsed"
+        :layer-label="t(currentLayerLabelKey)"
+        :title="stepKey ? t(`brand.steps.${stepKey}`) : ''"
+        :nav-visible="navVisible"
+        @toggle-nav="toggleNav"
+      />
     </template>
 
     <!-- MITTE: die Bühne IST das Gespräch — ausser in der Finalen Abnahme,
@@ -4670,205 +3888,25 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
     <template #george>
       <div class="flex min-h-0 flex-1 flex-col">
         <div class="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-          <div v-for="chapter in logChapters" :key="chapter.stepKey" class="bw-log-chapter">
-            <h2>
-              <button
-                type="button"
-                class="flex w-full items-start gap-2.5 py-1 text-left"
-                :aria-expanded="logChaptersOpen.has(chapter.stepKey)"
-                @click="toggleChapter(chapter)"
-              >
-                <UIcon :name="chapterGlyph(chapter).name" class="mt-0.5 size-5 flex-none" :style="chapterGlyph(chapter).style" />
-                <span class="min-w-0 flex-1 leading-tight">
-                  <span class="block text-sm font-medium">{{ chapter.label }}</span>
-                  <span class="bw-label block tabular-nums" style="color: var(--bw-muted)">
-                    {{ chapterCountLine(chapter) }}
-                  </span>
-                  <!-- Der Befund-Zähler steht in SEINER Farbe und nur, wenn es
-                       etwas zu zählen gibt (§8) — beratend, nicht alarmierend. -->
-                  <span
-                    v-if="chapter.findings > 0"
-                    class="bw-label block tabular-nums" style="color: var(--bw-stale)"
-                  >{{ t('brand.finding.openCount', { count: chapter.findings }, chapter.findings) }}</span>
-                </span>
-                <UIcon
-                  name="i-ph-caret-down"
-                  class="mt-1 size-4 flex-none transition-transform"
-                  :class="logChaptersOpen.has(chapter.stepKey) ? '' : '-rotate-90'"
-                  style="color: var(--bw-muted)"
-                />
-              </button>
-            </h2>
-
-            <div v-if="logChaptersOpen.has(chapter.stepKey)" class="mt-2 space-y-3">
-              <!-- Jede Karte liest sich wie der Erklär-Layer: Ampel + Headline,
-                   Beschreibungs-Subline, DANN die Antwort. „Korrigieren"
-                   erscheint erst bei Hover/Fokus (`bw-fix`), „Bestätigen"
-                   bleibt bei offenen Einträgen immer sichtbar. -->
-              <div
-                v-for="card in chapterCards(chapter)" :key="card.id"
-                class="bw-log-card rounded-xl px-3 py-2.5" style="background: var(--bw-surface-hi)"
-              >
-                <!-- Der Status-Punkt ist ein BILD mit Namen (`role="img"`): ein
-                     nacktes `span` darf keinen `aria-label` tragen (UX-011). -->
-                <h3 class="flex items-center gap-2 text-sm font-medium">
-                  <span
-                    class="bw-dot"
-                    role="img"
-                    :class="card.confirmed ? 'bw-dot--confirmed' : card.value ? 'bw-dot--draft' : ''"
-                    :title="t(card.confirmed ? 'brand.workspace.slotState.confirmed' : card.value ? 'brand.workspace.slotState.draft' : 'brand.workspace.slotState.empty')"
-                    :aria-label="t(card.confirmed ? 'brand.workspace.slotState.confirmed' : card.value ? 'brand.workspace.slotState.draft' : 'brand.workspace.slotState.empty')"
-                  >
-                    <UIcon v-if="card.confirmed" name="i-ph-check-bold" class="size-2.5" />
-                  </span>
-                  <span class="min-w-0">{{ card.label }}</span>
-                </h3>
-                <p v-if="card.note" class="mt-0.5 text-xs" style="color: var(--bw-muted)">{{ card.note }}</p>
-
-                <!-- GESCHLOSSENE AUSWAHL: „Korrigieren" führt zurück auf die
-                     KARTEN, nie in ein Textfeld — dort stünde die rohe Id
-                     (`branded-house`) zur Bearbeitung (P4-Restkante). -->
-                <!-- KORRIGIEREN FÜHRT AUF DIESELBEN KARTEN wie die Bühne —
-                     die Richtung auf ihre Welten (G4), jede andere geschlossene
-                     Auswahl auf ihre Text-Karten, nie in ein Textfeld mit der
-                     rohen Id (P4-Restkante). -->
-                <div
-                  v-if="card.controls && editingSlotId === card.id && card.controls.editable && directionChoicesFor(card.id).length"
-                  class="mt-1.5 grid gap-2 sm:grid-cols-3"
-                >
-                  <BwDirectionCard
-                    v-for="choice in directionChoicesFor(card.id)" :key="choice.direction.id"
-                    :direction="choice.direction"
-                    :name="choice.name" :reason="choice.reason" :match="choice.match"
-                    :selected="card.value === choice.direction.id"
-                    @pick="id => { onInput(card.id, id); autosave.flush() }"
-                  />
-                </div>
-                <BwChoiceCards
-                  v-else-if="card.controls && editingSlotId === card.id && card.controls.editable && choiceCardsFor(card.id).length"
-                  class="mt-1.5"
-                  :options="choiceCardsFor(card.id)"
-                  :selected="card.value"
-                  @pick="id => { onInput(card.id, id); autosave.flush() }"
-                />
-                <UTextarea
-                  v-else-if="card.controls && editingSlotId === card.id && card.controls.editable"
-                  class="mt-1.5 w-full" :rows="3"
-                  :model-value="card.value"
-                  @update:model-value="value => onInput(card.id, String(value))"
-                  @blur="autosave.flush()"
-                />
-                <!-- BEFUND 1 (2026-09-10): auch der Notizblock zeigte die
-                     Speicherform eines strukturierten Wertes. -->
-                <BwSlotValue v-else-if="card.value" class="mt-1.5" size="sm" :slot-id="card.id" :value="card.display" />
-                <p v-else class="bw-pending mt-1.5">{{ card.placeholder }}</p>
-
-                <!-- DIE BEFUNDE AN DIESEM FELD (§8) — kompakt: Icon und ein
-                     gekürzter Satz, ein Klick klappt Felder und Handlungen
-                     auf. Der Log ist eine SPALTE, kein Formular. -->
-                <div v-if="card.findings.length" class="mt-1.5 flex flex-col gap-1.5">
-                  <BwFindingChip
-                    v-for="finding in card.findings" :key="finding.id"
-                    compact :finding="finding" :profile-id="profileId"
-                    @field="slotId => correctThenGo(slotId, () => goToField(slotId))"
-                    @decided="findingDecided"
-                    @stale="store.dropFinding(finding.id)"
-                  />
-                </div>
-
-                <!-- Die Notizen des Schliess-Aufrufs (§4): grau, einklappbar.
-                     Sie fangen ab, was nach sechs Zügen aus dem Gespräch
-                     fällt — und tragen die Gründe abgelehnter Befunde. -->
-                <details v-if="card.reviewNotes || card.missing.length" class="mt-1.5">
-                  <summary class="bw-label cursor-pointer" style="color: var(--bw-muted)">{{ t('brand.log.notes') }}</summary>
-                  <p v-if="card.reviewNotes" class="mt-1 whitespace-pre-wrap text-sm" style="color: var(--bw-ink-soft)">{{ card.reviewNotes }}</p>
-                  <ul v-if="card.missing.length" class="mt-1 flex flex-col gap-0.5">
-                    <li v-for="(entry, index) in card.missing" :key="index" class="bw-label" style="color: var(--bw-muted)">
-                      · {{ entry }}
-                    </li>
-                  </ul>
-                </details>
-
-                <!-- FAIL-SOFT SICHTBAR (§7): der Schliess-Aufruf ist
-                     ausgefallen. Ein stilles Etikett, kein Knopf — der
-                     Prüfblick (§10) holt diese Sessions nach. -->
-                <p v-if="card.confirmed && !card.reviewed" class="bw-label mt-1.5" style="color: var(--bw-muted)">
-                  {{ t('brand.review.unreviewed') }}
-                </p>
-
-                <!-- JEDER KNOPF NENNT SEIN FELD (UX-011, Q09): elf Mal
-                     „Bestätigen" mit gleichem Namen sagt einem
-                     Vorleseprogramm nicht, WAS bestätigt wird. Der Name
-                     beginnt mit dem sichtbaren Text („Bestätigen:
-                     Gründungsimpuls"), damit Sprachsteuerung den Knopf über
-                     das Wort findet, das dasteht. -->
-                <div class="mt-1 flex items-center justify-end gap-2">
-                  <!-- Ein Kapitel, das NICHT offen ist, wird nicht hier
-                       korrigiert: der Weg dorthin ist der Baustein selbst. -->
-                  <UButton
-                    v-if="!card.controls"
-                    size="xs" color="neutral" variant="ghost" class="bw-fix rounded-full"
-                    icon="i-ph-pencil-simple" :label="t('brand.workspace.reviseSlot')"
-                    :aria-label="slotActionName(t('brand.workspace.reviseSlot'), card.label)"
-                    :disabled="!store.canEnter(chapter.stepKey)"
-                    @click="goToStep(chapter.stepKey)"
-                  />
-                  <UButton
-                    v-else-if="card.confirmed"
-                    size="xs" color="neutral" variant="ghost" class="bw-fix rounded-full"
-                    icon="i-ph-pencil-simple" :label="t('brand.workspace.reviseSlot')"
-                    :aria-label="slotActionName(t('brand.workspace.reviseSlot'), card.label)"
-                    @click="reviseSlot(card.id)"
-                  />
-                  <template v-else-if="card.controls.showConfirm">
-                    <!-- BEFUND 18 (David, 2026-09-09): eine LEERE Karte sagt
-                         nicht „Korrigieren" — dort ist nichts zu korrigieren.
-                         Eine Frage-Session bekommt „Beantworten", eine
-                         Ableitung „Entwerfen"; beide springen in die Session,
-                         wo das Modul der Bühne den Rest macht. Welcher Knopf
-                         wohin gehört, rechnet `brandLogCardAction`. -->
-                    <UButton
-                      v-if="card.action === 'answer' || card.action === 'draft'"
-                      size="xs" color="neutral" variant="ghost" class="rounded-full"
-                      :icon="card.action === 'answer' ? 'i-ph-chat-circle-dots' : 'i-ph-pen-nib'"
-                      :label="card.action === 'answer' ? t('brand.workspace.answerSlot') : t('brand.workspace.draftSlot')"
-                      :aria-label="slotActionName(card.action === 'answer' ? t('brand.workspace.answerSlot') : t('brand.workspace.draftSlot'), card.label)"
-                      @click="goToSession(card.id)"
-                    />
-                    <!-- Dieselben zwei Ausgänge wie auf der Bühne (Befund 3). -->
-                    <template v-else-if="card.controls.editable && editingSlotId === card.id">
-                      <UButton
-                        size="xs" color="neutral" variant="ghost" class="rounded-full"
-                        icon="i-ph-check" :label="t('brand.workspace.reviseApply')"
-                        @click="applyEdit()"
-                      />
-                      <UButton
-                        size="xs" color="neutral" variant="ghost" class="rounded-full"
-                        icon="i-ph-arrow-counter-clockwise" :label="t('brand.workspace.reviseDiscard')"
-                        @click="discardEdit(card.id)"
-                      />
-                    </template>
-                    <UButton
-                      v-else-if="card.controls.editable"
-                      size="xs" color="neutral" variant="ghost" class="rounded-full"
-                      icon="i-ph-pencil-simple"
-                      :label="t('brand.workspace.reviseSlot')"
-                      :aria-label="slotActionName(t('brand.workspace.reviseSlot'), card.label)"
-                      @click="openEditor(card.id)"
-                    />
-                    <button
-                      type="button" class="bw-confirm bw-confirm--open bw-confirm--xs"
-                      :disabled="!card.controls.confirmEnabled"
-                      :aria-label="slotActionName(t('brand.workspace.confirmSlot'), card.label)"
-                      @click="confirmSlot(card.id)"
-                    >
-                      <UIcon name="i-ph-check" class="size-3.5" /> {{ t('brand.workspace.confirmSlot') }}
-                    </button>
-                  </template>
-                </div>
-              </div>
-            </div>
-          </div>
+          <BwWorkshopLog
+            :profile-id="profileId"
+            :step-key="routeStepKey"
+            :chapters="logChapters"
+            :cards-for="chapterCards"
+            :editing-slot-id="editingSlotId"
+            :direction-choices-for="directionChoicesFor"
+            :choice-cards-for="choiceCardsFor"
+            @input="onInput"
+            @flush="autosave.flush()"
+            @field="slotId => correctThenGo(slotId, () => goToField(slotId))"
+            @go-step="goToStep"
+            @go-session="goToSession"
+            @revise="reviseSlot"
+            @apply="applyEdit()"
+            @discard="discardEdit"
+            @edit="openEditor"
+            @confirm="confirmSlot"
+          />
         </div>
 
         <!-- Unten rechts NUR der dreizeilige Gesamtfortschritt (Runde 31/35) —

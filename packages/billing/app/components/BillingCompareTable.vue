@@ -19,6 +19,9 @@ function cellValue(plans: Record<string, BillingCompareValue>, planId: string): 
 </script>
 
 <template>
+  <!-- KEINE UTable (B6): eine Vergleichs-Matrix (Funktion × Plan) mit
+       Abschnitts-Zeilen und Haken, keine Datenliste — keine Sortierung, keine
+       Auswahl, keine Seiten; UTable kennt keine Zwischenüberschriften. -->
   <div v-if="sections.length" class="overflow-x-auto" data-testid="compare-table">
     <table class="w-full min-w-[560px] border-separate border-spacing-0 text-sm">
       <thead>

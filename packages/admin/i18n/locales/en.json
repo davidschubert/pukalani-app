@@ -223,7 +223,10 @@
       "activityEmpty": "No activity yet",
       "activityEmptyHint": "This is where admin actions by you and your team show up.",
       "viewAll": "View all",
-      "statOf": "{value} of {limit}"
+      "statOf": "{value} of {limit}",
+      "memberTitle": "Good to have you here",
+      "memberHint": "Your areas are in the sidebar on the left. You set your name, picture and notifications in the settings.",
+      "memberAction": "Go to settings"
     },
     "users": {
       "name": "Name",

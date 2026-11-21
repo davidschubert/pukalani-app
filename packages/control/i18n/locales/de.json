@@ -89,6 +89,11 @@
       "subtitle": "Wer möchte eine Community starten? Zuweisen schickt sofort eine Mail mit Code und Direktlink — den Code siehst du nie, er existiert nur zwischen Erzeugung und Versand.",
       "refresh": "Neu laden",
       "empty": "Noch keine Anfragen.",
+      "incomplete": {
+        "title": "Angaben unvollständig",
+        "codes": "Die Einladungscodes ließen sich gerade nicht nachschlagen — „Erinnern“ ist bei Anfragen mit Code gesperrt, bis die Liste neu geladen ist.",
+        "communities": "Die Communities ließen sich gerade nicht nachschlagen — die Adresse fehlt bei eingelösten Anfragen."
+      },
       "stats": {
         "new": "neu",
         "waiting": "wartet auf Einlösung",

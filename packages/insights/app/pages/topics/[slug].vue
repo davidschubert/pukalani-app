@@ -36,7 +36,7 @@ const slug = computed(() => String(route.params.slug ?? ''))
 const topic = computed<InsightsTopicKey | null>(() =>
   ((INSIGHTS_TOPIC_KEYS as readonly string[]).includes(slug.value) ? slug.value as InsightsTopicKey : null))
 
-const { data } = await useFetch<InsightsPublicListResponse>('/api/insights/public/posts', {
+const { data, error, refresh } = await useFetch<InsightsPublicListResponse>('/api/insights/public/posts', {
   key: 'insights-public-list',
   immediate: Boolean(topic.value),
 })
@@ -86,7 +86,12 @@ useSeoMeta({
         </p>
       </div>
 
-      <div class="mt-10">
+      <!-- Fehler statt „keine Beiträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" class="mt-10" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <div v-else class="mt-10">
         <InPostList
           :posts="posts"
           :locale="readerLocale"

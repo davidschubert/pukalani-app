@@ -5,7 +5,6 @@
  *  Werkstatt-Topbar. */
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { navMenuChildren } from '../../../core/shared/communityNavigation'
-import type { BwNewBrandSubmit } from './BwNewBrandModal.vue'
 
 const route = useRoute()
 /* Die Beschriftungen laufen seit 2026-09-01 über i18n (`brand.nav.*`) —
@@ -136,19 +135,16 @@ const menuItems = computed<NavigationMenuItem[]>(() => items.value.map((item) =>
 }))
 
 /* Neue Brand oeffnet das Start-Modal von jeder Seite aus — im LIVE-Modus
- * (2026-09-09, Davids Test): ohne Modus stand das Modal in der Demo und
- * führte nach der Anlage auf `/brand/demo/werte`. Anlage + Sprung ins erste
- * Kapitel kommen aus `useBrandCreate()`, wie auf der Brands-Übersicht. */
+ * (2026-09-09, Davids Test). Fenster und Anlage leben in
+ * `BwSiteNavNewBrand` und LADEN ERST BEIM ERSTEN KLICK (PERF-006): fest
+ * eingebunden zogen sie den Fragen-Katalog des Wizards (rund 50 KB gepackt)
+ * in jede Seite. `newBrandRequested` bleibt danach an — das Fenster schließt
+ * und öffnet sich wieder, ohne neu zu laden. */
 const newBrandOpen = ref(false)
-const {
-  contentLocales: newBrandLocales,
-  creating: newBrandCreating,
-  failed: newBrandFailed,
-  create: createBrand,
-} = useBrandCreate()
-
-async function createFromModal(payload: BwNewBrandSubmit): Promise<void> {
-  if (await createBrand(payload)) newBrandOpen.value = false
+const newBrandRequested = ref(false)
+function openNewBrand(): void {
+  newBrandRequested.value = true
+  newBrandOpen.value = true
 }
 
 /* DAS KONTO IST ECHT (Nacht 2026-09-03): das Avatar trug ein hartkodiertes
@@ -195,7 +191,7 @@ const userMenu = computed(() => [[
    * Beta-Kunde hat keine `dashboard.access`-Capability. Sein Menüpunkt wäre
    * dort für genau die Menschen unsichtbar, für die die Seite gebaut ist. */
   { label: t('brand.myScores.list.nav'), icon: 'i-ph-gauge', to: localePath('/dashboard/brand-scores') },
-  { label: t('brand.brands.new'), icon: 'i-ph-plus', onSelect: () => { newBrandOpen.value = true } },
+  { label: t('brand.brands.new'), icon: 'i-ph-plus', onSelect: openNewBrand },
 ], [
   {
     /* Ein Schlüssel JE SPRACHE — die Zeile nennt die aktive Sprache in
@@ -316,11 +312,7 @@ const userMenu = computed(() => [[
     <template #right>
       <!-- Runde 189 (David): Meine Brands + Neue Brand leben im
            Avatar-Menue — rechts steht nur noch das Konto. -->
-      <BwNewBrandModal
-        v-model:open="newBrandOpen" mode="live"
-        :content-locales="newBrandLocales" :loading="newBrandCreating" :failed="newBrandFailed"
-        @submit="createFromModal"
-      />
+      <LazyBwSiteNavNewBrand v-if="newBrandRequested" v-model:open="newBrandOpen" />
       <NotificationBell v-if="isLoggedIn && accountBell" />
       <UDropdownMenu v-if="isLoggedIn" :items="userMenu">
         <!-- Name = sichtbare Initialen + versteckter Text: ein `aria-label`

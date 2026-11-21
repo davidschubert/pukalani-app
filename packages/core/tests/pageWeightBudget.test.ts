@@ -88,7 +88,7 @@ describe('measureApp', () => {
 
   it('jede Grenze der Liste ist gesetzt (kein 0, kein Platzhalter)', () => {
     const budgets = PAGE_WEIGHT_BUDGETS as Record<string, { roots: string[], maxScriptGzipKB: number }>
-    expect(Object.keys(budgets).sort()).toEqual(['help', 'marketing', 'portfolio'])
+    expect(Object.keys(budgets).sort()).toEqual(['branding', 'help', 'marketing', 'platform', 'portfolio'])
     for (const [app, b] of Object.entries(budgets)) {
       expect(b.maxScriptGzipKB, app).toBeGreaterThan(100)
       expect(b.roots[0], app).toBe('pages/index.vue')

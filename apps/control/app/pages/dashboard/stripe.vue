@@ -454,6 +454,9 @@ async function ensureWebhook(recreate = false) {
             :description="t('control.stripe.prices.emptyText')"
           />
 
+          <!-- KEINE UTable (B6): der feste Preiskatalog (eine Handvoll Einträge
+               aus `stripePriceCatalog.ts`) als Zustands-Karte — Soll gegen Ist
+               je Preis, nichts zu sortieren oder zu blättern. -->
           <div v-else-if="prices" class="divide-y divide-default">
             <div
               v-for="price in prices"

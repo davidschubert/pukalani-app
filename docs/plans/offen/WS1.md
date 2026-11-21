@@ -20,10 +20,12 @@ Rauch-Test (gestellte Antworten in `tests/render/support/workshopFixtures.ts`).
 
 **Die Kapitel** (Zeilen Stand Q21; Skript = Abschnitts-Überschrift `// ──`):
 
-- **(a) Der Log rechts** — Vorlage `#george` 4750–4972, Skript „Der Log:
-  Kapitel-Sektionen und ihre Karten" 2284–2535. Eigene Komponente
-  `BwWorkshopLog`; die Karten-Aktionen (bestätigen, korrigieren, beantworten)
-  gehen als Ereignisse an die Seite zurück. Größter Gewinn für die Vorlage.
+- ~~**(a) Der Log rechts**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
+  `BwWorkshopLog` hält, was nur der Log liest (aufgeklappte Kapitel, lesend
+  geholte Felder fremder Kapitel); die Karten rechnet weiter die Seite
+  (`chapterCards`), jede Handlung geht als Ereignis zurück. Seite 4.922 →
+  4.612 Zeilen. Rauch-Test: fremdes Kapitel auf/zu/auf (ein Abruf),
+  „Beantworten" springt in die Session.
 - ~~**(b) Die Modale**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
   `BwAdvisorInfoModal`, `BwVersionsModal` (holt die Historie selbst),
   `BwConflictModal` (liest `store.conflict`). Seite 5.119 → 4.922 Zeilen.
@@ -42,5 +44,11 @@ Rauch-Test (gestellte Antworten in `tests/render/support/workshopFixtures.ts`).
   `onMounted`-Klammern) und deshalb zuletzt.
 - **(f) Korrektur-Regel und Warteschlange** — Skript 1505–2006 (Slot-Zustände,
   Korrektur-Regel, „neu besprechen").
-- **(g) Leiste, Fortschritt, Navigation, Abnahme** — Skript 2583–3195,
-  3701–3796; Vorlage `#rail` und `#stage-bar` 3898–3951.
+- ~~**(g) Leiste, Fortschritt, Navigation, Abnahme**~~ — **geschnitten
+  (WS1-Lauf 2026-11-21):** `useBrandWorkshopRail` (Leiste der drei Schichten
+  und Gesamtfortschritt; die Seite reicht die Rechnungen herein, die Bühne und
+  Leiste teilen), `useBrandWorkshopLayout` (Spalten ein-/ausklappen, schmale
+  Fenster), `BwStageBar` (Balken mit der `h1`). Die Navigation selbst
+  (`goToStep`, `selectSession`, `goToBrand`, Abnahme-Sprünge) bleibt in der
+  Seite: sie hängt am Autosave und an der Session-Wahl. Seite 4.612 → 3.957
+  Zeilen.

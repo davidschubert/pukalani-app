@@ -89,6 +89,11 @@
       "subtitle": "Who wants to start a community? Assigning sends an email with code and direct link right away — you never see the code, it only exists between generation and sending.",
       "refresh": "Reload",
       "empty": "No requests yet.",
+      "incomplete": {
+        "title": "Details incomplete",
+        "codes": "The invite codes could not be looked up just now — “Remind” is locked for requests with a code until the list is reloaded.",
+        "communities": "The communities could not be looked up just now — the address is missing for redeemed requests."
+      },
       "stats": {
         "new": "new",
         "waiting": "waiting to redeem",
