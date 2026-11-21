@@ -95,7 +95,7 @@ Production-Build. Es sind zwei Ursachen:
 **Nicht geprüft.** Live hinter der Anmeldung ist nichts geklickt. Die sieben
 mitgenommenen Seiten der Betreiber-App und von branding.supply sind nicht im
 Browser gemessen, und der Seitenlauf kennt diese zwei Dashboards nicht (offen
-als BT1 f). Die Probe-Community ist fast leer: eine Abweichung, die nur mit
+als BT1 g). Die Probe-Community ist fast leer: eine Abweichung, die nur mit
 bestimmten Daten entsteht, sähe der Lauf nicht. Der Test fährt gegen den
 Dev-Server; der Production-Build ist einmal von Hand gemessen.
 
