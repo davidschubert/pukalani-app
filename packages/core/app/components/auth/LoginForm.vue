@@ -5,6 +5,7 @@ import { OAUTH_UNAVAILABLE_CODE } from '../../../shared/oauthProviders'
 import type { LoginResponse } from '../../../shared/types/auth-responses'
 
 const { t } = useI18n()
+const pukalaniSpeaks = usePukalaniSpeaks()
 const { afterAuthTarget, authLinkTarget } = useAuthRedirect()
 const appConfig = useAppConfig()
 const auth = useAuthStore()
@@ -93,7 +94,8 @@ function onMfaCancelled() {
 
   <div v-else ref="formRoot" class="w-full max-w-sm space-y-4" data-login-form>
     <div class="text-center">
-      <UIcon name="i-ph-user-circle" class="mx-auto size-8 text-primary" />
+      <!-- Wo Pukalani spricht, steht darüber schon das Zeichen (AuthBrandHeader, Q24) — ein zweites Symbol wäre ein drittes Gesicht. -->
+      <UIcon v-if="!pukalaniSpeaks" name="i-ph-user-circle" class="mx-auto size-8 text-primary" />
       <h1 class="mt-2 text-xl font-semibold">{{ t('auth.login.title') }}</h1>
       <p class="text-sm text-muted">{{ t('auth.login.description') }}</p>
     </div>

@@ -121,6 +121,8 @@ const knowledgeLinks = computed(() => [
           <li><a href="https://github.com/davidschubert" target="_blank" rel="noopener me" class="footer__link">GitHub</a></li>
           <li><a href="https://www.instagram.com/davidschubert/" target="_blank" rel="noopener me" class="footer__link">Instagram</a></li>
         </ul>
+        <!-- Die zwei anderen Marken, ruhig (Q24, R9). -->
+        <CoreBrandFamily current="studio" class="footer__family" />
       </div>
 
       <nav :aria-label="t('portfolio.footer.services')">
@@ -183,6 +185,12 @@ const knowledgeLinks = computed(() => [
   grid-template-columns: 1.5fr 1fr 1fr 1fr;
   gap: clamp(2rem, 4vw, 3.5rem);
   align-items: start;
+}
+.footer__family {
+  margin-top: 1.1rem;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  line-height: 1.6;
 }
 .footer__brand {
   font-family: "Syne", ui-sans-serif, system-ui, sans-serif;

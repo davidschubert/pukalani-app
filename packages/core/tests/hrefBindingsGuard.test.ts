@@ -54,6 +54,8 @@ const WRAPPERS: ReadonlyArray<{ file: string, name: string, defFile: string }> =
 
 /** (d) Ausnahmen — Schlüssel `Datei :: Ausdruck`, Wert = Grund in einem Satz. */
 const EXCEPTIONS: Record<string, string> = {
+  'packages/core/app/components/core/BrandFamily.vue :: link.href':
+    'BRAND_FAMILY ist eine Konstante im Repo (core/shared/brandFamily.ts), feste https-Adressen.',
   'apps/marketing/app/components/ComparisonSection.vue :: src.href':
     'Quellenliste als Konstante in derselben Komponente.',
   'apps/marketing/app/components/FeeCalculator.vue :: provider.source':

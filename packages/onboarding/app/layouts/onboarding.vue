@@ -66,9 +66,9 @@ const items = computed<DropdownMenuItem[]>(() => [
   <div class="min-h-screen bg-default">
     <header class="flex items-center justify-between px-4 py-3 sm:px-6">
       <span class="flex items-center gap-2 font-semibold tracking-tight">
-        <span class="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary">
-          <UIcon name="i-ph-sun-horizon" class="size-4" />
-        </span>
+        <!-- Das Zeichen der Marketing-Site, derselbe Baustein (Q24, R4). Die
+             Farbwelt bleibt zurückhaltend: nur das Zeichen trägt Farbe. -->
+        <PukaMark :size="26" />
         Pukalani
       </span>
       <UDropdownMenu v-if="auth.user" :items="items">
