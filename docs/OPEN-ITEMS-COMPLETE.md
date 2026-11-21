@@ -30,6 +30,39 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BT1 (e) — Übersicht und Statistik einer Pool-Community: über den Not-Zugang nur der Betreiber ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21 auf die offene Frage aus N14: „Nur ich
+als Betreiber". Bis dahin kam ein Konto mit dem Instanz-Label `moderator`
+(ein Mitarbeiter des Betreibers) über den protokollierten Not-Zugang in
+Kennzahlen und Aktivitätskurve JEDER Pool-Community, weil das Label
+`dashboard.access` trägt.
+
+**Wie.** `packages/admin/server/utils/overviewAccess.ts`
+(`requireOverviewAccess`): erst das unveränderte Site-Gate
+(`requireCommunityPermission(event, 'dashboard.access')`), dann — nur wenn der
+Zugang über den Not-Zugang kam (`via: 'operator'`) — die Pflicht zum Label
+`admin`, sonst 403. `GET /api/admin/stats` und `GET /api/admin/analytics`
+rufen es. Unberührt: jede Rolle der Community selbst und die Einzel-Instanz
+(dort ist das Instanz-Label die eigene Mannschaft). Bewusst NICHT im Core:
+das Label bleibt für die Moderations-Routen (`/api/admin/comments` usw.)
+gültig, die Entscheidung betraf nur Übersicht und Statistik.
+
+**Beweis.** `packages/admin/tests/route-roles-overview.test.ts`: die
+Instanz-Rolle steht im Pool auf der Abweisungs-Liste (403, Datentür zu; der
+Prüfstand kennt dafür `poolDenyBehindGate`, weil die Core-Wache durchlässt
+und die Route selbst abweist). Gegenprobe: Prüfung abgeschaltet ⇒ genau die
+zwei Fälle rot. Lokal auf der Bühne (Platform + Control aus dem Worktree):
+Konto ohne Rechte 403/403/403 (stats, analytics, comments); dasselbe Konto
+mit Label `moderator` 403/403/**200** — das Label wirkt, nur die Übersicht
+ist zu; Community-Moderator (Rolle) und Betreiber 200/200/200.
+
+**Gelernt:** Eine Wache, die HINTER der Core-Wache ablehnt, sieht der
+Prüfstand als „Wache passiert" — der Test braucht dafür eine eigene,
+ausdrückliche Liste statt eines aufgeweichten `denied`.
+
+---
+
 ### WS1-Lauf — die Werkstatt-Seite in fünf weiteren Teilen (Bahn 6, Paket 1; ARC-001) ✅ 2026-11-21
 
 **Was.** Die Werkstatt-Seite `packages/brand/app/pages/brand/[profileId]/[stepKey].vue`
