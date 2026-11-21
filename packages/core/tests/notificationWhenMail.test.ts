@@ -65,7 +65,7 @@ const reminder = (body: string) => ({ type: 'reminder', title: 'Sommerfest', bod
 
 describe('buildInstantEmail — Erinnerung', () => {
   it('en, ohne eigene Zone, Termin in New York ⇒ Ortszeit des Termins mit Kürzel, kein Zitat', () => {
-    const built = mail.buildInstantEmail(links, 'en', reminder(TOKEN_NY))
+    const built = mail.buildInstantEmail(links, 'en', reminder(TOKEN_NY), { brand: 'Testmarke' })
     expect(built.subject).toBe('Reminder: Sommerfest starts soon')
     expect(built.text).toContain('Wed, Nov 18, 2026, 06:00 PM EST')
     expect(built.text).not.toContain('@when:')
@@ -75,37 +75,37 @@ describe('buildInstantEmail — Erinnerung', () => {
   })
 
   it('de, eigene Zone Berlin ⇒ deutsche Schreibweise, Berliner Zeit, MEZ', () => {
-    const built = mail.buildInstantEmail(links, 'de', reminder(TOKEN_NY), { timezone: 'Europe/Berlin' })
+    const built = mail.buildInstantEmail(links, 'de', reminder(TOKEN_NY), { timezone: 'Europe/Berlin', brand: 'Testmarke' })
     expect(built.subject).toBe('Erinnerung: Sommerfest beginnt bald')
     expect(built.text).toContain('Do., 19. Nov. 2026, 00:00 MEZ')
     expect(built.text).not.toContain('„Do.')
   })
 
   it('Termin ohne Zone und Empfänger ohne Zone ⇒ UTC mit Kürzel', () => {
-    const built = mail.buildInstantEmail(links, 'en', reminder(`@when:${AT};`))
+    const built = mail.buildInstantEmail(links, 'en', reminder(`@when:${AT};`), { brand: 'Testmarke' })
     expect(built.text).toContain('Wed, Nov 18, 2026, 11:00 PM UTC')
   })
 
   it('eine ungültige eigene Zone zählt nicht — dann die Zone des Termins', () => {
-    const built = mail.buildInstantEmail(links, 'en', reminder(TOKEN_NY), { timezone: 'Mars/Olympus' })
+    const built = mail.buildInstantEmail(links, 'en', reminder(TOKEN_NY), { timezone: 'Mars/Olympus', brand: 'Testmarke' })
     expect(built.text).toContain('06:00 PM EST')
   })
 
   it('alte Zeile mit fertigem Text bleibt unverändert (als Zitat wie bisher)', () => {
-    const built = mail.buildInstantEmail(links, 'de', reminder(OLD_TEXT), { timezone: 'Europe/Berlin' })
+    const built = mail.buildInstantEmail(links, 'de', reminder(OLD_TEXT), { timezone: 'Europe/Berlin', brand: 'Testmarke' })
     expect(built.subject).toBe('Erinnerung: Sommerfest beginnt bald')
     expect(built.text).toContain(`„${OLD_TEXT}"`)
   })
 
   it('Gegenprobe: andere Typen unverändert (Überschrift + Zitat)', () => {
-    const built = mail.buildInstantEmail(links, 'de', { type: 'reply', title: 'Max', body: 'Hallo', link: '/feed' }, { timezone: 'Europe/Berlin' })
+    const built = mail.buildInstantEmail(links, 'de', { type: 'reply', title: 'Max', body: 'Hallo', link: '/feed' }, { timezone: 'Europe/Berlin', brand: 'Testmarke' })
     expect(built.subject).toBe('Max hat auf deinen Kommentar geantwortet')
     expect(built.text).toContain('„Hallo"')
-    expect(built.html).toContain('<em>„Hallo"</em>')
+    expect(built.html).toContain('„Hallo&quot;')
   })
 
   it('ein Kommentar, der wörtlich wie ein Zeitpunkt aussieht, bleibt ein Zitat (KK1)', () => {
-    const built = mail.buildInstantEmail(links, 'de', { type: 'reply', title: 'Max', body: TOKEN_NY, link: '/feed' }, { timezone: 'Europe/Berlin' })
+    const built = mail.buildInstantEmail(links, 'de', { type: 'reply', title: 'Max', body: TOKEN_NY, link: '/feed' }, { timezone: 'Europe/Berlin', brand: 'Testmarke' })
     expect(built.text).toContain(`„${TOKEN_NY}"`)
     expect(built.text).not.toContain('MEZ')
   })
@@ -114,11 +114,11 @@ describe('buildInstantEmail — Erinnerung', () => {
 describe('buildDigestEmail — Erinnerung', () => {
   it('en ohne eigene Zone: Ortszeit des Termins; de mit Berlin: Berliner Zeit; alter Text bleibt', () => {
     const items = [reminder(TOKEN_NY), reminder(OLD_TEXT)]
-    const en = mail.buildDigestEmail(links, 'en', items)
+    const en = mail.buildDigestEmail(links, 'en', items, { brand: 'Testmarke' })
     expect(en.text).toContain('Reminder: Sommerfest starts soon\nWed, Nov 18, 2026, 06:00 PM EST\n')
     expect(en.text).toContain(`„${OLD_TEXT}"`)
 
-    const de = mail.buildDigestEmail(links, 'de', items, { timezone: 'Europe/Berlin' })
+    const de = mail.buildDigestEmail(links, 'de', items, { timezone: 'Europe/Berlin', brand: 'Testmarke' })
     expect(de.text).toContain('Erinnerung: Sommerfest beginnt bald\nDo., 19. Nov. 2026, 00:00 MEZ\n')
     expect(de.text).toContain(`„${OLD_TEXT}"`)
   })

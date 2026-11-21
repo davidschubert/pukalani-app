@@ -2,6 +2,8 @@ import type { H3Event } from 'h3'
 import { type NotificationLinkContext, notificationLinkUrl } from '../../shared/notificationLinks'
 import { formatNotificationWhen, notificationWhenMailZone, parseNotificationWhen } from '../../shared/notificationWhen'
 import { normalizeTimezonePref } from '../../shared/timezone'
+import { frameMail, resolveMailLocale, type MailLocale } from '../../shared/mailFrame'
+import { resolveMailBrand } from './mailBrand'
 import { resolveCommunityHosts } from './communityHost'
 import { resolveSiteLinkBase } from './siteOrigin'
 import type { NotifyInput } from './notify'
@@ -18,7 +20,7 @@ import type { NotifyInput } from './notify'
  */
 
 export type EmailNotificationMode = 'off' | 'instant' | 'digest'
-export type EmailLocale = 'de' | 'en'
+export type EmailLocale = MailLocale
 
 export interface NotificationEmailPrefs {
   emailNotifications?: EmailNotificationMode
@@ -46,7 +48,7 @@ const COPY: Record<EmailLocale, {
     // gespeichert, oben übersetzt) — das Label sagt nur, worum es geht.
     // 'reply.guest': der Titel ist ein frei gewählter Gast-Name — das
     // Kennzeichen steht deshalb im Label, direkt hinter dem Namen (SEC-035).
-    types: { reply: 'hat auf deinen Kommentar geantwortet', 'reply.guest': '(Gast) hat auf deinen Kommentar geantwortet', mention: 'hat dich erwähnt', 'post.mention': 'hat dich in einem Beitrag erwähnt', ticket: '— Ticket-Update', billing: '— Zahlungsproblem', 'badge.awarded': '— Abzeichen erhalten', 'run.succeeded': '— Lauf fertig', 'run.needs_input': '— Lauf braucht deine Antwort', 'run.failed': '— Lauf fehlgeschlagen' },
+    types: { reply: 'hat auf deinen Kommentar geantwortet', 'reply.guest': '(Gast) hat auf deinen Kommentar geantwortet', mention: 'hat dich erwähnt', 'post.mention': 'hat dich in einem Beitrag erwähnt', ticket: '— Ticket-Update', billing: '— Zahlungsproblem', 'badge.awarded': '— Abzeichen erhalten', 'run.succeeded': '— Lauf fertig', 'run.needs_input': '— Lauf braucht deine Antwort', 'run.failed': '— Lauf fehlgeschlagen', 'invite.request': '— Early-Access-Anfrage', 'abuse.report': '— Missbrauchsmeldung', 'message.received': 'hat dir eine Nachricht geschickt' },
     headings: { reminder: title => `Erinnerung: ${title} beginnt bald` },
     language: 'de-DE',
     fallbackType: 'Neue Benachrichtigung',
@@ -56,7 +58,7 @@ const COPY: Record<EmailLocale, {
     footer: 'Du erhältst diese Mail, weil E-Mail-Benachrichtigungen in deinen Einstellungen aktiv sind. Abstellen: Dashboard → Einstellungen → Benachrichtigungen.',
   },
   en: {
-    types: { reply: 'replied to your comment', 'reply.guest': '(guest) replied to your comment', mention: 'mentioned you', 'post.mention': 'mentioned you in a post', ticket: '— ticket update', billing: '— payment issue', 'badge.awarded': '— badge earned', 'run.succeeded': '— run finished', 'run.needs_input': '— run needs your reply', 'run.failed': '— run failed' },
+    types: { reply: 'replied to your comment', 'reply.guest': '(guest) replied to your comment', mention: 'mentioned you', 'post.mention': 'mentioned you in a post', ticket: '— ticket update', billing: '— payment issue', 'badge.awarded': '— badge earned', 'run.succeeded': '— run finished', 'run.needs_input': '— run needs your reply', 'run.failed': '— run failed', 'invite.request': '— early access request', 'abuse.report': '— abuse report', 'message.received': 'sent you a message' },
     headings: { reminder: title => `Reminder: ${title} starts soon` },
     language: 'en-US',
     fallbackType: 'New notification',
@@ -72,13 +74,11 @@ export function resolveEmailPrefs(prefs: Record<string, unknown> | undefined | n
   const locale = prefs?.emailLocale
   return {
     emailNotifications: mode === 'instant' || mode === 'digest' ? mode : 'off',
-    emailLocale: locale === 'de' ? 'de' : 'en',
+    // Die eine Sprach-Regel (Q06): Konto-Einstellung, sonst Englisch — eine
+    // Anfrage-Sprache gibt es hier nicht (Sofort-Zweig und Digest-Lauf).
+    emailLocale: resolveMailLocale({ account: locale }),
     emailDigestLastAt: typeof prefs?.emailDigestLastAt === 'string' ? prefs.emailDigestLastAt : '',
   }
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]!))
 }
 
 /**
@@ -118,6 +118,13 @@ export interface NotificationEmailOptions {
    * Zeitpunkte im Text (BE-018); fehlt sie, gilt die Zone des Termins, sonst UTC.
    */
   timezone?: string
+  /**
+   * Marke in der Schluss-Zeile (Q06, `mailBrand.ts`) — der Aufrufer holt sie
+   * mit `resolveMailBrand(event)`; der Builder bleibt rein.
+   */
+  brand: string
+  /** Anzeigename des Empfängers für die Anrede (`users.get` → `name`). */
+  name?: string | null
 }
 
 function itemLines(locale: EmailLocale, item: NotificationEmailItem, links: NotificationLinkContext, options: NotificationEmailOptions) {
@@ -149,23 +156,20 @@ function itemLines(locale: EmailLocale, item: NotificationEmailItem, links: Noti
   const heading = sentence ? sentence(title) : label ? `${title} ${label}` : `${copy.fallbackType}: ${title}`
   const url = notificationLinkUrl(links, item)
   const bodyText = !body ? '' : when ? `${body}\n` : `„${body}"\n`
-  const bodyHtml = !body ? '' : when ? `${escapeHtml(body)}<br>` : `<em>„${escapeHtml(body)}"</em><br>`
   return {
     heading,
     text: `${heading}\n${bodyText}${copy.openLink}: ${url}`,
-    html: `<p><strong>${escapeHtml(heading)}</strong><br>${bodyHtml}<a href="${escapeHtml(url)}">${copy.openLink}</a></p>`,
   }
 }
 
 /** Sofort-Mail für EINE Notification (Modus 'instant'). */
-export function buildInstantEmail(links: NotificationLinkContext, locale: EmailLocale, input: NotificationEmailItem, options: NotificationEmailOptions = {}): Omit<MailInput, 'to'> {
+export function buildInstantEmail(links: NotificationLinkContext, locale: EmailLocale, input: NotificationEmailItem, options: NotificationEmailOptions): Omit<MailInput, 'to'> {
   const copy = COPY[locale]
-  const lines = itemLines(locale, input, links, options)
-  return {
-    subject: lines.heading,
-    text: `${lines.text}\n\n—\n${copy.footer}`,
-    html: `${lines.html}<hr><p style="color:#888;font-size:12px">${escapeHtml(copy.footer)}</p>`,
-  }
+  const item = itemLines(locale, input, links, options)
+  // Der gemeinsame Rahmen (Q06): Anrede, Schluss mit Marke, Fußzeile, HTML
+  // aus denselben Absätzen — kein Hand-HTML mit fester Farbe mehr.
+  const framed = frameMail({ brand: options.brand, locale, name: options.name, lines: [item.text], footer: copy.footer, html: true })
+  return { subject: item.heading, text: framed.text, html: framed.html }
 }
 
 /**
@@ -176,14 +180,18 @@ export function buildInstantEmail(links: NotificationLinkContext, locale: EmailL
  * Sammel-Mail pro Tag, nicht eine je Community), eine Mail trägt also Links in
  * mehrere Communities UND in den Kundenbereich nebeneinander.
  */
-export function buildDigestEmail(links: NotificationLinkContext, locale: EmailLocale, items: NotificationEmailItem[], options: NotificationEmailOptions = {}): Omit<MailInput, 'to'> {
+export function buildDigestEmail(links: NotificationLinkContext, locale: EmailLocale, items: NotificationEmailItem[], options: NotificationEmailOptions): Omit<MailInput, 'to'> {
   const copy = COPY[locale]
   const parts = items.map(item => itemLines(locale, item, links, options))
-  return {
-    subject: copy.digestSubject(items.length),
-    text: `${copy.digestIntro(items.length)}\n\n${parts.map(p => p.text).join('\n\n')}\n\n—\n${copy.footer}`,
-    html: `<p>${escapeHtml(copy.digestIntro(items.length))}</p>${parts.map(p => p.html).join('')}<hr><p style="color:#888;font-size:12px">${escapeHtml(copy.footer)}</p>`,
-  }
+  const framed = frameMail({
+    brand: options.brand,
+    locale,
+    name: options.name,
+    lines: [copy.digestIntro(items.length), ...parts.map(p => p.text)],
+    footer: copy.footer,
+    html: true,
+  })
+  return { subject: copy.digestSubject(items.length), text: framed.text, html: framed.html }
 }
 
 /**
@@ -219,7 +227,7 @@ export async function maybeSendInstantEmail(event: H3Event | undefined, input: N
     // Zone aus denselben Prefs, die gerade für Modus und Sprache gelesen
     // wurden (BE-018) — kein zweiter Abruf.
     const timezone = normalizeTimezonePref((recipient.prefs as Record<string, unknown>).timezone)
-    const mail = buildInstantEmail({ appBase: await appLinkBase(event), hosts }, prefs.emailLocale, { ...input, communityId }, { timezone })
+    const mail = buildInstantEmail({ appBase: await appLinkBase(event), hosts }, prefs.emailLocale, { ...input, communityId }, { timezone, brand: resolveMailBrand(event), name: recipient.name })
     await sendMail(event, { ...mail, to: recipient.email })
   }
   catch (error) {

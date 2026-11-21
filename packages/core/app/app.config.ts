@@ -22,6 +22,12 @@ export default defineAppConfig({
     brand: {
       name: 'Pukalani',
       /**
+       * Name in der Schluss-Zeile jeder eigenen Mail (Q06), wenn er vom
+       * Kopf-Namen abweicht — leer heißt `name`. Auf einem Community-Host
+       * gewinnt der Name der Community (`core/server/utils/mailBrand.ts`).
+       */
+      mailName: '',
+      /**
        * Öffentliche Seite des Anbieters (absolute URL) — der EINZIGE Leser ist
        * heute die Fehlerseite eines unbekannten Hosts (C12b): wer sich
        * vertippt hat, landet auf einer Adresse ohne Community, und „Zur
