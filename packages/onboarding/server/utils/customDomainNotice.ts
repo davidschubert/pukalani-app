@@ -63,12 +63,6 @@ export function registerCustomDomainNoticeReader(fn: CustomDomainNoticeReader): 
   reader = fn
 }
 
-/** Nur für Tests. */
-export function __resetCustomDomainNoticeReader(): void {
-  reader = null
-  sweepRunning = false
-}
-
 export async function runCustomDomainNoticeSweep(now: number = Date.now()): Promise<CustomDomainNoticeSweepResult> {
   const result: CustomDomainNoticeSweepResult = { checked: 0, notified: 0, mailed: 0, withoutOwner: 0 }
   const read = reader

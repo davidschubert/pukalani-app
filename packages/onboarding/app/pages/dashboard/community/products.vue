@@ -67,7 +67,16 @@ const locked = computed(() => (data.value?.products ?? []).filter(p => !planAllo
 </script>
 
 <template>
-  <div class="space-y-6">
+  <!-- TASTATUR (UX-011, Teil 6): der Bereich rollt, trägt aber ohne gesperrte
+       Produkte kein einziges Bedienelement — ohne einen Tab-Schritt hier käme
+       eine Tastatur nie hinein und könnte nicht rollen. Ein benannter Bereich
+       mit `tabindex="0"` ist dieser Schritt (axe `scrollable-region-focusable`). -->
+  <div
+    class="space-y-6 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+    role="region"
+    tabindex="0"
+    :aria-label="t('onboarding.communityProducts.title')"
+  >
     <UAlert
       v-if="!isTenantHost"
       icon="i-ph-info"
