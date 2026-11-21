@@ -65,6 +65,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
+| Q06 | **Anmelde-Mails auf Production im Ton der Marke (Stufe 2).** Vorlagen und Skript sind im Repo (Stufe 1); einspielen in die vier Projekte braucht vorher je Projekt eine eigene SMTP-Einstellung und einen Schlüssel für Vorlagen. **Wartet auf:** Davids Ja. | Mittel | S | **Ja: Ja + SMTP-Klick** | [Einzelheiten](plans/offen/Q06.md) |
 | AB1 | **Anmelde-Bremse: Rest.** (a) Klick-Probe auf den echten Seiten: KR1. Alles andere ist erledigt (COMPLETE „N02", „N08", „N11"). **Wartet auf:** Davids Zeit. | Niedrig | S | (a) Ja: selbst klicken | [Einzelheiten](plans/offen/AB1.md) |
 | SR1 | **Kleine Sicherheitsriegel: Reste.** (a) Klick-Probe: KR1. (b) Datenschutztext: DT1. Alles andere ist seit 2026-11-17 erledigt (COMPLETE „N02" und „N08"). **Wartet auf:** Davids Zeit (KR1) und seine Freigabe (DT1). | Niedrig | S | **Ja** | [Einzelheiten](plans/offen/SR1.md) |
 

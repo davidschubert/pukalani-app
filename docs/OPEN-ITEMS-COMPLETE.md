@@ -30,6 +30,60 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q06 — Stufe 1: eigene Mails mit einer Stimme, Anmelde-Mails als Vorlagen im Repo (BRD-001, BRD-006) ✅ 2026-11-21
+
+**Davids Entscheidung (R6, 2026-11-21, „Ja, alle Empfehlungen"):** Anrede
+„Hallo {Name}," / „Hi {Name},", Schluss-Zeile mit dem Namen der Marke, Sprache
+nach Einstellung des Kontos.
+
+**Gebaut:**
+- `packages/core/shared/mailFrame.ts`: `frameMail()` (Anrede, Absätze,
+  „Viele Grüße"/„Best regards" + Marke, Fußzeile, optional schlichtes HTML ohne
+  feste Farbe) und `resolveMailLocale()` — EINE Regel: Konto, sonst Anfrage,
+  sonst Englisch. Vorher galten vier Regeln, drei Stellen fielen auf Deutsch
+  zurück.
+- `packages/core/server/utils/mailBrand.ts`: die Marke kommt aus derselben
+  Kette wie `useBrandName()` (Community, sonst `pukalani.brand.mailName`,
+  sonst `brand.name`). Neu: `brand.mailName` — control heißt im Kopf
+  „Pukalani Control", in der Mail „Pukalani".
+- Alle eigenen Mails (Benachrichtigung, Sammel-Mail, Community steht, eigene
+  Domain, entfernte Person, Einladungen, Betreiber-Mails, branding.supply,
+  Newsletter) laufen durch den Rahmen. Das Hand-HTML mit `#888` ist weg; drei
+  Arten von Benachrichtigungen (`invite.request`, `abuse.report`,
+  `message.received`) haben jetzt ein eigenes Etikett statt „Neue
+  Benachrichtigung".
+- Wächter `packages/core/tests/mailFrame.test.ts`: jede Datei, die
+  `sendMail(` ruft, baut ihren Text über `frameMail(` (selbst oder in einem
+  relativ importierten Modul); Gegenprobe mit erfundener Datei.
+- Anmelde-Mails von Appwrite (`verification`, `recovery`, `otpSession`,
+  `sessionAlert`, je de/en) als Dateien in `scripts/ops/appwrite-mail/`, Marke
+  je Projekt aus der App, „du"/„ihr" je Projekt (branding.supply „ihr").
+  Skript `pnpm ops:mail-templates`: Trockenlauf als Standard, schreiben nur mit
+  `--apply --backup <datei>`, Rückweg `--restore`, Ziel-Prüfung wie der
+  Migrations-Runner. Test `packages/core/tests/appwriteMailTemplates.test.ts`
+  (40 Fälle: jede Art, Sprache, jedes Projekt; Gegenproben).
+
+**Beweise:** `pnpm -r test` (alle Pakete grün), `pnpm -r lint`,
+`pnpm -r typecheck`, alle Wächter aus `lint.yml`. Mailpit: Wartelisten-Mail
+von branding.supply über die echte Route aus dem Worktree, deutsch und
+englisch, mit Anrede und „Branding Supply" als Schluss-Zeile (Probe-Zeilen
+danach gelöscht, nachgezählt 0). Skript gegen die lokale Appwrite: Trockenlauf
+endet sauber mit 401 „missing scopes templates.read", fremdes Projekt,
+`--apply` ohne Sicherung und entferntes Ziel ohne Bestätigung brechen ab.
+
+**NICHT geprüft:** die Appwrite-Mails selbst in Mailpit — kein lokaler
+Schlüssel hat `templates.*`, und die lokale Konsole war in Davids Chrome nicht
+angemeldet. Offen als Stufe 2 in OPEN-ITEMS „Q06".
+
+**Gelernt:** Appwrite (2.7.4) nimmt eigene Mail-Vorlagen NUR an, wenn das
+PROJEKT eine eigene SMTP-Einstellung hat (400 „SMTP must be enabled") — die
+Vorlagen hängen also an einem Schritt mit Geheimnis, nicht nur an einem
+Schlüssel. Ohne Vorlage setzt Appwrite den PROJEKTNAMEN ein; daher das
+„Account team" im Pool. Und: eine Schleife `for c in "-r lint"` gibt pnpm EIN
+Wort „-r lint" — „Unknown option", Exit 1, aber kein Fehler im Code.
+
+---
+
 ### Q20 — Einstieg von null: das README führt vom Klon zur laufenden App mit lokaler Datenbank (DOC-005, DOC-006, DOC-013) ✅ 2026-11-21
 
 **Was.**

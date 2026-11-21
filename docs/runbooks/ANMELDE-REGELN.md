@@ -179,3 +179,24 @@ actions**, je Projekt:
 - **Alle Passwörter zurücksetzen:** jedes bisherige Passwort wird abgelehnt,
   bis das Konto über „Passwort zurücksetzen“ ein neues setzt. Sitzungen
   bleiben bestehen, deshalb bei einem Vorfall beide Knöpfe drücken.
+
+## Anmelde-Mails: Vorlagen je Projekt (Q06)
+
+Bestätigung, Passwort, Anmelde-Code und Hinweis auf eine neue Anmeldung
+verschickt Appwrite selbst. Ihre Texte stehen als Dateien in
+`scripts/ops/appwrite-mail/templates/` (je Art und Sprache, Marke und
+du/ihr setzt das Skript je Projekt ein). Eingespielt wird je Projekt:
+
+```bash
+node --env-file=<datei> scripts/ops/appwrite-mail-templates.mjs
+```
+
+Ohne Schalter ist das ein Trockenlauf (je Vorlage alt → neu). Schreiben nur mit
+`--apply --backup <datei.json>`, gegen Production zusätzlich
+`PUKALANI_TARGET_CONFIRM=<projekt>`; zurück mit `--restore <datei.json>`.
+Appwrite nimmt eigene Vorlagen nur an, wenn das Projekt eine eigene
+SMTP-Einstellung hat (Settings → SMTP). Lokal stellt
+`--smtp-local host.docker.internal:1025` sie auf Mailpit (`--smtp-local off`
+schaltet zurück). Schlüssel: `templates.read`, `templates.write`, dazu
+`project.read` für die SMTP-Zeile und lokal `project.write`. Stand auf
+Production: [Q06](../plans/offen/Q06.md).

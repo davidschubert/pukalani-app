@@ -2,6 +2,10 @@
 paths:
   - "packages/core/server/utils/mailer.ts"
   - "packages/core/shared/mailerSettings.ts"
+  - "packages/core/shared/mailFrame.ts"
+  - "packages/core/server/utils/mailBrand.ts"
+  - "scripts/ops/appwrite-mail*"
+  - "scripts/ops/appwrite-mail/**"
   - "packages/core/server/utils/notify.ts"
   - "packages/core/server/utils/notification*.ts"
   - "packages/core/server/utils/emailDigest.ts"
@@ -43,6 +47,16 @@ paths:
   zuerst die Ablage `instance_secrets` (Konsole), sonst `NUXT_SMTP_*`
   (`pickMailerSettings`, `core/shared/mailerSettings.ts`); kein Host in beiden
   = Mail aus. Lokal Mailpit `localhost:1025`.
+- EIN RAHMEN JE MAIL (Q06, Davids Entscheidung R6): jeder Text für
+  `sendMail()` entsteht über `frameMail()` (`core/shared/mailFrame.ts`):
+  „Hallo {Name}," / „Hi {Name},", Schluss-Zeile mit der Marke aus
+  `resolveMailBrand(event)` (Community, sonst `pukalani.brand.mailName`/`name`;
+  nie ein Name im Code), Sprache über `resolveMailLocale` (Konto, sonst
+  Anfrage, sonst en). Wächter: `packages/core/tests/mailFrame.test.ts`.
+- ANMELDE-MAILS VON APPWRITE: Vorlagen nur in `scripts/ops/appwrite-mail/`,
+  eingespielt je Projekt mit `pnpm ops:mail-templates` (Trockenlauf; schreiben
+  mit `--apply --backup`); Appwrite nimmt sie nur mit Projekt-SMTP an. Nie in
+  der Konsole von Hand ändern, ohne die Datei zu ändern.
 - OPT-IN: `notify()` mailt nur nach `prefs.emailNotifications`
   (`off|instant|digest`, Default `off`); Mail-Sprache `prefs.emailLocale`.
 - DIGEST-SWEEP: Kandidaten aus UNGELESENEN `notifications`-Zeilen (kein
