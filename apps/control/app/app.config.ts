@@ -10,6 +10,7 @@ export default defineAppConfig({
   pukalani: {
     // `publicName` (Q10, SEO-007): die EINE öffentliche Seite dieses Hosts, das
     // Changelog, nennt im Titel die Marke — nicht den Namen der Arbeitsfläche.
+    // Dieselbe Marke unterschreibt die Mails (Q06, `core/server/utils/mailBrand.ts`).
     brand: { name: 'Pukalani Control', publicName: 'Pukalani' },
     // NUR DAS CHANGELOG DARF IN DIE SUCHE (Q10, SEO-007): alles andere hier ist
     // Arbeitsfläche des Betreibers und bekommt `noindex, follow`

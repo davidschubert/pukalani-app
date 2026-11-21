@@ -59,7 +59,7 @@ vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('useRuntimeConfig', () => ({
   public: { appwriteDatabaseId: 'main', appUrl: 'https://branding.supply' },
 }))
-vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { waitlistNotify: notifyTo } } }))
+vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Testmarke', waitlistNotify: notifyTo } } }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))

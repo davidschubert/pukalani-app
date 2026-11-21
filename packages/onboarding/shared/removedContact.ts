@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { communityOrigin } from '../../core/shared/notificationLinks'
+import { frameMail, type MailLocale } from '../../core/shared/mailFrame'
 
 /**
  * KONTAKT NACH DEM ENTFERNEN (SEC-030 Teil 2, seit 2026-11-13 — Davids Wahl
@@ -140,7 +141,11 @@ export function customerAreaUrl(controlHosts: readonly string[], currentPort = '
 }
 
 export interface RemovedContactMailInput {
-  locale: 'de' | 'en'
+  locale: MailLocale
+  /** Marke in der Schluss-Zeile (`resolveMailBrand(event)`, Q06). */
+  brand: string
+  /** Anzeigename der EMPFÄNGERIN aus der Leitung (Anrede). */
+  recipientName?: string | null
   communityName: string
   senderName: string
   senderEmail: string
@@ -157,44 +162,39 @@ export function buildRemovedContactMail(input: RemovedContactMailInput): { subje
   const name = headerSafe(input.senderName) || headerSafe(input.senderEmail)
   const email = headerSafe(input.senderEmail)
   const message = defangLinks(input.message)
+  // Rahmen (Q06): Anrede, Gruß und Marke aus `core/shared/mailFrame.ts`;
+  // die Nachricht bleibt EIN Absatz zwischen den Trennstrichen.
+  const quoted = ['----', message, '----'].join('\n')
   if (input.locale === 'de') {
     return {
       subject: headerSafe(`${community}: Nachricht von ${name} (entfernt)`),
-      text: [
-        `${name} wurde aus der Community „${community}" entfernt und hat euch über die Hinweisseite geschrieben:`,
-        '',
-        '----',
-        message,
-        '----',
-        '',
-        `Name: ${name}`,
-        `E-Mail: ${email}`,
-        '',
-        'Antworte einfach auf diese Mail, um der Person zu schreiben.',
-        `Mitglieder verwalten: ${input.membersUrl}`,
-        '',
-        '—',
-        'Du erhältst diese Mail, weil du Inhaber oder Admin dieser Community bist. Eine Person kann höchstens eine Nachricht pro Woche schicken.',
-      ].join('\n'),
+      text: frameMail({
+        brand: input.brand,
+        locale: 'de',
+        name: input.recipientName,
+        lines: [
+          `${name} wurde aus der Community „${community}" entfernt und hat dir über die Hinweisseite geschrieben:`,
+          quoted,
+          `Name: ${name}\nE-Mail: ${email}`,
+          `Antworte einfach auf diese Mail, um der Person zu schreiben.\nMitglieder verwalten: ${input.membersUrl}`,
+        ],
+        footer: 'Du erhältst diese Mail, weil du Inhaber oder Admin dieser Community bist. Eine Person kann höchstens eine Nachricht pro Woche schicken.',
+      }).text,
     }
   }
   return {
     subject: headerSafe(`${community}: message from ${name} (removed)`),
-    text: [
-      `${name} was removed from the community "${community}" and wrote to you from the notice page:`,
-      '',
-      '----',
-      message,
-      '----',
-      '',
-      `Name: ${name}`,
-      `Email: ${email}`,
-      '',
-      'Simply reply to this email to write back to this person.',
-      `Manage members: ${input.membersUrl}`,
-      '',
-      '—',
-      'You receive this email because you are an owner or admin of this community. A person can send at most one message per week.',
-    ].join('\n'),
+    text: frameMail({
+      brand: input.brand,
+      locale: 'en',
+      name: input.recipientName,
+      lines: [
+        `${name} was removed from the community "${community}" and wrote to you from the notice page:`,
+        quoted,
+        `Name: ${name}\nEmail: ${email}`,
+        `Simply reply to this email to write back to this person.\nManage members: ${input.membersUrl}`,
+      ],
+      footer: 'You receive this email because you are an owner or admin of this community. A person can send at most one message per week.',
+    }).text,
   }
 }

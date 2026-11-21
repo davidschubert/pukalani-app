@@ -121,7 +121,7 @@ vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('useRuntimeConfig', () => ({
   public: { appwriteDatabaseId: 'main', appUrl: 'https://branding.supply' },
 }))
-vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: {} } }))
+vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Testmarke' } } }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
@@ -349,6 +349,9 @@ describe('POST /api/brand/admin/waitlist/:id/invite', () => {
     await inviteHandler(event)
     expect(mails[0]!.subject).toBe('Euer Zugang zu Branding Supply')
     expect(mails[0]!.text).toContain('https://branding.supply/de/invite?code=')
+    // Rahmen (Q06): Anrede, Satz beginnt groß, Schluss mit der Marke.
+    expect(mails[0]!.text.startsWith('Hallo,\n\nIhr standet')).toBe(true)
+    expect(mails[0]!.text).toContain('Viele Grüße\nTestmarke')
 
     waitlist = [row('w1', { status: 'confirmed', locale: 'en' })]
     mails = []

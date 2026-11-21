@@ -13,6 +13,7 @@ const BASE = {
   host: 'surfclub.pukalani.app',
   domain: 'surfclub.de',
   graceEndsAt: '2026-11-30T12:00:00.000Z',
+  brand: 'Testmarke',
 }
 
 describe('formatNoticeDate', () => {
@@ -50,7 +51,7 @@ describe('buildCustomDomainNoticeMail', () => {
   it('ending, beide Sprachen: Betreff und Datum', () => {
     const de = buildCustomDomainNoticeMail({ ...BASE, kind: 'ending', locale: 'de' })
     expect(de.subject).toBe('In drei Tagen schalten wir surfclub.de ab')
-    expect(de.text).toContain('am 30. November 2026 schalten wir deine Domain surfclub.de ab')
+    expect(de.text).toContain('Am 30. November 2026 schalten wir deine Domain surfclub.de ab')
     expect(de.text).toContain('https://surfclub.pukalani.app/de/dashboard/community/plan')
     const en = buildCustomDomainNoticeMail({ ...BASE, kind: 'ending', locale: 'en' })
     expect(en.subject).toBe('We will switch off surfclub.de in three days')
@@ -69,7 +70,7 @@ describe('buildCustomDomainNoticeMail', () => {
 
   it('ohne Namen steht der Host; keine spitzen Klammern im Text', () => {
     const mail = buildCustomDomainNoticeMail({ ...BASE, name: '', kind: 'start', locale: 'de' })
-    expect(mail.text).toContain('der Pro-Plan von surfclub.pukalani.app')
+    expect(mail.text).toContain('Der Pro-Plan von surfclub.pukalani.app')
     for (const kind of ['start', 'ending'] as const) {
       for (const locale of ['de', 'en']) {
         const { subject, text } = buildCustomDomainNoticeMail({ ...BASE, kind, locale })
@@ -90,5 +91,17 @@ describe('customDomainNoticeBellBody', () => {
       .toContain('bis zum 30. November 2026')
     expect(customDomainNoticeBellBody({ kind: 'ending', locale: 'en', domain: 'surfclub.de', graceEndsAt: BASE.graceEndsAt }))
       .toBe('On November 30, 2026 the domain surfclub.de will be switched off. With the Pro plan it stays active.')
+  })
+})
+
+describe('Rahmen (Q06)', () => {
+  it('Anrede mit dem Namen des Empfängers, Schluss mit der Marke — de + en', () => {
+    const de = buildCustomDomainNoticeMail({ ...BASE, recipientName: 'Lea', kind: 'start', locale: 'de' })
+    expect(de.text.startsWith('Hallo Lea,\n\nDer Pro-Plan')).toBe(true)
+    expect(de.text).toContain('Viele Grüße\nTestmarke')
+    const en = buildCustomDomainNoticeMail({ ...BASE, kind: 'ending', locale: 'en' })
+    expect(en.text.startsWith('Hi,\n\nOn ')).toBe(true)
+    expect(en.text).toContain('Best regards\nTestmarke')
+    expect(en.text).not.toContain('Hello,')
   })
 })

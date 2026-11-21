@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { frameMail } from '../../../../packages/core/shared/mailFrame'
+import { resolveMailBrand } from '../../../../packages/core/server/utils/mailBrand'
 
 const contactSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -48,7 +50,13 @@ export default defineEventHandler(async (event) => {
   const sent = await sendMail(event, {
     to: config.contactEmail,
     subject: `Enquiry via maui.photos — ${body.name}`,
-    text: `${body.message}\n\n— ${body.name} <${body.email}>`,
+    // Rahmen (Q06): Betreiber-Mail in der festen Sprache dieser Site
+    // (englisch), ohne Namen in der Anrede.
+    text: frameMail({
+      brand: resolveMailBrand(event),
+      locale: 'en',
+      lines: [body.message, `— ${body.name} <${body.email}>`],
+    }).text,
   }).catch((error: unknown) => {
     // Vorher still zu 502. Geloggt werden nur KENNUNGEN des Fehlers (Name,
     // SMTP-Code, Antwort-Code) — keine Empfänger-Adresse, kein Nachrichtentext

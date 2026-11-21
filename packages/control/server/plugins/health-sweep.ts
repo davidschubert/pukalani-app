@@ -1,5 +1,7 @@
 import { runHealthSweep } from '../utils/websiteHealth'
 import { softFail } from '../../../core/server/utils/softFail'
+import { frameMail } from '../../../core/shared/mailFrame'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * Health-Automatik (M6-T4, L6-Grundstein): prüft alle registrierten Sites
@@ -36,15 +38,16 @@ export default defineNitroPlugin(() => {
         const sent = await sendMail(undefined, {
           to: config.alertEmail,
           subject: `[control] Site-Health: ${result.changed.join(', ')}`,
-          text: [
-            `Der Health-Sweep hat Statuswechsel festgestellt:`,
-            ...result.changed.map(entry => `  · ${entry}`),
-            '',
-            `Aktuell nicht ok: ${result.notOk.join(', ') || 'alles ok'}`,
-            `Geprüfte Sites: ${result.checked}`,
-            '',
-            'Details im Control: /dashboard/websites',
-          ].join('\n'),
+          // Rahmen (Q06): Betreiber-Mail auf Deutsch, ohne Namen; Lauf ohne Event.
+          text: frameMail({
+            brand: resolveMailBrand(),
+            locale: 'de',
+            lines: [
+              [`Der Health-Sweep hat Statuswechsel festgestellt:`, ...result.changed.map(entry => `  · ${entry}`)].join('\n'),
+              `Aktuell nicht ok: ${result.notOk.join(', ') || 'alles ok'}\nGeprüfte Sites: ${result.checked}`,
+              'Details im Control: /dashboard/websites',
+            ],
+          }).text,
         }).catch(softFail('control:plugins/health-sweep:sendMail', false))
         if (!sent) {
           console.warn('[control] Health-Alert konnte nicht gemailt werden (SMTP konfiguriert?)')

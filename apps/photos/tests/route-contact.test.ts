@@ -58,6 +58,7 @@ beforeEach(() => {
   }))
   vi.stubGlobal('$fetch', siteverify)
   vi.stubGlobal('requireTurnstile', requireTurnstile)
+  vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Testmarke' } } }))
   vi.stubGlobal('sendMail', async (_event: unknown, mail: { to: string, subject: string, text: string }) => {
     mails.push(mail)
     return true
@@ -73,7 +74,7 @@ let nextIp = 0
 async function post(body: unknown, ip = `198.51.100.${++nextIp}`): Promise<{ status: number, result?: unknown, error?: ThrownLike }> {
   const handler = (await load()).default as unknown as (event: unknown) => Promise<unknown>
   try {
-    return { status: 200, result: await handler({ body, ip }) }
+    return { status: 200, result: await handler({ body, ip, context: {} }) }
   }
   catch (thrown) {
     const error = thrown as ThrownLike
@@ -88,6 +89,9 @@ describe('POST /api/contact (öffentliches Formular)', () => {
     expect(run.result).toEqual({ ok: true })
     expect(mails).toHaveLength(1)
     expect(mails[0]?.to).toBe('inbox@example.test')
+    // Rahmen (Q06): englisch, ohne Namen, Schluss mit der Marke.
+    expect(mails[0]?.text.startsWith('Hi,\n\n')).toBe(true)
+    expect(mails[0]?.text).toContain('Best regards\nTestmarke')
   })
 
   it.each([

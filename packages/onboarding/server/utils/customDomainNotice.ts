@@ -5,6 +5,7 @@ import {
 } from '../../../control/shared/customDomainNotice'
 import { buildCustomDomainNoticeMail, customDomainNoticeBellBody } from '../../shared/customDomainNoticeMail'
 import { softFail } from '../../../core/server/utils/softFail'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * DIE ZWEI HINWEISE ZUR FRIST DER EIGENEN DOMAIN (BE-014) — geschrieben HIER,
@@ -127,6 +128,9 @@ export async function runCustomDomainNoticeSweep(now: number = Date.now()): Prom
             host: community.host,
             domain: community.domain,
             graceEndsAt: community.graceEndsAt,
+            // Lauf ohne Event (Q06): die Marke der App unterschreibt.
+            brand: resolveMailBrand(),
+            recipientName: recipient.name,
           })
           const sent = await sendMail(undefined, { to: recipient.email, subject: mail.subject, text: mail.text }).catch(softFail('onboarding:utils/customDomainNotice:sendMail', false))
           if (sent) result.mailed++

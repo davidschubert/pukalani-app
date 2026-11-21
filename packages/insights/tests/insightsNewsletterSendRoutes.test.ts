@@ -172,7 +172,7 @@ vi.stubGlobal('useRuntimeConfig', () => ({
   public: { appwriteDatabaseId: 'main', appwriteProjectId: 'branding', appUrl: 'https://branding.supply' },
 }))
 vi.stubGlobal('useAppConfig', () => ({
-  pukalani: { insights: { newsletter: { enabled: riegelOpen }, publicFormats: formats } },
+  pukalani: { brand: { name: 'Testmarke' }, insights: { newsletter: { enabled: riegelOpen }, publicFormats: formats } },
 }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
@@ -545,7 +545,8 @@ describe('Ein Beitrag, eine Mail', () => {
 
     expect(mails).toHaveLength(INSIGHTS_NEWSLETTER_BATCH + 1)
     for (const mail of mails) {
-      expect(mail.text.startsWith('Die erste Fassung.')).toBe(true)
+      // Über der Einleitung steht nur die Anrede des Rahmens (Q06).
+      expect(mail.text).toMatch(/^(Hallo|Hi),\n\nDie erste Fassung\./)
       expect(mail.text).not.toContain('Etwas ganz anderes.')
     }
   })

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { buildCommunityReadyMail, formatMailDate } from '../shared/communityReadyMail'
+import { resolveMailLocale } from '../../core/shared/mailFrame'
 
 const BASE = {
   siteName: 'Chorverein Wetzlar',
   host: 'chor-wetzlar.pukalani.app',
   accountHost: 'account.pukalani.app',
   trialEndsAt: '2026-08-26T09:15:00.000Z',
+  brand: 'Testmarke',
 }
 
 describe('formatMailDate', () => {
@@ -34,8 +36,19 @@ describe('buildCommunityReadyMail', () => {
     expect(mail.text).not.toContain('/de/dashboard')
     expect(mail.text).toContain('2026-08-26')
   })
-  it('unbekannte Sprache fällt auf Deutsch zurück (wie die Einladungs-Mail)', () => {
-    expect(buildCommunityReadyMail({ ...BASE, locale: 'fr' }).subject).toContain('Deine Community steht')
+  it('Sprach-Regel (Q06): Konto, sonst Wizard, sonst Englisch — kein Rückfall auf Deutsch mehr', () => {
+    expect(resolveMailLocale({ account: 'de', request: 'en' })).toBe('de')
+    expect(resolveMailLocale({ account: undefined, request: 'de' })).toBe('de')
+    expect(resolveMailLocale({ account: undefined, request: 'fr' })).toBe('en')
+    expect(resolveMailLocale({ account: undefined, request: null })).toBe('en')
+  })
+  it('Rahmen (Q06): Anrede mit Namen, Schluss mit der Marke — de + en', () => {
+    const de = buildCommunityReadyMail({ ...BASE, locale: 'de', name: 'Lea' })
+    expect(de.text.startsWith('Hallo Lea,\n\n')).toBe(true)
+    expect(de.text).toContain('Viele Grüße\nTestmarke')
+    const en = buildCommunityReadyMail({ ...BASE, locale: 'en' })
+    expect(en.text.startsWith('Hi,\n\n')).toBe(true)
+    expect(en.text).toContain('Best regards\nTestmarke')
   })
   it('ohne Testphase entfällt der Absatz — der Rest bleibt vollständig', () => {
     const mail = buildCommunityReadyMail({ ...BASE, trialEndsAt: null, locale: 'de' })
