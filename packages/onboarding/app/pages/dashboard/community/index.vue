@@ -127,7 +127,7 @@ const requestFetch = useRequestFetch()
 const { data: profile } = await useAsyncData(
   'community-profile',
   () => isTenantHost.value
-    ? requestFetch<{ name: string, description: string, locale?: string }>('/api/community/profile')
+    ? requestFetch<{ name: string, description: string, locale?: string, aiTraining?: boolean }>('/api/community/profile')
     : Promise.resolve(null),
   { watch: [isTenantHost] },
 )
@@ -137,6 +137,37 @@ watchEffect(() => {
   profileState.locale = resolvePrimaryLocale(profile.value?.locale)
 })
 
+/**
+ * KI-TRAINING (KC1): ein eigener Schalter, der SOFORT speichert — wie die
+ * Sichtbarkeit darunter. Er hält seinen Wert in einem eigenen Ref und fasst
+ * `profile` nicht an: das löste sonst den `watchEffect` oben aus und würfe
+ * ungespeicherte Änderungen an Name und Beschreibung weg. Mitgeschickt werden
+ * Name und Beschreibung im GESPEICHERTEN Stand (die Route verlangt den Namen).
+ */
+const aiTrainingValue = ref(false)
+watch(() => profile.value?.aiTraining, (next) => { aiTrainingValue.value = next === true }, { immediate: true })
+const savingAiTraining = ref(false)
+async function saveAiTraining(next: boolean) {
+  const stored = profile.value
+  if (!stored || savingAiTraining.value) return
+  savingAiTraining.value = true
+  try {
+    const result = await $fetch<{ name: string, description: string, locale?: string, aiTraining?: boolean }>('/api/community/profile', {
+      method: 'PATCH',
+      body: { name: stored.name, description: stored.description, aiTraining: next },
+    })
+    aiTrainingValue.value = result.aiTraining === true
+    toast.add({ title: t(aiTrainingValue.value ? 'dashboard.community.aiTraining.on' : 'dashboard.community.aiTraining.off'), color: 'success' })
+  }
+  catch {
+    aiTrainingValue.value = stored.aiTraining === true
+    toast.add({ title: t('dashboard.community.saveFailed'), description: t('dashboard.community.saveFailedDesc'), color: 'error' })
+  }
+  finally {
+    savingAiTraining.value = false
+  }
+}
+
 const savingProfile = ref(false)
 async function saveProfile() {
   savingProfile.value = true
@@ -144,7 +175,7 @@ async function saveProfile() {
     // Die Hauptsprache reist nur mit, wenn sie GEÄNDERT wurde: wer nur den
     // Namen ändert, soll aus „keine eigene Wahl" nicht still eine Wahl machen.
     const localeChanged = profileState.locale !== resolvePrimaryLocale(profile.value?.locale)
-    const result = await $fetch<{ name: string, description: string, locale?: string }>('/api/community/profile', {
+    const result = await $fetch<{ name: string, description: string, locale?: string, aiTraining?: boolean }>('/api/community/profile', {
       method: 'PATCH',
       body: {
         name: profileState.name,
@@ -637,6 +668,26 @@ async function deleteCommunity() {
         @update:model-value="(next) => saveAudience(next as 'members' | 'public')"
       />
       <p class="text-sm text-muted">{{ t('dashboard.community.audience.searchNote') }}</p>
+    </div>
+
+    <!-- KI-Training (KC1): nur bei öffentlicher Sichtbarkeit — „nur für
+         Mitglieder" sperrt in der robots.txt ohnehin jeden Crawler aus. -->
+    <div v-if="isTenantHost && audienceValue === 'public' && profile" class="flex items-start justify-between gap-4 border-t border-default pt-4" data-community-ai-training>
+      <div class="flex items-start gap-3">
+        <UIcon name="i-ph-robot" class="mt-0.5 size-5 shrink-0 text-muted" />
+        <div>
+          <p id="community-ai-training-title" class="text-sm font-medium">{{ t('dashboard.community.aiTraining.title') }}</p>
+          <p class="text-sm text-muted">{{ t('dashboard.community.aiTraining.description') }}</p>
+          <p class="mt-1 text-sm text-muted">{{ t('dashboard.community.aiTraining.note') }}</p>
+        </div>
+      </div>
+      <USwitch
+        v-model="aiTrainingValue"
+        :disabled="savingAiTraining"
+        aria-labelledby="community-ai-training-title"
+        data-community-ai-training-switch
+        @update:model-value="(next) => saveAiTraining(next === true)"
+      />
     </div>
   </UPageCard>
 

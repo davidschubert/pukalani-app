@@ -97,6 +97,14 @@ export interface CommunitySettings {
    * Vorsatz). Der Resolver lässt nur bekannte Codes durch.
    */
   primaryLocale?: string
+  /**
+   * KI-TRAINING ERLAUBT (KC1, Bahn 2): der Owner hat im Dashboard gewählt,
+   * dass KI-Crawler die öffentlichen Inhalte zum TRAINIEREN nutzen dürfen.
+   * Quelle: `aiTraining` im `profile`-JSON. Nur `true` reist mit; FEHLT heißt
+   * die Vorgabe „nein" (`core/shared/aiCrawlers.ts`, Art `community`). Wirkt
+   * nur auf die robots.txt — eine Bitte an Crawler, kein Schloss.
+   */
+  aiTraining?: true
 }
 
 /**

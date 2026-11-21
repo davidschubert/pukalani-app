@@ -87,7 +87,12 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
   const profile = parseSiteProfile(tenant.profile)
   const description = body.description ?? ''
   // Hauptsprache (Q10): nur ein mitgeschicktes Feld ändert sie.
-  const nextProfile = serializeSiteProfile({ ...profile, description, ...(body.locale ? { locale: body.locale } : {}) })
+  const next = { ...profile, description, ...(body.locale ? { locale: body.locale } : {}) }
+  // KI-Training (KC1): nur ein mitgeschicktes Feld ändert die Wahl; `false`
+  // nimmt den Schlüssel heraus (die Vorgabe ist „nein", gespeichert wird nur „ja").
+  if (body.aiTraining === true) next.aiTraining = true
+  if (body.aiTraining === false) delete next.aiTraining
+  const nextProfile = serializeSiteProfile(next)
 
   const row = await admin.tablesDB.updateRow<TenantRow>({
     databaseId,
@@ -104,6 +109,7 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
     // in jede Log-Zeile.
     name: row.name,
     descriptionLength: description.length,
+    ...(body.aiTraining !== undefined ? { aiTraining: body.aiTraining } : {}),
   })
 
   return {
@@ -111,5 +117,6 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
     name: row.name ?? '',
     description: parseSiteProfile(row.profile).description ?? '',
     locale: parseSiteProfile(row.profile).locale ?? '',
+    aiTraining: parseSiteProfile(row.profile).aiTraining === true,
   }
 })

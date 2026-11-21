@@ -272,6 +272,12 @@ export interface SiteProfile {
    * core/shared/primaryLocale.ts).
    */
   locale?: PrimaryLocale
+  /**
+   * KI-TRAINING ERLAUBT (KC1): die Wahl des Owners für die robots.txt seiner
+   * Community. Gespeichert wird nur `true` — fehlt das Feld, gilt die Vorgabe
+   * „nein" (`core/shared/aiCrawlers.ts`). Additiv, ohne Migration (wie `locale`).
+   */
+  aiTraining?: true
 }
 
 /** PURE: Profil-JSON defensiv lesen — fremde/kaputte Werte fallen weg statt
@@ -302,6 +308,8 @@ export function parseSiteProfile(raw: string | undefined): SiteProfile {
     }
     const locale = parsePrimaryLocale(value.locale)
     if (locale) profile.locale = locale
+    // Nur ein echtes `true` zählt — alles andere ist die Vorgabe „nein".
+    if (value.aiTraining === true) profile.aiTraining = true
     return profile
   }
   catch {

@@ -150,7 +150,18 @@ export function checkRobots(entry, response) {
  */
 export function checkAiCrawlers(entry, response) {
   if (!entry.ai || !response || response.status !== 200) return []
-  return aiCrawlerRobotsProblems(response.body, aiCrawlerPolicy(entry.ai)).map(problem => `ki: ${problem}`)
+  const problems = aiCrawlerRobotsProblems(response.body, aiCrawlerPolicy(entry.ai))
+  /**
+   * DER OWNER WÄHLT DAS TRAINING (KC1): eine Community darf es im Dashboard
+   * erlauben. Die Vorgabe („nein") wird zuerst geprüft; passt sie nicht, ist
+   * auch die andere Wahl desselben Owners regelkonform — rot wird nur, was
+   * zu KEINER der beiden passt (fehlender Crawler, falsche Suche-Zeile …).
+   */
+  if (problems.length > 0 && entry.ai === 'community'
+    && aiCrawlerRobotsProblems(response.body, aiCrawlerPolicy('community', { training: true })).length === 0) {
+    return []
+  }
+  return problems.map(problem => `ki: ${problem}`)
 }
 
 /** Prüfung 2, zweiter Teil: die genannte Sitemap. */
