@@ -19,6 +19,8 @@ import {
   designProfileList,
   designSave,
   designStepDetail,
+  WORKSHOP_CONFIRM_SLOT,
+  WORKSHOP_CONFIRM_VALUE,
   WORKSHOP_FIRST_DRAFT,
   WORKSHOP_FOREIGN_SLOT,
   WORKSHOP_FOREIGN_STEP,
@@ -33,6 +35,7 @@ import {
   workshopMessages,
   workshopProfileDetail,
   workshopProfileList,
+  workshopSave,
   workshopSiteAnalyzed,
   workshopStepDetail,
   workshopVersions,
@@ -80,6 +83,11 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
       advisorInfo: Record<'open' | 'desc', string>
       answerSlot: string
       slotActionName: string
+      reviseSlot: string
+      reviseApply: string
+      reviseDiscard: string
+      confirmQuestion: string
+      confirmSlot: string
       bar: Record<'showNav' | 'hideNav' | 'showLog' | 'hideLog', string>
       log: Record<'overall', string>
       versions: Record<'open' | 'title' | 'use' | 'first', string>
@@ -123,6 +131,10 @@ registerEndpoint(`${base}/steps/${WORKSHOP_FOREIGN_STEP}`, () => {
 registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}/generations`, (event) => {
   calls.versions += 1
   return workshopVersions(String(getQuery(event).slotId ?? ''))
+})
+registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}`, {
+  method: 'PATCH',
+  handler: async event => workshopSave(await readBody(event)),
 })
 registerEndpoint(`${base}/messages`, event => workshopMessages(String(getQuery(event).session ?? '')))
 registerEndpoint(`${base}/analyze`, {
@@ -350,9 +362,12 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_OLDER_DRAFT)
 
     // Konflikt (409): beide Fassungen nebeneinander; „Serverfassung laden" löst ihn.
+    // Die Server-Fassung ist der VOLLE Stand des Kapitels (wie ein echter
+    // 409) — der Store übernimmt ihn beim Auflösen ganz.
     store.conflict = {
       revision: 2,
       slots: {
+        ...workshopStepDetail().slots,
         [WORKSHOP_VERSIONS_SLOT]: {
           firstDraft: WORKSHOP_FIRST_DRAFT,
           latestDraft: WORKSHOP_FIRST_DRAFT,
@@ -375,6 +390,50 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     expect(unexpected(warn)).toEqual([])
     expect(unexpected(error)).toEqual([])
   })
+  it('Bestätigungs-Modul: korrigieren, verwerfen, übernehmen (WS1 c)', async () => {
+    designProfileListed.on = false
+    const wrapper = await mountSuspended(Shell, {
+      route: `/brand/${WORKSHOP_PROFILE_ID}/${WORKSHOP_STEP_KEY}?s=${WORKSHOP_CONFIRM_SLOT}`,
+    })
+    await flushPromises()
+    const ws = de.brand.workspace
+    const store = useBrandWorkspaceStore()
+    const frame = () => wrapper.find('main .bw-draft-frame')
+    const stageButton = (label: string) => {
+      const button = wrapper.find('main').findAll('button.bw-confirm').find(entry => entry.text().trim() === label)
+      if (!button) throw new Error(`Knopf „${label}" fehlt auf der Bühne`)
+      return button
+    }
+
+    // Die Karte: Feld-Name, Wert, Abschluss-Frage, „Korrigieren" und „Bestätigen".
+    expect(frame().text()).toContain(fieldLabel(WORKSHOP_CONFIRM_SLOT))
+    expect(frame().text()).toContain(WORKSHOP_CONFIRM_VALUE)
+    expect(wrapper.find('main').text()).toContain(ws.confirmQuestion)
+    expect(stageButton(ws.confirmSlot).exists()).toBe(true)
+
+    // Korrigieren öffnet das Feld; Verwerfen stellt den alten Wert wieder her.
+    await stageButton(ws.reviseSlot).trigger('click')
+    expect(frame().find('textarea').exists()).toBe(true)
+    await frame().find('textarea').setValue('Etwas anderes.')
+    expect(store.slotValue(WORKSHOP_CONFIRM_SLOT)).toBe('Etwas anderes.')
+    await stageButton(ws.reviseDiscard).trigger('click')
+    await flushPromises()
+    expect(store.slotValue(WORKSHOP_CONFIRM_SLOT)).toBe(WORKSHOP_CONFIRM_VALUE)
+    expect(frame().find('textarea').exists()).toBe(false)
+
+    // Korrigieren und übernehmen: der neue Wert bleibt, das Feld schließt.
+    await stageButton(ws.reviseSlot).trigger('click')
+    await frame().find('textarea').setValue('Wir hören zu und fragen nach.')
+    await stageButton(ws.reviseApply).trigger('click')
+    expect(frame().find('textarea').exists()).toBe(false)
+    expect(store.slotValue(WORKSHOP_CONFIRM_SLOT)).toBe('Wir hören zu und fragen nach.')
+    expect(frame().text()).toContain('Wir hören zu und fragen nach.')
+
+    expect(calls.ai).toBe(0)
+    expect(unexpected(warn)).toEqual([])
+    expect(unexpected(error)).toEqual([])
+  })
+
   it('Farbwelt: das Werkzeug legt seine Werte selbst vor, eine Wahl geht in den Store (WS1 d)', async () => {
     designProfileListed.on = true
     const wrapper = await mountSuspended(Shell, { route: `/brand/${DESIGN_PROFILE_ID}/${DESIGN_STEP_KEY}` })

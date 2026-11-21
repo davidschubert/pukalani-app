@@ -102,6 +102,10 @@ export function workshopProfileList(): BrandProfileListResponse {
  * auf der Bühne „Frühere Fassungen" (`showVersions` = erzeugbar UND Historie).
  * Der Test öffnet sie über die Adresse (`?s=a.category`); bereit ist sie, weil der Startbogen eine Branche nennt.
  */
+/** Eine beantwortete Frage, die auf ihre Bestätigung wartet. */
+export const WORKSHOP_CONFIRM_SLOT = 'a.oneThing'
+export const WORKSHOP_CONFIRM_VALUE = 'Wir hören zuerst zu.'
+
 export const WORKSHOP_VERSIONS_SLOT = 'a.category'
 export const WORKSHOP_FIRST_DRAFT = 'Markenberatung für kleine Firmen'
 export const WORKSHOP_OLDER_DRAFT = 'Design-Studio'
@@ -127,6 +131,15 @@ export function workshopStepDetail(): BrandStepDetailResponse {
   // hinein) und trägt ihre erste Fassung.
   sessions[WORKSHOP_VERSIONS_SLOT] = { ...sessions[WORKSHOP_VERSIONS_SLOT]!, state: 'open' }
   const slots: BrandStepDetailResponse['slots'] = {
+    // Eine beantwortete, noch nicht bestätigte Frage: die Bühne zeigt für sie
+    // das Bestätigungs-Modul (`?s=a.oneThing`).
+    [WORKSHOP_CONFIRM_SLOT]: {
+      firstDraft: WORKSHOP_CONFIRM_VALUE,
+      latestDraft: WORKSHOP_CONFIRM_VALUE,
+      confirmed: null,
+      confidence: null,
+      updatedAt: NOW,
+    },
     [WORKSHOP_VERSIONS_SLOT]: {
       firstDraft: WORKSHOP_FIRST_DRAFT,
       latestDraft: WORKSHOP_FIRST_DRAFT,
@@ -326,4 +339,14 @@ export function designSave(body: { revision: number, slots: Record<string, { val
 export function designMessages(sessionKey: string): BrandMessagesResponse {
   const response = workshopMessages(sessionKey)
   return { ...response, messages: response.messages.map(message => ({ ...message, stepKey: DESIGN_STEP_KEY })) }
+}
+
+/** Der gestellte Autosave des Kontext-Kapitels (`PATCH …/steps/context`): meldet den Stand zurück. */
+export function workshopSave(body: { revision: number, slots: Record<string, { value?: string, confirmed?: boolean }> }): BrandStepSaveResponse {
+  const slots: Record<string, BrandSlotView> = { ...workshopStepDetail().slots }
+  for (const [slotId, patch] of Object.entries(body.slots ?? {})) {
+    const value = patch.value ?? slots[slotId]?.latestDraft ?? ''
+    slots[slotId] = { firstDraft: slots[slotId]?.firstDraft ?? value, latestDraft: value, confirmed: patch.confirmed ? value : null, confidence: null, updatedAt: NOW }
+  }
+  return { revision: body.revision + 1, slots }
 }
