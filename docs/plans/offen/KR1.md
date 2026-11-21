@@ -104,7 +104,8 @@ Wegwerf-Konto bleibt im privaten Fenster angemeldet.
     (Probe 9), dann als Owner auf diesen Kommentar antworten. *Sehen:* das
     entfernte Konto bekommt KEINE Mail, der Kommentar zeigt „Ehemaliges
     Mitglied".
-11. **Hauptsprache der Community** ([SU1 a](SU1.md)) · als Owner: Dashboard →
+11. **Hauptsprache der Community** (Q10; die Demo-Community bleibt englisch,
+    COMPLETE „SU1 (a)") · als Owner einer WEGWERF-Community: Dashboard →
     „Name und Beschreibung" → Hauptsprache wählen (Deutsch) → Speichern.
     *Sehen:* gespeichert, kein Fehler; Seitenquelltext einer Diskussion
     enthält `rel="canonical"` mit der Adresse ohne `/en`. Wortlaut kann
