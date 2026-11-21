@@ -20,6 +20,7 @@ import {
   WORKSHOP_OLDER_DRAFT,
   WORKSHOP_PROFILE_ID,
   WORKSHOP_STEP_KEY,
+  WORKSHOP_TITLE,
   WORKSHOP_VERSIONS_SLOT,
   workshopForeignStepDetail,
   workshopMessages,
@@ -63,6 +64,7 @@ import {
 const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 'utf8')) as {
   brand: {
     steps: Record<string, string>
+    brands: { card: Record<'remaining', string> }
     labels: Record<string, unknown>
     workspace: {
       site: Record<'never' | 'start' | 'consent' | 'confirm' | 'done', string>
@@ -70,6 +72,8 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
       advisorInfo: Record<'open' | 'desc', string>
       answerSlot: string
       slotActionName: string
+      bar: Record<'showNav' | 'hideNav' | 'showLog' | 'hideLog', string>
+      log: Record<'overall', string>
       versions: Record<'open' | 'title' | 'use' | 'first', string>
       conflict: Record<'title' | 'mineLabel' | 'serverLabel' | 'loadServer', string>
     }
@@ -241,6 +245,41 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     await answer.trigger('click')
     await flushPromises()
     await vi.waitFor(() => expect(useRouter().currentRoute.value.query.s).toBe('a.customerPraise'))
+
+    // 5. Leiste, Balken, Fortschritt (WS1 g): der Gesamtfortschritt unten im
+    // Log, die eigene Marke in der Leiste, eine Session der Leiste führt in
+    // die Adresse, und beide Spalten lassen sich über den Balken einklappen.
+    const bar = de.brand.workspace.bar
+    expect(wrapper.text()).toContain(de.brand.workspace.log.overall)
+    expect(wrapper.text()).toContain(de.brand.brands.card.remaining.replace('{minutes}', '45'))
+    expect(wrapper.find('nav[aria-label="Fortschritt"]').text()).toContain(WORKSHOP_TITLE)
+    const complaints = fieldLabel('a.complaints')!
+    const railEntry = wrapper.find('nav[aria-label="Fortschritt"]').findAll('button')
+      .find(entry => entry.text().trim().startsWith(complaints))
+    expect(railEntry).toBeDefined()
+    await railEntry!.trigger('click')
+    await vi.waitFor(() => expect(useRouter().currentRoute.value.query.s).toBe('a.complaints'))
+    // Die offene Session trägt in der Leiste `aria-current` — genau eine.
+    await vi.waitFor(() => {
+      const current = wrapper.find('nav[aria-label="Fortschritt"]').findAll('button[aria-current="true"]')
+      expect(current.map(entry => entry.text().trim().startsWith(complaints))).toEqual([true])
+    })
+    // Der Schalter im Balken trägt `aria-expanded`; der Schliess-Knopf des
+    // mobilen Overlays heißt genauso, hat es aber nicht.
+    const navToggle = () => wrapper.find(`button[aria-expanded][aria-label="${bar.hideNav}"], button[aria-expanded][aria-label="${bar.showNav}"]`)
+    expect(navToggle().attributes('aria-label')).toBe(bar.hideNav)
+    expect(navToggle().attributes('aria-expanded')).toBe('true')
+    await navToggle().trigger('click')
+    expect(navToggle().attributes('aria-label')).toBe(bar.showNav)
+    expect(navToggle().attributes('aria-expanded')).toBe('false')
+    await navToggle().trigger('click')
+    expect(navToggle().attributes('aria-expanded')).toBe('true')
+    const logToggle = () => wrapper.find(`button[aria-label="${bar.hideLog}"], button[aria-label="${bar.showLog}"]`)
+    expect(logToggle().attributes('aria-label')).toBe(bar.hideLog)
+    await logToggle().trigger('click')
+    expect(logToggle().attributes('aria-label')).toBe(bar.showLog)
+    await logToggle().trigger('click')
+    expect(logToggle().attributes('aria-label')).toBe(bar.hideLog)
 
     // 1. ohne Fehler, ohne Vue-Warnung, ohne KI
     expect(calls.ai).toBe(0)
