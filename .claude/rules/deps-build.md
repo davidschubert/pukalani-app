@@ -39,6 +39,10 @@ paths:
   den Kontext-Typ.
 
 ### Typen
+- ABRUF, DER NUR IM BROWSER LÄUFT (`server: false`) ⇒ „lädt" über
+  `isFetchLoading(status)` (`packages/core/app/utils/fetchLoading.ts`), nie
+  `status === 'pending'` allein: auf dem Server ist der Zustand `idle`, sonst
+  zeichnen Server und Browser verschiedene Seiten (Q15).
 - NITROS ROUTEN-TYPISIERUNG IST AUS (Davids Entscheidung, TS2589):
   `packages/core/nuxt.config.ts` leert `types.routes` im `types:extend`-Hook —
   `$fetch('/api/x')` liefert `unknown`, und JEDER gebundene `$fetch`/`useFetch`

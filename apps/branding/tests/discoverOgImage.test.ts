@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { BRAND_PALETTES } from '../../../packages/brand/shared/brandPalette'
 import {
@@ -5,6 +7,7 @@ import {
   DISCOVER_OG_HEIGHT,
   DISCOVER_OG_WIDTH,
   DISCOVER_OG_WORDMARK,
+  DISCOVER_OG_WORDMARKS,
   discoverOgCacheKey,
   discoverOgColorAt,
   discoverOgGradient,
@@ -160,8 +163,20 @@ describe('Discover-OG: das Bild', () => {
     expect(mit.equals(ohne)).toBe(false)
   })
 
-  it('kennt jedes Zeichen der Herkunftszeile — auch den Mittelpunkt', () => {
-    for (const ch of DISCOVER_OG_WORDMARK) {
+  it('trägt je Sprache den Titel der Seite (brand.nav.discover)', () => {
+    for (const lang of ['en', 'de'] as const) {
+      const file = JSON.parse(readFileSync(join(__dirname, `../../../packages/brand/i18n/locales/${lang}.json`), 'utf8'))
+      expect(DISCOVER_OG_WORDMARKS[lang]).toBe(`${file.brand.nav.discover} · branding.supply`)
+    }
+  })
+
+  it('Deutsch hat einen eigenen Ablage-Namen', () => {
+    expect(discoverOgCacheKey('a-b', 'x', 'de')).not.toBe(discoverOgCacheKey('a-b', 'x'))
+    expect(discoverOgCacheKey('a-b', 'x', 'en')).toBe(discoverOgCacheKey('a-b', 'x'))
+  })
+
+  it('kennt jedes Zeichen der Herkunftszeilen — auch den Mittelpunkt', () => {
+    for (const ch of Object.values(DISCOVER_OG_WORDMARKS).join('')) {
       expect(BRAND_CARD_FONT.glyphs[ch], `Zeichen ${JSON.stringify(ch)}`).toBeDefined()
     }
   })

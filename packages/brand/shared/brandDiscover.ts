@@ -419,9 +419,12 @@ const DISCOVER_OG_SLUG = /^[a-z0-9][a-z0-9-]{0,159}$/
  * '' heisst „kein Bild": ein Slug, der nicht wie ein Slug aussieht, bekommt
  * keinen Pfad statt eines escapten Sonderfalls.
  */
-export function brandDiscoverOgPath(slug: string): string {
+export function brandDiscoverOgPath(slug: string, locale?: string): string {
   const value = String(slug ?? '').trim().toLowerCase()
-  return DISCOVER_OG_SLUG.test(value) ? `/og/discover/${value}.png` : ''
+  if (!DISCOVER_OG_SLUG.test(value)) return ''
+  // Die Herkunftszeile im Bild folgt der Sprache der Seite; Englisch bleibt
+  // die Adresse ohne Zusatz (bestehende Links und Caches bleiben gültig).
+  return `/og/discover/${value}.png${locale === 'de' ? '?l=de' : ''}`
 }
 
 // ── Zwei Zeilen aus dem Fundament ──────────────────────────────────────────
