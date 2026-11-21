@@ -1403,6 +1403,56 @@ weiter unten ausdrücklich, warum er bleibt.
 
 ---
 
+### N23 — Zwei kleine Updates nach Ablauf der Frist: Vitest 5.1.1 und `@vercel/nft` 1.11.7 (AR1 e, Issues 359 und 356) ✅ 2026-11-21
+
+**Was.** Die zwei Updates aus „N19", die am 2026-11-20 noch unter der
+Drei-Tage-Frist lagen:
+
+| Issue | Ergebnis |
+| --- | --- |
+| 359 Vitest | 5.1.0 → 5.1.1 (Katalog `^5.1.1`; `@vitest/mocker` und `@vitest/spy` ziehen mit) |
+| 356 `@vercel/nft` | 1.11.2 → 1.11.7 (nur im Lockfile, kommt über `nitropack`; kein Pin) |
+
+`@vercel/nft` 1.11.9, 1.11.10 und 1.11.11 lagen noch unter der Frist (über
+ihr ab dem 2026-11-22 20:13, 2026-11-22 20:25 und 2026-11-23 20:54 UTC) und
+blieben draußen. Die Issues 373 (MariaDB-Image) und 374 (minimatch 10 über
+`archiver`) sind unverändert offen: `archiver` 8.0.0 und `nitropack` 2.13.6
+sind weiter die neuesten Ausgaben.
+
+**Wie.** Vitest über den Katalog. `@vercel/nft` wie in „N19": für EINEN Lauf
+`'@vercel/nft': 1.11.7` unter `overrides`, Lockfile auflösen, den Eintrag
+entfernen, noch einmal auflösen. Jeder Lauf mit
+`--config.minimumReleaseAge=4320`. Der Diff des Lockfiles enthält nur Zeilen
+dieser Pakete.
+
+**Beweis.**
+- Aufgelöst und per `node -p` gelesen: `vitest` 5.1.1, `@vercel/nft` 1.11.7.
+- `pnpm test`, `pnpm check` und `pnpm typecheck` lokal grün. Ein geänderter
+  Test im Watch-Modus lief von selbst neu (20 → 21 Proben).
+- `apps/platform` vor und nach dem Heben gebaut und `.output/server` Datei
+  für Datei verglichen (SHA-256): beide Male 2768 Dateien mit zusammen
+  40.777.524 Bytes, alle 1331 Dateien unter `node_modules` gleich. Verschieden
+  sind sieben Dateien, die sich bei jedem Build ändern (Zeitstempel und der
+  Name einer Style-Datei), und eine Zeile in `.output/server/package.json`
+  (siehe „Gelernt"). Die gebaute App startet und `/api/health` antwortet; ohne
+  Zugangsdaten lehnt sie alles andere wie vorgesehen mit 503 ab, eine Seite
+  wurde also nicht gerendert.
+
+**Gelernt:** (1) **Die `package.json` in der Server-Ausgabe ist ein Etikett,
+kein Inhalt.** Liegt ein Paket in zwei Versionen im Baum
+(`unist-util-visit-parents` 6.0.2 und 6.1.0), nennt die Liste nur eine davon —
+und welche, wechselte mit der neuen Ausgabe des Tracers, während die Dateien
+auf der Platte Byte für Byte gleich blieben. Wer zwei Builds vergleicht,
+vergleicht die Dateien, nicht diese Liste. (2) **Eine Frist gilt je Ausgabe,
+nicht je Paket.** Am Tag des Hebens gab es drei neuere Ausgaben als das Ziel;
+der Schalter `minimumReleaseAge` und der genaue Eintrag für einen Lauf halten
+sie draußen, ein Caret allein hätte es nicht getan. (3) Der erste Lauf von
+`pnpm test` zeigte wieder eine Zeitüberschreitung in `verifyAuthMethods`
+(bekannt aus „N19": Zeit-Tests unter Last); einzeln und im zweiten ganzen Lauf
+war er grün.
+
+---
+
 ### N22 — Die tote Adresse `changelog.pukalani.app` ist bei Cloudflare gelöscht (AR1 a) ✅ 2026-11-21
 
 **Was geschah.** Der A-Eintrag `changelog` in der Zone `pukalani.app` zeigte
