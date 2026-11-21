@@ -24,9 +24,11 @@ Rauch-Test (gestellte Antworten in `tests/render/support/workshopFixtures.ts`).
   Kapitel-Sektionen und ihre Karten" 2284–2535. Eigene Komponente
   `BwWorkshopLog`; die Karten-Aktionen (bestätigen, korrigieren, beantworten)
   gehen als Ereignisse an die Seite zurück. Größter Gewinn für die Vorlage.
-- **(b) Die Modale** — Frühere Fassungen (Vorlage 5007–5074, Skript 2536–2582),
-  Konflikt 409 (Vorlage 5084–5119, Skript 3797–3843), Berater-Info
-  (Vorlage 4973–5006). Je eine Komponente; klare Grenzen, klein.
+- ~~**(b) Die Modale**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
+  `BwAdvisorInfoModal`, `BwVersionsModal` (holt die Historie selbst),
+  `BwConflictModal` (liest `store.conflict`). Seite 5.119 → 4.922 Zeilen.
+  Der Rauch-Test hat dafür einen zweiten Fall (Steckbrief, frühere Fassungen,
+  Konflikt).
 - **(c) Das Antwort-Modul im Zug** — Vorlage der Züge 4117–4613 und die aktive
   Karte 4614–4722; Skript „Das Antwort-Modul im Zug" 2007–2212 und „Die drei
   Richtungen" 2213–2283.

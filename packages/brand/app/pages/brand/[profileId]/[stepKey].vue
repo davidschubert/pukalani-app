@@ -70,11 +70,9 @@ import {
   brandDnaDimensionLabel,
 } from '../../../../shared/brandDesignDna'
 import {
-  BRAND_ADVISORS,
   BRAND_DESIGN_VOICE,
   BRAND_VOICE,
   type BrandAdvisorKey,
-  advisorIsVoice,
   colleagueForStep,
 } from '../../../../shared/brandAdvisors'
 import {
@@ -101,7 +99,6 @@ import {
 import type {
   BrandFindingDecisionResponse,
   BrandFindingView,
-  BrandGenerationVersionsResponse,
   BrandSessionAcceptResponse,
   BrandSessionCloseResponse,
   BrandSlotView,
@@ -327,21 +324,7 @@ const voice = computed(() => (
 const voiceRole = computed(() => t(`brand.advisors.${voice.value.key}.role`))
 const advisorInfoOpen = ref(false)
 
-/**
- * Das Team im Steckbrief — alle, die NICHT selbst sprechen, in
- * Registry-Reihenfolge.
- *
- * `advisorIsVoice` statt `key !== voice.key` (Brand Design D0): seit Frida
- * gibt es eine zweite Stimme, und ein Vergleich gegen George allein hätte sie
- * hier als „Kollegin hinter George" gelistet — sie ist aber die Beraterin von
- * Schicht 2, nicht seine Technik-Geberin.
- */
-const voiceTeam = computed(() => BRAND_ADVISORS
-  .filter(member => !advisorIsVoice(member.key))
-  .map(member => ({
-    key: member.key,
-    line: `${member.fullName} — ${t(`brand.advisors.${member.key}.role`)} · ${t(`brand.advisors.${member.key}.focus`)}`,
-  })))
+/** Das Team im Steckbrief rechnet `BwAdvisorInfoModal` selbst. */
 
 /**
  * DAS PHASEN-INTRO ist Anzeige, kein Verlauf: es erscheint, wenn das Kapitel
@@ -2536,48 +2519,23 @@ function chapterGlyph(chapter: LogChapter): { name: string, style: string } {
 // ── Frühere Fassungen ─────────────────────────────────────────────────────
 
 /**
- * DIE WIEDERHERSTELLUNG SCHREIBT IN DEN EDITOR, NICHT AUF DEN SERVER — eine
- * gewöhnliche lokale Eingabe über den NORMALEN Autosave, mit derselben
- * `revision`-Rechnung wie jeder Tastendruck.
+ * Den Dialog zeigt `BwVersionsModal`; er holt die Historie selbst. Hier liegt
+ * nur, WELCHES Feld offen ist, und die Wahl landet über den normalen Weg im
+ * Editor: Store + Autosave, dieselbe `revision`-Rechnung wie jeder Tastendruck.
  */
 const versionsSlot = ref<BrandSlot | null>(null)
-const versions = ref<BrandGenerationVersionsResponse | null>(null)
-const versionsLoading = ref(false)
-
-const versionsOpen = computed({
-  get: () => versionsSlot.value !== null,
-  set: (value: boolean) => { if (!value) versionsSlot.value = null },
-})
 
 /** Auf einem bestätigten Slot ist die Liste lesbar, die Übernahme nicht. */
 const versionsControls = computed<BrandSlotControls | null>(() =>
   (versionsSlot.value ? cardFor(versionsSlot.value.id)?.controls ?? null : null))
 
-async function openVersions(slot: BrandSlot): Promise<void> {
+function openVersions(slot: BrandSlot): void {
   versionsSlot.value = slot
-  versions.value = null
-  versionsLoading.value = true
-  try {
-    versions.value = await $fetch<BrandGenerationVersionsResponse>(
-      `/api/brand/profiles/${profileId.value}/steps/${routeStepKey.value}/generations`,
-      { query: { slotId: slot.id } },
-    )
-  }
-  catch {
-    // Eine unlesbare Historie ist kein Grund, die Werkstatt zu stören.
-    versions.value = null
-  }
-  finally {
-    versionsLoading.value = false
-  }
 }
 
-function useVersion(text: string): void {
-  const slot = versionsSlot.value
-  if (!slot) return
-  store.setSlotValue(slot.id, text)
+function useVersion(slotId: string, text: string): void {
+  store.setSlotValue(slotId, text)
   autosave.schedule()
-  versionsSlot.value = null
 }
 
 // ── Leiste, Balken, Fortschritt ───────────────────────────────────────────
@@ -3796,48 +3754,10 @@ async function afterRestart(target: { sessionKey: string }): Promise<void> {
 
 // ── 409 ───────────────────────────────────────────────────────────────────
 
-const conflictOpen = computed({
-  get: () => store.conflict !== null,
-  // Wegklicken löst den Konflikt NICHT auf — der Autosave bleibt angehalten,
-  // bis eine der beiden Aktionen gewählt wurde.
-  set: () => {},
-})
-
-interface ConflictRow { slotId: string, label: string, mine: string, server: string }
-
-const conflictRows = computed<ConflictRow[]>(() => {
-  const current = store.conflict
-  if (!current) return []
-  return Object.keys(store.localEdits)
-    .map((slotId) => {
-      const slot = slots.value.find(entry => entry.id === slotId)
-      return {
-        slotId,
-        label: slot ? slotLabel(slot) : slotId,
-        mine: store.slotValue(slotId),
-        server: brandSlotDisplayValue(current.slots[slotId]),
-      }
-    })
-    // Nur ECHTE Abweichungen (Davids „same same"-Fund).
-    .filter(row => row.mine !== row.server)
-})
-
-const copied = ref<'ok' | 'failed' | null>(null)
-
-async function copyMine(): Promise<void> {
-  const text = conflictRows.value.map(row => `${row.label}\n${row.mine}`).join('\n\n')
-  try {
-    await navigator.clipboard.writeText(text)
-    copied.value = 'ok'
-  }
-  catch {
-    copied.value = 'failed'
-  }
-}
-
-function loadServerVersion(): void {
-  copied.value = null
-  store.resolveWithServer()
+/** Die Beschriftung eines Felds im Konflikt-Dialog (`BwConflictModal`). */
+function conflictLabel(slotId: string): string {
+  const slot = slots.value.find(entry => entry.id === slotId)
+  return slot ? slotLabel(slot) : slotId
 }
 
 useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
@@ -4970,102 +4890,16 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
        Beschreibung, die Kolleginnen und Kollegen mit ihrem Schwerpunkt, eine
        typische Frage und Georges Arbeitsweise-Zeile. Alles lokalisiert — die
        `personal`-Zeile der Registry ist Prompt-/About-Ebene und deutsch-only. -->
-  <UModal v-model:open="advisorInfoOpen" :title="voice.fullName">
-    <template #content>
-      <div class="bw-root bw-overlay max-h-[85vh] overflow-y-auto p-7">
-        <div class="flex items-center gap-3">
-          <BwGeorgeAvatar :src="voice.avatar" :initial="voice.name.slice(0, 1)" :alt="voice.name" />
-          <span class="min-w-0 leading-tight">
-            <span class="block text-base font-medium">{{ voice.fullName }}</span>
-            <span class="bw-label block" style="color: var(--bw-muted)">{{ voiceRole }}</span>
-          </span>
-          <UButton
-            size="xs" color="neutral" variant="ghost" class="ml-auto rounded-full"
-            icon="i-ph-x" :aria-label="t('brand.common.close')" @click="advisorInfoOpen = false"
-          />
-        </div>
-        <p class="bw-doc-text mt-4">{{ t('brand.workspace.advisorInfo.desc') }}</p>
-        <ul class="mt-2 space-y-1">
-          <li
-            v-for="member in voiceTeam" :key="member.key"
-            class="flex gap-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)"
-          >
-            <span class="flex-none" style="color: var(--bw-line-strong)">—</span>{{ member.line }}
-          </li>
-        </ul>
-        <p class="bw-label mt-4" style="color: var(--bw-muted)">{{ t('brand.workspace.advisorInfo.asksTitle') }}</p>
-        <p class="mt-1 text-sm italic">{{ t('brand.workspace.advisorInfo.asks') }}</p>
-        <p class="bw-label mt-4 leading-relaxed" style="color: var(--bw-muted)">
-          {{ t('brand.workspace.advisorInfo.personal') }}
-        </p>
-      </div>
-    </template>
-  </UModal>
+  <BwAdvisorInfoModal v-model:open="advisorInfoOpen" :voice="voice" :role="voiceRole" />
 
-  <!-- Frühere Fassungen: Auswahl schreibt in den EDITOR, gespeichert wird über
-       den normalen Autosave (kein eigener Schreibweg — s. `useVersion`). -->
-  <UModal v-model:open="versionsOpen" :title="t('brand.workspace.versions.title')">
-    <template #content>
-      <div class="bw-root bw-overlay max-h-[85vh] overflow-y-auto p-8">
-        <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">
-          {{ versionsSlot ? slotLabel(versionsSlot) : '' }}
-        </p>
-        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">{{ t('brand.workspace.versions.title') }}</h2>
-        <p class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('brand.workspace.versions.description') }}</p>
-
-        <!-- Lesen ja, übernehmen nein — s. `versionsControls`. -->
-        <p v-if="versionsControls && !versionsControls.canRestoreVersion" class="bw-pending mt-3">
-          {{ t('brand.workspace.versions.confirmedLock') }}
-        </p>
-
-        <p v-if="versionsLoading" class="bw-pending mt-5">{{ t('brand.workspace.versions.loading') }}</p>
-
-        <template v-else>
-          <div v-for="item in versions?.items ?? []" :key="item.generationId" class="mt-5">
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <p class="bw-label" style="color: var(--bw-muted)">
-                {{ new Date(item.createdAt).toLocaleString(locale) }} · {{ item.model }} · {{ item.promptVersion }}
-              </p>
-              <UButton
-                size="xs" variant="outline" color="neutral" class="rounded-full"
-                :disabled="!item.draft || versionsControls?.canRestoreVersion === false"
-                :label="t('brand.workspace.versions.use')"
-                @click="useVersion(item.draft ?? '')"
-              />
-            </div>
-            <p v-if="item.draft" class="mt-1 whitespace-pre-wrap rounded-xl p-3 text-sm" style="background: var(--bw-surface)">{{ item.draft }}</p>
-            <!-- Ein Eintrag ohne Text ist dem Spalten-Deckel gewichen; seine
-                 Herkunft bleibt sichtbar, damit die Lücke erklärt ist. -->
-            <p v-else class="bw-pending mt-1">{{ t('brand.workspace.versions.dropped') }}</p>
-          </div>
-
-          <div v-if="versions?.firstDraft" class="mt-6 border-t pt-4" style="border-color: var(--bw-line)">
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <p class="bw-label" style="color: var(--bw-muted)">{{ t('brand.workspace.versions.first') }}</p>
-              <UButton
-                size="xs" variant="outline" color="neutral" class="rounded-full"
-                :disabled="versionsControls?.canRestoreVersion === false"
-                :label="t('brand.workspace.versions.use')"
-                @click="useVersion(versions.firstDraft ?? '')"
-              />
-            </div>
-            <p class="mt-1 whitespace-pre-wrap rounded-xl p-3 text-sm" style="background: var(--bw-surface)">{{ versions.firstDraft }}</p>
-          </div>
-
-          <p v-if="!versions?.items.length && !versions?.firstDraft" class="bw-pending mt-5">
-            {{ t('brand.workspace.versions.empty') }}
-          </p>
-        </template>
-
-        <div class="mt-6 flex justify-end">
-          <UButton
-            variant="ghost" color="neutral" class="rounded-full"
-            :label="t('brand.workspace.versions.close')" @click="versionsSlot = null"
-          />
-        </div>
-      </div>
-    </template>
-  </UModal>
+  <BwVersionsModal
+    v-model:slot="versionsSlot"
+    :profile-id="profileId"
+    :step-key="routeStepKey"
+    :label="versionsSlot ? slotLabel(versionsSlot) : ''"
+    :controls="versionsControls"
+    @use="text => versionsSlot && useVersion(versionsSlot.id, text)"
+  />
 
   <!-- 409: BEIDE Fassungen, nichts wird automatisch überschrieben (§3e). -->
   <!-- DER IMPACT-HINWEIS (§9) — EINE Instanz für alle drei Eingänge
@@ -5081,39 +4915,5 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
     @cancel="cancelImpact"
   />
 
-  <UModal v-model:open="conflictOpen" :title="t('brand.workspace.conflict.title')">
-    <template #content>
-      <div class="bw-root bw-overlay max-h-[85vh] overflow-y-auto p-8">
-        <p class="bw-label uppercase tracking-widest" style="color: var(--bw-stale)">{{ t('brand.workspace.sync.conflict') }}</p>
-        <h2 class="mt-1 text-2xl font-extralight leading-tight tracking-tight">{{ t('brand.workspace.conflict.title') }}</h2>
-        <p class="mt-3 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('brand.workspace.conflict.description') }}</p>
-
-        <div v-for="row in conflictRows" :key="row.slotId" class="mt-5">
-          <p class="bw-label" style="color: var(--bw-muted)">{{ row.label }}</p>
-          <div class="mt-2 grid gap-3 sm:grid-cols-2">
-            <div class="rounded-xl p-3" style="background: var(--bw-surface)">
-              <p class="bw-label" style="color: var(--bw-muted)">{{ t('brand.workspace.conflict.mineLabel') }}</p>
-              <p class="mt-1 whitespace-pre-wrap text-sm">{{ row.mine }}</p>
-            </div>
-            <div class="rounded-xl p-3" style="background: var(--bw-surface)">
-              <p class="bw-label" style="color: var(--bw-muted)">{{ t('brand.workspace.conflict.serverLabel') }}</p>
-              <p class="mt-1 whitespace-pre-wrap text-sm">{{ row.server }}</p>
-            </div>
-          </div>
-        </div>
-
-        <p v-if="copied" class="bw-label mt-4" style="color: var(--bw-muted)">
-          {{ copied === 'ok' ? t('brand.workspace.conflict.copied') : t('brand.workspace.conflict.copyFailed') }}
-        </p>
-
-        <div class="mt-6 flex flex-wrap justify-end gap-2">
-          <UButton
-            variant="outline" color="neutral" class="rounded-full"
-            :label="t('brand.workspace.conflict.copyMine')" @click="copyMine"
-          />
-          <UButton class="rounded-full" :label="t('brand.workspace.conflict.loadServer')" @click="loadServerVersion" />
-        </div>
-      </div>
-    </template>
-  </UModal>
+  <BwConflictModal :label-for="conflictLabel" />
 </template>

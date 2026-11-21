@@ -7,16 +7,22 @@ import { getQuery } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { NuxtLayout, NuxtPage, UApp } from '#components'
+import { useBrandWorkspaceStore } from '../../app/stores/brandWorkspace'
+import { BRAND_ADVISORS, BRAND_VOICE, advisorIsVoice } from '../../shared/brandAdvisors'
 import { slotsForStep } from '../../shared/slotRegistry'
 import {
+  WORKSHOP_FIRST_DRAFT,
   WORKSHOP_GEORGE_LINE,
+  WORKSHOP_OLDER_DRAFT,
   WORKSHOP_PROFILE_ID,
   WORKSHOP_STEP_KEY,
+  WORKSHOP_VERSIONS_SLOT,
   workshopMessages,
   workshopProfileDetail,
   workshopProfileList,
   workshopSiteAnalyzed,
   workshopStepDetail,
+  workshopVersions,
 } from './support/workshopFixtures'
 
 /**
@@ -53,17 +59,27 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
   brand: {
     steps: Record<string, string>
     labels: Record<string, unknown>
-    workspace: { site: Record<'never' | 'start' | 'consent' | 'confirm' | 'done', string>, regions: Record<'rail' | 'log', string> }
+    workspace: {
+      site: Record<'never' | 'start' | 'consent' | 'confirm' | 'done', string>
+      regions: Record<'rail' | 'log', string>
+      advisorInfo: Record<'open' | 'desc', string>
+      versions: Record<'open' | 'title' | 'use' | 'first', string>
+      conflict: Record<'title' | 'mineLabel' | 'serverLabel' | 'loadServer', string>
+    }
   }
 }
 const site = de.brand.workspace.site
 const base = `/api/brand/profiles/${WORKSHOP_PROFILE_ID}`
 
-const calls = { analyze: 0, ai: 0 }
+const calls = { analyze: 0, ai: 0, versions: 0 }
 
 registerEndpoint('/api/brand/profiles', () => workshopProfileList())
 registerEndpoint(base, () => workshopProfileDetail())
 registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}`, () => workshopStepDetail())
+registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}/generations`, (event) => {
+  calls.versions += 1
+  return workshopVersions(String(getQuery(event).slotId ?? ''))
+})
 registerEndpoint(`${base}/messages`, event => workshopMessages(String(getQuery(event).session ?? '')))
 registerEndpoint(`${base}/analyze`, {
   method: 'POST',
@@ -101,6 +117,21 @@ function unexpected(spy: ReturnType<typeof vi.spyOn>): string[] {
     .filter(line => !ALLOWED.some(rule => rule.test(line)))
 }
 
+/**
+ * Modale hängen ihren Inhalt an `body` (Teleport) — dort sucht der Test sie,
+ * nicht im Wrapper.
+ */
+function bodyText(): string {
+  return document.body.textContent ?? ''
+}
+
+async function clickInBody(label: string): Promise<void> {
+  const button = [...document.body.querySelectorAll('button')].find(entry => entry.textContent?.trim() === label)
+  if (!button) throw new Error(`Knopf „${label}" fehlt im Dokument`)
+  button.click()
+  await flushPromises()
+}
+
 function buttonNamed(wrapper: VueWrapper, label: string) {
   const button = wrapper.findAll('button').find(entry => entry.text().trim() === label)
   if (!button) throw new Error(`Knopf „${label}" fehlt`)
@@ -121,6 +152,7 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
   beforeEach(() => {
     calls.analyze = 0
     calls.ai = 0
+    calls.versions = 0
     warn = vi.spyOn(console, 'warn')
     error = vi.spyOn(console, 'error')
   })
@@ -166,6 +198,67 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     expect(wrapper.text()).not.toContain(site.consent)
 
     // 1. ohne Fehler, ohne Vue-Warnung, ohne KI
+    expect(calls.ai).toBe(0)
+    expect(unexpected(warn)).toEqual([])
+    expect(unexpected(error)).toEqual([])
+  })
+  it('öffnet den Steckbrief, die früheren Fassungen und den Konflikt-Dialog', async () => {
+    const wrapper = await mountSuspended(Shell, {
+      route: `/brand/${WORKSHOP_PROFILE_ID}/${WORKSHOP_STEP_KEY}?s=${WORKSHOP_VERSIONS_SLOT}`,
+    })
+    await flushPromises()
+    const ws = de.brand.workspace
+
+    // Steckbrief: der Avatar im Zug öffnet ihn; das Team ohne die Stimme.
+    const avatar = wrapper.find(`button[aria-label="${ws.advisorInfo.open.replace('{name}', BRAND_VOICE.name)}"]`)
+    expect(avatar.exists()).toBe(true)
+    await avatar.trigger('click')
+    await flushPromises()
+    expect(bodyText()).toContain(BRAND_VOICE.fullName)
+    expect(bodyText()).toContain(ws.advisorInfo.desc)
+    const team = BRAND_ADVISORS.filter(member => !advisorIsVoice(member.key))
+    expect(team.length).toBeGreaterThan(0)
+    for (const member of team) expect(bodyText()).toContain(member.fullName)
+    document.body.querySelector<HTMLButtonElement>('button[aria-label="Schließen"]')?.click()
+    await flushPromises()
+    expect(bodyText()).not.toContain(ws.advisorInfo.desc)
+
+    // Frühere Fassungen: Knopf an der Karte der Ableitung → Liste → „In den Editor".
+    await buttonNamed(wrapper, ws.versions.open).trigger('click')
+    await flushPromises()
+    expect(calls.versions).toBe(1)
+    expect(bodyText()).toContain(ws.versions.title)
+    // Der Dialog holt die Historie selbst, sobald er ein Feld bekommt — auf
+    // das Ergebnis warten, nicht auf eine feste Zahl von Runden.
+    await vi.waitFor(() => expect(bodyText()).toContain(WORKSHOP_OLDER_DRAFT))
+    expect(bodyText()).toContain(ws.versions.first)
+    await clickInBody(ws.versions.use)
+    expect(bodyText()).not.toContain(ws.versions.first)
+    const store = useBrandWorkspaceStore()
+    expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_OLDER_DRAFT)
+
+    // Konflikt (409): beide Fassungen nebeneinander; „Serverfassung laden" löst ihn.
+    store.conflict = {
+      revision: 2,
+      slots: {
+        [WORKSHOP_VERSIONS_SLOT]: {
+          firstDraft: WORKSHOP_FIRST_DRAFT,
+          latestDraft: WORKSHOP_FIRST_DRAFT,
+          confirmed: null,
+          confidence: null,
+          updatedAt: null,
+        },
+      },
+    }
+    await flushPromises()
+    expect(bodyText()).toContain(ws.conflict.title)
+    expect(bodyText()).toContain(ws.conflict.mineLabel)
+    expect(bodyText()).toContain(ws.conflict.serverLabel)
+    await clickInBody(ws.conflict.loadServer)
+    expect(store.conflict).toBeNull()
+    expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_FIRST_DRAFT)
+    expect(bodyText()).not.toContain(ws.conflict.mineLabel)
+
     expect(calls.ai).toBe(0)
     expect(unexpected(warn)).toEqual([])
     expect(unexpected(error)).toEqual([])
