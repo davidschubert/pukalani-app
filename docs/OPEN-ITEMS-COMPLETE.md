@@ -30,6 +30,44 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KR1 — Teil 1: KI-Einschätzung und Runner-Lauf auf den echten Seiten geklickt ✅ 2026-11-21
+
+**Was.** Zwei der neun Klick-Proben aus KR1, in Davids angemeldetem Browser,
+mit seinem Ja:
+
+1. **KI-Einschätzung zu einer Meldung** (KI1 a, 00:10 UTC). Auf
+   `demo.pukalani.app` im Dashboard unter „Comments → Reported" am einen
+   gemeldeten Kommentar „AI assessment" geklickt: nach wenigen Sekunden steht
+   die Empfehlung in der Zeile („hide — severity 3/5", mit Begründung).
+   Geklickt als Owner, nicht mit einem Konto, das nur Moderator ist.
+2. **Ein echter Runner-Lauf über das Formular** (RU1 a, 00:14 UTC). Auf
+   `admin.pukalani.app` ein Test-Ticket angelegt (Titel und Beschreibung von
+   Hand), im Formular „Auftrag ansehen" aufgeklappt — der Text ist Titel plus
+   Beschreibung und zieht nach dem Speichern der Beschreibung sofort nach —,
+   Modell Sonnet, „Nur planen", ein Testbefehl aus der Auswahl
+   (`node scripts/check-i18n-keys.mjs`), Knopf „Lauf starten". Der Rechner
+   nahm den Lauf sofort an, begrenzte das Budget auf den Deckel des Repos,
+   gab den einen Testbefehl frei; fertig nach 36 Sekunden, 0,20 USD,
+   Testbefehl mit Exit 0, Antwort des Agenten im Verlauf. Geschrieben hat
+   der Lauf nichts.
+   Am älteren Ticket gesehen: der Hinweis „Ungeprüfter Auftrag", als Vorgabe
+   „Nur planen" und keine Testbefehle.
+
+**Nicht gezeigt:** die KI-Einschätzung mit einem reinen Moderator-Konto; ein
+Lauf, der schreibt; ein Lauf mit gesetztem Budget (siehe unten).
+
+**Dabei gefunden** (OPEN-ITEMS „RU1" b und c): das Budget-Feld lehnt jede
+Zahl ab; der Editor macht aus `README.md` einen Link. Und für KR1: der
+Assistent zum Anlegen einer Community fragt zuerst nach einem
+Einladungs-Code, das Kästchen der Betreiber-Bedingungen kommt erst danach.
+
+**Gelernt:** Das Budget-Feld lehnt jede Zahl ab, und keine Prüfung hatte es
+gemeldet: das Schema erwartet Text, das Zahlenfeld liefert eine Zahl. Ein
+Formular ist erst geprüft, wenn jemand jedes Feld einmal ausgefüllt hat —
+auch die, die man sonst leer lässt.
+
+---
+
 ### NS1 — alle fünf Server neu gestartet ✅ 2026-11-20
 
 **Was.** Nach dem Paket-Lauf vom 2026-11-19/20 meldete Ploi auf allen fünf
