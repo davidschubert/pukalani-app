@@ -1,5 +1,7 @@
 # Brand Book & Kit (Produkt 03) — Strategie
 
+> **Plan-Status (2026-11-21):** teils gebaut — offen: K7, K8 und Davids Blicke ([OPEN-ITEMS](../OPEN-ITEMS.md) „BK1“). K0 bis K6 sind gebaut.
+
 Status: **Phase 5 — K0–K6 GEBAUT (K0–K4 auf main dae02441, K5 2026-09-09,
 K6 2026-09-09 auf main 2a4f6a26; Stand je Paket mit Gelernt in §2.18). K7 und
 K8 folgen je in einer EIGENEN Session (WORKFLOW „Sitzungsführung je Phase");

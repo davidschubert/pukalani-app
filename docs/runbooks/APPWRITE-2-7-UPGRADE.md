@@ -482,6 +482,7 @@ geprobt (`OLD=2.7.3 APPWRITE_DIR=…`, Exit 0, Werkzeug-Aufruf bis Beweise 30 s)
 **Der Lauf** (das Protokoll bleibt auf dem Server):
 
 ```bash
+# Protokoll: Pfad von damals. Das Skript liegt seit dem Lauf unter docs/archiv/skripte/ (von dort wird nichts ausgeführt).
 scp ops/appwrite-upgrade-2.7.3.sh ploi@188.245.61.155:~/appwrite-upgrade-2.7.3.sh
 ```
 
@@ -595,6 +596,7 @@ Diesmal fährt dasselbe Skript wie auf Production auch den ersten Lauf auf dev
 (vorher war es dort nur die Probe danach):
 
 ```bash
+# Protokoll: Pfad von damals. Das Skript liegt seit dem Lauf unter docs/archiv/skripte/ (von dort wird nichts ausgeführt).
 APPWRITE_DIR=~/Developer/orbstack/appwrite-maria/appwrite bash ops/appwrite-upgrade-2.7.4.sh
 ```
 
@@ -640,6 +642,7 @@ Override trägt die Regel nicht).
 **Der Lauf** (abgekoppelt; das Protokoll bleibt auf dem Server):
 
 ```bash
+# Protokoll: Pfad von damals. Das Skript liegt seit dem Lauf unter docs/archiv/skripte/ (von dort wird nichts ausgeführt).
 scp ops/appwrite-upgrade-2.7.4.sh ploi@188.245.61.155:~/appwrite-upgrade-2.7.4.sh
 ```
 

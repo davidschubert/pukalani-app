@@ -521,7 +521,7 @@ Rechtstexte) steht — gehört in dieselbe Runde. **Aufwand:** S.
 | **Produkt (DE)** | „Produkt(e)" — `marketing/de.json:110-112`, `onboarding/de.json:313,317` | „Baustein" nur noch in Code-Kommentaren (`products.vue:29,136` — dort korrekt: UI-Baustein, nicht Produkt) | — | Bereits konsistent. |
 | **Produkt (EN)** | „product(s)" — `marketing/en.json:110`, Route `/products/*` | **„block(s)"** — `en.json:111`, `:112`, `:163`, `:323`, `:371`, `:608`, Schritt 3 „Pick your **blocks**" `:105` | — | **„product(s)"** überall. E11 im Englischen nachziehen (G4). |
 | **Der Kunden-Raum** | „Community" — dominant, 85× je Sprache in marketing, durchgängig in onboarding | „Site" — `marketing/de.json:99` („Deine Site benennen"), `:203`, `:433`, `:558`; Tab-Id `site-subscription` (`onboarding/app.config.ts:123`) | „Instanz" — `marketing/de.json:692` (Enterprise), `onboarding/de.json:42`, `:358`, `branding.noTenantText` `:466` | **„Community"** in Kundentexten. „Instanz" nur im Enterprise-/Silo-Kontext (dort ist es korrekt und trennscharf). „Site" aus Kundentexten streichen. |
-| **Die fremde Seite** | „Website" — `marketing/de.json:217`, `:355`, `:707` | — | — | Korrekt und trennscharf, unverändert lassen. Aber: `docs/plans/DASHBOARD-IA.md:56` nennt die **Betreiber**-Objekte ebenfalls „Websites" — zwei Bedeutungen, getrennte Zielgruppen, akzeptabel. |
+| **Die fremde Seite** | „Website" — `marketing/de.json:217`, `:355`, `:707` | — | — | Korrekt und trennscharf, unverändert lassen. Aber: `docs/archiv/DASHBOARD-IA.md:56` nennt die **Betreiber**-Objekte ebenfalls „Websites" — zwei Bedeutungen, getrennte Zielgruppen, akzeptabel. |
 | **Testphase** | DE „14 Tage kostenlos testen" (`marketing/de.json:667`, `:75`), „Testphase" (`onboarding/de.json:137`, `:278`, `:361`) | EN „trial" durchgängig | — | DE: **„Testphase"** als Substantiv auch im Marketing (heute nur im Produkt). |
 | **Mitglied** | Personen in der Community (`onboarding/de.json:493` Rolle `viewer` = „Mitglied") | Zugangsstufe für Kurse („für Mitglieder", `marketing/de.json:143`, `:285`, `:538`) | Sichtbarkeit („Nur für Mitglieder", `onboarding/de.json:13`) | Alle drei sind derselbe Begriff in verschiedenen Rollen — vertretbar. Nur die Rolle `viewer` = „Mitglied" ist heikel, weil jeder Beigetretene Mitglied ist; **„Leser/in"** wäre trennschärfer. |
 | **Anmelden** | Marketing hat den Schlüssel (`de.json:10`), rendert ihn nicht | Produkt: „Anmelden" | — | Schlüssel rendern (K3). |
@@ -565,7 +565,7 @@ Was ein Dashboard-Review von hier mitnehmen muss:
    deutsch (`/anfragen`), danach durchgehend englisch. Eine Regel gehört
    festgeschrieben, bevor Schritt 4 aus `DASHBOARD-IA.md` neue Seiten anlegt.
 
-6. **`DASHBOARD-IA.md` Schritt 4 ist offen** (`docs/plans/DASHBOARD-IA.md:160-162`),
+6. **`DASHBOARD-IA.md` Schritt 4 ist offen** (`docs/archiv/DASHBOARD-IA.md:160-162`),
    und die Liste „Existiert nirgends" (`:102-105`) enthält mit *Navigation*,
    *SEO* und *Defaults* genau die Dinge, die ein frischer Owner nach dem Wizard
    als Nächstes sucht. Der Willkommens-Zustand (G2) sollte deshalb **nicht** auf

@@ -1,5 +1,8 @@
 # Runbook: dedizierter Read-only-Control-Plane-Key (platform)
 
+> **Archiviert am 2026-11-21 (Q19).** Der Tausch ist am 2026-07-24 gelaufen. Projekt- und Tabellennamen unten (`studio`, `tenants`, `pool`) sind die von damals; die Projekte heißen heute `admin` und `account`. Den heutigen Stand der Schlüssel trägt [APPWRITE-KEYS.md](../runbooks/APPWRITE-KEYS.md).
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 > **Status: ✅ UMGESETZT (2026-07-24, autonom).** Der Weg über Davids Console
 > war nicht nötig: der provisioner-Account existierte noch (H3-Rollout hatte
 > ihn nach Task #69 wiederverwendet — er war Owner des pool-Projekts!). Per

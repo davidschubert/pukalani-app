@@ -1,5 +1,7 @@
 # Private Nachrichten — Produkt-Konzept
 
+> **Plan-Status (2026-11-21):** teils gebaut — offen: der Rest von Stufe 2 (Suche, Digest) und Stufe 3 (Gruppen); beides ist bewusst kein offener Punkt, bis es gebraucht wird. Stufe 1 ist live.
+
 Entwurf vom 2026-08-04. **Stand 2026-08-09: entschieden (alle sieben
 Entscheidungen aus § 8) und in Stufe 1 GEBAUT** — Layer `packages/messages`,
 live seit dem 2026-08-05, Migration `messages-001` auf allen vier Instanzen,

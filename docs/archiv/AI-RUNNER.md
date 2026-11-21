@@ -1,5 +1,8 @@
 # AI-Runner — Tickets, die sich selbst umsetzen
 
+> **Archiviert am 2026-11-21 (Q19).** Der MVP (Pakete 1–4) ist gebaut und seit dem 2026-08-18 bewiesen. Betrieb: [AI-RUNNER-BETRIEB.md](../runbooks/AI-RUNNER-BETRIEB.md). Offene Reste führt nur [OPEN-ITEMS.md](../OPEN-ITEMS.md) (RU1).
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 **Status:** GEBAUT — MVP komplett (Pakete 1–4), End-zu-End bewiesen
 2026-08-18 · **Angelegt:** 2026-08-17 · **Entscheider:** David
 

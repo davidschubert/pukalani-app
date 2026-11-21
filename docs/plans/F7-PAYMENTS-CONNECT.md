@@ -1,5 +1,7 @@
 # F7 — Bezahlte Communities: Entscheidungsvorlage (Geldfluss 2)
 
+> **Plan-Status (2026-11-21):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „F7“).
+
 **Status:** NICHT gebaut, nichts entschieden außer der Richtung · **Sorte:**
 Entscheidungsvorlage, kein Umsetzungsplan · **Erstellt:** 2026-08-01
 
@@ -279,7 +281,7 @@ DANEBEN, nie hinein."* Die Spalten von Geldfluss 1 und 2 bleiben getrennt.
 
 ### 3.4 Wo der Owner es aktiviert
 
-**Settings → Payments** — der Platz ist in `docs/plans/DASHBOARD-IA.md` schon
+**Settings → Payments** — der Platz ist in `docs/archiv/DASHBOARD-IA.md` schon
 reserviert (`Payments · Taxes · Payment logs`) und existiert als Seite noch
 nicht. Inhalt der ersten Ausbaustufe:
 

@@ -1,6 +1,7 @@
 # Rollen- & Rechte-Konzept (RBAC)
 
-Stand: 2026-06-25. Implementierungsreifes Konzept für ein dashboard-konfigurierbares
+Konzept vom 2026-06-25, Katalog nachgezogen am 2026-11-21 (den Katalog hält
+seitdem `pnpm check:doc-links` gegen `authz.ts`). Implementierungsreifes Konzept für ein dashboard-konfigurierbares
 Rollen-/Rechtemanagement. Ergänzt [CONCEPT.md](../CONCEPT.md) (Architektur) und
 [OPEN-ITEMS.md](../OPEN-ITEMS.md).
 
@@ -24,7 +25,7 @@ Drei Ebenen, klar getrennt:
 
 ### Capability-Katalog
 
-**37 Capabilities in zwei Familien.** Quelle ist `packages/core/shared/types/authz.ts`
+**39 Capabilities in zwei Familien.** Quelle ist `packages/core/shared/types/authz.ts`
 (`type Capability`) — dort steht zu jeder nicht offensichtlichen auch die Begründung,
 warum sie eigen ist und wer sie hält. Die Trennung der Familien ist keine Kosmetik,
 sondern entscheidet, WIE gegatet wird:
@@ -39,10 +40,10 @@ sondern entscheidet, WIE gegatet wird:
 > `requirePermission` **niemals** um Community-Fälle erweitern: sie ist synchron und
 > wird an vielen Stellen ohne `await` gerufen.
 
-Die Aufteilung unten ist **kein Entweder-oder**. Die 9 der ersten Tabelle sind nur
+Die Aufteilung unten ist **kein Entweder-oder**. Die 11 der ersten Tabelle sind nur
 über eine Instanz-Rolle erreichbar; die 28 der zweiten hält mindestens eine
 Community-Rolle — davon sind `dashboard.access` und `comments.moderate` zusätzlich im
-Instanz-`moderator`, und der Instanz-`admin` hält als Wildcard ohnehin alle 37.
+Instanz-`moderator`, und der Instanz-`admin` hält als Wildcard ohnehin alle 39.
 
 #### Instanz-Capabilities (Betreiber)
 
@@ -57,6 +58,8 @@ Instanz-`moderator`, und der Instanz-`admin` hält als Wildcard ohnehin alle 37.
 | `feedback.manage` | Nutzer-Feedback sichten/erledigen/löschen |
 | `billing.manage` | Abo-Übersicht im Dashboard einsehen (instanzweit — **nicht** der Abo-Kauf, das ist `community.billing`) |
 | `tickets.manage` | Ticket-Board: Listen/Karten, Zuweisung, Anhänge, KI-Triage |
+| `runner.manage` | Läufe des AI-Runners anlegen, abbrechen und lesen. **Nur Admin** — ein Auftrag ist Code-Ausführung auf einem fremden Rechner, das ist keine Moderations-Sache |
+| `insights.manage` | Redaktion von Brand Insights: Beiträge und Markenprofile anlegen, freigeben, zurückziehen, Korrekturvorschläge entscheiden. **Nur Admin** — die Verantwortung für Aussagen über fremde Marken trägt der Betreiber |
 
 #### Community-Capabilities (5 Rollen je Community)
 

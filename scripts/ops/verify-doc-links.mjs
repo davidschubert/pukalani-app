@@ -9,7 +9,8 @@
  * sieht danach genauso aus wie ein gültiger. Er kostet erst beim nächsten
  * Nachschlagen Zeit, und dann viel.
  *
- * WAS GEPRÜFT WIRD — drei Durchgänge, alle rein lesend:
+ * WAS GEPRÜFT WIRD — drei Durchgänge für Verweise (hier), sieben weitere für
+ * die Doku-Ordnung (seit 2026-11-21, beschrieben weiter unten), alle rein lesend:
  *
  *   1. Markdown-Links `[Text](ziel)` auf Dateien im Repo (nicht http/mailto).
  *   2. `[[Wiki-Verweise]]` — nachgesehen am 2026-07-30: JEDER von ihnen zeigt
@@ -342,6 +343,210 @@ const scripts = [
 ]
 for (const file of scripts) checkScriptComments(file, readFileSync(file, 'utf8'))
 
+// ---------------------------------------------------------------------------
+// DOKU-ORDNUNG (Q19, 2026-11-21) — sieben weitere Durchgänge, alle rein lesend.
+//
+// Die drei Durchgänge oben fragen „zeigt ein Verweis auf etwas, das es gibt?".
+// Das fing nicht, woran die Doku im Herbst 2026 wirklich gealtert ist:
+//
+//   4. PFADE IN BEFEHLEN. Ein Code-Block war bisher ausgenommen. Ein Runbook
+//      nannte so dreimal `scp ops/appwrite-upgrade-….sh`, nachdem die Skripte
+//      ins Archiv gezogen waren. Geprüft werden Wörter in Code-Blöcken, die
+//      EINDEUTIG ein Repo-Pfad sind (ab Wurzel, mit Datei-Endung). Ein Block,
+//      der einen gelaufenen Befehl als Protokoll zeigt, sagt das mit einer
+//      Kommentarzeile `# Protokoll…` — ab dort wird er nicht mehr gelesen.
+//   5. DOKU-PFADE IM FLIESSTEXT UND IM CODE. Der Pfad eines Plans ohne Backticks
+//      (so steht er in Hunderten Kopfkommentaren) zog bei einem Umzug ins
+//      Archiv nie mit. Gilt für alle Quelldateien und für alle Dokumente, die
+//      kein Protokoll sind.
+//   6. DIE GEGENRICHTUNG DER KARTE. `docs/README.md` ist der Einstieg; eine
+//      Datei, die dort fehlt, wird nicht gefunden oder doppelt angelegt
+//      (14 fehlten). Jede Datei der Sorten Steuerung, Referenz, Runbooks und
+//      Pläne steht in der Karte — oder in `MAP_EXEMPT` mit Grund.
+//   7. PLÄNE SAGEN IHREN STAND. `docs/plans/` enthält nur, was noch nicht
+//      (ganz) gebaut ist. Jede Datei dort trägt in den ersten Zeilen
+//      `> **Plan-Status (JJJJ-MM-TT):** nicht gebaut | teils gebaut — offen: …
+//      | Unterlage zu …`. „gebaut" ohne Rest heißt: ab ins Archiv.
+//      Dazu `docs/plans/offen/<KÜRZEL>.md`: Einzelheiten zu einem offenen
+//      Punkt — das Kürzel muss als Zeile in `docs/OPEN-ITEMS.md` stehen.
+//   8. DAS ARCHIV IST KEINE ARBEITSLISTE: kein offenes Kästchen dort.
+//   9. DAS ENTSCHEIDUNGS-PROTOKOLL STEHT IN DATUMSFOLGE (neueste zuerst) —
+//      elf Einträge einer Woche standen am Ende der Datei und wurden von
+//      niemandem gefunden, der oben las.
+//  10. DER RECHTE-KATALOG der Referenz nennt genau die Rechte aus dem Code.
+//
+// Was hier bewusst NICHT geprüft wird: ob ein Runbook einen alten NAMEN nennt
+// (Projekt `control`, `pool`). Runbooks erzählen ihre Geschichte mit, eine
+// Wortliste meldete jeden zweiten Absatz; das bleibt eine Durchsicht von Hand.
+// ---------------------------------------------------------------------------
+
+const rule = (file, line, token, kind) =>
+  findings.push({ file, line, token, kind, soft: false })
+
+/** Ab Wurzel und ohne Kurzform: in einem Befehl ist nur das eindeutig. */
+const COMMAND_ROOTS = ['packages/', 'apps/', 'scripts/', 'docs/', 'ci/', 'ops/', '.github/', 'tools/']
+
+/**
+ * Dokumente, deren Code-Blöcke keine heutigen Befehle sind: die abgeschlossene
+ * Chronik (`GOALS.md` zeigt Pfade aus Phase 1). Die Doku-Site wird mitgeprüft.
+ */
+const COMMAND_EXEMPT = [/^docs\/GOALS\.md$/]
+
+/** Durchgang 4: Pfade in Code-Blöcken. */
+function checkCommandPaths(file, text) {
+  const rel = relative(ROOT, file)
+  if (isProtocol(rel) || COMMAND_EXEMPT.some(pattern => pattern.test(rel))) return
+  let inFence = false
+  let history = false
+  text.split('\n').forEach((line, index) => {
+    if (/^\s*```/.test(line)) { inFence = !inFence; history = false; return }
+    if (!inFence || history) return
+    if (/^\s*#\s*Protokoll/.test(line)) { history = true; return }
+    for (const raw of line.split(/[\s"'`=(),;|<>]+/)) {
+      const token = raw.replace(/[.:]+$/, '').replace(/:\d+(-\d+)?$/, '')
+      if (!COMMAND_ROOTS.some(prefix => token.startsWith(prefix))) continue
+      if (!CODE_EXT.test(token) || allowed(token)) continue
+      if (!exists(resolve(ROOT, token.includes('*') ? dirname(token.slice(0, token.indexOf('*') + 1)) : token))) {
+        rule(rel, index + 1, token, 'befehl')
+      }
+    }
+  })
+}
+
+/** Durchgang 5: `docs/<sorte>/X.md` ohne Backticks, in Doku und Quelltext. */
+const DOC_PATH = /(?<![\w./-])docs\/(?:plans|archiv|referenz|runbooks)\/[\w./-]+\.md/g
+function checkPlainDocPaths(file, text) {
+  const rel = relative(ROOT, file)
+  if (isProtocol(rel) && !STRICT) return
+  text.split('\n').forEach((line, index) => {
+    for (const match of line.matchAll(DOC_PATH)) {
+      if (allowed(match[0])) continue
+      if (!exists(resolve(ROOT, match[0]))) rule(rel, index + 1, match[0], 'doku-pfad')
+    }
+  })
+}
+
+/**
+ * Durchgang 6: Dateien, die bewusst NICHT einzeln in der Karte stehen.
+ * Jeder Eintrag ist eine Entscheidung mit Grund.
+ */
+const MAP_EXEMPT = [
+  { pattern: /^docs\/README\.md$/, why: 'die Karte selbst' },
+  { pattern: /^docs\/archiv\//, why: 'Archiv: wird über Verweise nachgeschlagen, die Karte beschreibt den Ordner als Ganzes' },
+  { pattern: /^docs\/content\//, why: 'Doku-Site: eigene Navigation, eigene Routen-Prüfung (Durchgang 1)' },
+  { pattern: /^docs\/plans\/offen\/(?!README\.md$)/, why: 'Einzelheiten je Kürzel: verlinkt aus OPEN-ITEMS.md, geprüft in Durchgang 7' },
+]
+function checkMapCoverage(docFiles) {
+  const mapFile = join(ROOT, 'docs/README.md')
+  if (!exists(mapFile)) return
+  const linked = new Set()
+  for (const match of readFileSync(mapFile, 'utf8').matchAll(/\[[^\]]*\]\(([^)\s#]+)(?:#[^)\s]*)?\)/g)) {
+    linked.add(relative(ROOT, resolve(dirname(mapFile), match[1])))
+  }
+  for (const file of docFiles) {
+    const rel = relative(ROOT, file)
+    if (MAP_EXEMPT.some(entry => entry.pattern.test(rel))) continue
+    if (!linked.has(rel)) rule('docs/README.md', 0, rel, 'fehlt-in-karte')
+  }
+}
+
+/** Durchgang 7: Pläne sagen ihren Stand; Einzelheiten gehören zu einem Kürzel. */
+const PLAN_STATUS = /^> \*\*Plan-Status \(\d{4}-\d{2}-\d{2}\):\*\* (nicht gebaut|teils gebaut — offen: \S|Unterlage zu \S|gebaut\b)/m
+/** Gebaute Pläne, die trotzdem (noch) in `plans/` liegen — mit Grund. */
+const BUILT_PLAN_STAYS = {
+  'BRANDING-SUPPLY-INFRA.md': 'CLAUDE.md nennt diesen Pfad; die Datei zieht mit dem Zeiger dort um',
+}
+function checkPlans() {
+  const plansDir = join(ROOT, 'docs/plans')
+  let names
+  try { names = readdirSync(plansDir).filter(name => name.endsWith('.md')) }
+  catch { return }
+  for (const name of names) {
+    const head = readFileSync(join(plansDir, name), 'utf8').split('\n').slice(0, 15).join('\n')
+    const match = head.match(PLAN_STATUS)
+    if (!match) rule(`docs/plans/${name}`, 1, 'Zeile „> **Plan-Status (JJJJ-MM-TT):** …" fehlt', 'plan-status')
+    else if (match[1] === 'gebaut' && !BUILT_PLAN_STAYS[name]) {
+      rule(`docs/plans/${name}`, 1, 'gebaut — gehört nach docs/archiv/', 'plan-status')
+    }
+  }
+  const openItems = join(ROOT, 'docs/OPEN-ITEMS.md')
+  const offenDir = join(plansDir, 'offen')
+  if (!exists(openItems) || !exists(offenDir)) return
+  const codes = new Set([...readFileSync(openItems, 'utf8').matchAll(/^\| ([A-Z][A-Za-z0-9–-]*) \|/gm)].map(m => m[1]))
+  for (const name of readdirSync(offenDir).filter(n => n.endsWith('.md') && n !== 'README.md')) {
+    if (!codes.has(name.replace(/\.md$/, ''))) {
+      rule(`docs/plans/offen/${name}`, 1, 'kein offener Punkt mit diesem Kürzel in docs/OPEN-ITEMS.md', 'einzelheiten')
+    }
+  }
+}
+
+/** Durchgang 8: kein offenes Kästchen im Archiv (Code-Blöcke zeigen Vorlagen). */
+function checkArchiveBoxes(file, text) {
+  const rel = relative(ROOT, file)
+  if (!rel.startsWith('docs/archiv/')) return
+  let inFence = false
+  text.split('\n').forEach((line, index) => {
+    if (/^\s*```/.test(line)) { inFence = !inFence; return }
+    if (!inFence && /^\s*[-*] \[ \] /.test(line)) rule(rel, index + 1, 'offenes Kästchen', 'archiv-kaestchen')
+  })
+}
+
+/** Durchgang 9: Überschriften des Entscheidungs-Protokolls, neueste zuerst. */
+function checkDecisionOrder() {
+  const file = join(ROOT, 'docs/DECISION-LOG.md')
+  if (!exists(file)) return
+  let previous = null
+  readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+    const match = line.match(/^## (\d{4}-\d{2}-\d{2})/)
+    if (!match) return
+    if (previous && match[1] > previous) {
+      rule('docs/DECISION-LOG.md', index + 1, `${match[1]} steht unter ${previous}`, 'datumsfolge')
+    }
+    previous = match[1]
+  })
+}
+
+/**
+ * Durchgang 10: der Rechte-Katalog der Referenz nennt genau die Rechte aus dem
+ * Code. „Referenz lebt mit dem Code" war eine Absicht ohne Wächter — die
+ * Tabelle stand bei 37, der Code bei 39.
+ */
+function checkCapabilityCatalog() {
+  const sourceFile = join(ROOT, 'packages/core/shared/types/authz.ts')
+  const docFile = join(ROOT, 'docs/referenz/RBAC-CONCEPT.md')
+  if (!exists(sourceFile) || !exists(docFile)) return
+  const source = readFileSync(sourceFile, 'utf8')
+  const start = source.indexOf('export type Capability =')
+  const end = source.indexOf('\nexport ', start + 1)
+  if (start < 0) { rule('packages/core/shared/types/authz.ts', 1, '`export type Capability =` nicht gefunden', 'rechte-katalog'); return }
+  const inCode = new Set([...source.slice(start, end < 0 ? undefined : end).matchAll(/^\s+\| '([\w.]+)'/gm)].map(m => m[1]))
+  const doc = readFileSync(docFile, 'utf8')
+  const from = doc.indexOf('### Capability-Katalog')
+  const to = doc.indexOf('\n### ', from + 1)
+  const inDoc = new Set([...doc.slice(from, to < 0 ? undefined : to).matchAll(/^\| `([\w.]+)` \|/gm)].map(m => m[1]))
+  for (const name of inCode) if (!inDoc.has(name)) rule('docs/referenz/RBAC-CONCEPT.md', 0, `${name} fehlt im Capability-Katalog`, 'rechte-katalog')
+  for (const name of inDoc) if (!inCode.has(name)) rule('docs/referenz/RBAC-CONCEPT.md', 0, `${name} gibt es im Code nicht mehr`, 'rechte-katalog')
+  const stated = doc.slice(from, to < 0 ? undefined : to).match(/\*\*(\d+) Capabilities/)
+  if (stated && Number(stated[1]) !== inCode.size) {
+    rule('docs/referenz/RBAC-CONCEPT.md', 0, `nennt ${stated[1]} Capabilities, im Code sind es ${inCode.size}`, 'rechte-katalog')
+  }
+}
+
+for (const file of markdown) {
+  const text = readFileSync(file, 'utf8')
+  checkCommandPaths(file, text)
+  checkPlainDocPaths(file, text)
+  checkArchiveBoxes(file, text)
+}
+const SOURCE_EXT = /\.(ts|mts|tsx|vue|mjs|cjs|js|sh|conf|ya?ml|html|css)$/
+const sources = ['packages', 'apps', 'scripts', 'ops', 'tools', 'ci', '.github']
+  .flatMap(dir => walk(join(ROOT, dir), name => SOURCE_EXT.test(name)))
+for (const file of sources) checkPlainDocPaths(file, readFileSync(file, 'utf8'))
+checkMapCoverage(markdown.filter(file => relative(ROOT, file).startsWith('docs/')))
+checkPlans()
+checkDecisionOrder()
+checkCapabilityCatalog()
+
 const hard = findings.filter(f => !f.soft)
 const soft = findings.filter(f => f.soft)
 
@@ -354,11 +559,11 @@ else {
     console.log(`\n${label} (${list.length}):`)
     for (const f of list) console.log(`  ${f.file}:${f.line}  [${f.kind}]  ${f.token}`)
   }
-  console.log(`Doku-Verweise geprüft: ${markdown.length} Markdown-Dateien + ${scripts.length} Skripte`)
-  show('TOTE VERWEISE', hard)
+  console.log(`Doku-Verweise geprüft: ${markdown.length} Markdown-Dateien + ${scripts.length} Skripte + ${sources.length} Quelldateien (Doku-Pfade)`)
+  show('TOTE VERWEISE UND VERSTÖSSE GEGEN DIE DOKU-ORDNUNG', hard)
   show('Protokoll-Dokumente: Pfad-Angaben von damals (Hinweis, kein Fehler — --strict erzwingt sie)', soft)
   show('Notizen außerhalb des Repos ([[…]] — Obsidian-Vault / Claude-Memory, nie prüfbar)', external)
-  if (!hard.length) console.log('\nOK — keine toten Verweise.')
+  if (!hard.length) console.log('\nOK — keine toten Verweise, Doku-Ordnung eingehalten.')
 }
 
 process.exit(hard.length ? 1 : 0)

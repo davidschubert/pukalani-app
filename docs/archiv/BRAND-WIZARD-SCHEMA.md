@@ -1,5 +1,8 @@
 # Brand Wizard — Schema-Anhang (P1a, zur Durchsicht)
 
+> **Archiviert am 2026-11-21 (Q19).** Schema-Anhang (P1a) des gebauten Plans [BRAND-WIZARD-PHASE-1.md](BRAND-WIZARD-PHASE-1.md). Stand: 2026-08-30; das heutige Schema steht in den Migrationen des `brand`-Layers.
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 Stand: 2026-08-30. Vertrag aus Plan §6 (BRAND-WIZARD-PHASE-1.md),
 Slot-Quelle: BRAND-WIZARD-CONTENT-SPEC.md. **DAVID-GATE: dieser Anhang
 braucht deine Abnahme, bevor P1b (Migrationen/API) baut.**

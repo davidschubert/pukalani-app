@@ -1,5 +1,7 @@
 # branding.supply — Rechtstexte und Bezahlweg (BS1)
 
+> **Plan-Status (2026-11-21):** teils gebaut — offen: R2, R2c, R3 und Z1 ([OPEN-ITEMS](../OPEN-ITEMS.md) „BS1“).
+
 Status: **ENTSCHIEDEN — Fragenrunde 2026-09-07 beantwortet, Umsetzung läuft.**
 Die acht Entscheidungen stehen in **§9**; **§8 bleibt als Protokoll stehen**
 (Fragen samt Empfehlungen — nur so ist nachlesbar, wovon abgewichen wurde).

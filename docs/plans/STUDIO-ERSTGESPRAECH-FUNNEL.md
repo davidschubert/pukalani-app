@@ -1,5 +1,7 @@
 # Pukalani Studio: Erstgespräch-Wizard + Funnel-Ausbau (Plan)
 
+> **Plan-Status (2026-11-21):** teils gebaut — offen: die Reste aus W2 bis W4 ([OPEN-ITEMS](../OPEN-ITEMS.md) „W2–W4“). Der Erstgespräch-Wizard (W1) ist live; die Status-Zeile darunter ist der Stand vom 2026-08-21.
+
 **Stand: 2026-08-21 · Status: PLAN, noch nicht gebaut · App: `apps/portfolio` (pukalani.studio)**
 
 Anlass (David, 2026-08-21): tobiasnase.de macht Neukundengewinnung über einen

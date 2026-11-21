@@ -1,5 +1,8 @@
 # Analytics v2 — Plan (Pakete 1–4 GEBAUT, nur 5/Optionales offen)
 
+> **Archiviert am 2026-11-21 (Q19).** Die Pakete 1 bis 4 sind gebaut, der Rest (F47) ist seit dem 2026-08-15 geschlossen (Eintrag in [OPEN-ITEMS-COMPLETE.md](../OPEN-ITEMS-COMPLETE.md)).
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 Stand: 2026-08-04. Die v1 UND die Pakete 1+2 dieses Plans sind live —
 Einträge mit Beweisen in [OPEN-ITEMS-COMPLETE.md](../OPEN-ITEMS-COMPLETE.md).
 Offen geführt wird der Rest (3–5) als **F47** in

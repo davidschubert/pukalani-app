@@ -237,7 +237,7 @@ Layout, zwei neue i18n-Keys. Struktur unangetastet.
 `packages/control/app/app.config.ts:872-880` (`to: '/dashboard/tenants'`).
 
 *Was stört:* E8 hat `tenants` → `communities` umbenannt (Daten, Code, Routen);
-`docs/plans/DASHBOARD-IA.md:45` schreibt den Menüpunkt als „Communities · Overview"
+`docs/archiv/DASHBOARD-IA.md:45` schreibt den Menüpunkt als „Communities · Overview"
 fest. Die Oberfläche hat es nicht mitgemacht. Schlimmer: **auf demselben Bildschirm
 stehen beide Wörter** — `control.tenants.new` = „Neuer Tenant",
 `control.tenants.emptyTitle` = „Noch keine Mandanten",
