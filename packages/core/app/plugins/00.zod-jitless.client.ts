@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { config } from 'zod/v4/core'
 
 /**
  * ZOD OHNE `new Function` IM BROWSER (SE1 a, 2026-11-17).
@@ -23,10 +23,14 @@ import { z } from 'zod'
  *    das erste Plugin läuft;
  *  - der Dateiname beginnt mit `00.`: Nuxt lädt Plugins eines Layers in der
  *    Reihenfolge ihrer Namen.
+ * Importiert wird NUR `config` aus dem schlanken Einstieg `zod/v4/core`
+ * (Q22, PERF-010): der volle Einstieg `zod` legte die ganze Bibliothek in den
+ * Einstieg jeder Seite. Der Schalter landet trotzdem bei Zod, denn beide
+ * Einstiege teilen dasselbe Konfig-Objekt.
  * Ein Schema, das ein früher geladenes Modul schon auf Modul-Ebene baut,
  * probiert trotzdem — Schemas für Formulare sind deshalb Fabriken
  * (`create*Schema(t)`), die erst in der Komponente laufen.
  */
-z.config({ jitless: true })
+config({ jitless: true })
 
 export default defineNuxtPlugin({ name: 'core:zod-jitless', enforce: 'pre', setup() {} })

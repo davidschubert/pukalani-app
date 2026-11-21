@@ -1,6 +1,11 @@
 import { requiredConsents, type ConsentConfig } from '../../shared/consent'
 import type { ConsentStateResponse } from '../../shared/types/consent'
-import CoreConsentPrompt from '../components/core/ConsentPrompt.vue'
+import { defineAsyncComponent } from 'vue'
+
+// ERST BEI BEDARF LADEN (Q22, PERF-010): das Formular zieht zod und die
+// Auth-Schemas mit. Fest importiert lag beides im Start-Bündel JEDER Seite
+// jeder App — auch dort, wo nie jemand gefragt wird (Landing, Hilfe).
+const CoreConsentPrompt = defineAsyncComponent(() => import('../components/core/ConsentPrompt.vue'))
 
 /**
  * DIE NACHFRAGE ÖFFNEN (SEC-007, „Tür zu und einmal fragen").

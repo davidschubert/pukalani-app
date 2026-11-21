@@ -26,6 +26,12 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [token: string] }>()
 
 const config = useRuntimeConfig()
+
+// Eine Seite mit Bot-Prüfung wird nie fertig gehalten (Q22, shared/pageCache.ts).
+if (import.meta.server) {
+  const event = useRequestEvent()
+  if (event) event.context.pageCacheBlocked = true
+}
 const { locale } = useI18n()
 const siteKey = computed(() => config.public.turnstileSiteKey ?? '')
 const container = ref<HTMLElement | null>(null)
