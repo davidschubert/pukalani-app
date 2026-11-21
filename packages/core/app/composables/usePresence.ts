@@ -27,6 +27,8 @@ interface RawPresence { userId: string, status?: string, $updatedAt?: string, me
 const HEARTBEAT_MS = 20_000
 /** Fenster, in dem Anlässe zu EINEM Herzschlag gebündelt werden (Q23-Rest). */
 const PRESENCE_BUNDLE_MS = 300
+/** Längste Wartezeit ab dem ersten Anlass (Q23-Rest). */
+const PRESENCE_BUNDLE_MAX_MS = 1_000
 // Realtime ist der schnelle Pfad: WS-Upsert → Event → Reader-Refresh in ~280ms
 // (gemessen, konsistent). Der Poll ist nur Backstop, falls ein Event verloren geht
 // oder der WS kurz weg ist → 20s. WICHTIG: setzt einen GESUNDEN realtime-Worker
@@ -188,18 +190,24 @@ export function usePresenceState() {
    * BÜNDELN (Q23-Rest, Bahn 2): beim Öffnen einer Seite melden sich mehrere
    * Bausteine kurz nacheinander (Anmeldung bekannt, `setPage`, `setScope`,
    * `focus`) — vorher schrieb jeder Anlass sofort, also zwei bis vier
-   * Herzschläge (HTTP UND WS) in der ersten Sekunde. Jetzt sammelt ein
-   * kurzes Fenster alle Anlässe zu EINEM Schreiben mit dem Stand am Ende des
-   * Fensters. Der Takt (`HEARTBEAT_MS`) und das Verlassen (`pagehide`)
+   * Herzschläge (HTTP UND WS) in der ersten Sekunde. Jetzt wartet das
+   * Schreiben auf 300 ms Ruhe (höchstens 1 s ab dem ersten Anlass) und
+   * schreibt dann EINMAL den Stand von dann. Der Takt (`HEARTBEAT_MS`) und das Verlassen (`pagehide`)
    * schreiben weiter sofort.
    */
   let bundled: ReturnType<typeof setTimeout> | null = null
+  let bundleStartedAt = 0
   function scheduleUpsert() {
-    if (bundled) return
+    const now = Date.now()
+    if (!bundled) bundleStartedAt = now
+    else clearTimeout(bundled)
+    // Ruhe abwarten, aber nie länger als PRESENCE_BUNDLE_MAX_MS ab dem
+    // ersten Anlass — sonst schöbe Dauertippen den Herzschlag ewig hinaus.
+    const wait = Math.min(PRESENCE_BUNDLE_MS, Math.max(0, bundleStartedAt + PRESENCE_BUNDLE_MAX_MS - now))
     bundled = setTimeout(() => {
       bundled = null
       upsert()
-    }, PRESENCE_BUNDLE_MS)
+    }, wait)
   }
 
   if (!stateStarted) {
