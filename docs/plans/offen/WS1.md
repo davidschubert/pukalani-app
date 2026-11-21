@@ -20,10 +20,12 @@ Rauch-Test (gestellte Antworten in `tests/render/support/workshopFixtures.ts`).
 
 **Die Kapitel** (Zeilen Stand Q21; Skript = Abschnitts-Überschrift `// ──`):
 
-- **(a) Der Log rechts** — Vorlage `#george` 4750–4972, Skript „Der Log:
-  Kapitel-Sektionen und ihre Karten" 2284–2535. Eigene Komponente
-  `BwWorkshopLog`; die Karten-Aktionen (bestätigen, korrigieren, beantworten)
-  gehen als Ereignisse an die Seite zurück. Größter Gewinn für die Vorlage.
+- ~~**(a) Der Log rechts**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
+  `BwWorkshopLog` hält, was nur der Log liest (aufgeklappte Kapitel, lesend
+  geholte Felder fremder Kapitel); die Karten rechnet weiter die Seite
+  (`chapterCards`), jede Handlung geht als Ereignis zurück. Seite 4.922 →
+  4.612 Zeilen. Rauch-Test: fremdes Kapitel auf/zu/auf (ein Abruf),
+  „Beantworten" springt in die Session.
 - ~~**(b) Die Modale**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
   `BwAdvisorInfoModal`, `BwVersionsModal` (holt die Historie selbst),
   `BwConflictModal` (liest `store.conflict`). Seite 5.119 → 4.922 Zeilen.
