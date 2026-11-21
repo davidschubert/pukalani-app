@@ -159,7 +159,7 @@ async function onMute() {
       <p class="text-sm font-medium">{{ t('feedback.list.comments', { count: props.entry.commentCount }) }}</p>
 
       <div v-if="loadingComments" class="flex justify-center py-4">
-        <UIcon name="i-ph-spinner" class="size-5 animate-spin text-muted" />
+        <UIcon name="i-ph-circle-notch" class="size-5 animate-spin text-muted" />
       </div>
       <ul v-else-if="comments.length" class="space-y-3">
         <li v-for="comment in comments" :key="comment.id" class="text-sm">

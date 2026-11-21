@@ -27,9 +27,7 @@ function onBodyClick(event: MouseEvent) {
         <Suspense>
           <ActivityFeed />
           <template #fallback>
-            <div class="flex justify-center py-12">
-              <UIcon name="i-ph-circle-notch" class="size-6 animate-spin text-muted" />
-            </div>
+            <CoreLoadingState />
           </template>
         </Suspense>
       </div>

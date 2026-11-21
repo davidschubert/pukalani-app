@@ -239,7 +239,7 @@ const groups = computed(() => {
       <ClientOnly>
         <EventCalendar :highlight-id="hoveredId" @hover="($event) => { calendarHoveredId = $event }" />
         <template #fallback>
-          <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
+          <CoreLoadingState />
         </template>
       </ClientOnly>
     </aside>

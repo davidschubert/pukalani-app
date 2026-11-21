@@ -315,19 +315,21 @@ function youtubeUrl(channel: InsightsChannel): string {
         </p>
       </div>
 
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1). VOR dem Leer-Zustand:
+           ohne Daten ist die Liste leer, ein Fehlerzweig im Daten-Zweig käme
+           nie zum Zug (Bahn 4). -->
+      <div v-if="error && !data" role="alert" class="mt-6">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
       <CoreEmptyState
-        v-if="hydrated && !loading && channels.length === 0 && seedAvailable === 0"
+        v-else-if="hydrated && !loading && channels.length === 0 && seedAvailable === 0"
         class="mt-6" icon="i-ph-broadcast"
         :title="t('insights.channels.title')" :description="t('insights.channels.empty')"
       />
 
       <div v-else-if="channels.length > 0" class="mt-4 overflow-x-auto">
-        <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
-        <div v-if="error && !data" role="alert">
-          <CoreLoadError :retry="refresh" />
-        </div>
-
-        <UTable v-else :data="channels" :columns="columns" :loading="loading">
+        <UTable :data="channels" :columns="columns" :loading="loading">
           <template #title-cell="{ row }">
             <div class="flex flex-col">
               <span class="text-sm font-medium">{{ row.original.title || row.original.channelId }}</span>

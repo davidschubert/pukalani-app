@@ -421,7 +421,7 @@ async function createUser() {
 
       <ClientOnly>
         <template #fallback>
-          <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
+          <CoreLoadingState />
         </template>
       <div v-if="selected.size > 0" class="mb-3 flex flex-wrap items-center gap-2" data-users-bulkbar>
         <UBadge color="neutral" variant="subtle">{{ t('admin.users.bulk.count', { count: selected.size }) }}</UBadge>

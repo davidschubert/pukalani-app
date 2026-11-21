@@ -96,7 +96,7 @@ const columns = computed<TableColumn<BillingAdminSubscriptionRow>[]>(() => [
     <template #body>
       <ClientOnly>
         <template #fallback>
-          <div class="flex justify-center py-16"><UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" /></div>
+          <CoreLoadingState />
         </template>
 
         <UAlert
