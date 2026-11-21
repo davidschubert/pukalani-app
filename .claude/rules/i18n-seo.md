@@ -127,3 +127,9 @@ paths:
   Neuer Crawler-Name nur mit Quelle beim Anbieter. Wächter:
   `packages/core/tests/aiCrawlers.test.ts` (jede Route), täglich
   `scripts/ops/verify-delivery.mjs` (Prüfung `ki`). Eine Bitte, keine Sperre.
+- COMMUNITY-INHALT FÜR DIE SUCHE (Q10): jede Community hat eine Hauptsprache
+  (`primaryLocale`, Profil-Feld `locale`); eine Seite mit Nutzerinhalt ruft
+  `useCommunityContentSeo()`, dann zeigen `canonical` und `og:url` beider
+  Sprach-Adressen auf die der Hauptsprache (eine maßgebliche Adresse je
+  Beitrag, beide antworten 200). Konto-Seiten und Betreiber-Oberfläche tragen
+  `noindex`. Herleitung: Eintrag Q10 in `OPEN-ITEMS-COMPLETE.md`.
