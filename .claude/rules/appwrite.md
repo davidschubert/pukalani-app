@@ -1,408 +1,170 @@
 ---
 paths:
   - "packages/*/server/**"
-  - "packages/*/scripts/**"
-  - "packages/core/app/composables/**"
-  - "packages/core/shared/**"
-  - "scripts/migrate.mjs"
-  - "scripts/migrations-lib/**"
-  - "scripts/ops/**"
   - "apps/*/server/**"
+  - "packages/core/shared/**"
+  - "scripts/ops/appwrite-auth-policies.mjs"
+  - "scripts/ops/verify-auth-methods.mjs"
 ---
-<!-- Ausgelagert aus CLAUDE.md am 2026-09-08 (Token-Hygiene): lädt automatisch,
-     sobald eine Datei aus `paths` gelesen wird; bei Bash-Lesen (cat/sed) diese
-     Datei bewusst per Read öffnen. Wortlaut unverändert übernommen. -->
 
-## Appwrite (SSR-first, TablesDB)
-- Terminologie: TablesDB / Tables / Rows (NICHT Databases/Collections/Documents)
-- Zwei Server-Clients: createAdminClient (API Key) + createSessionClient
-  (pro Request, NIE teilen!) in server/lib/appwrite.ts; Produkt-Layer nutzen
-  sie via Auto-Import (Core re-exportiert in server/utils/appwrite.ts)
-- Zwei Keys pro Instanz: Runtime-Key (sessions/users/rows/health, in .env) +
-  Migrations-Key (databases/tables/columns/indexes, nur für Scripts)
-- CRUD NUR über server/api/* (Session enforced, Validierung zentral),
-  NIE Web SDK CRUD aus <script setup>
-- Realtime (seit P1, 2026-07-01): EINE geteilte, JWT-authentifizierte SDK-
-  Realtime in core/app/composables/useRealtimeClient.ts (sharedRealtime,
-  realtimeCookieClient, ensureRealtimeJwt) — useRealtimeRows, Presence und
-  Config-Flags multiplexen über denselben Socket (Channel.tablesdb().table()
-  .row(), optional server-seitige queries; where-Filter bleibt Sicherheitsnetz).
-  JWT via GET /api/auth/realtime-token (15 min, Client refresht; Cookie-Client
-  NIE mit JWT mischen → Appwrite-403). Dasselbe 403 trifft seit Appwrite 2.7
-  den SOCKET, sobald das host-only Session-Cookie den Realtime-Host selbst
-  erreicht (lokal: `localhost` teilt Cookies über alle Ports) — dann schaltet
-  der Tab auf Cookie-Auth um (RT1, `core/shared/realtimeAuth.ts`); in Prod
-  (`api.pukalani.app` ≠ App-Host) bleibt es beim JWT. AUCH der `account`-
-  Channel (useRealtimeAccount, Sofort-Abmeldung bei Session-Widerruf) läuft
-  seit RT2 (2026-11-08) über diesen Socket — der frühere eigene Cookie-WS war
-  in Prod ein GAST (host-only Cookie erreicht `api.pukalani.app` nie; Tab nach
-  98,5 s noch angemeldet). Appwrite ≥ 2.7 bindet JEDE angemeldete Verbindung,
-  auch die JWT-Verbindung, an ihre Session: beim Widerruf erst `account`-Event,
-  dann 401-Frame, dann Close (`onRealtimeAccessEnded`,
-  `core/shared/realtimeAuth.ts`). Folge: der 12-min-JWT-Refresh verbindet den
-  Socket NEU — Appwrite schließt sonst beim Ablauf des ERSTEN JWT (401, das
-  auslösende Event geht verloren). Keinen eigenen `new WebSocket` mehr bauen.
-  Realtime braucht einen gesunden appwrite-realtime-
-  Container (Swoole-Crash → `docker compose up -d --no-deps appwrite-realtime`).
-- Session-Cookie: a_session_<PROJECT_ID>, httpOnly+secure+sameSite,
-  Appwrite-Endpoint als Subdomain derselben Root-Domain
-- Das geteilte Projekt aller Pool-Communities und aller Konten heißt seit AH-1
-  (2026-08-11) **`account`** (Session-Cookie `a_session_account`); der Vorgänger
-  `pool` ist nach der Beobachtungszeit GELÖSCHT (2026-08-19, Davids
-  Entscheidung — Alt-Stand nur noch in den Offsite-Dumps). Projekt-Ids sind unveränderlich —
-  „umbenennen" war Neuanlage + Migration (Schema, Nutzer MIT Passwort-Hashes,
-  Rows, Buckets) und braucht eine EIGENE Web-Platform `*.pukalani.app`, sonst
-  ist dort jede Realtime tot (F45). Code-Default neuer Communities:
-  `pukalani.control.defaultPoolProject` (packages/control/app/app.config.ts),
-  Env-Override NUXT_PUBLIC_CONTROL_POOL_PROJECT. LOKAL heißen die Projekte
-  seit dem Spiegel vom 2026-11-09 wie auf Production (`account`, `admin`) —
-  ein lokales `pool` gibt es nicht mehr; die Verify-Skripte fallen ohne die
-  Variable auf `account` zurück.
-  Runbook: docs/archiv/ACCOUNT-CUTOVER.md.
-- Jede App: EIGENE Appwrite-Instanz, Config aus .env
-  (NUXT_APPWRITE_KEY server-only, NUXT_PUBLIC_* für Endpoint/Project)
-- RECHTE AN ABLAGEN (SEC-001, seit 2026-11-13): Appwrite ist unter eigener
-  Adresse für jedes Konto direkt erreichbar. Ein Recht für `users`, `any` oder
-  ein Label an einem BUCKET gilt deshalb NEBEN unserer Route — und was die
-  Route prüft (Typ, Größe, Magic-Bytes), prüft Appwrite nicht. Buckets sind
-  darum verschlossen (`permissions: []`): geschrieben wird vom Server mit dem
-  Admin-Client NACH den Prüfungen, Leserechte trägt die einzelne Datei
-  (`fileSecurity`). Die Endungsliste eines Buckets ist nur das Netz: sie prüft
-  den NAMEN, nicht den Inhalt (Appwrite erkennt den Typ aus dem Inhalt und
-  speichert ihn, lehnt deswegen aber nichts ab). Eine AUSLIEFERUNGS-Route
-  reicht den gespeicherten Typ nie durch: Erlaubnisliste auf den gespeicherten
-  Typ, `Content-Type` aus dem selbst erkannten Inhalt, dazu auf jeder Antwort
-  `X-Content-Type-Options: nosniff` und `Content-Security-Policy: default-src
-  'none'; sandbox` (EINE Quelle: `core/shared/avatarImage.ts`). Wächter:
-  `pnpm check:permissions` (läuft mit `lint:scripts`) wird rot bei jedem
-  Bucket mit Schreibrecht für Konten in Migrationen und Bootstrap-Skripten.
-  REIHENFOLGE beim Schließen eines bestehenden Buckets: ERST der Code, der mit
-  dem Admin-Client schreibt, DANN die Migration (system-039) — umgekehrt
-  scheitert jeder Upload. `updateBucket` setzt Weggelassenes auf API-Defaults
-  ⇒ Bucket lesen und Unverändertes zurückschreiben. Der Runner fährt jede
-  Migration bei jedem Lauf erneut: ein „409 ⇒ Einstellungen nachziehen" in
-  einer ALTEN Migration stellt den Bucket bei jedem Lauf zurück (system-032
-  tat das) — nachziehen darf nur die jüngste.
-- RECHTE AN TABELLEN (SEC-002, seit 2026-11-16): dasselbe wie bei Ablagen.
-  Keine Tabelle trägt ein Schreibrecht für Konten, keine Zeile `update`/
-  `delete` für ein Konto; geschrieben wird vom Server mit dem Admin-Client
-  nach seinen Prüfungen, Rechte an Zeilen regeln nur das Lesen. Regel, Liste
-  und die drei Schritte zum Umstellen: `.claude/rules/tenant-isolation.md`
-  („DER SERVER SCHREIBT"). ZWEI FALLEN VON APPWRITE 2.7.1, beide gemessen:
-  ein Schreibvorgang OHNE Änderung (dieselben Werte) prüft nur das LESErecht
-  und kommt mit 200 zurück — eine Probe „direkt ändern wird abgelehnt" muss
-  also geänderte Werte schicken; und `updateTable` setzt Weggelassenes auf
-  Defaults — Tabelle lesen, nur die Rechte ändern, Name/`rowSecurity`/`enabled`
-  zurückschreiben (`scripts/migrations-lib/tableWriteRights.mts`). Ein altes
-  `updateTable`, das Rechte absolut setzt, öffnet die Tabelle bei jedem vollen
-  Lauf wieder: das Tabellenrecht BESITZT genau eine Migration
-  (`rights.migration` in `scripts/lib/server-written-tables.mjs`).
-- ZWEI ÄNDERUNGEN AB APPWRITE 2.7.2, die eigenen Code berühren (gemessen am
-  2026-11-18 auf 2.7.3, Production seit demselben Tag):
-  (1) Ein Bucket mit `allowedFileExtensions` prüft den INHALT, sobald die
-  Endung ein Bild oder PDF ist: HTML als `x.png` wird auch mit dem
-  Admin-Schlüssel abgelehnt (400 `storage_file_type_unsupported`), ein JPEG
-  als `x.png` geht durch, wenn der Bucket `jpg` erlaubt. Endungen ohne feste
-  Kennung (`woff2`, `json`, `svg`) prüft Appwrite weiter nur am Namen — die
-  eigene Prüfung der Route bleibt nötig. (2) Die Routen, die einen Code oder
-  ein Geheimnis BESTÄTIGEN (`account.createSession` mit Geheimnis,
-  `updateRecovery`, `updateVerification`, `updateMFAChallenge`), zählen jetzt
-  auch Aufrufe MIT API-Schlüssel: 10 je Konto und Stunde, danach 429
-  `general_rate_limit_exceeded` (ein Erfolg setzt den Zähler der
-  Sitzungs-Route zurück). Vorher zählte Appwrite Schlüssel gar nicht. Bei uns
-  trägt nur `account.createSession` (OTP-Prüfung, OAuth-Rückweg) einen
-  Schlüssel; dort war die einzige Bremse bisher unsere (`accountAttempts.ts`,
-  10 in 15 Minuten). Ein neuer Aufruf dieser Sorte mit dem Admin-Client muss
-  ein 429 von Appwrite erwarten.
-  Einzelheiten: `docs/runbooks/APPWRITE-2-7-UPGRADE.md`, „2.7.1 → 2.7.3".
-- ANMELDE-WEGE DES PROJEKTS (SEC-007, seit 2026-11-16): Appwrite bietet
-  Kontoanlage und Anmeldung als öffentliche Endpunkte an — an unserer
-  Registrierung (Bot-Prüfung, Zulassung, geschlossene Registrierung,
-  Zustimmung) vorbei. Abschalten lässt sich das je Projekt unter Auth →
-  Settings → Auth methods: Email/Password, Magic URL, Email OTP, Anonymous,
-  Phone, Team Invites AUS, JWT bleibt an. Die Schalter treffen nur Aufrufe
-  OHNE API-Schlüssel (`POST /account`, `…/sessions/email`,
-  `…/sessions/anonymous`, `…/tokens/email|magic-url|phone`, `…/jwts`); mit
-  Schlüssel überspringt Appwrite die Prüfung. Deshalb läuft JEDER dieser
-  Aufrufe unseres Servers über den Admin-Client (`account.create`,
-  `createEmailPasswordSession`, `createEmailToken`; Wächter
-  `packages/core/tests/authMethodCalls.test.ts`) — ein Aufruf über den
-  Session-Client bekäme 501 `user_auth_method_unsupported`, und der Weg fiele
-  für alle aus (so wäre der Anmelde-Code ausgefallen). NICHT betroffen und
-  weiter über den Session-Client möglich: Wiederherstellung, E-Mail-
-  Bestätigung, Zwei-Faktor, `createSession` aus einem Token. NICHT schließbar:
-  OAuth (Google) — dafür gibt es die Nachfrage nach der Zustimmung. Probe von
-  außen, ohne ein Konto anzulegen: Anmelden direkt bei Appwrite mit erfundenen
-  Zugangsdaten ⇒ 501 (zu) statt 401 (offen). Genau das fragt seit 2026-11-17
-  der tägliche Wächter je Projekt (`scripts/ops/verify-auth-methods.mjs`,
-  `pnpm ops:auth-methods`; rot bei „offen" und bei einer unerwarteten
-  Antwort, Störung ist „keine Aussage") — ein NEUES Projekt gehört in
-  `PROJECTS` dort. Stand je Projekt und Rückweg:
-  docs/runbooks/ANMELDE-REGELN.md.
-- BREMSEN (SEC-003/BE-002, seit 2026-11-13): Auth-Routen laufen über den
-  Admin-Client, Appwrites eigene Grenzen gelten dort NICHT — gebremst wird in
-  `core/server/middleware/05.rate-limit.ts`. Gezählt wird nur, was GELISTET
-  ist (unabhängig von der Methode). Drei Regeln für neue Routen: (1) Prüft
-  eine Route ein GEHEIMNIS (Passwort, Code, Token), gehört sie in
-  `FAILURE_LIMITED`: gezählt wird VOR der Route (`store.hit`, atomar), eine
-  Antwort < 400 bucht den eigenen Versuch zurück. „Erst lesen, nach der
-  Antwort zählen" hält nur für Anfragen NACHEINANDER — gleichzeitige sehen
-  alle denselben alten Stand. (2) Kennt die Route das KONTO (E-Mail, userId),
-  ruft sie zusätzlich `limitAccountAttempts(event, scope, konto)` aus
-  `core/server/utils/accountAttempts.ts`: 10 Fehlversuche in 15 Minuten je
-  Konto über alle Adressen (Davids Entscheidung), festes Fenster, keine
+## Appwrite (SSR-first, TablesDB) — Clients, Rechte, Anmeldung
+
+Migrationen, Ziel-Prüfung und Schema-Stand: `appwrite-migrationen.md`.
+Realtime-Socket und Anwesenheit: `appwrite-presence.md`.
+
+- BEGRIFFE: TablesDB / Tables / Rows (NICHT Databases/Collections/Documents).
+- ZWEI SERVER-CLIENTS: `createAdminClient` (API-Key) + `createSessionClient`
+  (pro Request, NIE teilen) in `core/server/lib/appwrite.ts`; Produkt-Layer
+  nutzen sie per Auto-Import (Re-Export `core/server/utils/appwrite.ts`).
+- ZWEI SCHLÜSSEL je Instanz: Runtime-Key (sessions/users/rows/health, in .env)
+  + Migrations-Key (databases/tables/columns/indexes, nur für Skripte).
+- CRUD NUR über `server/api/*` (Session erzwungen, Validierung zentral), NIE
+  Web-SDK-CRUD aus `<script setup>`.
+- IMMER explizites `Query.limit()` (Default 25). SDK-Generics nutzen:
+  `tablesDB.listRows<T>()`.
+- SESSION-COOKIE `a_session_<PROJECT_ID>`, httpOnly+secure+sameSite;
+  Appwrite-Endpoint als Subdomain derselben Root-Domain.
+- JEDE APP: eigene Appwrite-Instanz, Config aus .env (`NUXT_APPWRITE_KEY`
+  server-only, `NUXT_PUBLIC_*` für Endpoint/Project).
+- PROJEKT `account` (AH-1): das geteilte Projekt aller Pool-Communities und
+  Konten, Cookie `a_session_account`; ein Projekt `pool` gibt es nicht mehr,
+  auch lokal heißen die Projekte `account` und `admin` (Verify-Skripte fallen
+  ohne Variable auf `account` zurück). Projekt-Ids sind unveränderlich:
+  „umbenennen" = Neuanlage + Migration (Schema, Nutzer MIT Passwort-Hashes,
+  Rows, Buckets) und eine EIGENE Web-Platform `*.pukalani.app`, sonst ist dort
+  jede Realtime tot (F45). Default neuer Communities:
+  `pukalani.control.defaultPoolProject` (`packages/control/app/app.config.ts`),
+  Override `NUXT_PUBLIC_CONTROL_POOL_PROJECT`. Runbook:
+  `docs/archiv/ACCOUNT-CUTOVER.md`.
+
+### Rechte an Ablagen und Tabellen
+- RECHTE AN ABLAGEN (SEC-001): Appwrite ist für jedes Konto direkt
+  erreichbar, ein Bucket-Recht für `users`/`any`/Label gilt NEBEN unserer
+  Route. Buckets sind verschlossen (`permissions: []`): der Server schreibt mit
+  dem Admin-Client NACH seinen Prüfungen (Typ, Größe, Magic-Bytes),
+  Leserechte trägt die Datei (`fileSecurity`). Wächter: `pnpm check:permissions`
+  (in `lint:scripts`; rot bei jedem Bucket mit Schreibrecht für Konten in
+  einer Migration oder einem Bootstrap-Skript). Schließen eines Buckets, `updateBucket`, „409 ⇒
+  nachziehen": `appwrite-migrationen.md`.
+- ENDUNGSLISTE IST NUR DAS NETZ: Appwrite prüft den INHALT nur bei Bild-/PDF-
+  Endungen (ab 2.7.2, auch mit Admin-Schlüssel ⇒ 400
+  `storage_file_type_unsupported`); `woff2`, `json`, `svg` nur am Namen, und
+  ob Endung und Inhalt ZUSAMMENPASSEN, prüft es nicht (ein JPEG als `x.png`
+  geht durch, wenn der Bucket `jpg` erlaubt). Die
+  eigene Inhaltsprüfung der Route bleibt immer.
+- AUSLIEFERUNGS-ROUTE reicht den gespeicherten Typ nie durch: Erlaubnisliste
+  auf den gespeicherten Typ, `Content-Type` aus dem selbst erkannten Inhalt,
+  auf jeder Antwort `X-Content-Type-Options: nosniff` und
+  `Content-Security-Policy: default-src 'none'; sandbox` (EINE Quelle:
+  `core/shared/avatarImage.ts`).
+- RECHTE AN TABELLEN (SEC-002): keine Tabelle mit Schreibrecht für Konten,
+  keine Zeile mit `update`/`delete` für ein Konto; Server schreibt nach seinen
+  Prüfungen, Zeilenrechte regeln nur das Lesen. Regel und Umstellen:
+  `.claude/rules/tenant-isolation.md` („DER SERVER SCHREIBT"). FALLE: ein
+  Schreibvorgang OHNE Änderung prüft nur das LESErecht (200) — eine Probe
+  „direkt ändern wird abgelehnt" muss geänderte Werte schicken.
+
+### Anmeldung
+- BESTÄTIGEN MIT SCHLÜSSEL WIRD GEZÄHLT (ab 2.7.2): `account.createSession`
+  mit Geheimnis, `updateRecovery`, `updateVerification`, `updateMFAChallenge`
+  zählen auch MIT API-Schlüssel (10 je Konto und Stunde ⇒ 429
+  `general_rate_limit_exceeded`). Ein neuer solcher Aufruf mit dem
+  Admin-Client muss diese 429 erwarten. Runbook:
+  `docs/runbooks/APPWRITE-2-7-UPGRADE.md`, „2.7.1 → 2.7.3".
+- ANMELDE-WEGE DES PROJEKTS (SEC-007): je Projekt unter Auth → Settings →
+  Auth methods Email/Password, Magic URL, Email OTP, Anonymous, Phone, Team
+  Invites UND JWT AUS (der JWT-Schalter trifft nur `account.createJWT` ohne
+  Schlüssel; unsere Tokens entstehen über `users.createJWT`). Die Schalter treffen nur Aufrufe OHNE Schlüssel
+  ⇒ JEDER solche Aufruf unseres Servers läuft über den Admin-Client
+  (`account.create`, `createEmailPasswordSession`, `createEmailToken`;
+  Wächter `packages/core/tests/authMethodCalls.test.ts`) — über den
+  Session-Client käme 501 `user_auth_method_unsupported`. Weiter über den
+  Session-Client: Wiederherstellung, E-Mail-Bestätigung, Zwei-Faktor,
+  `createSession` aus einem Token. OAuth ist nicht schließbar (dafür die
+  Zustimmungs-Nachfrage). Probe von außen: Anmelden direkt bei Appwrite mit
+  erfundenen Zugangsdaten ⇒ 501 (zu) statt 401 (offen); täglicher Wächter
+  `scripts/ops/verify-auth-methods.mjs` (`pnpm ops:auth-methods`, rot bei
+  „offen" und unerwarteter Antwort, Störung = keine Aussage). NEUES PROJEKT ⇒
+  in `PROJECTS` dort. Runbook: `docs/runbooks/ANMELDE-REGELN.md`.
+- ANMELDE-REGELN DES PROJEKTS (P29: Passwort-Wörterbuch, persönliche Daten,
+  Datenleck-Abgleich, Verlauf, Wegwerf-Adressen, Anmelde-Mail) sind
+  Appwrite-Einstellungen JE PROJEKT und gelten auch mit Schlüssel. Soll in
+  `scripts/ops/appwrite-auth-policies.mjs` (`pnpm ops:auth-policies`, setzen
+  mit `--apply`), nie nur in der Konsole. Ablehnung ⇒ fachlicher Grund über
+  `core/shared/passwordPolicy.ts`; jede Route, die ein Passwort setzt, nutzt
+  dieselbe Funktion.
+
+### Bremsen (SEC-003/BE-002)
+- Auth-Routen laufen über den Admin-Client, Appwrites Grenzen gelten dort
+  NICHT — gebremst wird in `core/server/middleware/05.rate-limit.ts`. Gezählt
+  wird nur GELISTETES, unabhängig von der Methode.
+- GEHEIMNIS (Passwort, Code, Token) ⇒ Route in `FAILURE_LIMITED`: gezählt
+  VOR der Route (`store.hit`, atomar), eine Antwort < 400 bucht zurück. „Erst
+  lesen, nach der Antwort zählen" hält bei gleichzeitigen Anfragen nicht.
+- KONTO BEKANNT (E-Mail, userId) ⇒ zusätzlich
+  `limitAccountAttempts(event, scope, konto)` aus
+  `core/server/utils/accountAttempts.ts` (`ACCOUNT_ATTEMPT_MAX` in
+  `ACCOUNT_ATTEMPT_WINDOW_MS`, je Konto über ALLE Adressen, Davids
+  Entscheidung): festes Fenster, keine
   Dauersperre, dieselbe 429 für vorhandene und nicht vorhandene Konten, im
-  Schlüssel nur ein Hash. Die Kennung muss BELEGT sein, bevor sie zählt
-  (`mfa/challenge` nimmt `challenge.userId`, nicht das Cookie) — sonst bremst
-  ein Fremder ein fremdes Konto. Ausweg aus der Pause ist „Passwort
-  zurücksetzen": `recovery.put.ts` löscht den Login-Zähler, die
-  Recovery-Routen zählen NICHT je Konto. (3) Teure Wege (Export, bezahlte
-  Aufrufe bei Stripe/ploi/KI, Uploads) bekommen eine Zeile in `WRITE_LIMITED`;
-  ungelistete DELETE fängt das Netz `delete:other` am ENDE der Liste (`find()`
-  nimmt den ersten Treffer). `/api/health` bekommt NIE eine 429 (Wächter,
-  Deploy-Beweis, UptimeRobot) — dort bremst ein Zwischenspeicher von 5 s je
-  Prozess, und die Antwort trägt keine Sitzungsdaten. Der Store zählt in
-  Redis mit EINEM Lua-Skript je Zugriff (ein Schlüssel ohne Ablauf wäre eine
-  Dauersperre); ohne `NUXT_REDIS_URL` zählt jeder PROZESS für sich — das
-  trägt, solange pm2 je App `instances: 1` fährt. Beweis-Muster für jede
-  Bremse: ein Test mit GLEICHZEITIGEN Anfragen
+  Schlüssel nur ein Hash. Die Kennung muss BELEGT sein (`mfa/challenge` nimmt
+  `challenge.userId`, nicht das Cookie), sonst bremst ein Fremder ein fremdes
+  Konto. Ausweg ist „Passwort zurücksetzen": `recovery.put.ts` löscht den
+  Login-Zähler, die Recovery-Routen zählen NICHT je Konto.
+- TEURE WEGE (Export, bezahlte Aufrufe bei Stripe/ploi/KI, Uploads) ⇒ Zeile
+  in `WRITE_LIMITED`; das Netz `delete:other` fängt jedes ungelistete DELETE und
+  bleibt am ENDE der Liste (`find()` nimmt den ersten Treffer).
+- `/api/health` bekommt NIE eine 429 (Wächter, Deploy-Beweis, UptimeRobot) —
+  dort bremst der Zwischenspeicher `CACHE_MS`, die Antwort trägt keine
+  Sitzungsdaten.
+- STORE: Redis mit EINEM Lua-Skript je Zugriff (ein Schlüssel ohne Ablauf wäre
+  eine Dauersperre); ohne `NUXT_REDIS_URL` zählt jeder PROZESS für sich — das
+  trägt nur, solange pm2 je App `instances: 1` fährt.
+- BEWEIS jeder Bremse: ein Test mit GLEICHZEITIGEN Anfragen
   (`core/tests/rateLimitFailureRoutes.test.ts`, `accountAttempts.test.ts`).
-  AUSFALL IST KEIN FEHLVERSUCH (AB1 d, seit 2026-11-17): eine Route, die ein
-  Geheimnis prüft, trennt „Appwrite hat abgelehnt" (4xx ⇒ 401, zählt) von
-  „die Prüfung kam nicht zustande" (`isAuthBackendOutage`,
-  `core/shared/authFailure.ts` ⇒ 503 mit `data.code: auth_unavailable`, eine
-  Log-Zeile, `skipAccountAttempt(event)`): der Versuch zählt dann nicht auf
-  das Konto. Die Minuten-Drossel je Anschluss zählt ihn bewusst weiter.
-  UPLOADS prüfen die angegebene Länge VOR dem Einlesen:
-  `rejectOversizedUpload(event, maxBytes)` (`core/server/utils/uploadSize.ts`)
-  nach der Rechte-Prüfung und vor `readMultipartFormData`; die Prüfung der
-  echten Größe danach bleibt.
-  BEKANNTES GERÄT (P29, seit 2026-11-13): damit ein Fremder den Besitzer
-  nicht über die Konto-Pause aussperrt, setzt der Server nach einer
-  VOLLSTÄNDIGEN Anmeldung (kein zweiter Faktor offen) das signierte Cookie
-  `pk_known_device` (`core/server/utils/knownDevice.ts`); ein Browser mit
-  gültigem Merkzeichen für GENAU dieses Konto zählt in einem eigenen Topf mit
-  demselben Deckel. Neue Anmelde-Route ⇒ `rememberKnownDevice` nach dem
-  Erfolg, nie im Zweig „zweiter Faktor steht aus".
-- ANMELDE-REGELN DES PROJEKTS (P29): Passwort-Wörterbuch, persönliche Daten,
-  Datenleck-Abgleich, Verlauf, Wegwerf-Adressen und Anmelde-Mail sind
-  Appwrite-Einstellungen JE PROJEKT. Das Soll steht in
-  `scripts/ops/appwrite-auth-policies.mjs` (`pnpm ops:auth-policies`, mit
-  `--apply` setzen), nie nur in der Konsole. Sie greifen auch bei Aufrufen mit
-  API-Schlüssel. Appwrites Ablehnung wird über `core/shared/passwordPolicy.ts`
-  zu einem fachlichen Grund; eine neue Route, die ein Passwort setzt, nutzt
-  dieselbe Funktion. Runbook: docs/runbooks/ANMELDE-REGELN.md.
-- ZUSTIMMUNG (SEC-008/SEC-007, seit 2026-11-16 — Davids Entscheidungen „Die
-  Zustimmung zu den AGB wird vom Server geprüft und an einer Stelle
-  festgehalten, die das Konto nicht selbst ändern kann" und „Tür zu und
-  einmal fragen"): der Nachweis ist EINE Zeile je (Konto, Art, Fassung) in
-  `consent_records` (system-041, keine Rechte für Konten, nur Admin-Client,
-  feste Zeilen-Id, 409 = steht schon, nie überschreiben) —
-  `core/server/utils/consentRecords.ts`, Regeln pur in `core/shared/consent.ts`.
-  Die Prefs-Felder (`termsAcceptedAt`, `businessConfirmedAt`) gehören dem
-  Konto und belegen nichts. Regel: EINE ZEILE ENTSTEHT NUR, WENN DER SERVER
-  DIE BESTÄTIGUNG IN DIESER ANFRAGE GESEHEN HAT. Wege: `password`
-  (`signup.post.ts` verlangt `terms`/`business: true` im Body, sonst 400
-  `terms_required`/`business_required` VOR der Anlage), `otp` (beim ersten
-  Beitritt, nur mit den Feldern im Body — ohne sie keine Zeile, die Anmeldung
-  gelingt trotzdem), `oauth` (Merkzeichen `pk_consent`, 10 min, setzt der
-  Google-Knopf im Register-Formular; die Rückkehr liest und löscht es),
-  `prompt` (`POST /api/auth/consent`) und `adopted` (einmalige Übernahme aus
-  den Prefs, nur für Konten von vor `CONSENT_ADOPTION_CUTOVER`, AGB nur bei
-  gleicher Fassung). Die TÜR ist `core/server/middleware/07.consent-required.ts`:
-  jede schreibende `/api/**`-Anfrage eines Kontos ohne Zustimmung ⇒ 403
-  `consent_required`, Lesen bleibt frei; Erlaubnisliste fail-closed mit Grund
-  je Eintrag in `core/shared/consentGate.ts` (`/api/auth/` samt Auskunft und
-  Löschung, Telemetrie, Anwesenheit, Health), Layer erweitern sie nicht. Ein
-  Lesefehler lässt durch (`auth.consent_check_failed`), eine fehlende Tabelle
-  ebenso (`auth.consent_table_missing`). KONTEN MIT BETREIBER-ROLLE (globales
-  Label `admin` oder `moderator`, `isOperatorAccount`) sind ausgenommen: nie
-  gefragt, nie gesperrt, keine Zeile (Davids Entscheidung 2026-11-16) — eine
-  Community-Rolle ist keine Betreiber-Rolle. Der Browser fragt einmal je Besuch
-  (`CoreConsentPrompt` über `useOverlay`, `consent-prompt.client.ts`) und nach
-  jedem 403 `consent_required`. Eine NEUE APP mit `termsUrl` (oder
-  `businessOnly`) bekommt Nachweis, Tür und Nachfrage ohne eigenen Code — ohne
-  beides läuft nichts davon, auch kein Netzaufruf. NEUE SCHREIB-ROUTE ⇒ nichts
-  zu tun, die Tür steht zentral. Neue AGB-Fassung ⇒ `termsVersion` ändern,
-  dann fragt die Nachfrage jedes Konto erneut.
-- Immer explizites Query.limit() (Default 25)
-- SDK-Generics nutzen: tablesDB.listRows<T>()
-- ZIEL-PRÜFUNG VOR DEM SCHREIBEN (OPS-002, seit 2026-11-16 — Davids
-  Entscheidung „Skripte, die in eine Datenbank schreiben, prüfen vorher, ob
-  es die richtige ist"): EINE Funktion für alle, `scripts/lib/target.mjs`.
-  Lokaler Endpunkt (localhost, 127.0.0.1, ::1, *.localhost) ⇒ durch; jeder
-  andere nur mit ausdrücklicher Bestätigung. Der RUNNER verlangt dafür
-  `--prod` UND vergleicht die Projekt-Id der Env-Datei mit
-  `appwriteProjects` im `site.manifest.ts` der App (Abweichung ⇒ Abbruch,
-  die Meldung nennt beide Ids; ein nicht ladbares Manifest ist ein Abbruch,
-  nie „alle Layer"; `--env-file` ohne `--app` gibt es nicht mehr). Danach
-  reicht er die geprüfte Id als `PUKALANI_TARGET_CONFIRM` an jede Migration
-  weiter. JEDES ANDERE SKRIPT verlangt gegen einen entfernten Endpunkt
-  `PUKALANI_TARGET_CONFIRM=<Projekt-Id>` — wer es setzt, NENNT das gemeinte
-  Projekt, und zeigt die Env-Datei auf ein anderes, bricht das Skript ab.
-  Aufrufe: lokal `pnpm migrate --app <app>`; Production
-  `pnpm migrate --app <app> --env ~/.appwrite-secrets/migrations/<projekt>.env
-  --only <layer>-<NNN> --prod` (erst mit `--dry-run` statt `--prod` ansehen:
-  zeigt Projekt, Endpunkt und die Dateien, schreibt nichts; ohne `--only`
-  fährt er alle Layer der App). Über `pnpm` geht nur `--env` — `--env-file`
-  fängt Node ab, bevor der Runner es sieht; direkt mit
-  `node scripts/migrate.mjs` gehen beide. NEUE MIGRATION ⇒ erste Import-Zeile
-  `import '../../../../scripts/lib/assert-target.mjs'` (direkt gestartet läuft
-  sie lokal weiter, gegen Production scheitert sie ohne Bestätigung — der
-  Direktaufruf war bis dahin der übliche Weg auf Production und ging am
-  Runner vorbei). NEUES SKRIPT MIT SCHLÜSSEL ⇒ dieselbe Zeile oder
-  `assertTarget({ endpoint, projectId })` vor dem ersten Client; Stripe:
-  `checkStripeTarget` (ein Live-Schlüssel verlangt `--live`). Wächter:
-  `packages/core/tests/scriptTargetGuard.test.ts` — jede Datei unter
-  `scripts/`, `packages/*/scripts/`, `apps/*/scripts/`, die einen Schlüssel in
-  die Hand nimmt, ruft die Prüfung oder steht mit Grund in `EXEMPT`; eine
-  veraltete Ausnahme wird ebenfalls rot. NEUES PROJEKT einer App ⇒ zuerst in
-  `appwriteProjects` eintragen. NICHT gelöst: ein VOLLER Lauf legt im
-  `system`-Layer weiter Spalten an und löscht sie wieder (alte Migrationen
-  ohne Register) — eine einzeln freigegebene Migration deshalb immer mit
-  `--only`.
-- DATENBANK-STAND IN `/api/health` (OPS-008, seit 2026-11-16 — Davids
-  Entscheidung „Die Plattform zeigt an, ob die Datenbank zum ausgerollten
-  Programm passt, und der tägliche Wächter prüft es"): der Deploy feuert beim
-  Merge, Migrationen laufen von Hand, und zweimal ging Programm vor seiner
-  Migration live. Jeder Layer mit Migrationen nennt deshalb in
-  `product.manifest.ts` `schema: { latest, probe: { migration, table,
-  column? } }` — `latest` = höchste Dateinummer, `probe` = die jüngste
-  Migration, deren Ergebnis sich am Schema ABLESEN lässt (Tabelle oder Spalte,
-  die danach bleibt; Indizes, Rechte, Ablagen und Daten sind nicht ablesbar).
-  Die App prüft die Proben aller einkompilierten Layer (Laufzeit-Registry) mit
-  ihrem LAUFZEIT-Schlüssel: `listRows(limit 1, select [spalte])` — fehlende
-  Spalte ⇒ 400 `general_query_invalid`, fehlende Tabelle ⇒ 404
-  `table_not_found` (`core/server/utils/schemaState.ts`, Deutung pur in
-  `core/shared/schemaState.ts`). `/api/health` meldet daneben
-  `schema: { state: ok|behind|unknown, expected, found }`: öffentlich sind NUR
-  das Wort und zwei Zahlen, welche Migration fehlt, steht im Server-Log
-  (`schema.behind`). `ok` bleibt davon UNBERÜHRT (seit P10 färbt `ok` das
-  Ausliefern), ein Lesefehler heißt `unknown`, nie „ungesund"; gehalten wird
-  `ok` 5 min, `behind` 30 s, `unknown` 10 s. BEWUSST KEIN ZEIGER und kein
-  Register: eine einzeln von Hand gefahrene Migration bewegt keinen Zeiger —
-  die Probe liest, was da ist. NEUE MIGRATION ⇒ `latest` nachziehen, und legt
-  sie eine Tabelle oder Spalte an, auch `probe`; der Wächter
-  `packages/core/tests/schemaProbeManifests.test.ts` wird sonst rot (er prüft
-  auch, dass die Probe nicht auf etwas zeigt, das eine spätere Migration
-  löscht). Ein TIPPFEHLER in der Probe sieht aus wie eine fehlende Migration —
-  vor dem Merge lokal `/api/health` lesen. Landing und Hilfe haben einen
-  eigenen Health ohne Appwrite und kein Feld. Wer auswertet: der
-  Halbstunden-Wächter (`verify-health.mjs`: rot bei `behind`, bei
-  anhaltendem `unknown`, bei fehlendem Feld), die Probe des Deploys (rot bei
-  `behind`, NACH dem Ausliefern aller Apps — aufgehalten wird nichts) und
-  täglich `verify-schema-parity.mjs --ci` mit vier nur lesenden Schlüsseln
-  (nennt die fehlende Migration). Was bei Rot zu tun ist:
-  docs/runbooks/PRODUKTIONS-ALARM.md.
-- Migrations: idempotent (409 → skip), IMMER über den zentralen Runner
-  `pnpm migrate --app <app>` (scripts/migrate.mjs; bei mehreren Apps ist
-  --app Pflicht — nie die falsche Instanz; Ziel-Prüfung s. o.), nach Column-Anlage auf
-  'available' pollen bevor Indizes. Das Pollen allein reicht NICHT:
-  der Index-Endpunkt liest die Spaltenliste aus Appwrites Metadaten-Cache
-  (Collection-Dokument), der dem Spalten-Status hinterherhinkt — CI-E2E
-  zweimal live erwischt (400/column_not_available trotz 'available').
-  Index-Anlage deshalb NUR über die Fabrik aus
-  `scripts/migrations-lib/indexRetry.mts` — einmal je Datei
-  `const { indexStep } = createIndexSteps(tablesDB, databaseId)`, dann
-  `await indexStep('Index x.idx_y', { tableId, key, type, columns })`.
-  Sie ruft `createIndex` SELBST und bringt Retry + Cache-Anstoß mit
-  (Seeds/createRow sind NICHT betroffen — die physische Spalte existiert
-  vor dem Status). WARTEN ALLEIN REICHT NICHT: räumt Appwrite den Cache,
-  während ein Leser (z. B. der 'available'-Poller) noch seinen alten Stand
-  hält, steht die Spalte dort für IMMER auf 'processing' — 23 Versuche ohne
-  Bewegung, CI-E2E zweimal so gestorben. Nur ein Schreibzugriff auf die
-  Tabelle (`tableCacheNudge`) räumt ihn. Der Anstoß war einen Tag lang ein
-  OPTIONALES Argument: 2 von 63 Migrationen reichten ihn durch, 61 nicht, und
-  eine davon warf die CI um — Sicherungen gehören deshalb in die Schnittstelle,
-  nicht in die Disziplin. SEIT APPWRITE 2.4 (#14104; 2026-10-24 gegen 2.6.1
-  bewiesen) liest der Index-Endpunkt bei einem nicht-`available`-Status im
-  Cache das Attribut-Dokument selbst nach — das Rennen ist upstream
-  geschlossen, die Fabrik bleibt als Gürtel UND Hosenträger, und
-  `verify-index-nudge` prüft versionsbewusst (ab 2.4 darf ein vergifteter
-  Cache den Index NICHT mehr aufhalten). Rohes `tablesDB.createIndex` in
-  `packages/*/scripts/migrations/**` verbietet ESLint (no-restricted-syntax);
-  das ist der EINZIGE greifende Wächter, denn die Migrations-Scripts liegen in
-  keiner tsconfig und werden von `pnpm -r typecheck` nie gesehen.
-  Es gibt KEIN Migrations-Register in der
-  DB — die Labels (`control-019`, `system-021`, …) sind reine Anzeige, die
-  Idempotenz kommt vom 409. Man kann deshalb nicht fragen „welche Migration
-  lief hier?", wohl aber, was dabei herauskam: `pnpm ops:schema-parity`
-  (E5 → AU4) prüft je Instanz ein KURATIERTES SOLL über ALLE Layer, die dort
-  laufen SOLLEN (nicht mehr nur `system`): Fehlt eine Soll-Tabelle, ist es ein
-  Fehler — auch wenn sie nirgends existiert (der Anlass war die `changelog`-
-  Tabelle des admin-Layers, die nach dem control-Cutover monatelang in `control`
-  fehlte; der alte Union-Vergleich konnte eine überall-fehlende Tabelle nie
-  sehen). Der `system`-Layer läuft auf jeder Instanz mit — Pool, Control Plane
-  und jede Einzel-Instanz —, eine neue `system`-Migration gehört also überall
-  gefahren; danach diesen Lauf machen. Die SPALTEN prüft er seit 2026-11-18
-  (MG1 c) GENAU: Soll ist, was die Migrationen anlegen
-  (`scripts/lib/migration-inventory.mjs`), aber NUR für die Layer, die die App
-  der Instanz laut `site.manifest.ts` nutzt (dieselbe Auswahl wie der
-  Migrations-Runner, Logik in `scripts/lib/schema-columns.mjs`). Eine fehlende
-  Soll-Spalte und eine Spalte ohne Soll (von Hand angelegt) sind rot; mit
-  `--ci` nennt er bei der zweiten nur Tabelle und Anzahl. Tabellen fremder
-  Layer (Legacy-Silo portfolio, der eingefrorene Alt-Schatten `communities`/
-  `tickets` auf dem Pool — control-037: „gehört NICHT auf jede Instanz")
-  bleiben außen vor; ebenso Appwrites `$`-Felder, Tabellen aus ensure-Skripten
-  und ein Layer mit unlesbaren Migrationen (der steht als ⚠-Zeile da). Die
-  alte Instanz-gegen-Instanz-Parität (`PARITY_TABLES`) ist darin aufgegangen.
-  Alt-/unbekannte Ist-Tabellen sind eine nicht-fatale WARNUNG (portfolios sechs
-  tote Tabellen). Die Soll-Listen sind GEPFLEGT, nicht aus Migrations-Dateien
-  geparst — neue Tabelle ⇒ in ihren Layer-Block im Skript eintragen; das gilt
-  AUCH für Tabellen aus ensure-Skripten statt pnpm migrate (intro_requests so
-  übersehen, 2026-08-31). Seit 2026-11-16 (P20) hält ein Test die Soll-Listen
-  gegen die Migrationen selbst (`user-data-coverage.test.ts`: jede Tabelle, die
-  eine Migration anlegt, steht im Soll, und umgekehrt) — das Nachtragen kann
-  nicht mehr vergessen werden; WO eine Tabelle laufen soll, bleibt eine
-  Entscheidung im Skript. Seit 2026-08-31 trägt jeder INSTANCES-Eintrag ein
-  `ausgerollt`-Flag: fehlt die Env-Datei einer AUSGEROLLTEN Instanz, endet der
-  Lauf rot (Exit 1) statt still „übersprungen" — so fiel die Betreiber-Konsole
-  nach AH-4c wochenlang ungeprüft aus der Runde. Alle Prod-Migrations-Envs
-  liegen unter ~/.appwrite-secrets/migrations/<name>.env (account, admin,
-  portfolio, branding; portfolios Repo-Baum-Datei ist umgezogen — sie fehlte in
-  jedem Worktree). Der Wächter läuft am Mac (`pnpm ops:schema-parity`) und seit 2026-11-16 täglich im Produktions-Wächter (`--ci`, vier nur lesende Schlüssel `watch-schema-readonly` mit `tables.read` + `columns.read` in der Umgebung `production-watch`; dort ohne Namen, die nur Production kennt). Die Migrationen des Control Plane heißen seit
-  2026-07-29 `control-NNN`; Dokumente von VOR dem Cutover (docs/archiv/**,
-  CHANGELOG) nennen dieselben Migrationen `studio-NNN` — bewusst nicht
-  umgeschrieben, das ist ein Protokoll und kein Nachschlagewerk. Die
-  DATEINAMEN bleiben immer (`019-site-team.ts`).
-- Presences API (self-hostbar seit 1.9.5): GESAMTE Presence vereinheitlicht auf
-  EINE Presence pro User (presenceId=userId; metadata trägt scope/action/typing).
-  WICHTIG (SSR-Cookie-Architektur): der Browser kann seine Presence NICHT selbst
-  schreiben — der Web-SDK-Client hat keine Session, daher wird realtime.
-  upsertPresence() über einen Guest-WS verworfen und PUT /presences → 401. Der
-  WRITE läuft daher server-seitig: POST /api/presence/heartbeat upsertet mit dem
-  Admin-Client (expiresAt 90s) — im Pool seit 2026-11-18 nur für MITGLIEDER der
-  Community des Hosts, alle anderen bekommen ein stilles `ok` (BT1 e, Regel in
-  tenant-isolation.md). usePresenceState() = einzige
-  Heartbeat-Autorität pro Tab (ruft die Route bei Login/metadata-Änderung + alle
-  20s + bei visibilitychange/focus). usePresence(predicate) = Reader — liest
-  direkt über die Presences-API (presences.list() per Cookie-GET funktioniert +
-  Channel.presences()-Trigger), „online jetzt" via updatedAt-Recency 60s. Server:
-  listOnlinePresences() in core/server/utils/presence.ts. KEINE presence-Table mehr.
-  metadata-Felder (je eigener Zweck, kollidieren nicht): scope (Thread), action
-  (reviewing:/editing:), typing, page (Dashboard-Seite), replyingTo (commentId),
-  near (commentId, Lese-Position). Use-Cases: useThreadPresence (scope + typing +
-  replyingTo + near), useModerationPresence (action reviewing:*), useEditAwareness
-  (action editing:*), useViewingPresence (page → DashboardViewers „N sehen diese
-  Seite"). PresenceAvatar (core): Avatar + Icon-Badge in der Ecke (tippt/antwortet)
-- VORFAHRT „sichtbar schlägt away" (seit 2026-08-18): zwei offene Dashboards
-  VERSCHIEDENER Communities teilen sich die EINE Presence — der gedrosselte
-  Hintergrund-Tab stahl dem sichtbaren den tenantId-Stempel (Zähler flackerte
-  0↔1). Regel in `core/shared/presencePriority.ts`: ein away-Schreiber weicht
-  einer frischen (<60 s) SICHTBAREN Presence eines FREMDEN Mandanten — geprüft
-  im Heartbeat und als Leave-Guard; away-Tabs upserten deshalb NICHT mehr per WS
-  (der Server ist der einzige Schiedsrichter). away-über-away und gleicher
-  Mandant bleiben bewusst Letzter-gewinnt. Beweis:
-  `packages/core/scripts/verify-presence-away-priority.mjs`.
-- PRESENCE-GRENZE (A4, seit 2026-07-29 — vorher `read("users")`, also im Pool
-  JEDER eingeloggte User ALLER Communities): die Presence trägt jetzt dieselben
-  Rechte wie jede andere Zeile — `tenantRowPermissionsFor` ⇒ Pool
-  `read("label:<communityId>")`, Silo/Single-Tenant unverändert `read("users")`.
-  Geschrieben wird sie an ZWEI Stellen (heartbeat.post.ts UND der WS-Upsert in
-  usePresenceState, der die Permissions ERSETZT) — beide bauen sie aus
-  core/shared/presencePermissions.ts, per Test an tenantRowPermissionsFor
-  genagelt. Der tenantId-Filter (presenceFilter.ts/usePresence.ts) BLEIBT als
-  Netz (Mehrfach-Mitgliedschaft). Beweis beidseitig:
-  `packages/core/scripts/verify-presence-boundary.mjs`; Analyse + Rest-Falle
-  (Label-Änderung berechnet die Rollen OFFENER WS nicht neu):
-  docs/archiv/PRESENCE-GRENZE.md Abschnitt 8.
+- AUSFALL IST KEIN FEHLVERSUCH (AB1 d): „Appwrite hat abgelehnt" (4xx ⇒ 401,
+  zählt) getrennt von „Prüfung kam nicht zustande" (`isAuthBackendOutage`,
+  `core/shared/authFailure.ts` ⇒ 503 `data.code: auth_unavailable`, eine
+  Log-Zeile, `skipAccountAttempt(event)`). Die Minuten-Drossel je Anschluss
+  zählt bewusst weiter.
+- UPLOADS: `rejectOversizedUpload(event, maxBytes)`
+  (`core/server/utils/uploadSize.ts`) nach der Rechte-Prüfung, VOR
+  `readMultipartFormData`; die Prüfung der echten Größe danach bleibt.
+- BEKANNTES GERÄT (P29): nach VOLLSTÄNDIGER Anmeldung setzt der Server das
+  signierte Cookie `pk_known_device` (`core/server/utils/knownDevice.ts`); ein
+  Browser mit gültigem Merkzeichen für GENAU dieses Konto zählt in eigenem Topf
+  — ein Fremder sperrt den Besitzer so nicht aus. Neue Anmelde-Route ⇒
+  `rememberKnownDevice` nach dem Erfolg, nie im Zweig „zweiter Faktor steht
+  aus".
+
+### Zustimmung (SEC-008/SEC-007, Davids Entscheidungen)
+- NACHWEIS: EINE Zeile je (Konto, Art, Fassung) in `consent_records`
+  (system-041, keine Rechte für Konten, nur Admin-Client, feste Zeilen-Id,
+  409 = steht schon, nie überschreiben) — `core/server/utils/consentRecords.ts`,
+  Regeln pur in `core/shared/consent.ts`. Die Prefs-Felder
+  (`termsAcceptedAt`, `businessConfirmedAt`) gehören dem Konto und belegen
+  nichts.
+- EINE ZEILE ENTSTEHT NUR, WENN DER SERVER DIE BESTÄTIGUNG IN DIESER ANFRAGE
+  GESEHEN HAT. Wege: `password` (`signup.post.ts` verlangt
+  `terms`/`business: true`, sonst 400 `terms_required`/`business_required`
+  VOR der Anlage), `otp` (beim ersten Beitritt, nur mit den Feldern im Body — ohne sie keine
+  Zeile, die Anmeldung gelingt trotzdem), `oauth` (Merkzeichen `pk_consent`,
+  10 min, vom Google-Knopf im Register-Formular; die Rückkehr liest und
+  LÖSCHT es), `prompt` (`POST /api/auth/consent`), `adopted`
+  (einmalig aus den Prefs, nur Konten von vor `CONSENT_ADOPTION_CUTOVER`, AGB
+  nur bei gleicher Fassung).
+- TÜR `core/server/middleware/07.consent-required.ts`: jede schreibende
+  `/api/**`-Anfrage eines Kontos ohne Zustimmung ⇒ 403 `consent_required`,
+  Lesen frei. Erlaubnisliste fail-closed mit Grund je Eintrag in
+  `core/shared/consentGate.ts`; Layer erweitern sie nicht. Lesefehler und
+  fehlende Tabelle lassen durch (`auth.consent_check_failed`,
+  `auth.consent_table_missing`).
+- BETREIBER-KONTEN (globales Label `admin`/`moderator`, `isOperatorAccount`)
+  sind ausgenommen: nie gefragt, nie gesperrt, keine Zeile. Eine
+  Community-Rolle ist keine Betreiber-Rolle.
+- BROWSER fragt einmal je Besuch (`CoreConsentPrompt` über `useOverlay`,
+  `consent-prompt.client.ts`) und nach jedem 403 `consent_required`.
+- NEUE APP mit `termsUrl` (oder `businessOnly`) bekommt Nachweis, Tür und
+  Nachfrage ohne eigenen Code; ohne beides läuft nichts davon, auch kein
+  Netzaufruf. NEUE
+  SCHREIB-ROUTE ⇒ nichts zu tun. NEUE AGB-FASSUNG ⇒ `termsVersion` ändern.

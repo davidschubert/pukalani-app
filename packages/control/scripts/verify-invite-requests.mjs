@@ -64,7 +64,7 @@ const bellRows = []
 /**
  * Die Betreiber-MAIL geht nur raus, wenn die Betreiber-App eine Adresse dafür
  * hat (`NUXT_ALERT_EMAIL`) — die ist heute auf keiner Site gesetzt, die
- * Anfrage erreicht den Betreiber über die Glocke (.claude/rules/hosts-ops.md).
+ * Anfrage erreicht den Betreiber über die Glocke (.claude/rules/ops-waechter.md).
  * Läuft die Betreiber-App MIT Adresse, setzt der Aufrufer OPERATOR_MAIL=1, und
  * die Mail wird zusätzlich verlangt.
  */

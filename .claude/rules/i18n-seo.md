@@ -4,90 +4,93 @@ paths:
   - "**/app.config.ts"
   - "**/app.vue"
   - "**/pages/**"
+  - "**/llms.txt*"
+  - "**/*sonLd.ts"
   - "scripts/check-i18n-keys.mjs"
   - "packages/core/shared/seoOrigin.ts"
   - "packages/core/app/composables/useLocaleSeoHead*"
 ---
-<!-- Ausgelagert aus CLAUDE.md am 2026-11-08 (Token-Hygiene, SH1 e): lädt
-     automatisch, sobald eine Datei aus `paths` gelesen wird; bei Bash-Lesen
-     (cat/sed) diese Datei bewusst per Read öffnen. Wortlaut unverändert. -->
 
 ## i18n, Formulare und SEO — die Fallen, die kein Test sieht
 
-- Zod für alle Formulare (Schemas als create*Schema(t)-Factories),
-  i18n keys für User-facing Strings (keine hartcodierten Strings im Markup/Toasts);
-  '@' in Locale-Messages als {'@'} escapen. KEINE SPITZEN KLAMMERN in
-  Locale-Messages (2026-08-04 live erwischt): `/discussions/<adresse>` als
-  Platzhalter hielt nuxt-i18n für HTML — der Nachrichten-Compiler steigt dann
-  auf dem CLIENT aus, SSR rendert noch übersetzt, im Browser stehen rohe
-  Schlüssel (`home.title`), daraus folgt ein Hydration-Mismatch und die
-  gesamte Client-Seite ist unzuverlässig. Zwei E2E-Specs (Realtime-Pille,
-  Embed-Composer) starben daran; Unit-Tests, Typecheck und Lint sehen es NICHT,
-  nur `nuxt-i18n WARN Detected HTML in 1 message` im Dev-Log. Platzhalter ohne
+- Zod für alle Formulare (Schemas als `create*Schema(t)`-Factories), i18n-Keys
+  für jeden sichtbaren Text (keine hartcodierten Strings in Markup/Toasts);
+  `@` in Locale-Messages als `{'@'}` escapen.
+- KEINE SPITZEN KLAMMERN IN LOCALE-MESSAGES: ein Platzhalter wie
+  `/discussions/<adresse>` gilt nuxt-i18n als HTML — der Compiler steigt auf
+  dem CLIENT aus, SSR rendert noch übersetzt, im Browser stehen rohe Schlüssel,
+  Hydration-Mismatch. Unit-Tests, Typecheck und Lint sehen es NICHT, nur
+  `nuxt-i18n WARN Detected HTML in 1 message` im Dev-Log. Platzhalter ohne
   Klammern schreiben (`/discussions/adresse`).
-- EIN SCHLÜSSEL IN EINER CONFIG IST EIN VERSPRECHEN (Wächter seit 2026-08-06):
-  `pnpm check:i18n-keys` (CI/lint) prüft, dass jeder in einer `app.config`
-  deklarierte i18n-Schlüssel in JEDER App existiert, die ihn erbt — beide
-  Sprachen. Die effektive Schlüsselmenge ist die Vereinigung der Locale-Dateien
-  der App UND aller Layer aus ihrem `extends`; die effektive Config ist
-  App-über-Layern mit defu-Semantik (Arrays konkateniert). Nötig, weil ein
-  `labelKey` von einem FREMDEN Layer gerendert wird (der Fuß gehört blueprint,
-  der Text der App) und vue-i18n bei fehlender Übersetzung den SCHLÜSSEL
-  ausgibt: `apps/comments` schrieb am 2026-08-02 `labelKey: 'legal.imprint'`
-  ohne den Schlüssel anzulegen, und vier Tage lang stand im Fuß von
-  comments.pukalani.app wörtlich `legal.imprint` — Typecheck, Lint und
-  Unit-Tests sehen davon nichts. NEUES CONFIG-FELD MIT SCHLÜSSEL ⇒ in die
-  `FIELDS`-Tabelle von `scripts/check-i18n-keys.mjs` eintragen, sonst ist es
-  ungedeckt. ZWEITER TEIL (Q03, seit 2026-11-20): derselbe Lauf liest jeden
-  FEST genannten Schlüssel im Code — `t('…')`, `$t('…')`, `keypath="…"` in
-  `app/` und `shared/` — und verlangt ihn in JEDER App, die die Datei
-  mitbringt, in beiden Sprachen (`scripts/lib/i18n-static-keys.mjs`, Test mit
-  Gegenproben: `packages/core/tests/checkI18nKeys.test.ts`). Anlass:
-  `t('ui.close')` stand zehn Wochen auf einem Knopf, den Schlüssel gab es nie.
-  WAS ER NICHT LIEST: zusammengesetzte Schlüssel (t(`a.${x}`)), `te()`,
-  `server/` (dort heißt auch eine eigene Hilfe `t`) und Felder wie
-  `labelKey:` im Code (manche tragen nur den Anfang eines Schlüssels).
-- EIN NAME JE SPRACHE IN DER ADRESSE BRAUCHT DEN RÜCKWEG (Q03, seit
-  2026-11-20, live erwischt): die Sprach-Erkennung (`redirectOn: 'all'`)
-  übersetzt nur den FESTEN Teil einer Adresse — sie läuft, bevor die Seite
-  geladen ist. Aus `/products/posts` wird im deutschen Browser
-  `/de/produkte/posts`, und eine Seite, die den Namen nur in der eigenen
-  Sprache sucht, antwortet 404. Deshalb: eine `[slug]`-Seite mit übersetzten
-  Namen sucht bei einem Fehlgriff in der ANDEREN Sprache und leitet per 301
-  über `localePath()` auf die richtige Adresse (sie ZEIGT die Seite dort nicht,
-  sonst gäbe es zwei Adressen). Vorbild: `matchProductSlug` /
+- EIN SCHLÜSSEL IN EINER CONFIG IST EIN VERSPRECHEN: `pnpm check:i18n-keys`
+  (läuft mit lint) prüft, dass jeder in einer `app.config` deklarierte
+  i18n-Schlüssel in JEDER erbenden App existiert, beide Sprachen. Effektive
+  Schlüsselmenge = Locale-Dateien der App UND aller Layer aus ihrem `extends`;
+  effektive Config = App über Layern mit defu-Semantik (Arrays konkateniert).
+  Nötig, weil ein `labelKey` von einem FREMDEN Layer gerendert wird und
+  vue-i18n bei fehlender Übersetzung den SCHLÜSSEL ausgibt. NEUES CONFIG-FELD
+  MIT SCHLÜSSEL ⇒ in die `FIELDS`-Tabelle von `scripts/check-i18n-keys.mjs`,
+  sonst ist es ungedeckt.
+- ZWEITER TEIL (Q03): derselbe Lauf liest jeden FEST genannten Schlüssel —
+  `t('…')`, `$t('…')`, `keypath="…"` in `app/` und `shared/` — und verlangt ihn
+  in JEDER App, die die Datei mitbringt, in beiden Sprachen
+  (`scripts/lib/i18n-static-keys.mjs`, Test mit Gegenproben
+  `packages/core/tests/checkI18nKeys.test.ts`). NICHT gelesen werden
+  zusammengesetzte Schlüssel (t(`a.${x}`)), `te()`, `server/` (dort heißt auch
+  eine eigene Hilfe `t`) und Felder wie `labelKey:` im Code — dort selbst
+  prüfen.
+- EIN NAME JE SPRACHE IN DER ADRESSE BRAUCHT DEN RÜCKWEG (Q03): die
+  Sprach-Erkennung (`redirectOn: 'all'`) übersetzt nur den FESTEN Teil einer
+  Adresse, bevor die Seite lädt (`/products/posts` → `/de/produkte/posts`).
+  Eine `[slug]`-Seite mit übersetzten Namen sucht bei einem Fehlgriff in der
+  ANDEREN Sprache und leitet per 301 über `localePath()` um (sie ZEIGT die
+  Seite dort nicht, sonst zwei Adressen). Vorbild `matchProductSlug` /
   `matchAudienceSlug` in `packages/marketing/shared/marketing.ts`, Test
-  `apps/marketing/tests/localeSlugRedirect.test.ts`. Beweis ist ein Abruf mit
-  `Accept-Language` der anderen Sprache — ohne Sprach-Vorgabe sieht man den
-  Fehler nicht.
-- i18n-Strategie 'prefix_except_default' (en Default ohne Prefix unter /...,
-  de unter /de/*, detectBrowserLanguage redirectOn: 'all' → jede Seite folgt dem
-  i18n_redirected-Cookie, nicht nur '/'; BEWUSST ohne fallbackLocale — signal-
-  lose Requests wie Crawler behalten die URL-Locale, sonst EN-Content unter
-  /de/*): interne Links/Redirects IMMER über localePath() — auch in Middleware
-  (useLocalePath()('/...')), sonst geht der Locale-Prefix verloren. SEO:
-  useLocaleSeoHead() (core) ist der EINZIGE Aufruf in jeder app.vue und liefert
-  hreflang/canonical/og:url/og:locale + lang/dir; absolute URLs via
-  NUXT_PUBLIC_I18N_BASE_URL (i18n.baseUrl-Skeleton in core). MEHR-HOST-Apps
-  (Pool) setzen zusätzlich pukalani.seo.originFromRequest: dann kommt Host+Port aus
-  dem Request und nur das SCHEMA aus der Env (core/shared/seoOrigin.ts) — mit
-  der einen Env-Basis zeigten canonical/hreflang/og:url auf ALLEN Mandanten-
-  Hosts auf platform.pukalani.app (Audit-Befund B1). og:image gehört EBENFALLS
-  dorthin (nie in eine Seite): Produkt-Layer tragen den Pfad in
-  useBrandOgImage() ein, useLocaleSeoHead() macht die absolute URL + Maße/Typ/
-  twitter:card. Je Community `/og/<key>.png` (1200×630, Gate
-  pukalani.seo.tenantOgImage) — **PNG, nicht SVG**: Facebook/WhatsApp/LinkedIn
-  zeigen SVG als og:image nicht. Gerastert OHNE Laufzeit-Renderer: Chrome hat
-  die Zeichen EINMAL in ein Atlas gebacken (packages/themes/scripts/
-  generate-brand-card-font.mjs → shared/brandCardFont.gen.ts, committet,
-  server-only, BEWUSST NICHT im check:themes-Gate — das Ergebnis hängt an den
-  Schriften der backenden Maschine). Der Schlüssel in der URL ist NIE Eingabe
-  (sonst füllt ein Bot mit erfundenen Schlüsseln die Platte), sondern nur
-  Cache-Brecher; Ablage in tmpdir(), nie in .output (Release-Slots wechseln
-  den Pfad). EINE SITE OHNE EIGENES BILD JE SEITE trägt ein festes Bild
-  in ihrer `app.vue` ein (`useBrandOgImage().value = { path: '/og/…' }`,
-  committete Datei unter `public/og/`; pukalani.studio, Hilfe und
-  branding.supply — die letzten zwei erzeugt `scripts/og-site-cards.mjs`).
-  SITEMAP-LISTEN VON HAND brauchen einen Vergleichstest gegen den
-  Seiten-Ordner (marketing, branding, portfolio haben einen); die Hilfe baut
-  ihre Sitemap aus den Inhalten.
+  `apps/marketing/tests/localeSlugRedirect.test.ts`. Beweis nur mit
+  `Accept-Language` der anderen Sprache.
+- i18n-STRATEGIE `prefix_except_default` (en ohne Prefix, de unter `/de/*`),
+  `redirectOn: 'all'` (jede Seite folgt dem `i18n_redirected`-Cookie), BEWUSST
+  ohne `fallbackLocale` (signallose Requests wie Crawler behalten die
+  URL-Locale, sonst EN-Content unter `/de/*`). Interne Links/Redirects IMMER
+  über `localePath()` — auch in Middleware (`useLocalePath()('/...')`), sonst
+  fällt der Locale-Prefix weg.
+- SEO-KOPF: jede `app.vue` ruft `useLocaleSeoHead()` (core); es ist der EINZIGE
+  Ort für hreflang/canonical/og:url/og:locale/og:image + `lang`/`dir`. Daneben
+  setzt eine `app.vue` mit `useHead`/`useSeoMeta` nur, was diese Felder nicht
+  berührt (z. B. robots-Darstellung, `bodyAttrs`, `ogSiteName`). Absolute URLs
+  über `NUXT_PUBLIC_I18N_BASE_URL`. MEHR-HOST-Apps (Pool) setzen zusätzlich
+  `pukalani.seo.originFromRequest`: Host+Port aus dem Request, nur das SCHEMA
+  aus der Env (`core/shared/seoOrigin.ts`) — sonst zeigen canonical/hreflang/
+  og:url auf allen Mandanten-Hosts auf dieselbe Basis (Befund B1).
+- og:image NIE IN EINER SEITE: Produkt-Layer tragen den Pfad in
+  `useBrandOgImage()` ein, `useLocaleSeoHead()` macht absolute URL, Maße, Typ
+  und `twitter:card`. Vorschaubilder sind Rasterbilder, **nie SVG**
+  (Facebook/WhatsApp/LinkedIn zeigen SVG nicht).
+- JE COMMUNITY `/og/<key>.png` (1200×630, Gate `pukalani.seo.tenantOgImage`,
+  Route `apps/platform/server/routes/og/[key].get.ts`), gerastert OHNE
+  Laufzeit-Renderer: der Zeichen-Atlas ist einmal gebacken
+  (`packages/themes/scripts/generate-brand-card-font.mjs` →
+  `packages/themes/shared/brandCardFont.gen.ts`, committet, server-only,
+  BEWUSST NICHT im `check:themes`-Gate — das Ergebnis hängt an den Schriften
+  der backenden Maschine). Der Schlüssel in der URL ist NIE Eingabe (sonst
+  füllt ein Bot mit erfundenen Schlüsseln die Platte), nur Cache-Brecher;
+  Ablage in `tmpdir()` (`apps/platform/server/utils/brandImageStore.ts`), nie
+  in `.output` (Release-Slots wechseln den Pfad).
+- EINE SITE OHNE EIGENES BILD JE SEITE trägt ein festes Bild in ihrer
+  `app.vue` ein (`useBrandOgImage().value = { path: '/og/…' }`, committete
+  Datei unter `public/`); Hilfe und branding.supply erzeugt
+  `scripts/og-site-cards.mjs`.
+- SITEMAP-LISTEN VON HAND brauchen einen Vergleichstest gegen den
+  Seiten-Ordner (Vorbilder `apps/marketing/tests/marketingRoutes.test.ts`,
+  `apps/portfolio/tests/siteRoutes.test.ts`,
+  `apps/branding/tests/brandingSitemap.test.ts`); die Hilfe baut ihre Sitemap
+  aus den Inhalten.
+- NEU — EINE AUSSAGE, EINE QUELLE: Ort, Preis, Zugang und Beta-Zustand stehen
+  je Site EINMAL; Seitentext, `description`, JSON-LD und `llms.txt` lesen von
+  dort, statt sie abzuschreiben. Vorbild: die Preise der Studio-Site in
+  `apps/portfolio/app/data/home.ts` (`SERVICES`), gelesen von der Startseite
+  und von `apps/portfolio/server/routes/llms.txt.get.ts` (Beweis
+  `apps/portfolio/e2e/seo-routes.spec.ts`). Ändert eine Entscheidung das
+  Verhalten, endet der PR mit `git grep` nach dem alten Satz in allen
+  Sprachdateien. Feste Wörter für neuen Text: Konto/account ·
+  Einladungscode/invite code · Markenberater/brand advisor.

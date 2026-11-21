@@ -5,59 +5,55 @@ paths:
   - "packages/core/shared/realtimeGate.ts"
   - "packages/core/app/utils/hostGate.ts"
   - "**/usePresence*"
-  - "**/useRealtimeRows*"
 ---
-<!-- Ausgelagert aus CLAUDE.md am 2026-11-08 (Token-Hygiene, SH1 e): lädt
-     automatisch, sobald eine Datei aus `paths` gelesen wird; bei Bash-Lesen
-     (cat/sed) diese Datei bewusst per Read öffnen. Wortlaut unverändert. -->
 
 ## Realtime-Gate (F14/G5) — Config-Gate und Host-Gate
 
-- OB REALTIME ÜBERHAUPT ANTWORTET, sieht der Produktions-Wächter (OPS-004,
-  seit 2026-11-16): alle 30 min ein Handshake von außen gegen
-  `api.pukalani.app` (`scripts/ops/verify-realtime.mjs`), täglich der Stand
-  des Wächters auf dem Appwrite-Server (`ops/realtime-watchdog.sh`: prüft alle
-  5 min lokal, erstellt den Container höchstens dreimal in Folge neu, danach
-  `aufgegeben`). Ein Handshake (HTTP 101) beweist nur, dass der Dienst
-  Verbindungen annimmt — nicht, dass Ereignisse ankommen. Was bei Rot zu tun
-  ist: docs/runbooks/PRODUKTIONS-ALARM.md, „Live-Verbindung (Realtime)".
-
-- pukalani.realtime.enabled (F14, seit 2026-08-01): der EINE Schalter für alle
-  Realtime-Einstiege des Core — Row-Streams (useRealtimeRows), Presence
-  (usePresence/-State) und den Account-Channel (useRealtimeAccount). AUS heißt: kein
-  Web-SDK nachgeladen, kein Socket, kein /api/auth/realtime-token. **Core-Default
-  AN** — die begründete Ausnahme von „Core-Default ist IMMER aus": Realtime ist
-  kein Zusatz, sondern das bestehende Verhalten jeder Produkt-App, und ein
-  Default AUS entkoppelte sie stillschweigend (die Seite sieht richtig aus, sie
-  aktualisiert sich nur nicht mehr). AUS in `marketing` + `help` (öffentlich,
-  kontenlos, ohne themes-Layer — sie abonnierten `app_config` über den geerbten
-  core-Layer, ohne die Flags je zu lesen). EINE pure Regel in
-  core/shared/realtimeGate.ts (`realtimeAllowed(enabled, ...ids)` — Gate UND
-  Datenebene; der `!databaseId`-Guard aus dem Live-Vorfall 2026-07-29 geht darin
-  auf), gelesen an EINER Stelle (`realtimeEnabled()` in useRealtimeClient.ts,
-  memoisiert). `ensureRealtimeClients`/`sharedRealtime`/`realtimeCookieClient`
-  geben bewusst `… | null` zurück: der strict-Modus zwingt so JEDEN künftigen
-  Konsumenten, „diese App hat keine Realtime" zu behandeln.
-  ZWEITES GATE, ANDERE FRAGE (G5, 2026-08-03): das Config-Gate sagt, ob die APP
-  Realtime hat — `startWhenHostResolves()` (core/app/utils/hostGate.ts) sagt, ob
-  die SEITE dazu einen Host hat. Auf einem unbekannten oder `abuse`-gesperrten
-  Host antwortet jeder Pfad 404, die Fehlerseite rendert aber MIT hydriertem
-  Auth-Store (C12b) — der damalige Account-WS lief los, und JEDER Abbruch zog
-  `/api/auth/me` + `/api/community/role` nach (gemessen: 66 WS + 15 Requests in
-  60 s, jetzt 1 + 0). JEDES neue client-Realtime-Plugin gehört in diese Klammer
-  (heute: realtime-account, realtime-config, realtime-themes; realtime-branding
-  steigt ohne `useSiteId()` ohnehin aus). Bedingung ist `isHostUnservedError`
-  (unbekannter Host ODER seit SEC-025 die 503 „Trennung ohne Resolver"),
-  NICHT `useError()` — auf einer Tippfehler-404 einer GESUNDEN Community läuft
-  Realtime weiter, sonst verlöre man dort die Sofort-Abmeldung bei
-  Session-Widerruf. Nachgeholt, sobald `clearError()` räumt. Der Auth-Nachtrag
-  selbst hat zusätzlich einen Mindestabstand (`accountVerifyDue`, 30 s) — er ist
-  der Verstärker bei jedem flappenden Socket, nicht nur auf 404-Hosts. Sie darf
-  aber NICHTS VERWERFEN (Prod-Messung 2026-11-09: eine Prüfung beim Seitenladen,
-  Widerruf 7 s später im Fenster ⇒ abgemeldet erst nach 33 s): ein
-  `sessions.*.delete`-Ereignis geht vorbei, alles andere wird ans Fensterende
-  geschoben (`accountVerifyAt`). Der feste
-  1-s-Reconnect in der Konsole kommt aus dem Appwrite-Web-SDK (es nullt
-  `reconnectAttempts` im `open`-Handler, erreicht seine Staffelung also nie).
-  Seit RT2 (2026-11-08) gibt es keinen eigenen Account-WS mehr — der
-  `account`-Channel läuft auf dem geteilten Socket (Regel: `appwrite.md`).
+- OB REALTIME IN PRODUCTION ANTWORTET (OPS-004): `scripts/ops/verify-realtime.mjs`
+  (Handshake von außen gegen `api.pukalani.app`, alle 30 min) und
+  `ops/realtime-watchdog.sh` auf dem Appwrite-Server (prüft lokal, erstellt den
+  Container höchstens `MAX_RESTARTS`-mal in Folge neu, danach `aufgegeben`).
+  Ein Handshake (HTTP 101) beweist nur, dass Verbindungen angenommen werden —
+  NICHT, dass Ereignisse ankommen. Bei Rot: `docs/runbooks/PRODUKTIONS-ALARM.md`,
+  Absatz „Live-Verbindung (Realtime)".
+- `pukalani.realtime.enabled` (F14) ist der EINE Schalter für alle
+  Realtime-Einstiege des Core: Row-Streams (`useRealtimeRows`), Presence
+  (`usePresence`/`usePresenceState`) und den Account-Channel
+  (`useRealtimeAccount`). AUS heißt: kein Web-SDK nachgeladen, kein Socket,
+  kein `/api/auth/realtime-token`. **Core-Default AN** — die begründete
+  Ausnahme von „Core-Default ist IMMER aus": Realtime ist bestehendes
+  Verhalten jeder Produkt-App; ein Default AUS entkoppelte sie still (die Seite
+  sieht richtig aus, aktualisiert sich nur nicht). AUS in `marketing` + `help`
+  (öffentlich, kontenlos, ohne themes-Layer).
+- EINE pure Regel: `realtimeAllowed(enabled, ...ids)` in
+  `core/shared/realtimeGate.ts` (Gate UND Datenebene, der `!databaseId`-Guard
+  geht darin auf), gelesen an EINER Stelle (`realtimeEnabled()` in
+  `core/app/composables/useRealtimeClient.ts`, memoisiert).
+  `ensureRealtimeClients`/`sharedRealtime`/`realtimeCookieClient` geben
+  bewusst `… | null` zurück — so zwingt strict JEDEN Konsumenten, „diese App
+  hat keine Realtime" zu behandeln. Nicht wegtypisieren.
+- ZWEITES GATE, ANDERE FRAGE (G5): das Config-Gate sagt, ob die APP Realtime
+  hat — `startWhenHostResolves()` (`core/app/utils/hostGate.ts`) sagt, ob die
+  SEITE einen Host hat. Auf einem unbekannten oder `abuse`-gesperrten Host
+  rendert die 404-Fehlerseite MIT hydriertem Auth-Store (C12b); ein dort
+  startender Socket zieht bei jedem Abbruch Auth-Abrufe nach (Reconnect-Sturm).
+  JEDES neue client-Plugin, das eine Realtime-Verbindung STARTET, gehört in
+  diese Klammer (heute `realtime-account`, `realtime-config`,
+  `realtime-themes`). Ohne Klammer nur mit Grund: `realtime-branding` steigt
+  ohne `useSiteId()` ohnehin aus; `realtime-auth` startet nichts, es verbindet
+  nur eine schon bestehende Verbindung nach einem Login-Wechsel neu
+  (`syncRealtimeAuth`).
+- Bedingung ist `isHostUnservedError` (`core/shared/unknownHost.ts`:
+  unbekannter Host ODER die 503 „Trennung ohne Resolver", SEC-025), NICHT
+  `useError()` — auf einer Tippfehler-404 einer GESUNDEN Community läuft
+  Realtime weiter, sonst fehlt dort die Sofort-Abmeldung bei Session-Widerruf.
+  Nachgeholt wird, sobald `clearError()` räumt.
+- DER AUTH-NACHTRAG HAT EINEN MINDESTABSTAND (`accountVerifyDue`, 30 s,
+  `core/shared/realtimeGate.ts`) — er ist der Verstärker bei jedem flappenden
+  Socket. Er darf aber NICHTS VERWERFEN: ein `sessions.*.delete`-Ereignis geht
+  vorbei, alles andere wird ans Fensterende geschoben (`accountVerifyAt`).
+- FALLE: der feste 1-s-Reconnect in der Konsole kommt aus dem
+  Appwrite-Web-SDK (es nullt `reconnectAttempts` im `open`-Handler und
+  erreicht seine Staffelung nie) — kein eigener Fehler.
+- KEIN EIGENER ACCOUNT-WS (RT2): der `account`-Channel läuft auf dem geteilten
+  Socket (Regel: `appwrite-presence.md`).

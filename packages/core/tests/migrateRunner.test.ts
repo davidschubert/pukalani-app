@@ -241,6 +241,6 @@ describe('migrate — ein Weg, kein Befehl je Layer oder App', () => {
         }
       }
     }
-    expect(offenders, `Eigene Migrations-Befehle:\n  ${offenders.join('\n  ')}\n\nDer eine Weg: pnpm migrate --app <app> (.claude/rules/appwrite.md).`).toEqual([])
+    expect(offenders, `Eigene Migrations-Befehle:\n  ${offenders.join('\n  ')}\n\nDer eine Weg: pnpm migrate --app <app> (.claude/rules/appwrite-migrationen.md).`).toEqual([])
   })
 })

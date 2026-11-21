@@ -144,8 +144,8 @@ Fragen nimm deine Empfehlung"):
   ihn noch liefert; er nennt nicht mehr nur den nächtlichen Lauf.
 
 **Wo es steht:** COMPLETE „N13"; Regeln in
-`.claude/rules/ki-mail-embed-moderation.md` („LANGE ARBEIT GEHÖRT NICHT IN
-DIE ANFRAGE", „ABGESCHNITTEN HEISST GEKENNZEICHNET"); Code-Kopf von
+`.claude/rules/lange-laeufe.md` („LANGE ARBEIT GEHÖRT NICHT IN DIE ANFRAGE")
+und `.claude/rules/ki.md` („ABGESCHNITTEN HEISST GEKENNZEICHNET"); Code-Kopf von
 `packages/brand/server/utils/brandCheckRunToken.ts`.
 
 ---

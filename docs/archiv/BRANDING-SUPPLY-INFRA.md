@@ -1,6 +1,6 @@
 # branding.supply — Infra-Plan (Horizont 2 vorgezogen)
 
-> **Plan-Status (2026-11-21):** gebaut — branding.supply ist seit dem 2026-09-01 live. Die Datei bleibt vorerst hier, weil das Regelwerk (`CLAUDE.md`) auf diesen Pfad zeigt; sie zieht um, sobald der Zeiger dort mitzieht.
+> **Archiviert am 2026-11-21 (Q17).** Gebaut: branding.supply ist seit dem 2026-09-01 live. Betrieb: [BRANDING-SUPPLY-SETUP.md](../runbooks/BRANDING-SUPPLY-SETUP.md).
 
 Stand: 2026-08-31. **DAVIDS ENTSCHEIDUNG (2026-08-31, Kehrtwende zu
 Plan §6 „Zwei Horizonte" und §9.2):** der Brand-Wizard bekommt JETZT
