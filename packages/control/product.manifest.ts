@@ -10,7 +10,7 @@ export default {
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): control-039 legt trial_claims an (BE-015).
-  schema: { latest: '040', probe: { migration: '040', table: 'communities', column: 'customDomainApproved' } },
+  schema: { latest: '041', probe: { migration: '040', table: 'communities', column: 'customDomainApproved' } },
   apiPrefixes: ['/api/control'],
   title: { en: 'Control Plane', de: 'Control Plane' },
   description: {
