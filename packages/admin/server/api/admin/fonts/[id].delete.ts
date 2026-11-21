@@ -1,5 +1,6 @@
 import type { Models } from 'node-appwrite'
 import { softFail } from '../../../../../core/server/utils/softFail'
+import { forgetInstanceRead } from '../../../../../core/server/utils/instanceReadCache'
 
 /**
  * Customize theme: eigene Schrift löschen — inkl. der Storage-Dateien
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
 
   await admin.tablesDB.deleteRow({ databaseId, tableId: 'custom_fonts', rowId: id })
 
+  forgetInstanceRead('custom_fonts') // Instanz-Merker (Q12): neue Besucher sehen es sofort
   await recordAudit(event, { action: 'font.deleted', targetType: 'font', targetId: id, targetName: String(row.name ?? '') })
   return { ok: true }
 })

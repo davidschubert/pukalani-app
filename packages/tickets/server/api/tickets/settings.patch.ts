@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { aiModelCheckRejection } from '../../../../core/shared/aiModelEndpoints'
 import type { AiModelCheck } from '../../../../core/shared/aiModelEndpoints'
+import { forgetInstanceRead } from '../../../../core/server/utils/instanceReadCache'
 
 /**
  * KI-Modell zur Laufzeit wechseln — schreibt app_config.ticketsAiModel
@@ -56,7 +57,7 @@ export default defineEventHandler(async (event) => {
     data: { ticketsAiModel: model },
   }).catch((error) => {
     throw toH3Error(error, 'Could not save board settings')
-  })
+  }).finally(() => forgetInstanceRead('app_config')) // Instanz-Merker (Q12)
 
   const effective = await getEffectiveTicketsAiConfig(event)
   return aiModelCheck

@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { softFail } from '../../../core/server/utils/softFail'
+import { cachedInstanceRead } from '../../../core/server/utils/instanceReadCache'
 
 type CustomFontRow = Models.Row & { name: string, files?: string | null, order?: number }
 
@@ -33,11 +34,12 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
   const admin = createAdminClient(event)
 
-  const rows = await admin.tablesDB.listRows<CustomFontRow>({
+  // Höchstens 15 s alt, die Betreiber-Routen räumen (Q12, `instanceReadCache.ts`).
+  const rows = await cachedInstanceRead(event, 'custom_fonts', () => admin.tablesDB.listRows<CustomFontRow>({
     databaseId: config.public.appwriteDatabaseId,
     tableId: 'custom_fonts',
     queries: [Query.orderAsc('order'), Query.limit(100)],
-  }).then(res => res.rows).catch(softFail('system:api/fonts.get:listRows', [] as CustomFontRow[]))
+  }).then(res => res.rows)).catch(softFail('system:api/fonts.get:listRows', [] as CustomFontRow[]))
 
   return {
     fonts: rows
