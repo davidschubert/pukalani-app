@@ -115,6 +115,51 @@ sonst nicht) und „Secure protocol" nachlesen — einmal blieb es auf „None".
 Und zweimal zsh/pnpm: `for c in "-r lint"` gibt EIN Wort „-r lint", und
 `set -- $e` trennt in zsh nicht an Leerzeichen — beides sieht aus wie ein
 Fehler im Code.
+### Q26 — Aufräumen im Code: Doppelungen, tote Exporte, veraltete Kommentare, ein Satz zu den Rechten (ARC-005, ARC-006, ARC-007, ARC-009, DOC-016) ✅ 2026-11-21
+
+**Was.** Ein kleines Paket, abgearbeitet nach der Liste des Audits, kein
+Großputz. Kein Verhalten ändert sich.
+
+1. **Doppelungen (ARC-005).** Die Bildprüfung von Event-Cover und Mediathek
+   ist eine Funktion: `isUploadImage` (`packages/core/server/utils/uploadImage.ts`,
+   gebaut auf `sniffImageMime`, gleiche Antwort für jede Eingabe: JPEG, PNG,
+   WebP, unter 12 Bytes nie). Die drei wortgleichen JSON-LD-Hilfen (branding,
+   portfolio, brand) und die gleiche Rechnung in `discover/[slug].vue` sind
+   `jsonLdScript` in `packages/core/app/utils/jsonLd.ts` (Auto-Import). Neuer
+   Test `packages/runner/tests/runnerProtocolCopy.test.ts` vergleicht die
+   Kopie `tools/ai-runner/src/protocol.ts` als Text mit dem Layer (Modi,
+   Sperr-Modi, Zustände, Ereignis-Arten, Feldnamen); Gegenprobe: ein Modus
+   weniger oder ein umbenanntes Feld ⇒ rot.
+2. **Toter Code (ARC-006).** 30 der 32 Exporte ohne Nutzer gelöscht (vorher
+   im ganzen Repo nach Namen gesucht, auch in Tests, Skripten und Vorlagen —
+   Auto-Import heißt: ohne `import`-Zeile). `createTicketFromFeedback` ist weg
+   (Antwort aus dem Audit: entfernen, bis der Bedarf da ist); der Herkunfts-Wert
+   `feedback` bleibt, damit ein neuer Weg nicht als geprüft gilt. Der doppelte
+   Typ-Export in `core/server/utils/presence.ts` ist weg.
+3. **Kommentare (ARC-007, DOC-016).** Berichtigt: `main.css` (Dashboard ist
+   1280 px, nicht `--ui-container`), `heartbeat.post.ts` (240 s, nicht 90 s),
+   `brandingSitemap.ts` (statt „nachgesehen" der Vergleichstest),
+   `usePresence.ts` (240 s statt ~120 s), der Hinweis in
+   `verify-auth-methods.mjs` (JWT ist seit 2026-11-18 auch aus). `feed.vue`
+   war schon mit Q12 berichtigt.
+4. **Rechte (ARC-009, Davids Ja zu A4).** Im README steht „Alle Rechte
+   vorbehalten; öffentlich nur aus Abrechnungsgründen". Keine Lizenzdatei;
+   `package.json` hat kein `license`-Feld und bekommt keins.
+
+**Bleibt stehen, mit Grund.** `realtimeCookieClient` (die Regeln nennen ihn
+als Einstieg); `__resetCustomDomainNoticeReader` und `apps/control/app/app.config.ts`
+(in einem offenen Pull Request); die drei Marketing- und vier Insights-Seiten
+mit rohem `JSON.stringify` (die Hilfe escapet `<`, die Ausgabe änderte sich);
+die übrigen rund 16 Kommentar-Stellen aus der Liste zu DOC-016 (nicht erneut
+nachgelesen).
+
+**Gelernt:** Ein ungenutzter Export ist in einem Nuxt-Layer nur per Textsuche
+zu finden — der Compiler meldet ihn nicht, weil Auto-Import jeden Namen
+überall erlaubt. Vor dem Löschen deshalb nach dem NAMEN suchen (auch in
+Regeln und Vorlagen), nicht nach `import`-Zeilen. Und eine „Kopie mit Grund"
+(Runner-Typen) braucht trotzdem einen Vergleich: der Kopf der Datei erklärt
+das Warum, warnt aber niemanden, wenn die Seiten auseinanderlaufen.
+
 ### Q12 — Weniger Datenbank-Aufrufe je Seite: das Konto einmal, der Feed einmal, Kommentare in einem Zug (PERF-003, PERF-004, PERF-005, PERF-008, FE-006) ✅ 2026-11-21
 
 **Was.** Beim Rendern einer Seite ruft Nuxt die eigenen `/api`-Routen auf,
@@ -365,6 +410,11 @@ Deckel des Rechners. Gefunden bei der Klick-Probe auf der echten Seite
   die Zahl, die das Feld wirklich liefert, geht durch; negativ, über 100,
   Text ohne Zahl und falsche Typen scheitern mit der Budget-Meldung. Tests
   des Pakets, ESLint und der Typecheck der Betreiber-Konsole sind grün.
+- **Auf der echten Seite geklickt** (nach dem Ausliefern, `admin.pukalani.app`,
+  Formular an einem Ticket): mit `2.5` im Feld kein Fehler, der Knopf „Lauf
+  starten" ist frei. Gegenprobe: mit `150` steht darunter „Eine Zahl zwischen
+  0 und 100." Danach Feld geleert und Fenster geschlossen. Nicht gezeigt: ein
+  gestarteter Lauf mit gesetztem Budget — es wurde keiner gestartet.
 
 **Offen bleibt** RU1 (c): der Editor macht aus `README.md` einen Link.
 
@@ -1382,6 +1432,56 @@ für Notizen ohne Plan gedacht und trug am Ende vier Fünftel der Datei; eine
 Datei je Kürzel endet mit ihrem Punkt. (4) **Vor dem Verschieben das Dokument
 selbst lesen.** Zwei Pläne sahen nach dem Kopf „gebaut" aus; einer sagte
 weiter unten ausdrücklich, warum er bleibt.
+
+---
+
+### N23 — Zwei kleine Updates nach Ablauf der Frist: Vitest 5.1.1 und `@vercel/nft` 1.11.7 (AR1 e, Issues 359 und 356) ✅ 2026-11-21
+
+**Was.** Die zwei Updates aus „N19", die am 2026-11-20 noch unter der
+Drei-Tage-Frist lagen:
+
+| Issue | Ergebnis |
+| --- | --- |
+| 359 Vitest | 5.1.0 → 5.1.1 (Katalog `^5.1.1`; `@vitest/mocker` und `@vitest/spy` ziehen mit) |
+| 356 `@vercel/nft` | 1.11.2 → 1.11.7 (nur im Lockfile, kommt über `nitropack`; kein Pin) |
+
+`@vercel/nft` 1.11.9, 1.11.10 und 1.11.11 lagen noch unter der Frist (über
+ihr ab dem 2026-11-22 20:13, 2026-11-22 20:25 und 2026-11-23 20:54 UTC) und
+blieben draußen. Die Issues 373 (MariaDB-Image) und 374 (minimatch 10 über
+`archiver`) sind unverändert offen: `archiver` 8.0.0 und `nitropack` 2.13.6
+sind weiter die neuesten Ausgaben.
+
+**Wie.** Vitest über den Katalog. `@vercel/nft` wie in „N19": für EINEN Lauf
+`'@vercel/nft': 1.11.7` unter `overrides`, Lockfile auflösen, den Eintrag
+entfernen, noch einmal auflösen. Jeder Lauf mit
+`--config.minimumReleaseAge=4320`. Der Diff des Lockfiles enthält nur Zeilen
+dieser Pakete.
+
+**Beweis.**
+- Aufgelöst und per `node -p` gelesen: `vitest` 5.1.1, `@vercel/nft` 1.11.7.
+- `pnpm test`, `pnpm check` und `pnpm typecheck` lokal grün. Ein geänderter
+  Test im Watch-Modus lief von selbst neu (20 → 21 Proben).
+- `apps/platform` vor und nach dem Heben gebaut und `.output/server` Datei
+  für Datei verglichen (SHA-256): beide Male 2768 Dateien mit zusammen
+  40.777.524 Bytes, alle 1331 Dateien unter `node_modules` gleich. Verschieden
+  sind sieben Dateien, die sich bei jedem Build ändern (Zeitstempel und der
+  Name einer Style-Datei), und eine Zeile in `.output/server/package.json`
+  (siehe „Gelernt"). Die gebaute App startet und `/api/health` antwortet; ohne
+  Zugangsdaten lehnt sie alles andere wie vorgesehen mit 503 ab, eine Seite
+  wurde also nicht gerendert.
+
+**Gelernt:** (1) **Die `package.json` in der Server-Ausgabe ist ein Etikett,
+kein Inhalt.** Liegt ein Paket in zwei Versionen im Baum
+(`unist-util-visit-parents` 6.0.2 und 6.1.0), nennt die Liste nur eine davon —
+und welche, wechselte mit der neuen Ausgabe des Tracers, während die Dateien
+auf der Platte Byte für Byte gleich blieben. Wer zwei Builds vergleicht,
+vergleicht die Dateien, nicht diese Liste. (2) **Eine Frist gilt je Ausgabe,
+nicht je Paket.** Am Tag des Hebens gab es drei neuere Ausgaben als das Ziel;
+der Schalter `minimumReleaseAge` und der genaue Eintrag für einen Lauf halten
+sie draußen, ein Caret allein hätte es nicht getan. (3) Der erste Lauf von
+`pnpm test` zeigte wieder eine Zeitüberschreitung in `verifyAuthMethods`
+(bekannt aus „N19": Zeit-Tests unter Last); einzeln und im zweiten ganzen Lauf
+war er grün.
 
 ---
 

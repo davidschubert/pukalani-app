@@ -9,7 +9,6 @@ import {
 } from '../../../shared/brandCheck'
 import { BRAND_CHECK_CORRECTION_IP_HOUR_LIMIT } from '../../../shared/brandCheckCorrections'
 import { BRAND_SITE_ANALYSIS_MAX_TEXT } from '../../../shared/brandSiteAnalysis'
-import { brandJsonLdScript } from '../../utils/brandJsonLd'
 
 /**
  * DIE METHODIK-SEITE DES BRAND-SCORES — `/brand-check/methodik`
@@ -169,7 +168,7 @@ useSeoMeta({
 })
 
 useHead({
-  script: computed(() => [brandJsonLdScript({
+  script: computed(() => [jsonLdScript({
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     'name': t('brand.checkMethod.seoTitle'),

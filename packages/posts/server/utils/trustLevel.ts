@@ -63,11 +63,6 @@ export function forgetTrustLevel(communityId: string, userId: string): void {
   levels.delete(cacheKey(communityId, userId))
 }
 
-/** Nur für Tests/Diagnose. */
-export function __resetTrustLevelCache(): void {
-  levels.clear()
-}
-
 /* ─── Zugriff ────────────────────────────────────────────────────────────── */
 
 /**

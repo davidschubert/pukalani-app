@@ -344,11 +344,6 @@ export function brandColorRoleSourceLabel(source: string, locale: string): strin
   return source
 }
 
-/** Der Katalog-Eintrag einer Rolle — für Bühne und Beweis. */
-export function brandColorRole(roleId: string): BrandColorRoleTerm | undefined {
-  return BRAND_COLOR_ROLES.find(entry => entry.id === roleId)
-}
-
 // ── Die Kontrast-Prüfung (`h.contrast`) ────────────────────────────────────
 
 /**

@@ -199,7 +199,7 @@ export function usePresenceState() {
     document.addEventListener('visibilitychange', () => { syncAway(); upsert() })
     window.addEventListener('focus', () => { syncAway(); upsert() })
     // Tab schließt / Seite verlässt (kein SPA-Wechsel) → Presence sofort entfernen,
-    // statt bis zur Expiry (~120s) „online" zu bleiben. sendBeacon überlebt Unload.
+    // statt bis zur Expiry (240 s, `PRESENCE_TTL_MS` im Heartbeat) „online" zu bleiben. sendBeacon überlebt Unload.
     window.addEventListener('pagehide', () => {
       if (auth.user) navigator.sendBeacon('/api/presence/leave')
     })

@@ -73,13 +73,6 @@ function warnGeoCitiesUnreadableOnce(path: string, error: unknown): void {
   console.warn(`[core] NUXT_GEO_CITIES_PATH zeigt auf "${path}", die Datei ist aber nicht lesbar (${detail}) — der Orts-Picker im Profil findet nichts.`)
 }
 
-/** Nur für Tests/Beweise: gehaltenes Verzeichnis vergessen. */
-export function __resetGeoCitiesCache(): void {
-  indexPromise = null
-  loadedPath = ''
-  warnedUnreadable = false
-}
-
 /** Datei einlesen — wirft NIE, ein Fehlschlag ist `null`. */
 async function loadIndex(path: string): Promise<GeoCityIndex | null> {
   try {

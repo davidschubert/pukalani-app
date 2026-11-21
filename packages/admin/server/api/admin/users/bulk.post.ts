@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { forgetAccountSessions } from '../../../../../core/server/utils/sessionAccount'
 
 /**
  * Bulk-Aktionen der User-Liste (Multi-Select): block/unblock für bis zu
@@ -34,6 +35,7 @@ export default defineEventHandler(async (event) => {
         await assertNotLastAdmin(event, id)
       }
       await admin.users.updateStatus({ userId: id, status: action !== 'block' })
+      forgetAccountSessions(id) // Anmelde-Merker (Q12): gilt sofort
       done.push(id)
     }
     catch (error) {

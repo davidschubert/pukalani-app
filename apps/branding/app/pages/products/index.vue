@@ -23,7 +23,6 @@
  * zwischen lauter bw-Karten — die Vorlage schlägt hier die Bequemlichkeit.
  * Die Nuxt-UI-Bauteile bleiben, wo sie ohnehin schon stehen: Knöpfe, Icons.
  */
-import { jsonLdScript } from '../../utils/jsonLd'
 import { formatDerivationPrice, productOfferJsonLd } from '../../utils/productPricing'
 
 defineI18nRoute({

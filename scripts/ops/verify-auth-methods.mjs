@@ -97,7 +97,7 @@ async function probe(endpoint, project) {
   }
 }
 
-const TODO = 'Zu tun: in der Verwaltung der Datenbank das Projekt öffnen, Auth → Settings → Auth methods, und Email/Password, Magic URL, Email OTP, Anonymous, Phone und Team Invites ausschalten (JWT bleibt). Runbook ANMELDE-REGELN.md, Abschnitt „Anmelde-Wege für Aufrufe ohne Schlüssel".'
+const TODO = 'Zu tun: in der Verwaltung der Datenbank das Projekt öffnen, Auth → Settings → Auth methods, und Email/Password, Magic URL, Email OTP, Anonymous, Phone, Team Invites und JWT ausschalten. Runbook ANMELDE-REGELN.md, Abschnitt „Anmelde-Wege für Aufrufe ohne Schlüssel".'
 
 async function main() {
   const only = process.argv[2]

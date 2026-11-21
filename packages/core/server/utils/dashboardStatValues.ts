@@ -52,11 +52,6 @@ export function registerDashboardStatValueProvider(provider: DashboardStatValueP
   providers.set(provider.id, provider)
 }
 
-/** Testbarkeit/Isolation — die Registry ist Modul-Zustand. */
-export function listDashboardStatValueProviders(): DashboardStatValueProvider[] {
-  return [...providers.values()]
-}
-
 /**
  * Alle angefragten Kennzahlen einsammeln — parallel, Teilfehler = leer.
  *

@@ -32,8 +32,26 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Auf einem Kontroll-Host (Kundenbereich) gibt es keine Community und damit
+   * keine Rolle: `/api/community/role` ist dort nicht freigegeben und
+   * antwortete jedes Mal 404 (FE-006). Der Host steht beim Anlegen des Stores
+   * fest — gefragt wird einmal, im Nuxt-Kontext.
+   */
+  const onControlHost = useIsControlCenter()
+
+  function clearSiteRole() {
+    communityRole.value = null
+    communityTrustLevel.value = 0
+    communityMember.value = false
+  }
+
   /** Eigene Site-Rolle nachziehen (fail-closed: jeder Fehler ⇒ keine Rolle). */
   async function refreshSiteRole() {
+    if (onControlHost) {
+      clearSiteRole()
+      return
+    }
     try {
       const res = await $fetch<{ role: string | null, trustLevel?: number, member?: boolean }>('/api/community/role')
       communityRole.value = res.role && isCommunityRole(res.role) ? res.role : null
@@ -41,10 +59,8 @@ export const useAuthStore = defineStore('auth', () => {
       communityMember.value = res.member === true
     }
     catch {
-      // 404 (Kontroll-Host ohne Präfix-Freigabe), Netz-Blip, … ⇒ keine Rolle.
-      communityRole.value = null
-      communityTrustLevel.value = 0
-      communityMember.value = false
+      // Netz-Blip, 404, … ⇒ keine Rolle.
+      clearSiteRole()
     }
   }
 

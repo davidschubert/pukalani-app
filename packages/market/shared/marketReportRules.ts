@@ -179,15 +179,6 @@ export function citationIsGrounded(
   })
 }
 
-/** Das gespeicherte Beleg-Objekt zu einem geprüften Zitat. */
-export function citationEvidence(
-  fields: readonly MarketProfileField[],
-  fieldId?: MarketFieldId,
-): MarketProfileField | undefined {
-  const pool = fieldId ? fields.filter(field => field.fieldId === fieldId) : fields
-  return pool.find(field => field.evidence)
-}
-
 // ── 4 · Der Bericht-Schlüssel (Idempotenz und `stale`) ─────────────────────
 
 /** Ein Kandidat, so wie er in den Schlüssel eingeht. */

@@ -141,11 +141,6 @@ export function invalidateStripeSettingsCache(): void {
   cache = null
 }
 
-/** Nur für Tests. */
-export function __resetStripeSettingsCache(): void {
-  cache = null
-}
-
 async function loadStripeSettings(event: H3Event): Promise<StripeSettingsRow | null> {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.row
 

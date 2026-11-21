@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { jsonLdScript } from '../utils/jsonLd'
 
 /**
  * DIE STARTSEITE VON branding.supply — der Conversion-Einstieg nach dem

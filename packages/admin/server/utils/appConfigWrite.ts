@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { AppwriteException } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
+import { forgetInstanceRead } from '../../../core/server/utils/instanceReadCache'
 
 /**
  * EIN SCHREIBER FÜR `app_config/global`, WENN EINE ROUTE ERST LIEST UND DANN
@@ -104,6 +105,10 @@ export function mutateAppConfig<T>(
       if (!isNotFound(error)) throw toH3Error(error, failText)
       await admin.tablesDB.createRow({ databaseId, tableId: TABLE_ID, rowId: ROW_ID, data })
         .catch((createFailure: unknown) => { throw toH3Error(createFailure, failText) })
+    }
+    finally {
+      // Auch ein gescheiterter Versuch kann geschrieben haben (Q12).
+      forgetInstanceRead('app_config')
     }
     return result
   })

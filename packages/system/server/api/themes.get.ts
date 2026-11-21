@@ -1,6 +1,7 @@
 import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { softFail } from '../../../core/server/utils/softFail'
+import { cachedInstanceRead } from '../../../core/server/utils/instanceReadCache'
 
 type CustomThemeRow = Models.Row & { name: string, primary: string, order: number, config?: string | null, variants?: string | null }
 
@@ -28,17 +29,20 @@ export default defineEventHandler(async (event) => {
   const admin = createAdminClient(event)
   const databaseId = config.public.appwriteDatabaseId
 
+  // Beide Lesungen höchstens 15 s alt, jeder Schreiber räumt (Q12,
+  // `core/server/utils/instanceReadCache.ts`). Die app_config-Zeile teilt sich
+  // den Eintrag mit `getAppConfig()` — ein Seitenaufbau liest sie einmal.
   const [rows, settingsRaw] = await Promise.all([
-    admin.tablesDB.listRows<CustomThemeRow>({
+    cachedInstanceRead(event, 'custom_themes', () => admin.tablesDB.listRows<CustomThemeRow>({
       databaseId,
       tableId: 'custom_themes',
       queries: [Query.orderAsc('order'), Query.limit(100)],
-    }).then(res => res.rows).catch(softFail('system:api/themes.get:listRows', [] as CustomThemeRow[])),
-    admin.tablesDB.getRow<Models.Row & { themeSettings?: string | null }>({
+    }).then(res => res.rows)).catch(softFail('system:api/themes.get:listRows', [] as CustomThemeRow[])),
+    cachedInstanceRead(event, 'app_config', () => admin.tablesDB.getRow<Models.Row & { themeSettings?: string | null }>({
       databaseId,
       tableId: 'app_config',
       rowId: 'global',
-    }).then(row => row.themeSettings).catch(softFail('system:api/themes.get:getRow', null)),
+    })).then(row => (row as { themeSettings?: string | null }).themeSettings).catch(softFail('system:api/themes.get:getRow', null)),
   ])
 
   const settings = parseJson<Record<string, unknown>>(settingsRaw) ?? {}

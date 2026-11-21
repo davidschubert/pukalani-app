@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { BRAND_ADVISORS, advisorIsVoice } from '../../../../packages/brand/shared/brandAdvisors'
-import { jsonLdScript } from '../utils/jsonLd'
 
 /**
  * DIE TEAM-SEITE — der abgenommene Klickdummy (Runde 163, David) als echte

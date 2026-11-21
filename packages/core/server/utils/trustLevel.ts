@@ -57,11 +57,6 @@ export function getTrustLevelResolver(): TrustLevelResolver | null {
   return trustLevelResolver
 }
 
-/** Nur für Tests: Registry zurücksetzen. */
-export function __resetTrustLevelResolver(): void {
-  trustLevelResolver = null
-}
-
 /**
  * Die Stufe des aktuellen Requests — 0, wenn niemand angemeldet ist, keine
  * Autorität registriert wurde oder das Lesen scheitert.

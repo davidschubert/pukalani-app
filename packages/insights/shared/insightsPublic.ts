@@ -492,11 +492,6 @@ export function insightsPublicHref(format: InsightsFormat, slug: string, brandSl
   return `/insights/${slug}`
 }
 
-/** Die Adresse eines Themenclusters. */
-export function insightsTopicHref(key: string): string {
-  return `/topics/${key}`
-}
-
 /**
  * DAS VORSCHAUBILD EINES ARTIKELS — `/og/insights/<slug>.png`.
  *
