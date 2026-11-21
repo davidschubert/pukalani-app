@@ -226,6 +226,13 @@ catalog:
   # dort nichts Typen mit unserem Code austauscht.
   typescript: ^6.0.3
   vitest: ^5.1.1
+  # Render-Tests (Q21, Davids Ja 2026-11-21 zu genau diesen drei Paketen):
+  # `@nuxt/test-utils` baut eine Seite in einer gestellten Nuxt-Umgebung auf;
+  # `happy-dom` ist die DOM-Umgebung, `@vue/test-utils` das Aufbauen/Bedienen.
+  # Nur devDependencies, nur im eigenen Vitest-Projekt `render` (packages/brand).
+  '@nuxt/test-utils': ^4.4.0
+  '@vue/test-utils': ^2.6.0
+  happy-dom: ^21.0.4
   # GENAU GEPINNT, NICHT `^3.3.11` (2026-11-08, CI rot erwischt): 3.3.14
   # erzeugt für `reactive()`-Objekte im Template stellenweise `form.value.x`
   # und meldet dann TS2339 „Property 'value' does not exist" — sechsmal in
