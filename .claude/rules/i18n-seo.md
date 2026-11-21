@@ -132,4 +132,13 @@ paths:
   `useCommunityContentSeo()`, dann zeigen `canonical` und `og:url` beider
   Sprach-Adressen auf die der Hauptsprache (eine maßgebliche Adresse je
   Beitrag, beide antworten 200). Konto-Seiten und Betreiber-Oberfläche tragen
-  `noindex`. Herleitung: Eintrag Q10 in `OPEN-ITEMS-COMPLETE.md`.
+  `noindex` (Layout `auth`, Seiten-Meta `seoNoindex`, Kontroll-Host,
+  `pukalani.seo.indexOnly`; Regel `core/shared/seoRobots.ts`). Herleitung:
+  Eintrag Q10 in `OPEN-ITEMS-COMPLETE.md`.
+- STRUKTURIERTE DATEN FÜR NUTZERINHALT (SU1): nur über
+  `useCommunityStructuredData()` (Tor: keine Daten in einer Community „nur
+  für Mitglieder" oder mit `noindex`), Adresse über `useCommunityContentUrl()`
+  (= `canonical`); WAS drinsteht, baut der Produkt-Layer als pure Funktion
+  (`topicStructuredData`, `courseStructuredData`, `eventStructuredData`) — nur
+  Sichtbares, nie Mail-Adresse, Konto-Id oder Teilnahme-Link. Beweis:
+  `apps/platform/scripts/verify-community-search-pages.mjs` (mit Gegenprobe).

@@ -21,7 +21,6 @@
       "sortNewest": "Newest",
       "sortShortest": "Shortest read",
       "sortMostRead": "Most read",
-      "sortMostReadHint": "„Most read“ arrives once Plausible counts on branding.supply — until then there would be no number, only an order.",
       "viewGrid": "Grid view",
       "viewList": "List view",
       "readingMinutes": "{count} min",

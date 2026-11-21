@@ -30,6 +30,72 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### SU1 (b–f) — Such-Reste: strukturierte Daten für Diskussion, Kurs und Termin; eine maßgebliche Adresse je Marke der Galerie; kürzere Titel; `/insights` nur mit Beitrag (SEO-003, SEO-004, SEO-008, je der offene Teil) ✅ 2026-11-21
+
+**Was.**
+
+- **Strukturierte Daten (SEO-003, zweiter Schritt).** Diskussion
+  (`DiscussionForumPosting`), Kurs (`Course`) und Termin (`Event`) tragen je
+  einen JSON-LD-Block. WAS drinsteht, baut der Produkt-Layer als pure Funktion
+  (`posts/shared/topicStructuredData.ts`, `courses/shared/courseStructuredData.ts`,
+  `events/shared/eventStructuredData.ts`): nur, was die Seite öffentlich zeigt —
+  Titel, Anfang des Textes, angezeigter Name, Datum, beim Termin Ort und
+  Anschrift wie sie dastehen, abgesagt oder nicht. Nie: Mail-Adresse,
+  Konto-Id, Handle, Teilnahme-Link eines Online-Termins (dort steht als Ort
+  die Seite selbst), Lektionen, Teilnehmende. WANN entscheidet EINE Stelle im
+  Core (`useCommunityStructuredData`, Regel `core/shared/communityStructuredData.ts`):
+  keine Daten in einer Community „nur für Mitglieder" und keine mit `noindex`
+  — dieselben zwei Gründe, aus denen der Kopf `noindex` setzt. Entwürfe,
+  Ausgeblendetes und Gelöschtes erreichen die Seiten nicht (404), ein
+  geschwärzter Termin und ein Beitrag ohne Text tragen nichts. Die Adresse in
+  den Daten ist `canonical` (Hauptsprache, `useCommunityContentUrl`).
+  Dazu `og:site_name` (Name der Community) und `og:type` auf der Platform.
+- **Themen ohne Titel bleiben aus der Sitemap (entschieden).** Ihr `<title>`
+  ist das allgemeine Wort „Diskussionen": in der Suche wären es viele gleich
+  benannte Einträge. Gefunden werden sie über die Kategorie-Seite, die in der
+  Sitemap steht. Neu draußen: ein Titel ohne Buchstaben (nur Zeichen wie
+  Emojis) — sein Adress-Name kommt aus dem Text, die Sitemap nannte bisher
+  eine Adresse, die per 301 umleitete.
+- **Marken-Galerie (SEO-004).** Maßgeblich ist die Sprache der Marke — das
+  Feld `locale` der Veröffentlichung, das die Seite schon als „Sprache" zeigt
+  (keine neue Spalte). `canonical` beider Sprach-Adressen zeigt dorthin, die
+  Sitemap nennt nur diese Adresse; ohne bekannte Sprache die Grundsprache.
+- **Titel auf branding.supply (SEO-008).** Startseite 102/113 → 54/58
+  Zeichen, About 95/101 → 54/49; die Beschreibungen beider Seiten von
+  178–233 auf 148–151 Zeichen.
+- **`/insights` (SEO-008).** Ohne einen öffentlichen Beitrag: nicht in der
+  Sitemap und `noindex, follow` (ein Lesefehler zählt nicht als leer). Der
+  Satz über das Zählwerkzeug ist weg, „Meistgelesen" steht nicht mehr
+  gesperrt in der Leiste, sondern gar nicht, bis es eine Zählung gibt.
+- **Regel-Datei** `i18n-seo.md` nennt den Vertrag (SU1 f).
+
+**Bewusst nicht.** Der Menüpunkt „Brand Insights" bleibt auch ohne Beitrag:
+ihn nach Datenlage auszublenden bräuchte einen neuen Vertrag in der
+Core-Navigation; die Seite selbst ist jetzt ehrlich und aus der Suche. Die
+Beschreibungen auf pukalani.studio (live 185–257 Zeichen auf Startseite,
+UX-Audit, Nuxt-Seite und zwei Wissens-Artikeln) bleiben — der Befund nennt
+dort keine Titel, und es ist Verkaufstext in der Studio-Stimme; Suchmaschinen
+kürzen ihn nur. Die Sprach-Berichtigung bleibt 302 (Q10).
+
+**Beweis.** `apps/platform/scripts/verify-community-search-pages.mjs` (jetzt
+68 Prüfungen, Bühne, jeder Pull Request): je Seitenart genau ein gültiger
+Block mit Titel, Text bzw. Beschreibung, Autor, Datum, Adresse = `canonical`;
+keine Mail-Adresse und keine Konto-Kennung; Gegenproben: Kurs- und
+Termin-Entwurf (404, keine Daten), die Übersicht, und dieselbe Community auf
+„nur für Mitglieder" gestellt (Seite für den Owner da, `noindex`, keine
+Daten). Gegenprobe der Gegenprobe: mit ausgeschaltetem Tor ist genau diese
+Prüfung rot. Unit-Tests je Layer (`*StructuredData.test.ts`),
+`apps/platform/tests/tenantSitemap.test.ts`,
+`apps/branding/tests/productGateRoutes.test.ts` (Sprache der Marke,
+Journal ohne Beitrag).
+
+**Gelernt:** Eine Gegenprobe, die einen Schalter der Community umlegt, muss
+ihn SELBST zurückstellen und warten, bis es angekommen ist — der
+Mandanten-Kontext wird bis zu 30 s gehalten. Das Zurückstellen im `finally`
+allein reichte nicht: der nächste Lauf direkt danach sah noch „nur für
+Mitglieder" und wurde an Stellen rot, die mit der Änderung nichts zu tun
+hatten.
+
 ### Sammelpaket kleine Reste (Bahn 3, Paket 1) ✅ 2026-11-21
 
 **Was.**

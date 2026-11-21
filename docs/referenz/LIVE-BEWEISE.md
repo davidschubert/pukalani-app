@@ -326,7 +326,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/runner/scripts/verify-runner-boundary.mjs` | Beweis: die RUNNER-NAHT des AI-Runners hält — docs/archiv/AI-RUNNER.md § 5. | Bühne (jeder Lauf) |
 | `apps/control/scripts/verify-docs-access.mjs` | Beweis für den internen /docs-Bereich (admin.pukalani.app/docs). | Bühne (jeder Lauf) |
 | `apps/control/scripts/verify-run-prompt.mjs` | Beweis: den Auftragstext eines Runner-Laufs baut der Server (RU1 b). | Bühne (jeder Lauf) |
-| `apps/platform/scripts/verify-community-search-pages.mjs` | COMMUNITY-SEITEN FÜR DIE SUCHE (Q10 — SEO-003, SEO-004, SEO-007). | Bühne (jeder Lauf) |
+| `apps/platform/scripts/verify-community-search-pages.mjs` | COMMUNITY-SEITEN FÜR DIE SUCHE (Q10 — SEO-003, SEO-004, SEO-007; SU1). | Bühne (jeder Lauf) |
 | `apps/platform/scripts/verify-og-image.mjs` | Beweis für das Vorschaubild je Community (og:image, OPEN-ITEMS B2). | Bühne (jeder Lauf) |
 
 <!-- ERZEUGT:ENDE -->

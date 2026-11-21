@@ -72,6 +72,10 @@ useBrandTitle(() => eventIsRedacted(initial.value?.redactedAt)
 // EINE MASSGEBLICHE ADRESSE (Q10, SEO-004): die in der Hauptsprache der Community.
 useCommunityContentSeo()
 
+// STRUKTURIERTE DATEN (SU1, SEO-003): `Event` — dieselbe Zeile in beiden
+// Fassungen dieser Seite (events-Layer und blueprint).
+useEventStructuredData(() => initial.value)
+
 // Cast wie im blueprint-Layout: die AppConfig-Typen entstehen erst im
 // Merge der jeweiligen App, der Layer liest sie bewusst defensiv.
 const appConfig = useAppConfig()

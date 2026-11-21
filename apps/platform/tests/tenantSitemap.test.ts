@@ -75,9 +75,14 @@ describe('tenantSitemapEntries', () => {
     expect(entries.filter(entry => entry.onlyLocale)).toHaveLength(SITEMAP_TOPIC_LIMIT)
   })
 
-  it('ein Titel nur aus Zeichen ohne Adress-Form bekommt den festen Rückfall-Namen', () => {
-    const list = paths({ ...base, discussions: { categories: discussions.categories, topics: [{ id: 'p9', categoryId: 'cat1', title: '🎉🎉' }] } })
-    expect(list).toContain('/discussions/praxis/p9/topic')
+  it('ein Titel nur aus Zeichen ohne Adress-Form bleibt draußen (sein Adress-Name käme aus dem Text, die Adresse leitete um)', () => {
+    const list = paths({ ...base, discussions: { categories: discussions.categories, topics: [
+      { id: 'p9', categoryId: 'cat1', title: '🎉🎉' },
+      { id: 'p10', categoryId: 'cat1', title: '🎉 Treffen' },
+    ] } })
+    expect(list.some(path => path.includes('/p9/'))).toBe(false)
+    // Gegenprobe: ein Titel mit Buchstaben neben dem Zeichen steht drin
+    expect(list).toContain('/discussions/praxis/p10/treffen')
   })
 })
 

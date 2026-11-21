@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { markdownExcerpt } from '../../../../../../core/shared/markdownExcerpt'
 import { resolveCanonicalTopicRoute } from '../../../../../../posts/shared/discussionUrl'
+import { topicStructuredData } from '../../../../../../posts/shared/topicStructuredData'
 import type { DiscussionTopicResponse } from '../../../../../../posts/shared/types/post'
 
 /**
@@ -70,6 +71,23 @@ useBrandTitle(
 // eine Adresse je Sprache der Oberfläche. Maßgeblich ist die in der
 // Hauptsprache der Community; der Kopf (core) zeigt von beiden dorthin.
 useCommunityContentSeo()
+
+// STRUKTURIERTE DATEN (SU1, SEO-003): `DiscussionForumPosting` mit dem, was
+// die Seite zeigt — unter der maßgeblichen Adresse. Tor (geschlossene
+// Community, `noindex`) und Regeln: core/shared/communityStructuredData.ts.
+const primaryLocale = usePrimaryLocale()
+const topicUrl = useCommunityContentUrl(() => topic.value.path)
+useCommunityStructuredData(() => topicStructuredData({
+  url: topicUrl.value,
+  title: topic.value.post.title,
+  body: topic.value.post.body,
+  authorName: topic.value.post.authorName,
+  publishedAt: topic.value.post.publishedAt,
+  createdAt: topic.value.post.$createdAt,
+  lastActivityAt: topic.value.post.lastActivityAt,
+  categoryName: topicCategoryLabel.value,
+  inLanguage: primaryLocale.value,
+}))
 
 const post = ref(topic.value.post)
 </script>
