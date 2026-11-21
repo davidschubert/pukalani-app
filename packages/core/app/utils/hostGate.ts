@@ -1,3 +1,4 @@
+import type { EffectScope } from 'vue'
 import type { NuxtApp } from '#app'
 import { isHostUnservedError } from '../../shared/unknownHost'
 
@@ -57,4 +58,38 @@ export function startWhenHostResolves(nuxtApp: NuxtApp, start: () => void): void
     stop()
     run()
   })
+}
+
+/**
+ * ── APP-WEITE LIVE-ABOS NUR FÜR ANGEMELDETE (PERF-012, Q23) ─────────────────
+ *
+ * Kein drittes Gate: Config-Gate (F14) und Host-Gate (oben) entscheiden
+ * weiter, OB Realtime möglich ist. Diese Klammer sagt nur, für WEN ein
+ * app-weites Abo (Laufzeit-Flags, Farbwelten) etwas zu melden hat — dieselbe
+ * Überlegung wie „Gäste lesen keine Anwesenheit" in `usePresence()`.
+ *
+ * Gemessen (Audit 2026-11, zweiter Durchlauf): auf den Marketing-Seiten der
+ * zwei Silo-Apps öffnete JEDER Gast eine Verbindung samt nachgeladenem
+ * Web-SDK, nur für diese zwei Plugins. Auf einer Community-Seite öffnet ein
+ * Gast sie weiter, wenn die Seite Inhalte live zeigt (Kommentare, Feed) —
+ * das entscheidet der Baustein, nicht diese Klammer.
+ *
+ * Startet beim Anmelden (auch später im Reiter), räumt beim Abmelden ab. Der
+ * Start läuft im Nuxt-Kontext (`runWithContext`), weil er aus einem Watcher
+ * kommt. Aufrufen INNERHALB von `startWhenHostResolves`.
+ */
+export function whileSignedIn(nuxtApp: NuxtApp, start: () => void): void {
+  const auth = useAuthStore()
+  let scope: EffectScope | undefined
+  watch(() => auth.user?.$id, (id) => {
+    if (id && !scope) {
+      const next = effectScope(true)
+      scope = next
+      void nuxtApp.runWithContext(() => next.run(start))
+    }
+    else if (!id && scope) {
+      scope.stop()
+      scope = undefined
+    }
+  }, { immediate: true })
 }
