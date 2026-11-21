@@ -187,6 +187,69 @@ weiter unten ausdrücklich, warum er bleibt.
 
 ---
 
+### N21 — Bühne rot in der Nacht: ein Beweis ließ die Probe-Communities ohne Plan zurück ✅ 2026-11-21
+
+**Was geschah.** Der nächtliche Lauf der Bühne vom 2026-11-21 endete rot und
+öffnete das Alarm-Issue. Alle Beweis-Skripte bestanden; rot war nur die neue
+Browser-Datei `apps/comments/e2e/narrow-screens-pool.spec.ts` (Q01, am Abend
+davor dazugekommen), bei 375 und 768 px mit „/feed/i fehlt": die Schublade
+zeigte die eigenen Punkte, „Activity" und „Guidelines", aber kein Produkt.
+Derselbe Commit war als Push-Lauf grün — dort laufen die Browser-Tests aber
+gar nicht (nur nachts). Es war also der ERSTE Lauf dieser Datei in der CI und
+kein Wackler.
+
+**Ursache.** `packages/courses/scripts/verify-pool-isolation.mjs` (läuft nur
+nachts) stellt den Plan beider Probe-Communities für seine Eingangsprüfung
+auf „leer" — und stellte ihn am Ende wieder auf „leer" statt auf den
+vorgefundenen Stand (`pro`). Das war Absicht aus der Zeit, als die zwei Hosts
+von Hand gepflegte Fixtures waren. Auf der Bühne sind sie geteilt: ohne Plan
+gilt `basic`, „Feed", „Discussions", „Events" und „Courses" gibt es erst ab
+`personal` bzw. `pro`, und das Menü filtert sie vor allem anderen heraus
+(`useCommunityNav`, `planAllows`). Zwei spätere Skripte merkten sich „leer"
+als Vorfund und stellten es brav wieder her; nur Community A bekam durch ein
+drittes zufällig wieder `pro`. Der Browser-Test lief 40 Skripte später gegen
+Community B.
+
+**Behoben.**
+
+- Das Kurs-Skript stellt auf den VORGEFUNDENEN Plan zurück (die
+  Eingangsprüfung setzt ihre Vorbedingung weiter selbst).
+- Der Läufer prüft nach JEDEM Skript den Soll-Stand der zwei Communities
+  (`scripts/buehne/baseline.mjs`: Status, Plan, Publikum, Registrierung,
+  Sperre — was `pnpm buehne up` zusagt). Eine Abweichung macht dieses Skript
+  rot („Bühne verändert: B plan free statt pro"), danach stellt der Läufer
+  zurück und wartet 31 s, bis der Platform-Server den Stand neu gelesen hat.
+- `pnpm buehne e2e` stellt denselben Soll-Stand vor den Browser-Tests her
+  (ohne Rot — den Verursacher nennt der Läufer).
+
+**Beweis (lokal, eigene Bühne im Worktree).** Frische Bühne: Browser-Tests
+3 von 3 grün. Nach dem Kurs-Skript im alten Stand: dieselbe Datei rot, mit
+derselben Meldung und derselben Zählung wie im nächtlichen Lauf (3 / 2 / 0).
+Mit der Prüfung im Läufer, Skript noch unverändert: das Kurs-Skript selbst
+rot, „Bühne verändert: A plan free statt pro, B plan free statt pro". Mit
+dem behobenen Skript: 57 / 0, danach Browser-Tests 3 von 3 grün.
+Danach der ganze Nacht-Satz lokal mit der Prüfung (ohne Einzel-Instanz und
+branding.supply): 44 von 44 bestanden, kein weiteres Skript hinterlässt die
+Bühne verändert, die Browser-Tests danach 3 von 3. Regel und Zurückstellen
+ohne Netz: `packages/core/tests/buehneBaseline.test.ts`.
+
+**Nicht gehalten:** der Soll-Stand umfasst nur die fünf Felder, die `up`
+selbst setzt. Was ein Skript sonst an der Zeile ändert (Name, Farben,
+Domain, Testphase), gehört weiter seinem eigenen Aufräumen. Und die
+Browser-Tests der Bühne laufen weiter nur nachts — eine neue Datei dort zeigt
+sich am Pull Request nicht (von Hand: `gh workflow run buehne.yml -f
+lauf=nacht` auf dem Zweig).
+
+**Gelernt:** Ein Skript, das auf einer GETEILTEN Bühne etwas verstellt,
+stellt auf den Vorfund zurück, nie auf einen festen Wert — „gehört dem
+Beweis" stimmt nur, solange niemand sonst dort steht. Und „räumt auf" muss
+an EINER Stelle nachgeprüft werden, beim Verursacher: sonst wird 40 Schritte
+später ein Unbeteiligter rot, und die Meldung nennt weder Grund noch Täter.
+Ein grüner Push-Lauf desselben Commits sagt nichts über Schritte, die nur
+nachts laufen.
+
+---
+
 ### N20 — Ein wackelnder Test und ein Ausliefern, das rückwärts lief ✅ 2026-11-21
 
 **Was geschah (2026-11-20).** Auf einem `main`-Commit war die Prüfung `Test`
