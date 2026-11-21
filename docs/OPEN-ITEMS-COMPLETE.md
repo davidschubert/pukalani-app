@@ -967,6 +967,27 @@ weiter unten ausdrücklich, warum er bleibt.
 
 ---
 
+### N22 — Die tote Adresse `changelog.pukalani.app` ist bei Cloudflare gelöscht (AR1 a) ✅ 2026-11-21
+
+**Was geschah.** Der A-Eintrag `changelog` in der Zone `pukalani.app` zeigte
+seit dem 2026-11-15 ins Leere: Function, Code und Webhook dahinter waren
+entfernt, der Eintrag blieb, weil Cloudflare in keinem Browser angemeldet war.
+Am 2026-11-21 mit Davids Ja im Panel gelöscht. Der Name bleibt für Kunden
+gesperrt (`RESERVED_SUBDOMAINS`); die Zeile in der Host-Tabelle der Doku ist
+gestrichen.
+
+**Beweis.** Beide Nameserver der Zone und zwei öffentliche Resolver nennen für
+den Namen nicht mehr den Datenbank-Server, sondern die Adresse des
+Platzhalter-Eintrags `*.pukalani.app` (der App-Server); der antwortet dort mit
+404 `unknown_host`.
+
+**Gelernt:** In einer Zone mit Platzhalter-Eintrag „löst" ein gelöschter Name
+weiter auf — er fällt auf den Platzhalter. Der Beweis für das Löschen ist
+deshalb nicht „keine Antwort", sondern die GEÄNDERTE Adresse bei den
+Nameservern der Zone und die Antwort des Servers dahinter.
+
+---
+
 ### N21 — Bühne rot in der Nacht: ein Beweis ließ die Probe-Communities ohne Plan zurück ✅ 2026-11-21
 
 **Was geschah.** Der nächtliche Lauf der Bühne vom 2026-11-21 endete rot und
