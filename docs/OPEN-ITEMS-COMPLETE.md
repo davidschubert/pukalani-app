@@ -122,6 +122,47 @@ ihr Cache bleiben gültig.
 **Nicht geprüft:** das deutsche Bild live (erst nach dem Ausliefern).
 
 
+### Bahn 4 / Paket 3 — Nachgesehen im Browser: Abrechnung, Plan, Betreiber-Seiten, Insights-Rückfragen, KI-Schalter, Einladungs-Anfragen ✅ 2026-11-21
+
+**Was.** Was in Q14 und Bahn 2 nur durch Lint und Tests belegt war, lokal mit
+Test-Konten angesehen (Bühne: Owner und Mitglied; Betreiber-Konsole mit einem
+Wegwerf-Betreiber-Konto; branding.supply mit Probe-Konto als Betreiber).
+Fehler-Zustände über einen im Browser mit 500 beantworteten Abruf und
+clientseitigen Seitenwechsel.
+
+- **Konto-Abrechnung** (`/settings/billing`, Kontroll-Host): Liste der eigenen
+  Communities mit Plan und Zustand; bei Fehler „Konnte nicht geladen werden"
+  mit Neuversuch, danach wieder die Liste.
+- **Plan-Seite** (`/dashboard/community/plan`): bei gestörtem Abo-Abruf „Abo-
+  Stand nicht geladen" mit Neuversuch, „Plan wählen" ist solange weg;
+  danach normal.
+- **Betreiber: Einladungscodes und Abos** — Fehler, Neuversuch, Daten
+  stimmen. Gefunden und behoben: die Kopfzeile der Abo-Liste zeigte bei einem
+  Fehler „Abos (0)"; dasselbe Muster stand in der Nutzer-Liste und bei den
+  Kommentaren (3 Stellen). Die Zahl steht jetzt nur mit Daten.
+- **Drei Rückfragen in Insights** (Kanal entfernen, Fund wegnehmen, Brief
+  erzeugen): Dialog der Seite erscheint mit klarem Text, „Abbrechen" schließt
+  ohne Abruf, nichts geändert. „Brief erzeugen" über eine gestellte Liste
+  (der einzige lokale Fund hat schon einen Brief), ohne KI-Lauf.
+- **Schalter „KI-Training"**: an ⇒ `robots.txt` der Probe-Community sagt
+  „AI training: allowed" und `Allow: /` für die Trainings-Crawler; aus ⇒
+  wieder `Disallow: /`. Wirkt nach höchstens rund 30 s (Cache des Mandanten).
+  Zurückgeschaltet.
+- **Einladungs-Anfragen**: die Seite las das Feld `incomplete` nicht.
+  Ergänzt: Hinweis „Angaben unvollständig" (de/en) mit dem, was fehlt; im
+  Browser mit gestellter Antwort belegt, „Erinnern" ist bei der Anfrage
+  gesperrt.
+
+**Nicht geprüft:** kein echter Stripe-Weg (Kauf, Portal), kein
+Vorleseprogramm; die Roadmap-Seite antwortet lokal 403, weil der
+Kontroll-Dienst die Bühnen-Community nicht kennt.
+
+**Gelernt:** Eine Prüfung „steht der Crawler-Name noch drin?" ist bei
+`robots.txt` falsch — der Name bleibt, nur die Regel darunter wechselt
+zwischen `Allow` und `Disallow`; und der Mandant ist bis zu 30 s
+zwischengespeichert, eine Prüfung direkt nach dem Klick sieht den alten
+Stand. Erst die Regel lesen, dann nach Ablauf des Caches messen.
+
 ### TY1 Nachtrag — Rundung im Browser geprüft, CSS auf Stufen, Wächter liest CSS (UI-007) ✅ 2026-11-21
 
 **Was.**
