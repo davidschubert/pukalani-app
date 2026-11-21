@@ -99,6 +99,27 @@ Zurückgestellt wird nicht von selbst — dann gilt Abschnitt A3.
 `ok`. Der Deploy startet je Push zweimal (einmal je Auslöser); einer der
 Läufe endet „cancelled“ oder findet nichts mehr zu tun.
 
+**Eine rote Prüfung neu starten löst das Ausliefern von selbst aus** — für
+den Commit dieser Prüfung, nicht für die Spitze von `main`. Deshalb eine rote
+Prüfung nur neu starten, solange ihr Commit die Spitze von `main` ist. Ist
+`main` schon weiter, bringt der neuere Commit sein eigenes Ausliefern mit;
+der ältere muss nicht mehr grün werden. Zwei Sperren im Schritt „Deploy
+nötig?“ halten einen überholten Commit auf (seit dem 2026-11-20 und
+2026-11-21, Test: `packages/core/tests/deployDecision.test.ts`):
+
+- Läuft auf JEDER App schon ein neuerer Stand, endet der Lauf grün mit
+  „Überholt“ und liefert nichts aus.
+- Läuft nur auf EINIGEN Apps ein neuerer Stand (ein Ausliefern ist
+  mittendrin abgebrochen), liefert er ebenfalls nichts aus und schreibt eine
+  Warnung. Die zurückgebliebenen Apps brauchen dann den neuesten Stand:
+  `gh workflow run deploy.yml`.
+
+Was die Sperren nicht halten: antwortet eine App gar nicht, wird wie bisher
+sicherheitshalber ausgeliefert — auch ein älterer Commit. Und der manuelle
+Start liefert immer aus, was man ihm nennt (das ist der Rückweg). Nach jedem
+Neustart einer Prüfung deshalb den Live-Build mit der Spitze von `main`
+vergleichen.
+
 **Manueller Start** (Notausgang, ohne die vier Prüfungen):
 
 ```bash

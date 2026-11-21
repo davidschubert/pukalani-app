@@ -32,3 +32,5 @@ jetzt spaltengenau, je App nur die Layer, die sie nutzt.
   Entpack-Pipe als Zahlen, und im Test ist die Fehlerausgabe von tar
   sichtbar. Kommt es wieder: dort lesen (welcher Teil der Pipe, welche
   Meldung), dann die Ursache suchen.
+  Der rote Lauf vom 2026-11-20 war keiner von beiden: dort wackelte ein
+  Test mit Zufallswerten, Ursache gefunden und behoben (COMPLETE „N20").
