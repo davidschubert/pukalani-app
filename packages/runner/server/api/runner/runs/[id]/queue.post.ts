@@ -2,7 +2,7 @@ import { runTransitionAllowed } from '../../../../../shared/runGuards'
 import { RUNS_TABLE, type RunRow } from '../../../../../shared/types/runner'
 
 /**
- * Freigeben: `draft → queued` — docs/plans/AI-RUNNER.md § 4/§ 5, Board-Seite.
+ * Freigeben: `draft → queued` — docs/archiv/AI-RUNNER.md § 4/§ 5, Board-Seite.
  *
  * DIE ZWEITE HÄLFTE DES ANLEGENS (Paket 3). `runs` legt einen Entwurf an, das
  * Board lädt die Anhänge dazu, und ERST dieser Ruf stellt den Auftrag in die

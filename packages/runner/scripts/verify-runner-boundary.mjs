@@ -1,5 +1,5 @@
 /**
- * Beweis: die RUNNER-NAHT des AI-Runners hält — docs/plans/AI-RUNNER.md § 5.
+ * Beweis: die RUNNER-NAHT des AI-Runners hält — docs/archiv/AI-RUNNER.md § 5.
  *
  * ── WAS HIER GEMESSEN WIRD, UND WARUM GERADE DAS ───────────────────────────
  * Die Naht hat zwei Publikums-Klassen. Die eine (Board) hängt an Session +

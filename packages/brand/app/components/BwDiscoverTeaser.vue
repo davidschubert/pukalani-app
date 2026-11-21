@@ -4,7 +4,7 @@ import type { BrandDiscoverItem, BrandDiscoverListResponse } from '../../shared/
 
 /**
  * DER DISCOVER-TEASER — drei echte Kacheln aus der Galerie
- * (docs/plans/DISCOVER-BRANDS.md §4.1, Paket D2).
+ * (docs/archiv/DISCOVER-BRANDS.md §4.1, Paket D2).
  *
  * ── ER ZEIGT ECHTE MARKEN ODER GAR NICHTS ────────────────────────────────
  * Anders als `BwBrandCheckTeaser`, der ein erfundenes Beispiel mit Etikett

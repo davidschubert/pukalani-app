@@ -1,5 +1,7 @@
 # F7 — Bezahlte Mitgliedschaften: Konzept und Entscheidungsvorlage
 
+> **Plan-Status (2026-11-21):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „F7“).
+
 **Status:** NICHT gebaut · **Sorte:** Konzept + Entscheidungsvorlage, kein
 Umsetzungsplan · **Erstellt:** 2026-08-15 · **Wartet auf:** A2 (Stripe live)
 

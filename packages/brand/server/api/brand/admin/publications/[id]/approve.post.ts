@@ -12,7 +12,7 @@ import { brandDb } from '../../../../../utils/brandStore'
 
 /**
  * BETREIBER: EINE EINREICHUNG FREIGEBEN (`users.manage`,
- * docs/plans/DISCOVER-BRANDS.md §4.4, Davids Entscheidung §9.1).
+ * docs/archiv/DISCOVER-BRANDS.md §4.4, Davids Entscheidung §9.1).
  *
  * DAS IST DER MOMENT, IN DEM ETWAS ÖFFENTLICH WIRD. Bis hierher hat niemand
  * ausser dem Eigentümer den Stand gesehen.

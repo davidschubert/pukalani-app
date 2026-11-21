@@ -1,5 +1,5 @@
 /**
- * Der Abschlussbericht — docs/plans/AI-RUNNER.md § 7.2 Schritt 9 und § 9
+ * Der Abschlussbericht — docs/archiv/AI-RUNNER.md § 7.2 Schritt 9 und § 9
  * (die Oberfläche liest genau diese Felder).
  *
  * Die Spalte `runs.resultJson` fasst 6000 Zeichen (`runFinishSchema`). Das ist

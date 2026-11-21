@@ -5,7 +5,7 @@ import { INSIGHTS_RADAR_VERDICT_DEFAULT, insightsVerdictPasses } from './insight
 
 /**
  * DIE REINEN REGELN DER RADAR-ANSICHT (BI2 K2, Plan
- * docs/plans/BRAND-INSIGHTS-KURATION.md §3).
+ * docs/archiv/BRAND-INSIGHTS-KURATION.md §3).
  *
  * Filtern und Sortieren einer Liste sieht nach Oberfläche aus. Hier ist es
  * keine: die Radar-Tabelle war bis heute FEST nach Opportunity sortiert, weil

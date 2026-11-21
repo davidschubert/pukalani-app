@@ -11,7 +11,7 @@ import {
 
 /**
  * BETREIBER: DIE MELDUNGEN LESEN (`users.manage`,
- * docs/plans/DISCOVER-BRANDS.md §4.4 „Meldungen (offen/erledigt)").
+ * docs/archiv/DISCOVER-BRANDS.md §4.4 „Meldungen (offen/erledigt)").
  *
  * ── DER STANDARD IST `open` ───────────────────────────────────────────────
  * Das ist die Arbeitsliste. Erledigtes bleibt stehen, damit dieselbe Sache

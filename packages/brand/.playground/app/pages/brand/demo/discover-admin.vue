@@ -3,7 +3,7 @@ import type { TableColumn } from '@nuxt/ui'
 
 /**
  * KLICKDUMMY „BETREIBER-SEITE DISCOVER" — Skizze von `/dashboard/discover`
- * (docs/plans/DISCOVER-BRANDS.md §4.4, Davids Entscheidung §9.1: FREIGABE VOR
+ * (docs/archiv/DISCOVER-BRANDS.md §4.4, Davids Entscheidung §9.1: FREIGABE VOR
  * VERÖFFENTLICHUNG). Statisch: kein Backend, die Knöpfe schalten nur den
  * Zustand dieser Seite.
  *

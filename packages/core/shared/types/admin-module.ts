@@ -30,7 +30,7 @@ export interface PukalaniAdminModule {
   id: string
   /**
    * EBENE des Eintrags (E9, Davids Navigation vom 2026-07-30 —
-   * docs/plans/DASHBOARD-IA.md). PFLICHT, und zwar aus demselben Grund wie
+   * docs/archiv/DASHBOARD-IA.md). PFLICHT, und zwar aus demselben Grund wie
    * `scope` bei `notify()`: ein geratener Default legt einen Eintrag an den
    * falschen Ort, und zwar unsichtbar. Der Typfehler erzwingt die Entscheidung
    * an JEDER Registrierung.
@@ -107,7 +107,7 @@ export interface PukalaniAdminModule {
    * gemeinsamen Abschnitts-Label (i18n-Key admin.nav.groups.<group>);
    * Gruppen-Reihenfolge definiert das Layout. Ohne Gruppe = oben.
    *
-   * Die Gruppen sind Davids Struktur (E9, docs/plans/DASHBOARD-IA.md) und
+   * Die Gruppen sind Davids Struktur (E9, docs/archiv/DASHBOARD-IA.md) und
    * hängen an der Ebene — eine Gruppe mischt keine Ebenen:
    *  - Betreiber: 'platform' (Communities, Anfragen, Codes, gesperrte Namen)
    *    · 'studio' (Websites) · 'management' (Betreiber-Werkzeuge: Feedback,

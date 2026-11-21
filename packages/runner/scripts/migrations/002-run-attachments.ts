@@ -1,6 +1,6 @@
 /**
  * Migration runner-002: `runs.attachmentsJson`.
- * Konzept: docs/plans/AI-RUNNER.md § 4/§ 6.
+ * Konzept: docs/archiv/AI-RUNNER.md § 4/§ 6.
  *
  * EINE Spalte, additiv. Sie trägt die KOPIE der Anhänge eines Laufs
  * (`RunAttachment[]` als JSON) — die Dateien selbst liegen im Bucket

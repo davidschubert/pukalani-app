@@ -20,7 +20,7 @@
  * deshalb ist dieses Menü unbedenklich, während das Erwähnungs-Menü
  * (`UEditorMentionMenu`) draußen bleibt: das erzeugt eine eigene
  * Klammer-Syntax, die unser Parser roh durchreichen würde
- * (Messung: docs/plans/COMPOSER-UEDITOR.md).
+ * (Messung: docs/archiv/COMPOSER-UEDITOR.md).
  */
 export interface PostEmojiItem {
   name: string

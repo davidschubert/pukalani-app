@@ -1,7 +1,7 @@
 import type { ProductManifest } from '../core/shared/types/manifest'
 
 /**
- * AI-Runner (Konzept: docs/plans/AI-RUNNER.md) — die Ausführungs-Schicht:
+ * AI-Runner (Konzept: docs/archiv/AI-RUNNER.md) — die Ausführungs-Schicht:
  * ein Ticket (oder später ein Roadmap-Eintrag, ein GitHub-Issue) wird als
  * Claude-Code-Lauf auf einem registrierten Rechner ausgeführt.
  *

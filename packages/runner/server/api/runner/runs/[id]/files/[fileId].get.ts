@@ -3,7 +3,7 @@ import { parseRunAttachments } from '../../../../../../shared/runAttachments'
 import { RUNNER_FILES_BUCKET, RUNS_TABLE, type RunRow } from '../../../../../../shared/types/runner'
 
 /**
- * Einen Anhang ausliefern — docs/plans/AI-RUNNER.md § 6, RUNNER-Seite
+ * Einen Anhang ausliefern — docs/archiv/AI-RUNNER.md § 6, RUNNER-Seite
  * (Bearer-Secret). Der Bucket `runner-files` hat bewusst KEINE Permissions;
  * ausgeliefert wird ausschliesslich hier.
  *

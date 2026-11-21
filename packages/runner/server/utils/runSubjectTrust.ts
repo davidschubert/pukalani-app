@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 /**
  * „Gilt der Auftragstext dieses Subjekts als geprüft?" — der Vertrag, über den
- * der SERVER `runs.promptTrusted` bestimmt (SEC-038, docs/plans/AI-RUNNER.md
+ * der SERVER `runs.promptTrusted` bestimmt (SEC-038, docs/archiv/AI-RUNNER.md
  * § 8.2).
  *
  * WARUM EINE REGISTRY (A14): `runner` kennt `tickets` nicht. Die Antwort

@@ -4,7 +4,7 @@ import { RUNS_TABLE, RUN_EVENTS_TABLE, type RunAttachmentAddedResponse, type Run
 
 /**
  * DER LAUF-BEREICH — das generische Herzstück des AI-Runners
- * (docs/plans/AI-RUNNER.md § 9).
+ * (docs/archiv/AI-RUNNER.md § 9).
  *
  * ER KENNT KEIN TICKET (A14). Was ausgeführt wird, kommt vollständig über
  * Props: ein SUBJEKT (`subjectType`/`subjectId` — heute `'ticket'`, später ein

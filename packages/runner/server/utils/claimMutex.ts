@@ -1,5 +1,5 @@
 /**
- * Serialisierung des Claims (docs/plans/AI-RUNNER.md § 5).
+ * Serialisierung des Claims (docs/archiv/AI-RUNNER.md § 5).
  *
  * Appwrite kennt KEIN Compare-and-swap: `updateRow` schreibt bedingungslos.
  * Zwischen „ältesten `queued`-Lauf lesen" und „ihn auf `claimed` setzen" liegt

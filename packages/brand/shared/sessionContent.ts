@@ -1,7 +1,7 @@
 /**
  * DER INHALT EINER SESSION — Ziel, Qualität, Anti-Muster, Leiter, Form,
  * Beispiele (BW2 Paket 1 + Paket 2, Plan docs/archiv/BRAND-WIZARD-SESSIONS.md
- * §3 + §3a; Inhaltsgrundlage docs/plans/BRAND-WIZARD-CONTENT-SPEC.md).
+ * §3 + §3a; Inhaltsgrundlage docs/archiv/BRAND-WIZARD-CONTENT-SPEC.md).
  *
  * ── WARUM DER INHALT NEBEN DER TABELLE STEHT UND NICHT DARIN ──────────────
  * `slotRegistry.ts` ist eine TABELLE: eine Zeile je Session, auf einen Blick

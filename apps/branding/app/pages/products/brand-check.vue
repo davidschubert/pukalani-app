@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * PRODUKTSEITE BRAND-CHECK (PS1, Plan docs/plans/PRODUCTS-SEITE.md §4).
+ * PRODUKTSEITE BRAND-CHECK (PS1, Plan docs/archiv/PRODUCTS-SEITE.md §4).
  *
  * Ebene Audit, der freie Einstieg: er braucht kein Konto, und genau deshalb
  * steht er in der Übersicht an erster Stelle. Die Fakten stammen aus dem

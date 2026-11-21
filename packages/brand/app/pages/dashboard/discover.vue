@@ -19,7 +19,7 @@ import type {
 
 /**
  * DIE MODERATION DER ÖFFENTLICHEN GALERIE — `/dashboard/discover`
- * (docs/plans/DISCOVER-BRANDS.md §4.4, Davids Entscheidung §9.1: FREIGABE VOR
+ * (docs/archiv/DISCOVER-BRANDS.md §4.4, Davids Entscheidung §9.1: FREIGABE VOR
  * VERÖFFENTLICHUNG; Vorlage ist der abgenommene Klickdummy
  * `.playground/app/pages/brand/demo/discover-admin.vue`).
  *

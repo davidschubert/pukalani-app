@@ -1,5 +1,5 @@
 /**
- * Produkt-Layer: AI-Runner — Konzept docs/plans/AI-RUNNER.md.
+ * Produkt-Layer: AI-Runner — Konzept docs/archiv/AI-RUNNER.md.
  *
  * BETREIBER-WERKZEUG, kein Kundenprodukt: der Layer läuft ausschließlich in
  * `apps/control`, alles darin ist operator-only (Capability `runner.manage`,

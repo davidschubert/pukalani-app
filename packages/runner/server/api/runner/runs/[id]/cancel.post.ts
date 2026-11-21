@@ -2,7 +2,7 @@ import { isTerminalRunStatus, runTransitionAllowed } from '../../../../../shared
 import { RUNS_TABLE, type RunRow } from '../../../../../shared/types/runner'
 
 /**
- * „Abbrechen" vom Board — docs/plans/AI-RUNNER.md § 4/§ 9.
+ * „Abbrechen" vom Board — docs/archiv/AI-RUNNER.md § 4/§ 9.
  *
  * Wirkt in DREI Zuständen, auch VOR dem Claim (`queued`): der Knopf soll auch
  * dann etwas tun, wenn noch kein Rechner gefragt hat. Der laufende Prozess auf

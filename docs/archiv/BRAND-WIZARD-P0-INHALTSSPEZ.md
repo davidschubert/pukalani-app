@@ -1,5 +1,8 @@
 # Brand-Wizard — P0 Inhalts-Spezifikation
 
+> **Archiviert am 2026-11-21 (Q19).** Format-Muster vom 2026-08-28 zum gebauten Plan [BRAND-WIZARD-PHASE-1.md](BRAND-WIZARD-PHASE-1.md); abgelöst durch [BRAND-WIZARD-CONTENT-SPEC.md](BRAND-WIZARD-CONTENT-SPEC.md).
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 Stand: 2026-08-28 · Status: **IN ARBEIT — dies ist das FORMAT-MUSTER**
 (Baustein C vollständig ausgearbeitet). Nach Davids Format-OK folgen alle
 übrigen Bausteine im selben Format, dann Abdeckungs-Matrix-Gesamtstand und

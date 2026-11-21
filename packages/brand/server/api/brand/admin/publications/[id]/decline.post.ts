@@ -16,7 +16,7 @@ import { brandDb } from '../../../../../utils/brandStore'
 
 /**
  * BETREIBER: EINE EINREICHUNG ABLEHNEN (`users.manage`,
- * docs/plans/DISCOVER-BRANDS.md §4.4/§3.4).
+ * docs/archiv/DISCOVER-BRANDS.md §4.4/§3.4).
  *
  * ── DIE BEGRÜNDUNG IST PFLICHT ────────────────────────────────────────────
  * Anders als bei den Korrekturvorschlägen, wo ein leerer String gilt. Der

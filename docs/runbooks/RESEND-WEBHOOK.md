@@ -41,7 +41,7 @@ anderen Projekte gar nicht erreichen (kein Schlüssel dorthin).
 | `portfolio.pukalani.app` | `https://pukalani.studio/api/mail/resend-webhook` | `ecosystem-portfolio` |
 
 Je Eintrag die drei Ereignisse, eigenes Secret. Der freie Tarif hat vier
-Webhooks ohne Murren angenommen (Frage aus MAIL-ZUSTELLBARKEIT § 6). Echter
+Webhooks ohne Murren angenommen (Frage aus [MAIL-ZUSTELLBARKEIT § 6](../archiv/MAIL-ZUSTELLBARKEIT.md)). Echter
 Bounce an `bounced@resend.dev` am 2026-11-08 17:42 UTC: auf allen vier Sites
 `mail.undeliverable` im pm2-Log (`grep <email_id> ~/.pm2/logs/*-out*.log`).
 

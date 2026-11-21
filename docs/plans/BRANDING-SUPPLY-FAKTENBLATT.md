@@ -1,5 +1,7 @@
 # Faktenblatt branding.supply — für den Rechtstext-Generator und den Anwalt
 
+> **Plan-Status (2026-11-21):** Unterlage zu BS1 ([OPEN-ITEMS](../OPEN-ITEMS.md)) — kein Bauplan, sondern das Faktenblatt für Generator und Anwalt.
+
 Stand: **2026-09-08** (Zeile 13 und §3 „Webanalyse" nachgezogen: Reichweitenmessung ist
 beschlossen; **Lücken 9 und 11 geschlossen** — Generator = activeMind, Kundenkreis = B2B) ·
 Paket **BS1 R2** (Baubefund 1 mit **R1b** geschlossen), Entscheidungen 2, 3 und 9 in

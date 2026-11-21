@@ -5,7 +5,7 @@ import { BRAND_INDUSTRIES } from '../../../../../shared/brandIndustries'
 
 /**
  * KLICKDUMMY „DISCOVER BRANDS" — die öffentliche Galerie
- * (docs/plans/DISCOVER-BRANDS.md §4.1, angeglichen an Davids Entscheidungen
+ * (docs/archiv/DISCOVER-BRANDS.md §4.1, angeglichen an Davids Entscheidungen
  * vom 2026-09-08). Statisch: die Facetten schalten nur ihren eigenen Zustand,
  * gefiltert wird hier nichts — die echte Seite tut das über
  * `GET /api/discover` mit Query-Parametern.

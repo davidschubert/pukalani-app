@@ -18,7 +18,7 @@ import { assertAiSwitchedOn } from './aiKillSwitch'
  * `aiVision` (Bilder) und `aiImage` (Bilder erzeugen).
  *
  * Gebaut für BI2 K5 („Brief aus diesem Video", Plan
- * docs/plans/BRAND-INSIGHTS-KURATION.md §6 und §13) nach Davids Entscheidung
+ * docs/archiv/BRAND-INSIGHTS-KURATION.md §6 und §13) nach Davids Entscheidung
  * zu Frage C vom 2026-10-27.
  *
  * ── DIESELBE FAMILIE, EIN DRITTER NACHRICHTEN-TYP ────────────────────────

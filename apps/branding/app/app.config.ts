@@ -18,7 +18,7 @@ export default defineAppConfig({
     audit: { retention: 'apply' },
     /**
      * DER PRODUCTS-AUFKLAPPER (PS1, 2026-09-09 — Plan
-     * docs/plans/PRODUCTS-SEITE.md §6, Davids Entscheidung e).
+     * docs/archiv/PRODUCTS-SEITE.md §6, Davids Entscheidung e).
      *
      * ── WARUM DIE EINTRÄGE HIER STEHEN UND NICHT IM brand-LAYER ───────────
      * Die fünf Kinder zeigen auf die Marketing-Seiten von FÜNF Produkten, und

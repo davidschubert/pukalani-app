@@ -1,5 +1,7 @@
 # Account-Horizont — ein Konto, das überall gilt
 
+> **Plan-Status (2026-11-21):** teils gebaut — offen: die Fortsetzung als Pukalani-Konto ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“, Plan [PUKALANI-KONTO.md](PUKALANI-KONTO.md)).
+
 **Stand: 2026-08-11 · Status: beschlossen (Davids Entscheidungen, s. DECISION-LOG
 2026-08-11), teilweise gebaut (AH-1, AH-5, AH-7).** Dieses Dokument trägt die
 Tiefe; die Arbeitsliste bleibt OPEN-ITEMS.md (Punkte AH-1 … AH-7).

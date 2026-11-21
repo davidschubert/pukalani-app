@@ -2,7 +2,7 @@ import { Query } from 'node-appwrite'
 import { RUNS_TABLE, type RunRow, type RunsListResponse } from '../../../../shared/types/runner'
 
 /**
- * Die Läufe EINES Subjekts, neueste zuerst — docs/plans/AI-RUNNER.md § 5.
+ * Die Läufe EINES Subjekts, neueste zuerst — docs/archiv/AI-RUNNER.md § 5.
  *
  * Beide Parameter sind Pflicht und bewusst nicht optional: eine Liste „alle
  * Läufe" braucht im Ticket-Modal niemand, und ohne Filter wäre der Default

@@ -119,7 +119,7 @@ import { useBrandFoundationRailStep } from '../../../composables/useBrandFoundat
 /**
  * DIE WERKSTATT — „GESPRÄCH ALS BÜHNE" (Davids Konzept-Revision 2026-09-02,
  * in 39 Korrekturrunden am Klickdummy `/brand/demo/gespraech` abgenommen;
- * Auftrag: docs/plans/BRAND-WIZARD-GESPRAECH-UMBAU.md).
+ * Auftrag: docs/archiv/BRAND-WIZARD-GESPRAECH-UMBAU.md).
  *
  * ── WAS SICH GEDREHT HAT ──────────────────────────────────────────────────
  * Bis hierher war die BÜHNE das Dokument (alle Slots untereinander) und die

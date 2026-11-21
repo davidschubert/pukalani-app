@@ -309,7 +309,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/posts/scripts/verify-topic-links.mjs` | THEMEN-VERLINKUNG MIT RUECKVERWEIS — der Beweis (F57, letzte Mechanik, 2026-08-14). | Bühne (nachts), Einzel-Instanz |
 | `packages/posts/scripts/verify-trust-levels.mjs` | BEWEIS: die Vertrauensstufen (F1 Teilpaket 3) — gegen eine ECHTE Appwrite. | Bühne (jeder Lauf) |
 | `packages/posts/scripts/verify-trust-perks.mjs` | WAS EINE VERTRAUENSSTUFE EINBRINGT — der Beweis (F57-Stufen, 2026-08-14). | Bühne (nachts) |
-| `packages/runner/scripts/verify-runner-boundary.mjs` | Beweis: die RUNNER-NAHT des AI-Runners hält — docs/plans/AI-RUNNER.md § 5. | Bühne (jeder Lauf) |
+| `packages/runner/scripts/verify-runner-boundary.mjs` | Beweis: die RUNNER-NAHT des AI-Runners hält — docs/archiv/AI-RUNNER.md § 5. | Bühne (jeder Lauf) |
 | `apps/control/scripts/verify-docs-access.mjs` | Beweis für den internen /docs-Bereich (admin.pukalani.app/docs). | Bühne (jeder Lauf) |
 | `apps/control/scripts/verify-run-prompt.mjs` | Beweis: den Auftragstext eines Runner-Laufs baut der Server (RU1 b). | Bühne (jeder Lauf) |
 | `apps/platform/scripts/verify-og-image.mjs` | Beweis für das Vorschaubild je Community (og:image, OPEN-ITEMS B2). | Bühne (jeder Lauf) |

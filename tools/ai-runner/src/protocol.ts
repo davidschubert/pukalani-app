@@ -1,5 +1,5 @@
 /**
- * Die Naht zur Betreiber-Konsole — docs/plans/AI-RUNNER.md § 5.
+ * Die Naht zur Betreiber-Konsole — docs/archiv/AI-RUNNER.md § 5.
  *
  * BEWUSST EINE KOPIE der Typen aus `packages/runner/shared/types/runner.ts`
  * und KEIN Import: dieses Paket hat absichtlich keine einzige Laufzeit-

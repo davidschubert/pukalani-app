@@ -157,19 +157,20 @@ alten Fassung dieses Runbooks — die Community-Hosts haben kein Stripe:
 | App / Host | Rolle im Geldweg | Braucht Stripe-Secrets? |
 |---|---|---|
 | **control** — `admin.pukalani.app` (ploi-Site, Verzeichnis und Appwrite-Projekt heißen seit 2026-08-18 `admin`) | Checkout-Session, Portal-Session, **Webhook**, Fulfillment. Appwrite-Projekt `admin`. | **Ja** |
-| **platform** — `*.pukalani.app` (jeder Community-Host) | Der Owner **klickt** hier; die Route reicht über die Service-Naht an `control` weiter. Appwrite-Projekt `pool`. | **Nein** — `apps/platform/nuxt.config.ts` extended `packages/billing` gar nicht |
-| **comments** — `comments.pukalani.app` | Silo-App mit **Einmalkäufen** (Event-Tickets). Eigenes Appwrite-Projekt, eigener Webhook. | Ja, wenn dort verkauft werden soll |
+| **platform** — `*.pukalani.app` (jeder Community-Host) | Der Owner **klickt** hier; die Route reicht über die Service-Naht an `control` weiter. Appwrite-Projekt `account`. | **Nein** — `apps/platform/nuxt.config.ts` extended `packages/billing` gar nicht |
 
-Webhook-URLs (Live wie Test):
+Webhook-URL (Live wie Test):
 
 ```
 https://admin.pukalani.app/api/stripe/webhook        # Community-Abos  ← der Geldweg
-https://comments.pukalani.app/api/stripe/webhook     # Event-Tickets (nur falls genutzt)
 ```
 
+> Die frühere Silo-Site `comments.pukalani.app` (Einmalkäufe, eigener Webhook)
+> ist seit dem 2026-08-18 gelöscht; eine zweite Webhook-Adresse gibt es nicht.
+
 > **Stripe folgt keiner Weiterleitung.** Der Altname `control.pukalani.app`
-> antwortet seit dem AH-4-Cutover mit 301 — für einen Webhook ist das kein
-> Ersatz. Die URL im Stripe-Dashboard muss aktiv auf `admin.pukalani.app`
+> ist seit dem 2026-08-18 bewusst tot und antwortet 404 (vorher 301) — für
+> einen Webhook war auch die 301 kein Ersatz. Die URL im Stripe-Dashboard muss aktiv auf `admin.pukalani.app`
 > umgehängt werden (Live UND Test), sonst kommt kein Ereignis mehr an.
 
 Env-Variablen, server-only, **nie** `NUXT_PUBLIC_*`:
@@ -341,7 +342,7 @@ neutral.
 direkt auf der `communities`-Zeile verankert. Nicht suchen.
 
 Der Plan erscheint im Browser **erst nach einem Seitenaufbau** (bis 30 s
-Resolver-Cache). Das ist kein Fehler: `communities` liegt im Projekt `control`,
+Resolver-Cache). Das ist kein Fehler: `communities` liegt im Projekt `admin`,
 für das der Browser kein Leserecht hat — es gibt für diese Werte bewusst keine
 Live-Propagation.
 

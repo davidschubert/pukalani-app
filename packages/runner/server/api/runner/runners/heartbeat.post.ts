@@ -2,7 +2,7 @@ import { runnerHeartbeatSchema } from '../../../../schemas/run'
 import { RUNNERS_TABLE, type HeartbeatResponse, type RunnerRow } from '../../../../shared/types/runner'
 
 /**
- * „Ich lebe" — docs/plans/AI-RUNNER.md § 5, Runner-Seite.
+ * „Ich lebe" — docs/archiv/AI-RUNNER.md § 5, Runner-Seite.
  *
  * DIE EINZIGE Route, die `lastSeenAt` stempelt. Der Claim-Poll tut es
  * bewusst NICHT (server/utils/runnerAuth.ts): er läuft alle paar Sekunden und

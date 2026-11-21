@@ -5,7 +5,7 @@ import { FUNNEL_EVENTS } from '../shared/funnelEvents'
  * DIESER TEST IST EIN VERTRAG MIT PLAUSIBLE, kein Typ-Test.
  *
  * Die Goals werden in der Plausible-Oberfläche von Hand auf den EXAKTEN Namen
- * angelegt (die CE hat keine Sites-API — docs/plans/ANALYTICS-V2.md). Wer einen
+ * angelegt (die CE hat keine Sites-API — docs/archiv/ANALYTICS-V2.md). Wer einen
  * Namen hier ändert, macht damit ein bestehendes Goal still zur Null: es wird
  * weiter gemessen, nur unter einem Namen, den niemand auswertet. Der Test
  * nagelt die Namen deshalb wörtlich fest — er soll BRECHEN, wenn jemand

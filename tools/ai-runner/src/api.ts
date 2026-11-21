@@ -10,7 +10,7 @@ import type {
 } from './protocol.ts'
 
 /**
- * Die HTTP-Seite der Naht — docs/plans/AI-RUNNER.md § 5.
+ * Die HTTP-Seite der Naht — docs/archiv/AI-RUNNER.md § 5.
  *
  * Kein SDK, kein Client-Framework: globales `fetch` reicht, und jede
  * Abhängigkeit weniger ist eine Zeile weniger, die auf einem Rechner mit

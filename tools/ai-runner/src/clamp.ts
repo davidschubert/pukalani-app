@@ -2,7 +2,7 @@ import type { RepoRule } from './config.ts'
 import { PERMISSION_MODES, UNTRUSTED_PERMISSION_MODES, type PermissionMode } from './protocol.ts'
 
 /**
- * Das Kappen gegen die lokale Allowlist — docs/plans/AI-RUNNER.md § 7.2
+ * Das Kappen gegen die lokale Allowlist — docs/archiv/AI-RUNNER.md § 7.2
  * Schritt 3 und § 8.2.
  *
  * „Kein Fehler, sondern stilles Herunterstufen mit einer Ereigniszeile" — das

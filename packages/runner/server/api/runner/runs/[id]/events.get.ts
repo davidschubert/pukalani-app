@@ -2,7 +2,7 @@ import { Query } from 'node-appwrite'
 import { RUN_EVENTS_TABLE, type RunEventRow, type RunEventsListResponse } from '../../../../../shared/types/runner'
 
 /**
- * Die Zeitleiste eines Laufs — docs/plans/AI-RUNNER.md § 9, Board-Seite.
+ * Die Zeitleiste eines Laufs — docs/archiv/AI-RUNNER.md § 9, Board-Seite.
  *
  * DER ERSTE STAND, nicht der laufende: danach übernimmt Realtime (`run_events`
  * trägt Table-Read für `admin`, § 4). Beides zusammen, weil eins allein nicht

@@ -2,7 +2,7 @@ import { Query } from 'node-appwrite'
 import { INTERACTIVE_SESSION_END_MARKER, RUNS_TABLE, RUN_EVENTS_TABLE, type RunEventRow, type RunRow, type SessionEndStateResponse } from '../../../../../shared/types/runner'
 
 /**
- * Der POLL eines interaktiven Laufs — docs/plans/AI-RUNNER.md § 7.3.
+ * Der POLL eines interaktiven Laufs — docs/archiv/AI-RUNNER.md § 7.3.
  *
  * Der Daemon fragt hier, während das Terminal im Vordergrund läuft: „ist die
  * Sitzung vorbei?". `ended` liest er an der Ende-Markierung, die der

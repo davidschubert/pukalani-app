@@ -10,7 +10,7 @@ import {
 } from '../shared/brandDiscover'
 
 /**
- * DIE ADRESSZEILE DER GALERIE (docs/plans/DISCOVER-BRANDS.md §4.1) — vier
+ * DIE ADRESSZEILE DER GALERIE (docs/archiv/DISCOVER-BRANDS.md §4.1) — vier
  * Facetten, eine Sortierung, eine Seite.
  *
  * ── KEIN FELD WIRFT, JEDES WIRD GEZOGEN ──────────────────────────────────

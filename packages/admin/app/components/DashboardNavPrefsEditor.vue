@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * DIE REIHENFOLGE DER DASHBOARD-NAVIGATION ZUSAMMENSTELLEN (NAV1 Paket 3,
- * Entscheidung 3 vom 2026-09-08 — docs/plans/DASHBOARD-NAV-JE-PERSON.md).
+ * Entscheidung 3 vom 2026-09-08 — docs/archiv/DASHBOARD-NAV-JE-PERSON.md).
  *
  * ── WARUM EINE KONTO-SEITE UND KEIN „ANPASSEN"-MODUS IN DER LEISTE ────────
  * Die Seitenleiste ist einklappbar, auf Mobil ein Slideover und trägt

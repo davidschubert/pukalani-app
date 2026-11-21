@@ -27,7 +27,7 @@ import { softFail } from '../../../../packages/core/server/utils/softFail'
 
 /**
  * DAS VORSCHAUBILD EINER ANATOMIE — `/og/discover/<slug>.png`, 1200×630
- * (Discover-Paket D4, Plan docs/plans/DISCOVER-BRANDS.md §4.2).
+ * (Discover-Paket D4, Plan docs/archiv/DISCOVER-BRANDS.md §4.2).
  *
  * ── WARUM DIESE DATEI IN DER APP LIEGT (CONCEPT.md A14) ──────────────────
  * Der Rasterizer wohnt in `packages/themes` (rein visuell), die Farbwelt und

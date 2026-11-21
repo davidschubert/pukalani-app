@@ -4,7 +4,7 @@ import { MAX_MESSAGE_CHARS, truncate, type StreamEventDraft } from './stream.ts'
 import { log } from './log.ts'
 
 /**
- * Die Ereignis-Bündelung — docs/plans/AI-RUNNER.md § 7.2 Schritt 6:
+ * Die Ereignis-Bündelung — docs/archiv/AI-RUNNER.md § 7.2 Schritt 6:
  * „gebündelt als Ereignisse schicken (etwa alle 2 s oder alle 20 Zeilen —
  * nicht je Zeile)".
  *

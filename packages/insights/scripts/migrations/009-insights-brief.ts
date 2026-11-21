@@ -2,7 +2,7 @@
  * Migration insights-009: DER BRIEF WIRD EINE SPALTE.
  *
  * Paket BI2 K5 („Brief aus diesem Video"), Plan
- * docs/plans/BRAND-INSIGHTS-KURATION.md §6 und §13. Gemeinsame Regeln wie
+ * docs/archiv/BRAND-INSIGHTS-KURATION.md §6 und §13. Gemeinsame Regeln wie
  * insights-001…008 (server-only `permissions: []` / `rowSecurity: false`,
  * kein `communityId`, idempotent 409 → skip); sie läuft ausschliesslich auf
  * der `branding`-Instanz.

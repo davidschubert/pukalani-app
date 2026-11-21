@@ -1,5 +1,8 @@
 # Brand-Wizard — Phase 1 „Fundament"
 
+> **Archiviert am 2026-11-21 (Q19).** Phase 1 „Fundament“ ist gebaut und live auf branding.supply. Offene Reste führt nur [OPEN-ITEMS.md](../OPEN-ITEMS.md) (BW1). Was die Werkstatt heute fragt: [BRAND-WIZARD-SESSION-INHALTE.md](../referenz/BRAND-WIZARD-SESSION-INHALTE.md).
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 Stand: 2026-08-28 · Status: **FINAL ABGENOMMEN UND BAUREIF** (Audit 6).
 Reihenfolge: P0, P0b und P1a PARALLEL · P1b nach Abnahme von P0b UND
 P1a · P1c nach P1b. Fünf code-geprüfte Audits eingearbeitet (§9c–§9f).

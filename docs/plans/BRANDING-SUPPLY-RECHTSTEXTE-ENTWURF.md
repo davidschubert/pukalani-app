@@ -1,5 +1,7 @@
 # Rechtstexte branding.supply — Erstfassung aus dem Generator (ENTWURF)
 
+> **Plan-Status (2026-11-21):** Unterlage zu BS1 ([OPEN-ITEMS](../OPEN-ITEMS.md)) — ungeprüfter Textentwurf, kein Bauplan.
+
 Stand: **2026-09-08** · Paket **BS1 R2** ·
 Quellen: [BRANDING-SUPPLY-FAKTENBLATT.md](BRANDING-SUPPLY-FAKTENBLATT.md) (Antworten)
 und [BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) §9

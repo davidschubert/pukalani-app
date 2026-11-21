@@ -1,7 +1,7 @@
 /**
  * Migration insights-010: DER LAUF WIRD SICHTBAR (BI3).
  *
- * Plan docs/plans/BRAND-INSIGHTS-KURATION.md §15. Gemeinsame Regeln wie
+ * Plan docs/archiv/BRAND-INSIGHTS-KURATION.md §15. Gemeinsame Regeln wie
  * insights-001…009 (server-only `permissions: []` / `rowSecurity: false`,
  * kein `communityId`, idempotent 409 → skip); sie läuft ausschliesslich auf
  * der `branding`-Instanz. Sie legt KEINE Tabelle an, sondern zwei Spalten in

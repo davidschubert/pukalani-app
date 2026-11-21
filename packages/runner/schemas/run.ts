@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { PERMISSION_MODES } from '../shared/types/runner'
 
 /**
- * Server-Validierung der Runner-Routen (docs/plans/AI-RUNNER.md § 5).
+ * Server-Validierung der Runner-Routen (docs/archiv/AI-RUNNER.md § 5).
  *
  * Bewusst ohne t()-Factory: Betreiber-API, die Fehlertexte sind nicht
  * user-facing — dasselbe Muster wie `packages/tickets/schemas/ticket.ts`.

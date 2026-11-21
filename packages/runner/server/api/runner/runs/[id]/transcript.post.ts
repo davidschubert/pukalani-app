@@ -3,7 +3,7 @@ import { RUNNER_FILES_BUCKET, RUNS_TABLE, type RunRow, type TranscriptUploadResp
 import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
- * Das volle Transkript als Datei — docs/plans/AI-RUNNER.md § 4/§ 7.2 Schritt 9.
+ * Das volle Transkript als Datei — docs/archiv/AI-RUNNER.md § 4/§ 7.2 Schritt 9.
  *
  * EIGENER Bucket `runner-files`, ausdrücklich NICHT `ticket-files`: dessen
  * Upload-Route verlangt Session + `tickets.manage`, der Runner hat nur sein

@@ -391,7 +391,7 @@ describe('configFlagEnabled — fail-closed', () => {
 /**
  * NAV1 PAKET 3 — DIE REIHENFOLGE JE PERSON.
  *
- * Sechs Zusagen aus docs/plans/DASHBOARD-NAV-JE-PERSON.md, jede MIT
+ * Sechs Zusagen aus docs/archiv/DASHBOARD-NAV-JE-PERSON.md, jede MIT
  * Gegenprobe: eine Regel, die nur den erwarteten Fall prüft, ist grün, auch
  * wenn sie gar nichts tut.
  *

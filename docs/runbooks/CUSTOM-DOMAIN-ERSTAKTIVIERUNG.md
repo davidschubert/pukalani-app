@@ -162,7 +162,7 @@ Die drei realistischen Fälle:
 
       curl -s -o /dev/null -w "%{http_code}\n" \
         -H "Origin: https://beispiel.de" \
-        -H "X-Appwrite-Project: pool" \
+        -H "X-Appwrite-Project: account" \
         https://<appwrite>/v1/account
 
       **401 = Origin akzeptiert. 403 = Host unbekannt** (dann fehlt der Eintrag).
@@ -231,8 +231,8 @@ Die drei realistischen Fälle:
 - [ ] Code deployt: **control** UND **portfolio** (beide Seiten der Naht).
 - [x] Auf der **portfolio**-Site gesetzt (`pnpm ops:site-env` zeigt nur Namen):
       `NUXT_ONBOARDING_CONTROL_URL` = `https://admin.pukalani.app`
-      (seit dem AH-4-Cutover die Adresse der Konsole; der Altname antwortet
-      nur mit 301 und ist für einen Dienst-Aufruf kein Ersatz),
+      (seit dem AH-4-Cutover die Adresse der Konsole; der Altname
+      `control.pukalani.app` antwortet seit dem 2026-08-18 mit 404),
       `NUXT_ONBOARDING_SERVICE_SECRET` = derselbe Wert wie
       `NUXT_CONTROL_ONBOARDING_SECRET` auf control.
       **Ohne beides passiert nichts Schlimmes** — die Site läuft weiter unter

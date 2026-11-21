@@ -1,6 +1,9 @@
 # Brand Wizard — Content-Spezifikation (P0)
 
-Stand: 2026-08-30 · Arbeitspaket P0 aus docs/plans/BRAND-WIZARD-PHASE-1.md §8.
+> **Archiviert am 2026-11-21 (Q19).** Arbeitspaket P0 des gebauten Plans [BRAND-WIZARD-PHASE-1.md](BRAND-WIZARD-PHASE-1.md). Stand der Spezifikation: 2026-08-30; was die Werkstatt heute fragt, steht in [BRAND-WIZARD-SESSION-INHALTE.md](../referenz/BRAND-WIZARD-SESSION-INHALTE.md) und im Code.
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
+Stand: 2026-08-30 · Arbeitspaket P0 aus docs/archiv/BRAND-WIZARD-PHASE-1.md §8.
 Grundlage: die sieben Hawaii-Studio-Formulare (Drive „Formulare", neu
 ausgelesen 2026-08-30 über die Bearbeitungsansicht), das Analyse-Artefakt
 „Sieben Formulare, ein Produkt", Plan §§3–5b und die Dummy-Entscheidungen

@@ -1,6 +1,6 @@
 /**
  * Migration brand-002: `brand_steps` — EINE Row je Profil × Baustein
- * (docs/plans/BRAND-WIZARD-SCHEMA.md §2). Die gemeinsamen Regeln aller
+ * (docs/archiv/BRAND-WIZARD-SCHEMA.md §2). Die gemeinsamen Regeln aller
  * brand_*-Tabellen (server-only, kein communityId, Index-Fabrik, Pflicht-
  * Übersetzung, MEDIUMTEXT) stehen EINMAL im Kopf von `001-brand-profiles.ts`.
  *

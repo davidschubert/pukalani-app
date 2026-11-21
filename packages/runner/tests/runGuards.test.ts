@@ -5,7 +5,7 @@ import { buildResumeRunFields, isActiveRunStatus, isTerminalRunStatus, permissio
 
 /**
  * Die zwei Sicherungen des AI-Runners, einzeln gemessen —
- * docs/plans/AI-RUNNER.md § 8.2 (Modus-Sperre) und § 4 (Zustandsautomat).
+ * docs/archiv/AI-RUNNER.md § 8.2 (Modus-Sperre) und § 4 (Zustandsautomat).
  *
  * Beide Tabellen enthalten bewusst GEGENPROBEN: ein Test, der nur bestätigt,
  * was erlaubt ist, bleibt grün, wenn jemand die Regel „vereinfacht" und alles

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 const currentDir = dirname(fileURLToPath(import.meta.url))
 
 /**
- * brand-Layer — Brand-Wizard (Plan: docs/plans/BRAND-WIZARD-PHASE-1.md).
+ * brand-Layer — Brand-Wizard (Plan: docs/archiv/BRAND-WIZARD-PHASE-1.md).
  * Enthält die UI-Komponenten des Clickdummys (app/components, `Bw*`), die
  * Design-Tokens, die Routen unter /api/brand/** (P1b) und seit P1c die
  * ECHTEN Seiten (app/pages, app/stores, app/composables, app/layouts).

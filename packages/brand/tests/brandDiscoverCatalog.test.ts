@@ -8,7 +8,7 @@ import { BRAND_INDUSTRY_VALUES } from '../shared/brandIndustries'
 import { BRAND_PALETTES } from '../shared/brandPalette'
 
 /**
- * DISCOVER RENDERT REINEN KATALOG-TEXT (docs/plans/DISCOVER-BRANDS.md §4.1/
+ * DISCOVER RENDERT REINEN KATALOG-TEXT (docs/archiv/DISCOVER-BRANDS.md §4.1/
  * §4.2, Paket D2) — und die Galerie ist eine INDEXIERBARE Seite.
  *
  * vue-i18n gibt bei einem fehlenden Schlüssel den SCHLÜSSEL zurück, ohne

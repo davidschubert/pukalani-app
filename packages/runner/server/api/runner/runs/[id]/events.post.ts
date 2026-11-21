@@ -4,7 +4,7 @@ import { runTransitionAllowed } from '../../../../../shared/runGuards'
 import { RUNS_TABLE, RUN_EVENTS_TABLE, type EventsAckResponse, type RunEventRow, type RunRow } from '../../../../../shared/types/runner'
 
 /**
- * Fortschritt melden — docs/plans/AI-RUNNER.md § 5/§ 7.2 Schritt 6.
+ * Fortschritt melden — docs/archiv/AI-RUNNER.md § 5/§ 7.2 Schritt 6.
  *
  * GEBÜNDELT, nicht je Zeile: der Runner verdichtet `stream-json` auf
  * Statuszeilen, Werkzeugaufrufe und Fehler und schickt alle 2 s oder alle 20
