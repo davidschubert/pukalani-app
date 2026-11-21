@@ -1,4 +1,5 @@
 import type { Models } from 'node-appwrite'
+import { forgetInstanceRead } from '../../../../../core/server/utils/instanceReadCache'
 
 /** Customize theme: eigenes Theme löschen. */
 export default defineEventHandler(async (event) => {
@@ -23,6 +24,7 @@ export default defineEventHandler(async (event) => {
     rowId: id,
   }).catch((error) => { throw toH3Error(error, 'Theme not found') })
 
+  forgetInstanceRead('custom_themes') // Instanz-Merker (Q12): neue Besucher sehen es sofort
   await recordAudit(event, { action: 'theme.deleted', targetType: 'theme', targetId: id, targetName: row.name ?? '' })
 
   // Activity-Feed (Core-Vertrag, best-effort)

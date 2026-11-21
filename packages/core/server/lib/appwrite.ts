@@ -2,6 +2,7 @@ import { Client, Account, TablesDB, Storage, Users, Presences, Avatars } from 'n
 import type { H3Event } from 'h3'
 import { trustedClientIp } from '../utils/clientIp'
 import { createAppwriteHealth } from '../utils/appwriteHealth'
+import { forgetRequestSession } from '../utils/sessionAccount'
 
 /**
  * Projekt des Requests (Horizont-3 Naht 2): der Tenant-Context der Middleware
@@ -62,6 +63,9 @@ export function setSessionCookie(event: H3Event, secret: string, expire: string,
 }
 
 export function clearSessionCookie(event: H3Event) {
+  // Die Sitzung dieser Anfrage gilt ab hier auch im Anmelde-Merker nicht mehr
+  // (Q12) — das Cookie der ANFRAGE trägt sie noch, darum vor dem Löschen.
+  forgetRequestSession(event)
   deleteCookie(event, sessionCookieName(event), { path: '/' })
 }
 

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Models } from 'node-appwrite'
+import { forgetInstanceRead } from '../../../../../core/server/utils/instanceReadCache'
 
 // Name/fileId landen im injizierten CSS. SPIEGEL: themes/shared/fonts.ts
 // (SAFE_FONT_NAME/SAFE_ID) prüft dieselben Muster am Render-Sink — synchron halten.
@@ -41,6 +42,7 @@ export default defineEventHandler(async (event) => {
     data,
   }).catch((error) => { throw toH3Error(error, 'Font not found') })
 
+  forgetInstanceRead('custom_fonts') // Instanz-Merker (Q12): neue Besucher sehen es sofort
   await recordAudit(event, { action: 'font.updated', targetType: 'font', targetId: id, targetName: String(row.name ?? '') })
   return { ok: true }
 })

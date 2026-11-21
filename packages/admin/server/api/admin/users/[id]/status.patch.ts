@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { forgetAccountSessions } from '../../../../../../core/server/utils/sessionAccount'
 
 const statusSchema = z.object({ blocked: z.boolean() })
 
@@ -25,6 +26,8 @@ export default defineEventHandler(async (event) => {
   // Appwrite-Semantik: status true = aktiv, false = blockiert
   const updated = await admin.users.updateStatus({ userId, status: !blocked })
     .catch((error) => { throw toH3Error(error, 'User not found') })
+  // Gesperrt heißt sofort gesperrt — auch im Anmelde-Merker (Q12).
+  forgetAccountSessions(userId)
 
   await recordAudit(event, {
     action: blocked ? 'user.block' : 'user.unblock',

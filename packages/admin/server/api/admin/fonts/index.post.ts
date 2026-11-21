@@ -1,5 +1,6 @@
 import { ID, Query } from 'node-appwrite'
 import { z } from 'zod'
+import { forgetInstanceRead } from '../../../../../core/server/utils/instanceReadCache'
 
 // Name landet als font-family im CSS — restriktives Muster statt Escaping.
 // SPIEGEL: themes/shared/fonts.ts (SAFE_FONT_NAME/SAFE_ID) prüft dieselben
@@ -46,6 +47,7 @@ export default defineEventHandler(async (event) => {
     },
   })
 
+  forgetInstanceRead('custom_fonts') // Instanz-Merker (Q12): neue Besucher sehen es sofort
   await recordAudit(event, { action: 'font.created', targetType: 'font', targetId: row.$id, targetName: body.name })
 
   // Activity-Feed (Core-Vertrag, best-effort) — neue Schrift steht instanzweit
