@@ -34,3 +34,18 @@ getan ist, unter [MG1](MG1.md).)
   live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln. Verloren
   geht dabei nichts — der nächste Lauf liefert alles seit dem ältesten
   lebenden Build aus.
+- **(d) Eine App ohne Antwort: ein älterer Commit wird trotzdem
+  ausgeliefert.** Seit dem 2026-11-21 überspringt der Schritt „Deploy nötig?"
+  einen Commit, den `main` überholt hat (COMPLETE „N20"). Eine Lücke bleibt:
+  meldet eine App keinen Build (502, Zeitüberschreitung), liefert der Lauf
+  wie bisher sicherheitshalber aus — auch dann, wenn sein Commit älter ist
+  als die Spitze von `main`. Das braucht zwei Dinge zugleich (eine tote App
+  und eine neu gestartete Prüfung auf einem älteren Commit). Möglicher Weg:
+  in diesem Fall nur ausliefern, wenn der Commit die Spitze von `main` ist,
+  sonst mit Warnung überspringen. Ein neuer Fall in
+  `packages/core/tests/deployDecision.test.ts` gehört dazu.
+- **(e) Die zwei Sperren sind noch in keinem echten Lauf gesehen.** Geprüft
+  sind sie nur im Test. Beim nächsten Lauf, der „Überholt" meldet: im
+  Protokoll des Schritts „Deploy nötig?" nachlesen, ob die Meldung stimmt,
+  und den Live-Build mit der Spitze von `main` vergleichen. Kein Bauen, nur
+  Hinsehen.
