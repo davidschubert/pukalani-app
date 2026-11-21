@@ -83,10 +83,13 @@ function initials(group: MemberLocationGroup): string {
  * Das Marker-Element EINER Gruppe: Avatar (oder Initialen) im weissen Ring,
  * dazu ein Zähler, sobald mehr als ein Mensch an diesem Ort steht.
  *
- * FESTE FARBEN, kein `bg-primary`: die Kacheln sind eine fremde, immer helle
- * Fläche und folgen unserem Theme nicht — `--ui-primary` ist je nach Theme auch
- * mal `white` und der Marker damit unsichtbar (im Sitzungs-Dialog live
- * gemessen).
+ * FESTE STUFEN DER FARBWELT, kein `bg-primary` und kein hell/dunkel-Token: die
+ * Kacheln sind eine fremde, immer helle Fläche und folgen dem Modus nicht —
+ * `--ui-primary` ist je nach Theme auch mal `white` (im Sitzungs-Dialog live
+ * gemessen), `bg-inverted` wäre im dunklen Modus weiß. Deshalb die Stufen
+ * `neutral-800` (Grundton der Community) und `error-600` (Q25/UI-006; weiße
+ * Schrift darauf 14,3 bis 15,5 bzw. 4,8 zu 1). Der weiße Ring trennt vom
+ * Kartengrund.
  */
 function markerElement(group: MemberLocationGroup): HTMLElement {
   const wrapper = document.createElement('div')
@@ -94,7 +97,7 @@ function markerElement(group: MemberLocationGroup): HTMLElement {
   wrapper.dataset.memberMarker = group.key
 
   const face = document.createElement('div')
-  face.className = 'size-9 overflow-hidden rounded-full bg-slate-700 text-white shadow ring-2 ring-white flex items-center justify-center'
+  face.className = 'size-9 overflow-hidden rounded-full bg-(--ui-color-neutral-800) text-white shadow ring-2 ring-white flex items-center justify-center'
 
   const first = group.members[0]
   if (first?.avatarUrl) {
@@ -116,7 +119,7 @@ function markerElement(group: MemberLocationGroup): HTMLElement {
 
   if (group.members.length > 1) {
     const badge = document.createElement('span')
-    badge.className = 'absolute -right-1 -top-1 min-w-4 rounded-full bg-red-500 px-1 text-center text-[10px] font-bold leading-4 text-white ring-2 ring-white'
+    badge.className = 'absolute -right-1 -top-1 min-w-4 rounded-full bg-(--ui-color-error-600) px-1 text-center text-[10px] font-bold leading-4 text-white ring-2 ring-white'
     badge.textContent = String(group.members.length)
     wrapper.appendChild(badge)
   }

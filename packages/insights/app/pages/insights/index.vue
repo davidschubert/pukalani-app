@@ -42,7 +42,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="mx-auto mt-10 max-w-7xl pb-16">
+  <div class="mx-auto mt-10 max-w-(--ui-container) pb-16">
     <div class="text-center">
       <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">Brand Insights</p>
       <h1 class="mt-2 text-balance text-4xl font-extralight leading-tight tracking-tight sm:text-5xl">

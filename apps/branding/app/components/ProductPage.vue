@@ -69,7 +69,7 @@ useSeoMeta({
 
 <template>
   <div class="pb-10">
-    <div class="@container mx-auto max-w-7xl">
+    <div class="@container mx-auto max-w-(--ui-container)">
       <!-- 1 · Hero: Ebene, Name, ein Satz, der eine Knopf -->
       <section class="mt-14">
         <div class="mx-auto max-w-3xl text-center">

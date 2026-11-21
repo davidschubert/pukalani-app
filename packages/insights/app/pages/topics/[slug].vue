@@ -57,7 +57,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="mx-auto mt-10 max-w-7xl pb-16">
+  <div class="mx-auto mt-10 max-w-(--ui-container) pb-16">
     <div v-if="missing" class="mx-auto mt-16 max-w-xl text-center" data-insights-missing>
       <UIcon name="i-ph-tag" class="size-10" style="color: var(--bw-muted)" />
       <h1 class="mt-6 text-3xl font-extralight tracking-tight">{{ t('insights.public.notFoundTitle') }}</h1>

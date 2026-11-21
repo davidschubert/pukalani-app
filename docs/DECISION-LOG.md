@@ -7,6 +7,18 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-21 — branding.supply bekommt eine eigene Seitenbreite: 1280 px (Q25, R10)
+
+**Davids Entscheidung** (2026-11-21, Frage R10): branding.supply darf schmaler
+sein als die anderen Sites (1280 px statt 90rem), als EINE Variable:
+`--ui-container: 80rem` in `apps/branding/app/assets/css/branding.css`; alle
+öffentlichen Hüllen der App und der Layer `brand`/`insights` lesen
+`max-w-(--ui-container)`. Alle anderen Sites bleiben bei 90rem, Dashboard und
+Kundenbereich bei `max-w-7xl`. Der Wächter
+`packages/core/tests/pageWidthGuard.test.ts` hält beides.
+
+---
+
 ## 2026-11-21 — KI-Crawler: eigene Seiten alles, Kunden-Communities kein Training (Q11, B2)
 
 **Anlass:** Was KI-Crawler dürfen, stand nur auf der Studio-Site; alle anderen
@@ -2728,6 +2740,9 @@ Plan: docs/plans/STUDIO-ERSTGESPRAECH-FUNNEL.md.
 ---
 
 ## 2026-08-20 — Seitenbreite überall 90rem, Vorbild ui.nuxt.com
+
+**Überholt am 2026-11-21** (nur für branding.supply): dort 1280 px als eigene
+Variable, s. „branding.supply bekommt eine eigene Seitenbreite: 1280 px".
 
 **Auslöser:** David empfand alle Seiten auf seinem 27-Zoll-Monitor als zu
 schmal (Marketing 71rem, Community-Hülle max-w-5xl = 64rem). Erst „immer die

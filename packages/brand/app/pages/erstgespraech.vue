@@ -253,7 +253,7 @@ const STEPS = ['s1', 's2', 's3'] as const
 
 <template>
   <div class="pb-10">
-    <div class="@container mx-auto max-w-7xl">
+    <div class="@container mx-auto max-w-(--ui-container)">
       <!-- 1 · Hero mit dem Formular -->
       <section class="bw-card mt-10 grid items-start gap-10 p-10 @lg:grid-cols-[minmax(0,1fr)_28rem] @lg:p-14" data-intro-hero>
         <div class="min-w-0">

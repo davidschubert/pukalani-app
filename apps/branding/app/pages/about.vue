@@ -80,7 +80,7 @@ const openFaq = ref<string | null>(null)
 
 <template>
   <div class="pb-10">
-    <div class="@container mx-auto max-w-7xl">
+    <div class="@container mx-auto max-w-(--ui-container)">
       <!-- 1 · Hero: die Behauptung -->
       <section class="mt-14">
         <div class="mx-auto max-w-3xl text-center">
