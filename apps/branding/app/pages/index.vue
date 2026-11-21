@@ -125,7 +125,7 @@ const KIT_FILES = ['logo.svg', 'wortmarke.svg', 'boilerplate.md', 'gruender.jpg'
 
 <template>
   <div class="pb-10">
-    <div class="@container mx-auto max-w-7xl">
+    <div class="@container mx-auto max-w-(--ui-container)">
       <!-- 1 · Hero-Split -->
       <section class="mt-16 grid items-center gap-12 @lg:grid-cols-2">
         <div>

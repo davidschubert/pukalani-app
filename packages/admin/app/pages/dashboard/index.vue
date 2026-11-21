@@ -331,7 +331,7 @@ onScopeDispose(() => {
     </template>
 
     <template #body>
-      <div class="mx-auto flex w-full flex-col gap-4 sm:gap-6 lg:max-w-(--ui-container)">
+      <div class="mx-auto flex w-full flex-col gap-4 sm:gap-6 lg:max-w-7xl">
         <!-- Begrüßung -->
         <div>
           <!-- Zweite Ebene: die Hauptüberschrift der Seite ist der Titel der

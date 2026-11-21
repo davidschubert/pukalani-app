@@ -153,44 +153,49 @@ async function postpone(mode: 'later' | 'never') {
       </div>
     </template>
 
-    <div v-if="expanded" class="space-y-6" data-profile-signal-form>
-      <div class="space-y-3">
-        <p class="text-sm font-medium">
-          {{ t('onboarding.profileSignal.questions.purpose') }}
-        </p>
-        <OnboardingChoices
-          v-model="answers.purpose"
-          name="profile-signal-purpose"
-          :legend="t('onboarding.profileSignal.questions.purpose')"
-          :options="purposeOptions"
-          :columns="1"
-        />
-      </div>
+    <!-- Der Rumpf ist ein BEDINGTER Slot, kein `v-if` im Slot: UCard zeichnet
+         seinen Rumpf (mit Abstand und zwei Trennlinien), sobald ein
+         Default-Slot existiert — zugeklappt stand dort ein leeres Band (UI-011). -->
+    <template v-if="expanded" #default>
+      <div class="space-y-6" data-profile-signal-form>
+        <div class="space-y-3">
+          <p class="text-sm font-medium">
+            {{ t('onboarding.profileSignal.questions.purpose') }}
+          </p>
+          <OnboardingChoices
+            v-model="answers.purpose"
+            name="profile-signal-purpose"
+            :legend="t('onboarding.profileSignal.questions.purpose')"
+            :options="purposeOptions"
+            :columns="1"
+          />
+        </div>
 
-      <div class="space-y-3">
-        <p class="text-sm font-medium">
-          {{ t('onboarding.profileSignal.questions.memberRange') }}
-        </p>
-        <OnboardingChoices
-          v-model="answers.memberRange"
-          name="profile-signal-member-range"
-          :legend="t('onboarding.profileSignal.questions.memberRange')"
-          :options="memberRangeOptions"
-        />
-      </div>
+        <div class="space-y-3">
+          <p class="text-sm font-medium">
+            {{ t('onboarding.profileSignal.questions.memberRange') }}
+          </p>
+          <OnboardingChoices
+            v-model="answers.memberRange"
+            name="profile-signal-member-range"
+            :legend="t('onboarding.profileSignal.questions.memberRange')"
+            :options="memberRangeOptions"
+          />
+        </div>
 
-      <div class="space-y-3">
-        <p class="text-sm font-medium">
-          {{ t('onboarding.profileSignal.questions.goal') }}
-        </p>
-        <OnboardingChoices
-          v-model="answers.goal"
-          name="profile-signal-goal"
-          :legend="t('onboarding.profileSignal.questions.goal')"
-          :options="goalOptions"
-        />
+        <div class="space-y-3">
+          <p class="text-sm font-medium">
+            {{ t('onboarding.profileSignal.questions.goal') }}
+          </p>
+          <OnboardingChoices
+            v-model="answers.goal"
+            name="profile-signal-goal"
+            :legend="t('onboarding.profileSignal.questions.goal')"
+            :options="goalOptions"
+          />
+        </div>
       </div>
-    </div>
+    </template>
 
     <template #footer>
       <div class="flex flex-wrap items-center justify-between gap-3">

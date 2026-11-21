@@ -38,7 +38,10 @@
      (core/blueprint) nutzen `max-w-(--ui-container)`. Dashboard und
      Kundenbereich sind bewusst enger: 1280 px (`max-w-7xl`), weil dort eine
      Sidebar danebensteht (DECISION-LOG 2026-08-23). Marketing überschreibt sie bewusst NICHT mehr
-     (puka-theme.css erklärt dort nur noch die .mkt-inner-Paar-Rechnung). */
+     (puka-theme.css erklärt dort nur noch die .mkt-inner-Paar-Rechnung).
+     Einzige Ausnahme: branding.supply setzt 80rem in
+     `apps/branding/app/assets/css/branding.css` (R10, 2026-11-21).
+     Wächter: core/tests/pageWidthGuard.test.ts. */
   --ui-container: 90rem;
 }
 

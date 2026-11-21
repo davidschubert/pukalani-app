@@ -248,7 +248,7 @@ const startTarget = computed(() =>
 
 <template>
   <div class="pb-10">
-    <div class="@container mx-auto mt-10 max-w-7xl">
+    <div class="@container mx-auto mt-10 max-w-(--ui-container)">
       <!-- Kopf -->
       <header class="text-center" data-discover-head>
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">
@@ -292,11 +292,11 @@ const startTarget = computed(() =>
               class="bw-tile bw-tile--lg bw-on-dark group relative flex flex-col justify-between overflow-hidden p-8"
               :style="`aspect-ratio: 1 / 1; background: ${tileBackground(item.paletteId)}`"
             >
-              <p class="text-xl font-medium" style="color: #f7f2ea">{{ item.title }}</p>
+              <p class="text-xl font-medium" style="color: var(--bw-ink)">{{ item.title }}</p>
               <div>
                 <p
                   v-if="item.score"
-                  class="text-6xl font-extralight leading-none tracking-tight" style="color: #f7f2ea"
+                  class="text-6xl font-extralight leading-none tracking-tight" style="color: var(--bw-ink)"
                 >{{ item.score.value }}</p>
                 <p class="mt-3 text-sm" style="color: rgb(247 242 234 / 0.85)">
                   <template v-if="item.score">{{ scoreLabel(item.score.kind) }} · </template>{{ metaLine(item) }}
@@ -420,7 +420,7 @@ const startTarget = computed(() =>
           v-for="item in items" :key="item.slug" :to="entryPath(item.slug)"
           class="group block" :data-discover-tile="item.slug"
         >
-          <div class="bw-tile relative overflow-hidden" style="aspect-ratio: 1 / 1">
+          <div class="bw-tile bw-on-dark relative overflow-hidden" style="aspect-ratio: 1 / 1">
             <div
               class="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.04]"
               :style="`background: ${tileBackground(item.paletteId)}`"
@@ -428,16 +428,16 @@ const startTarget = computed(() =>
             <span
               v-if="item.example"
               class="bw-label absolute left-4 top-4 rounded-full px-2.5 py-1"
-              style="background: rgb(20 20 20 / 0.45); color: #f7f2ea"
+              style="background: rgb(20 20 20 / 0.45); color: var(--bw-ink)"
             >{{ t('brand.discover.badge.example') }}</span>
             <span
               v-else-if="item.pathKind === 'relaunch'"
               class="bw-label absolute left-4 top-4 rounded-full px-2.5 py-1"
-              style="background: rgb(20 20 20 / 0.45); color: #f7f2ea"
+              style="background: rgb(20 20 20 / 0.45); color: var(--bw-ink)"
             >{{ t('brand.discover.badge.relaunch') }}</span>
             <p
               class="absolute inset-0 grid place-items-center p-6 text-center text-2xl font-extralight leading-snug tracking-tight"
-              style="color: #f7f2ea; text-shadow: 0 1px 12px rgb(20 20 20 / 0.3)"
+              style="color: var(--bw-ink); text-shadow: 0 1px 12px rgb(20 20 20 / 0.3)"
             >{{ item.title }}</p>
           </div>
           <div class="mt-3 flex items-start justify-between gap-3">
