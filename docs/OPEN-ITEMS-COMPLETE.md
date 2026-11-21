@@ -74,7 +74,7 @@ Render-Test der Werkstatt (Gegenprobe gegen den Stand davor: rot).
 
 **Nicht geprüft:** die 120-s-Regel nicht eigens neu gemessen (das SDK pingt
 weiter im Takt, der Code daran ist unverändert); das Erscheinen eines
-zweiten Kontos kommt bis zu 0,3 s später als vorher, nicht mit zwei Konten
+zweiten Kontos kommt bis zu 1 s später als vorher, nicht mit zwei Konten
 nachgemessen (mit der Obergrenze bis zu 1 s); die Schublade nur im
 Dev-Server, nicht im Production-Build.
 
