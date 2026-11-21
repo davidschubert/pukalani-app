@@ -73,9 +73,11 @@ async function deleteAccount() {
     <template #footer>
       <div class="space-y-4">
         <section aria-labelledby="account-delete-notice-title" class="text-sm">
-          <h3 id="account-delete-notice-title" class="font-medium text-highlighted">
+          <!-- `h2`: der Titel der Karte ist keine Überschrift, die Seite hat
+               nur ihre `h1` darüber — `h3` übersprang eine Ebene (UX-011). -->
+          <h2 id="account-delete-notice-title" class="font-medium text-highlighted">
             {{ t('account.delete.notice.title') }}
-          </h3>
+          </h2>
           <ul class="mt-2 space-y-1.5 text-muted">
             <li v-for="(line, index) in notices" :key="index" class="flex gap-2">
               <UIcon name="i-ph-dot-outline-bold" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />

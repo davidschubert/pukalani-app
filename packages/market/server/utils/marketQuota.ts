@@ -17,10 +17,13 @@ import {
  *
  * ── GEBUCHT WIRD, WAS ETWAS KOSTET ────────────────────────────────────────
  * Die Route ruft diese Funktion, NACHDEM sie weiss, dass es überhaupt etwas
- * zu tun gibt (mindestens ein Kandidat ohne aktuelles Profil). Ein Lauf, der
- * nur gespeicherte Profile zurückgibt, holt keine fremde Seite und ruft kein
- * Modell — „was nichts kostet, kostet kein Kontingent" (dieselbe Regel wie im
- * brand-Layer und bei der UGC-Übersetzung).
+ * zu tun gibt (mindestens ein Wettbewerber) und die Lauf-Sperre hält. Ohne
+ * Wettbewerber antwortet sie `ran: false` und bucht nichts — „was nichts
+ * kostet, kostet kein Kontingent" (dieselbe Regel wie im brand-Layer und bei
+ * der UGC-Übersetzung). Mit Wettbewerbern bucht JEDER Lauf, auch wenn am Ende
+ * alle Profile unverändert wiederverwendet werden. Einzige Ausnahme: ein
+ * Start, der einen abgebrochenen, noch nicht bezahlten Lauf übernimmt, erbt
+ * dessen Buchung (Kopf von `run.post.ts`, Stufe d).
  *
  * Gebucht wird dann aber am START und nicht beim Erfolg: die Anfragen sind
  * raus, sobald der Lauf beginnt, und die Gegenregel wäre ein Geschenk an

@@ -347,7 +347,10 @@ onMounted(() => {
         :data-plan="key"
       >
         <div class="flex items-start justify-between gap-2">
-          <h3 class="font-semibold">{{ t(`onboarding.subscription.plans.${key}.name`) }}</h3>
+          <!-- `h2`: über den Plan-Karten steht nur die `h1` des Dashboards
+               (Karten-Titel sind keine Überschriften) — `h3` übersprang eine
+               Ebene (UX-011). -->
+          <h2 class="font-semibold">{{ t(`onboarding.subscription.plans.${key}.name`) }}</h2>
           <UBadge v-if="isCurrent(key)" color="primary" variant="subtle" size="sm">
             {{ t('onboarding.subscription.currentPlan') }}
           </UBadge>
