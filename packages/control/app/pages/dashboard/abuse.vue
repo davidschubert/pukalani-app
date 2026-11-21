@@ -49,7 +49,7 @@ useBrandTitle(() => t('control.abuse.title'))
 
 const { page, setPage } = usePagination({ pageSize: ABUSE_REPORTS_PAGE_SIZE })
 
-const { data, refresh, status } = await useFetch<AbuseReportListResponse>(
+const { data, refresh, status, error } = await useFetch<AbuseReportListResponse>(
   '/api/control/abuse-reports',
   { query: computed(() => ({ page: page.value })), lazy: true, server: false },
 )
@@ -170,7 +170,12 @@ const STAT_KEYS = ['open', 'suspended', 'dismissed', 'total'] as const
         </div>
       </div>
 
-      <UTable :data="reports" :columns="columns" data-abuse-list>
+      <!-- Fehler statt „keine Meldungen" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="reports" :columns="columns" data-abuse-list>
         <template #host-cell="{ row }">
           <div class="min-w-0" :data-abuse-host="row.original.host">
             <p class="truncate font-medium">{{ row.original.communityName || row.original.host }}</p>

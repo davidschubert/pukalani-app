@@ -64,7 +64,7 @@ const filter = ref<CorrectionFilter>('open')
  * neu; das ist hier richtig, weil jede Antwort die GANZE Ansicht ist (kein
  * Cursor, nichts zum Anhängen — s. Kopf, Punkt 1).
  */
-const { data, refresh, status } = await useFetch<InsightsCorrectionsListResponse>('/api/insights/corrections', {
+const { data, refresh, status, error } = await useFetch<InsightsCorrectionsListResponse>('/api/insights/corrections', {
   query: computed(() => ({ status: filter.value === 'all' ? undefined : filter.value })),
   lazy: true,
   server: false,
@@ -225,7 +225,13 @@ async function confirmDecline(): Promise<void> {
       <!-- `whitespace-normal`: Nuxt UI setzt auf jede Zelle `whitespace-nowrap`, und
            ein Grund-Satz schob bei 1440 px die Aktions-Spalte aus dem Panel
            (Klick-Beweis 2026-09-10, dieselbe Falle wie die Kit-Lizenztabelle). -->
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
       <UTable
+        v-else
         :data="rows" :columns="columns" :loading="pending"
         :ui="{ td: 'whitespace-normal align-top' }"
         data-insights-corrections-list

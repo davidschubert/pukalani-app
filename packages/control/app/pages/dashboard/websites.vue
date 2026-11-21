@@ -19,7 +19,7 @@ const { promptFreshSignIn } = useRecentAuthPrompt()
 useBrandTitle(() => t('control.websites.title'))
 
 type WebsiteWithEntitlements = WebsiteRow & { entitlements: string[], domain: SiteDomainState }
-const { data, refresh } = await useFetch<{ websites: WebsiteWithEntitlements[] }>('/api/control/websites')
+const { data, error, refresh } = await useFetch<{ websites: WebsiteWithEntitlements[] }>('/api/control/websites')
 const { data: jobsData, refresh: refreshJobs } = await useFetch<{ jobs: JobRow[] }>('/api/control/jobs')
 const { data: catalogData } = await useFetch<{ products: ProductCatalogEntry[] }>('/api/control/products')
 
@@ -372,7 +372,12 @@ const appUrlPlaceholder = 'http://localhost:3003'
     </template>
 
     <template #body>
-      <UTable :data="data?.websites ?? []" :columns="websiteColumns" data-websites-list>
+      <!-- Fehler statt „keine Sites" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="data?.websites ?? []" :columns="websiteColumns" data-websites-list>
         <template #name-cell="{ row }">
           <div class="min-w-0" :data-site="row.original.slug">
             <p class="font-medium">{{ row.original.name }}</p>

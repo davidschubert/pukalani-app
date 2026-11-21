@@ -24,7 +24,7 @@ useBrandTitle(() => t('control.reservedNames.title'))
 
 interface CustomEntry { name: string, note: string, createdAt: string }
 
-const { data, refresh } = await useFetch<{ system: string[], custom: CustomEntry[] }>(
+const { data, error, refresh } = await useFetch<{ system: string[], custom: CustomEntry[] }>(
   '/api/control/reserved-names',
   { lazy: true, server: false },
 )
@@ -145,7 +145,12 @@ const columns = computed<TableColumn<ReservedEntry>[]>(() => [
         />
       </form>
 
-      <UTable :data="entries" :columns="columns" data-reserved-list>
+      <!-- Fehler statt „keine Namen" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="entries" :columns="columns" data-reserved-list>
         <template #name-cell="{ row }">
           <code class="font-mono text-sm">{{ row.original.name }}</code>
         </template>

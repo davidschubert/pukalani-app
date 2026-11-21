@@ -58,7 +58,7 @@ const readerLocale = computed(() => (locale.value === 'de' ? 'de' : 'en') as 'de
 
 // ── Laden ──────────────────────────────────────────────────────────────────
 
-const { data, refresh, status } = await useFetch<InsightsChannelsListResponse>('/api/insights/channels', {
+const { data, refresh, status, error } = await useFetch<InsightsChannelsListResponse>('/api/insights/channels', {
   lazy: true,
   server: false,
 })
@@ -322,7 +322,12 @@ function youtubeUrl(channel: InsightsChannel): string {
       />
 
       <div v-else-if="channels.length > 0" class="mt-4 overflow-x-auto">
-        <UTable :data="channels" :columns="columns" :loading="loading">
+        <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+        <div v-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
+        </div>
+
+        <UTable v-else :data="channels" :columns="columns" :loading="loading">
           <template #title-cell="{ row }">
             <div class="flex flex-col">
               <span class="text-sm font-medium">{{ row.original.title || row.original.channelId }}</span>

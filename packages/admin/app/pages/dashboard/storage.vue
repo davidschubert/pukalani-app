@@ -12,7 +12,7 @@ const { formatRelativeTime } = useFormatRelativeTime()
 
 useBrandTitle(() => t('admin.storage.title'))
 
-const { data, status, refresh } = useFetch<StorageOverview>('/api/admin/storage', {
+const { data, status, error, refresh } = useFetch<StorageOverview>('/api/admin/storage', {
   lazy: true,
   server: false,
 })
@@ -194,6 +194,11 @@ function removeOrphans() {
         <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
           <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
         </div>
+        <!-- Fehler statt „keine Ablagen" (FE-004, LZ1) -->
+        <div v-else-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
+        </div>
+
 
         <UAlert
           v-else-if="!data?.available"

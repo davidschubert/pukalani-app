@@ -60,7 +60,7 @@ useBrandTitle(() => t('brand.admin.unlocks.title'))
  * EINE Abfrage für beide Spalten: beide Zustände stehen in derselben Zeile
  * (Begründung ausgeschrieben im Kopf der Route).
  */
-const { data, refresh, status } = await useFetch<BrandUnlockListResponse>(
+const { data, refresh, status, error } = await useFetch<BrandUnlockListResponse>(
   '/api/brand/admin/derivation-unlocks',
   { lazy: true, server: false },
 )
@@ -230,7 +230,12 @@ function rowActions(item: BrandUnlockItem): DropdownMenuItem[][] {
         </div>
       </div>
 
-      <UTable :data="items" :columns="columns" data-unlock-list>
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="items" :columns="columns" data-unlock-list>
         <template #title-cell="{ row }">
           <!-- `max-w-[22rem]`: die Marken-Spalte nahm sich sonst die halbe
                Tabelle (Auto-Layout misst den längsten Satz), und die letzte

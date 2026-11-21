@@ -33,7 +33,7 @@ const confirm = useConfirm()
 const { promptFreshSignIn } = useRecentAuthPrompt()
 useBrandTitle(() => t('admin.integrations.title'))
 
-const { data, refresh } = await useFetch<IntegrationsResponse>('/api/admin/integrations')
+const { data, error, refresh } = await useFetch<IntegrationsResponse>('/api/admin/integrations')
 
 /** Je Dienst ein eigenes Eingabefeld — sie werden auch einzeln gespeichert. */
 const inputs = reactive<Record<string, string>>({})
@@ -126,6 +126,11 @@ const badgeColor = (source: string) => (source === 'none' ? 'warning' : 'success
     <template #body>
       <div class="max-w-2xl space-y-4">
         <p class="text-sm text-muted">{{ t('admin.integrations.description') }}</p>
+
+        <!-- Fehler statt „keine Dienste" (FE-004, LZ1) -->
+        <div v-if="error && !data" role="alert">
+          <CoreLoadError :retry="refresh" />
+        </div>
 
         <UAlert
           v-if="data && !data.editable"

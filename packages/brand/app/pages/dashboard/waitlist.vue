@@ -65,7 +65,7 @@ useBrandTitle(() => t('brand.admin.waitlist.title'))
 
 const filter = ref<BrandWaitlistFilter>(BRAND_WAITLIST_DEFAULT_FILTER)
 
-const { data, refresh, status } = await useFetch<BrandWaitlistAdminListResponse>(
+const { data, refresh, status, error } = await useFetch<BrandWaitlistAdminListResponse>(
   '/api/brand/admin/waitlist',
   {
     // Reaktive Query: ein Filterwechsel lädt neu, ohne eigenen Watcher.
@@ -302,7 +302,12 @@ function rowActions(entry: BrandWaitlistAdminItem): DropdownMenuItem[][] {
         <span class="text-sm text-dimmed">{{ t('brand.admin.waitlist.shown', { count: items.length }) }}</span>
       </div>
 
-      <UTable :data="items" :columns="columns" data-waitlist-list>
+      <!-- Fehler statt „keine Einträge" (FE-004, LZ1) -->
+      <div v-if="error && !data" role="alert">
+        <CoreLoadError :retry="refresh" />
+      </div>
+
+      <UTable v-else :data="items" :columns="columns" data-waitlist-list>
         <template #email-cell="{ row }">
           <div class="min-w-0">
             <p class="font-medium">{{ row.original.email }}</p>
