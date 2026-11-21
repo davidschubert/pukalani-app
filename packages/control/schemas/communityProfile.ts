@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { PRIMARY_LOCALES } from '../../core/shared/primaryLocale'
 import { SITE_DESCRIPTION_MAX } from '../shared/onboarding'
 
 type TranslateFn = (key: string) => string
@@ -37,6 +38,12 @@ export function createCommunityProfileSchema(t: TranslateFn = identity) {
       .min(2, t('onboarding.validation.nameRequired'))
       .max(120),
     description: z.string().trim().max(SITE_DESCRIPTION_MAX).optional(),
+    /**
+     * Hauptsprache (Q10). OPTIONAL, und das ist Betrieb statt Geschmack:
+     * platform und control sind zwei Deployments — fehlt das Feld, heißt das
+     * „nicht angefasst", nie „zurück auf die Vorgabe".
+     */
+    locale: z.enum(PRIMARY_LOCALES).optional(),
   }).strict()
 }
 
@@ -48,4 +55,6 @@ export interface CommunityProfileResult {
   communityId: string
   name: string
   description: string
+  /** Die gewählte Hauptsprache; '' = keine eigene Wahl (es gilt die Vorgabe). */
+  locale?: string
 }

@@ -45,6 +45,9 @@ export default defineEventHandler(async (event): Promise<CommunityProfileResult>
       communityId: tenant.communityId,
       name: body.name,
       description: body.description ?? '',
+      // Nur mitschicken, wenn gesetzt: eine ältere control-Fassung kennt das
+      // Feld nicht und lehnte den ganzen Aufruf ab (Schema ist strikt).
+      ...(body.locale ? { locale: body.locale } : {}),
     },
   )
 })
