@@ -65,7 +65,7 @@ const columns = computed<TableColumn<ReportedMessageView>[]>(() => ([
         />
 
         <CoreEmptyState
-          v-if="status !== 'pending' && rows.length === 0"
+          v-if="!isFetchLoading(status) && rows.length === 0"
           icon="i-ph-flag-banner"
           :title="t('messages.reports.empty')"
         />
@@ -74,7 +74,7 @@ const columns = computed<TableColumn<ReportedMessageView>[]>(() => ([
           v-else
           :data="rows"
           :columns="columns"
-          :loading="status === 'pending'"
+          :loading="isFetchLoading(status)"
         >
           <!-- Gesicht statt nur Name: wer eine Meldung bearbeitet, erkennt die
                Beteiligten schneller am Bild. Ohne hinterlegten Avatar rechnet

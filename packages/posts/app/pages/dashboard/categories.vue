@@ -498,7 +498,7 @@ function categoryPath(category: PostCategory): string {
           {{ t('posts.categories.orderFilteredHint') }}
         </p>
 
-        <div v-if="status === 'pending' && !data" class="flex justify-center py-16">
+        <div v-if="isFetchLoading(status) && !data" class="flex justify-center py-16">
           <UIcon name="i-ph-spinner" class="size-6 animate-spin text-muted" />
         </div>
 

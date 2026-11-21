@@ -190,7 +190,7 @@ const kpis = computed<StatsKpi[]>(() => [
     <div class="flex flex-wrap items-center justify-between gap-3">
       <p class="text-sm text-muted">{{ t('analytics.stats.subtitle') }}</p>
 
-      <UButtonGroup v-if="rangeVisible" size="xs" data-analytics-range>
+      <UFieldGroup v-if="rangeVisible" size="xs" data-analytics-range>
         <UButton
           v-for="option in rangeOptions"
           :key="option"
@@ -200,7 +200,7 @@ const kpis = computed<StatsKpi[]>(() => [
           :label="t(`analytics.stats.range.${option}`)"
           @click="range = option"
         />
-      </UButtonGroup>
+      </UFieldGroup>
     </div>
 
     <UAlert

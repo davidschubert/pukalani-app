@@ -272,7 +272,7 @@ function rowActions(entry: BrandWaitlistAdminItem): DropdownMenuItem[][] {
             icon="i-ph-arrows-clockwise"
             color="neutral"
             variant="ghost"
-            :loading="status === 'pending'"
+            :loading="isFetchLoading(status)"
             :aria-label="t('brand.admin.waitlist.refresh')"
             @click="refresh()"
           />
