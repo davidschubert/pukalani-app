@@ -30,6 +30,55 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### WS1-Lauf — die Werkstatt-Seite in fünf weiteren Teilen (Bahn 6, Paket 1; ARC-001) ✅ 2026-11-21
+
+**Was.** Die Werkstatt-Seite `packages/brand/app/pages/brand/[profileId]/[stepKey].vue`
+von **5.119 auf 3.746 Zeilen**, in fünf Pull Requests, je Kapitel einer, in der
+Reihenfolge der klarsten Grenzen (umgeordnet gegenüber der WS1-Liste: die
+kleinen, sauber begrenzten Kapitel zuerst):
+
+1. **(b) Modale** → `BwAdvisorInfoModal`, `BwVersionsModal` (holt die Historie
+   selbst), `BwConflictModal` (liest `store.conflict`). 5.119 → 4.922.
+2. **(a) Log rechts** → `BwWorkshopLog`: hält nur aufgeklappte Kapitel und die
+   lesend geholten Felder fremder Kapitel; die Karten rechnet die Seite
+   (`chapterCards`), Handlungen gehen als Ereignisse zurück. Kein Hüll-Element
+   (Fragment), damit `.bw-log-chapter + .bw-log-chapter` greift. → 4.612.
+3. **(g) Leiste und Balken** → `useBrandWorkshopRail` (Leiste der drei Schichten,
+   Gesamtfortschritt), `useBrandWorkshopLayout` (Spalten ein-/ausklappen),
+   `BwStageBar` (Balken mit der einzigen `h1`). Navigation bleibt in der Seite
+   (Autosave vor jedem Wechsel). → 3.957.
+4. **(d) Design-Werkzeuge** → `useBrandDesignToolSync`: Farbwelt, Typografie,
+   Zeichen, Bildsprache, Bewegung trugen denselben Abgleich fünfmal wortgleich;
+   kapitelspezifische Gründe (`j.brief`, `j.drafts`, `l.rules`) bleiben an
+   ihrer Stelle. → 3.804.
+5. **(c, Teil) Bestätigungs-Modul** → `BwStageConfirm`. → 3.746.
+
+Je Schnitt: der Rauch-Test wurde ZUERST um das Kapitel erweitert und war gegen
+die unveränderte Seite grün (eigener Commit), nach dem Schnitt wieder grün; je
+Baustein drei bis vier Gegenproben (absichtlicher Fehler ⇒ rot). Der Test hat
+jetzt vier Fälle, mit einem zweiten Probe-Profil (Foundation fertig, Brand
+Design frei, Farbwelt offen) und gestelltem Autosave. Zweimal lokal im Browser
+geklickt (Worktree-Server, lokale Datenbank, Wegwerf-Konto, KI-Aufrufe über
+einen toten Proxy gesperrt — zwei Eröffnungszüge scheiterten dort nach rund
+60 ms, kein bezahlter Aufruf): Steckbrief, fremdes Kapitel, „Beantworten";
+Bestätigungs-Modul korrigieren/verwerfen, Leiste im schmalen Fenster, Farbwelt
+wählen mit Autosave 200. Konten und Zeilen danach gelöscht, nachgezählt 0.
+
+Offen geblieben, mit Grund in `docs/plans/offen/WS1.md`: Antwort-, Options-
+und Entwurfs-Modul (Hauptklick ruft die KI-Route; braucht einen gestellten
+Strom im Rauch-Test), Session/Verlauf (SSR und Hydration sieht der Rauch-Test
+nicht), Korrektur-Regel (der Handlungs-Kern, den alle drei Spalten teilen).
+
+**Gelernt:** Der Rauch-Test teilt EINEN Store über alle Fälle einer Datei, und
+die Seite lädt dasselbe Kapitel beim nächsten Aufbau nicht neu: ein Fall, der
+nur EIN Feld als Server-Stand setzt (gestellter Konflikt), ließ den nächsten
+Fall eine leere Frage sehen — einzeln grün, im Verbund rot. Gestellte
+Server-Stände tragen deshalb immer das ganze Kapitel. Und: ein herausgeschnittener
+Baustein, der seinen Abruf aus einem `watch` statt aus dem Klick startet, ist
+eine Mikroaufgabe später dran — für Menschen unsichtbar, aber ein Test, der auf
+eine feste Runde wartet, wird rot; der Test wartet auf das Ergebnis
+(`vi.waitFor`), nicht auf die Runde.
+
 ### Sammelpaket kleine Reste (Bahn 3, Paket 1) ✅ 2026-11-21
 
 **Was.**

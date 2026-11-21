@@ -5,54 +5,53 @@
 > Ist der Punkt erledigt, zieht der Eintrag nach
 > [OPEN-ITEMS-COMPLETE.md](../../OPEN-ITEMS-COMPLETE.md) und diese Datei wird gelöscht.
 
-**WS1 — Die Werkstatt-Seite in Teile schneiden: der Rest nach Q21 (2026-11-21).**
-`packages/brand/app/pages/brand/[profileId]/[stepKey].vue` hat nach Q21 noch
-5.119 Zeilen (Skript bis Zeile 3844, Vorlage ab 3846). Q21 hat den Rauch-Test
-gebaut (`packages/brand/tests/render/workshopPage.test.ts`, Vitest-Projekt
-`render`) und den ersten Abschnitt geschnitten: den Website-Streifen
-(`BwSiteStrip.vue`, Erledigt-Liste „Q21").
+**WS1 — Die Werkstatt-Seite in Teile schneiden: Stand nach dem WS1-Lauf (2026-11-21).**
+`packages/brand/app/pages/brand/[profileId]/[stepKey].vue`: 5.235 Zeilen vor
+Q21, 5.119 nach Q21, **3.746 nach dem WS1-Lauf** (fünf Schnitte, Erledigt-Liste
+„WS1-Lauf"). Der Rauch-Test (`packages/brand/tests/render/workshopPage.test.ts`,
+Vitest-Projekt `render`) hat jetzt vier Fälle: Kontext-Kapitel samt Log,
+Leiste und Balken; Steckbrief, frühere Fassungen und Konflikt;
+Bestätigungs-Modul; Farbwelt auf einem zweiten Probe-Profil mit
+freigeschaltetem Brand Design.
 
 **Regeln für jeden weiteren Schnitt:** ein Kapitel je Pull Request; Verhalten
 und Aussehen bleiben gleich; Zustand bleibt im Store oder dort, wo er heute
 liegt, keine neue Zustands-Quelle; der Rauch-Test ist vor und nach dem Schnitt
 grün, und wer den Klick-Weg eines Kapitels nicht abdeckt, ergänzt ihn im
 Rauch-Test (gestellte Antworten in `tests/render/support/workshopFixtures.ts`).
+FALLE: der Store lebt über alle Fälle einer Datei und lädt dasselbe Kapitel
+beim nächsten Aufbau nicht neu — ein Fall, der den Store verändert (etwa einen
+Konflikt auflöst), muss einen vollständigen Stand hinterlassen.
 
-**Die Kapitel** (Zeilen Stand Q21; Skript = Abschnitts-Überschrift `// ──`):
+**Geschnitten** (WS1-Lauf, in dieser Reihenfolge): (b) Modale →
+`BwAdvisorInfoModal`, `BwVersionsModal`, `BwConflictModal`; (a) Log →
+`BwWorkshopLog`; (g) Leiste und Balken → `useBrandWorkshopRail`,
+`useBrandWorkshopLayout`, `BwStageBar`; (d) Design-Werkzeuge →
+`useBrandDesignToolSync`; (c, Teil) Bestätigungs-Modul → `BwStageConfirm`.
 
-- ~~**(a) Der Log rechts**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
-  `BwWorkshopLog` hält, was nur der Log liest (aufgeklappte Kapitel, lesend
-  geholte Felder fremder Kapitel); die Karten rechnet weiter die Seite
-  (`chapterCards`), jede Handlung geht als Ereignis zurück. Seite 4.922 →
-  4.612 Zeilen. Rauch-Test: fremdes Kapitel auf/zu/auf (ein Abruf),
-  „Beantworten" springt in die Session.
-- ~~**(b) Die Modale**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
-  `BwAdvisorInfoModal`, `BwVersionsModal` (holt die Historie selbst),
-  `BwConflictModal` (liest `store.conflict`). Seite 5.119 → 4.922 Zeilen.
-  Der Rauch-Test hat dafür einen zweiten Fall (Steckbrief, frühere Fassungen,
-  Konflikt).
-- **(c) Das Antwort-Modul im Zug** — Vorlage der Züge 4117–4613 und die aktive
-  Karte 4614–4722; Skript „Das Antwort-Modul im Zug" 2007–2212 und „Die drei
-  Richtungen" 2213–2283.
-- ~~**(d) Die Design-Werkzeuge**~~ — **geschnitten (WS1-Lauf 2026-11-21):**
-  Farbwelt, Typografie, Zeichen, Bildsprache und Bewegung trugen denselben
-  Abgleich fünfmal wortgleich; er steht jetzt einmal in
-  `useBrandDesignToolSync` (kapitelspezifische Gründe bleiben an ihrer
-  Stelle). DNA-Vorschlag und Book & Kit haben eine andere Form (Mix-Quellen,
-  kein Abgleich) und bleiben in der Seite. Rauch-Test: zweites Probe-Profil
-  mit freigeschaltetem Brand Design, Farbwelt belegt sich vor, eine Wahl geht
-  in den Store. Seite 3.957 → 3.804 Zeilen.
-- **(e) Session, Verlauf, Eröffnungszug** — Skript 295–1504 (Stimme, nächste
-  Frage, aktive Session, Verlauf und Auto-Weiter). Kein Template-Anteil; ein
-  Composable, das der Store-Grenze folgt. Das heikelste Kapitel (SSR-Payload,
-  `onMounted`-Klammern) und deshalb zuletzt.
-- **(f) Korrektur-Regel und Warteschlange** — Skript 1505–2006 (Slot-Zustände,
-  Korrektur-Regel, „neu besprechen").
-- ~~**(g) Leiste, Fortschritt, Navigation, Abnahme**~~ — **geschnitten
-  (WS1-Lauf 2026-11-21):** `useBrandWorkshopRail` (Leiste der drei Schichten
-  und Gesamtfortschritt; die Seite reicht die Rechnungen herein, die Bühne und
-  Leiste teilen), `useBrandWorkshopLayout` (Spalten ein-/ausklappen, schmale
-  Fenster), `BwStageBar` (Balken mit der `h1`). Die Navigation selbst
-  (`goToStep`, `selectSession`, `goToBrand`, Abnahme-Sprünge) bleibt in der
-  Seite: sie hängt am Autosave und an der Session-Wahl. Seite 4.612 → 3.957
-  Zeilen.
+**Offen, jeweils mit dem Grund, warum es im WS1-Lauf blieb:**
+
+- **(c, Rest) Antwort-, Options- und Entwurfs-Modul im Zug** (Vorlage im
+  `#default`-Bereich, Skript „Das Antwort-Modul im Zug" und „Die drei
+  Richtungen"). Der wichtigste Klick des Options- und Antwort-Moduls schickt
+  die Antwort an George (`…/converse`) — der Rauch-Test darf keine KI-Route
+  auslösen, ein gestellter Gesprächs-Strom fehlt noch. Das Entwurfs-Modul
+  hängt am Erzeugungs-Zustand (Strom, Hinweis-Feld, abgeschnittener Entwurf,
+  Neuversuch): als Baustein bräuchte es rund zwanzig Eingänge und Ereignisse.
+  Voraussetzung für den nächsten Schnitt: ein gestellter Strom für
+  `converse`/`generate` im Rauch-Test.
+- **(e) Session, Verlauf, Eröffnungszug** (Skript „Eine Stimme", „George: die
+  nächste offene Frage", „Die aktive Session", „Verlauf, Eröffnungszug und
+  Auto-Weiter"). Die heiklen Stellen sind SSR-Nutzlast und `onMounted`-Klammern
+  gegen Hydration-Fehler; der Rauch-Test baut nur im Browser auf und sieht
+  beides nicht. Erst mit einem Prüfweg, der Server-Ausgabe und Hydration
+  vergleicht, schneiden.
+- **(f) Korrektur-Regel und Warteschlange** (Skript „Slot-Zustände",
+  „Die Korrektur-Regel", „Die Warteschlange „neu besprechen""). Das ist der
+  Handlungs-Kern der Seite (eingeben, bestätigen, korrigieren, erzeugen, die
+  Karten-Rechnung `slotCards`), den Bühne, Log und Leiste gleichzeitig nutzen.
+  Ein Composable bräuchte rund 15 Eingänge und 25 Rückgaben, ohne die
+  Kopplung zu senken. Sinnvoll erst, wenn (c) und (e) stehen.
+- **DNA-Vorschlag und Book & Kit** (Rest von d): andere Form als die fünf
+  Werkzeuge (Mix-Quellen, Bretter, kein Abgleich nach dem Mount); klein genug,
+  um in der Seite zu bleiben.
