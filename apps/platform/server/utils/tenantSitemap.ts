@@ -16,7 +16,7 @@
 
 import { aiCrawlerPolicy, buildRobotsTxt, type AiCrawlerPolicy } from '../../../../packages/core/shared/aiCrawlers'
 import { primaryLocalePath, resolvePrimaryLocale, type PrimaryLocale } from '../../../../packages/core/shared/primaryLocale'
-import { discussionCategoryPath, discussionTopicPath, slugify, TOPIC_SLUG_FALLBACK } from '../../../../packages/posts/shared/discussionUrl'
+import { discussionCategoryPath, discussionTopicPath, slugify } from '../../../../packages/posts/shared/discussionUrl'
 
 /** Ein Sitemap-Eintrag in der EN-Default-Locale (ohne Prefix). */
 export interface TenantSitemapEntry {
@@ -134,10 +134,18 @@ export function tenantSitemapEntries(input: TenantSitemapInput): TenantSitemapEn
       // dessen Adress-Name entsteht dann aus dem Text des Beitrags, den diese
       // Liste bewusst nicht lädt (bis 10.000 Zeichen je Zeile). Eine geratene
       // Adresse antwortete mit 301 — in einer Sitemap ein Fehler.
-      const title = topic.title?.trim()
-      if (!categorySlug || !title || !SAFE_ID.test(topic.id)) continue
+      //
+      // ENTSCHIEDEN (SU1): Themen ohne Titel bleiben DRAUSSEN, auch wenn man
+      // den Text nachladen könnte. Ihr `<title>` ist das allgemeine Wort
+      // „Diskussionen" — in der Suche wären es viele gleich benannte
+      // Einträge, die keiner anklickt. Gefunden werden sie trotzdem: über die
+      // Kategorie-Seite, die in der Sitemap steht und auf jedes Thema
+      // verlinkt. Dasselbe gilt für einen Titel ohne Buchstaben (nur Zeichen
+      // wie Emojis): sein Adress-Name käme ebenfalls aus dem Text.
+      const titleSlug = slugify(topic.title?.trim() ?? '')
+      if (!categorySlug || !titleSlug || !SAFE_ID.test(topic.id)) continue
       entries.push({
-        path: discussionTopicPath(categorySlug, topic.id, slugify(title) || TOPIC_SLUG_FALLBACK),
+        path: discussionTopicPath(categorySlug, topic.id, titleSlug),
         priority: 0.6,
         onlyLocale,
         lastmod: safeLastmod(topic.lastmod),

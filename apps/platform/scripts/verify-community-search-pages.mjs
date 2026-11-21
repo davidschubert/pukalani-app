@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * COMMUNITY-SEITEN FÜR DIE SUCHE (Q10 — SEO-003, SEO-004, SEO-007).
+ * COMMUNITY-SEITEN FÜR DIE SUCHE (Q10 — SEO-003, SEO-004, SEO-007; SU1).
  *
  * Geprüft wird das AUSGELIEFERTE HTML, ohne JavaScript und ohne Anmeldung —
  * genau das, was eine Suchmaschine liest. Unit-Tests halten die Regeln
@@ -19,6 +19,11 @@
  *      Vorsatz maßgeblich; nach der Wahl „Deutsch" zeigen BEIDE Sprach-Adressen
  *      eines Beitrags auf die deutsche, und die Sitemap nennt nur diese.
  *      Gegenprobe: die Übersicht behält ihre zwei verknüpften Adressen.
+ *   5. Strukturierte Daten (SU1): Diskussion, Kurs und Termin tragen je einen
+ *      gültigen Block (`DiscussionForumPosting`, `Course`, `Event`) mit dem
+ *      Sichtbaren, Adresse = `canonical`, ohne Mail-Adresse und Konto-Kennung.
+ *      Gegenproben: Entwürfe (404, keine Daten), die Übersicht, und eine
+ *      Community „nur für Mitglieder" (Seite für den Owner da, keine Daten).
  *
  * Start: `pnpm buehne run --only verify-community-search-pages`
  * (Bühne: `pnpm buehne up`, Platform- und Control-Server aus demselben Checkout).
@@ -97,7 +102,22 @@ function head(html) {
     canonicals: links.filter(tag => attribute(tag, 'rel') === 'canonical').map(tag => attribute(tag, 'href')),
     hreflangs: links.filter(tag => attribute(tag, 'hreflang')).map(tag => attribute(tag, 'hreflang')),
     h1: [...html.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/g)].map(match => match[1].replace(/<[^>]+>/g, '').trim()),
+    // Strukturierte Daten (SU1): jeder Block als JSON; ein kaputter Block
+    // bleibt als `{ unparsable }` stehen und macht die Prüfung rot.
+    ld: [...html.matchAll(/<script\b[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)].map((match) => {
+      try {
+        return JSON.parse(match[1])
+      }
+      catch {
+        return { unparsable: match[1].slice(0, 80) }
+      }
+    }),
   }
+}
+
+/** Die Blöcke einer Art (`@type`) — ohne `@context` keine gültigen Daten. */
+function ldOfType(seen, type) {
+  return seen.ld.filter(block => block['@type'] === type && block['@context'] === 'https://schema.org')
 }
 
 async function readHead(path, host = HOST) {
@@ -155,7 +175,7 @@ async function main() {
   // Das Profil der Bühnen-Community merken — Schritt 4 schreibt die
   // Hauptsprache hinein, das Aufräumen stellt die Zeile wieder her.
   const before = await control.getRow(controlDatabaseId, 'communities', COMMUNITY_ID)
-  restoreProfile = () => control.updateRow(controlDatabaseId, 'communities', COMMUNITY_ID, { profile: before.profile ?? '', name: before.name })
+  restoreProfile = () => control.updateRow(controlDatabaseId, 'communities', COMMUNITY_ID, { profile: before.profile ?? '', name: before.name, audience: before.audience })
 
   console.log('0. Inhalte anlegen (Owner der Community, echte Routen)')
   const slug = `q10-${stamp}`
@@ -192,6 +212,40 @@ async function main() {
       seen.descriptions.length === 1 && seen.descriptions[0].length > 10 && seen.h1.length === 1 && seen.canonicals.length === 1,
       JSON.stringify({ d: seen.descriptions, h1: seen.h1, c: seen.canonicals }))
   }
+
+  console.log('\n1b. Strukturierte Daten (SU1): je Seitenart gültig, nur Sichtbares')
+  // Was NIE in den Daten stehen darf: Adresse und Konto-Kennung des Owners.
+  const secrets = [owner.email, owner.userId].filter(Boolean)
+  const leaksNothing = seen => !secrets.some(secret => JSON.stringify(seen.ld).includes(secret))
+  const [posting] = ldOfType(topicHead, 'DiscussionForumPosting')
+  check('Diskussion: genau ein Block DiscussionForumPosting, alle Blöcke lesbar',
+    ldOfType(topicHead, 'DiscussionForumPosting').length === 1 && !topicHead.ld.some(block => block.unparsable), JSON.stringify(topicHead.ld).slice(0, 300))
+  check('Diskussion: Titel, Text, Autor mit Namen, Datum, Adresse = canonical',
+    posting?.headline === `Zehn Minuten ${stamp}` && String(posting?.text ?? '').includes(topicText)
+    && posting?.author?.['@type'] === 'Person' && typeof posting?.author?.name === 'string' && posting.author.name.length > 0
+    && typeof posting?.datePublished === 'string' && posting?.url === topicHead.canonicals[0],
+    JSON.stringify(posting))
+  const [courseLd] = ldOfType(courseHead, 'Course')
+  check('Kurs: genau ein Block Course mit Titel, Beschreibung und Anbieter',
+    ldOfType(courseHead, 'Course').length === 1 && courseLd?.name === `Morgenroutine ${stamp}`
+    && String(courseLd?.description ?? '').includes(courseText) && courseLd?.provider?.['@type'] === 'Organization'
+    && courseLd?.url === courseHead.canonicals[0],
+    JSON.stringify(courseLd))
+  const [eventLd] = ldOfType(eventHead, 'Event')
+  check('Termin: genau ein Block Event mit Titel, Beginn, Status und Adresse = canonical',
+    ldOfType(eventHead, 'Event').length === 1 && eventLd?.name === `Morgenrunde ${stamp}`
+    && typeof eventLd?.startDate === 'string' && eventLd?.eventStatus === 'https://schema.org/EventScheduled'
+    && eventLd?.url === eventHead.canonicals[0],
+    JSON.stringify(eventLd))
+  check('keine Mail-Adresse und keine Konto-Kennung in den Daten', [topicHead, courseHead, eventHead].every(leaksNothing))
+  const draftEventHead = await readHead(`/events/${draftEvent.id}`)
+  check('Gegenprobe: Termin-Entwurf ist keine Seite und trägt keine Daten',
+    draftEventHead.status === 404 && ldOfType(draftEventHead, 'Event').length === 0, `Status ${draftEventHead.status}`)
+  const draftCourseHead = await readHead(`/courses/entwurf-${slug}`)
+  check('Gegenprobe: Kurs-Entwurf ist keine Seite und trägt keine Daten',
+    draftCourseHead.status === 404 && ldOfType(draftCourseHead, 'Course').length === 0, `Status ${draftCourseHead.status}`)
+  const overviewHead = await readHead('/discussions')
+  check('Gegenprobe: die Übersicht trägt keinen Beitrag als Daten', ldOfType(overviewHead, 'DiscussionForumPosting').length === 0)
 
   console.log('\n2. Ohne gewählte Hauptsprache: die Adresse ohne Vorsatz ist maßgeblich')
   check('Diskussion (englische Adresse): canonical zeigt auf sich selbst', topicHead.canonicals[0] === `${ORIGIN}${topicPath}`, topicHead.canonicals[0])
@@ -291,6 +345,32 @@ async function main() {
   check('Sitemap: Kurs und Termin ebenso',
     map.locs.includes(`${ORIGIN}/de${coursePath}`) && !map.locs.includes(`${ORIGIN}${coursePath}`)
     && map.locs.includes(`${ORIGIN}/de${eventPath}`) && !map.locs.includes(`${ORIGIN}${eventPath}`))
+
+  console.log('\n6. Gegenprobe: Community „nur für Mitglieder" trägt keine strukturierten Daten')
+  // Nur der Schalter an der Community-Zeile (der Resolver liest ihn); das
+  // Aufräumen stellt den VORGEFUNDENEN Wert zurück. Gelesen wird als Owner —
+  // er sieht die Seite weiter, sie darf aber nichts mehr aussagen.
+  await control.updateRow(controlDatabaseId, 'communities', COMMUNITY_ID, { audience: 'members' })
+  const closed = await waitFor('„nur für Mitglieder" kommt im Kopf an', async () => {
+    const res = await page(HOST, `/de${topicPath}`, cookie)
+    return res.status === 200 && /<meta[^>]*name="robots"[^>]*noindex/.test(res.text)
+  })
+  const closedTopic = head((await page(HOST, `/de${topicPath}`, cookie)).text)
+  const closedEvent = head((await page(HOST, `/de${eventPath}`, cookie)).text)
+  check('geschlossene Community: Seite noindex, keine Daten für Diskussion und Termin',
+    closed && ldOfType(closedTopic, 'DiscussionForumPosting').length === 0 && ldOfType(closedEvent, 'Event').length === 0,
+    JSON.stringify([closedTopic.ld, closedEvent.ld]).slice(0, 300))
+
+  // ZURÜCK UND ABWARTEN: der Mandanten-Kontext wird bis zu 30 s gehalten. Ohne
+  // dieses Warten liefe das NÄCHSTE Skript der Bühne noch gegen eine
+  // geschlossene Community (beim ersten Probelauf so gesehen).
+  await control.updateRow(controlDatabaseId, 'communities', COMMUNITY_ID, { audience: before.audience })
+  const reopened = await waitFor('wieder öffentlich im Kopf', async () => {
+    const res = await page(HOST, `/de${topicPath}`)
+    return res.status === 200 && !/<meta[^>]*name="robots"[^>]*noindex/.test(res.text)
+  })
+  check('zurückgestellt: die Community ist wieder öffentlich und trägt wieder Daten',
+    reopened && ldOfType(head((await page(HOST, `/de${topicPath}`)).text), 'DiscussionForumPosting').length === 1)
 }
 
 let restoreProfile = null

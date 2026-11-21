@@ -3,6 +3,7 @@ import { BRAND_CHECK_CATEGORIES } from '../../../shared/brandCheck'
 import { brandChoiceDisplayLabel } from '../../../shared/brandChoiceOptions'
 import { brandDiscoverOgPath, discoverPurposeLine, discoverVoiceLine } from '../../../shared/brandDiscover'
 import { BRAND_PALETTES } from '../../../shared/brandPalette'
+import { resolvePrimaryLocale } from '../../../../core/shared/primaryLocale'
 import type { BrandDiscoverEntryResponse } from '../../../shared/types/brand'
 
 /**
@@ -75,6 +76,20 @@ const check = computed(() => data.value?.check ?? null)
 const similar = computed(() => data.value?.similar ?? [])
 
 const title = computed(() => publication.value?.title ?? '')
+
+/**
+ * EINE MASSGEBLICHE ADRESSE (SU1, SEO-004 — dieselbe Regel wie Q10 für
+ * Communities): der Steckbrief einer Marke steht in IHRER Sprache (`locale`,
+ * die Sprache, in der sie erarbeitet wurde — dasselbe Feld, das die Seite als
+ * „Sprache" zeigt). Nur die Beschriftung drumherum wechselt mit der Adresse.
+ * `canonical` und `og:url` beider Sprach-Adressen zeigen deshalb auf die
+ * Adresse dieser Sprache; ohne bekannte Sprache die Grundsprache (EN, wie
+ * bisher `x-default`). Kein Eintrag für 404 und Betreiber-Vorschau (`noindex`).
+ * Die Sitemap nennt dieselbe Adresse (apps/branding, `discoverEntries`).
+ */
+useSeoCanonicalLocale(() => (missing.value || isPreview.value)
+  ? ''
+  : resolvePrimaryLocale(publication.value?.locale))
 const purpose = computed(() => discoverPurposeLine(foundation.value))
 const voice = computed(() => discoverVoiceLine(foundation.value))
 
