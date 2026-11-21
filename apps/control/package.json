@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "nuxi preview",
     "typecheck": "nuxi typecheck",
-    "bootstrap": "node --env-file=.env ../../scripts/bootstrap.mjs --app control",
+    "bootstrap": "node --env-file-if-exists=.env ../../scripts/bootstrap.mjs --app control",
     "test": "vitest run",
     "e2e": "playwright test"
   },

@@ -121,7 +121,7 @@ cpSync(join(ROOT, 'apps', '_template'), appDir, {
   // Das EINE Bootstrap-Skript (scripts/bootstrap.mjs, BE-026) nimmt die App
   // per --app — die Vorlage zeigt auf `_template`, die Kopie auf sich selbst.
   // Ohne diese Zeile migrierte `pnpm --filter <name> bootstrap` die Vorlage.
-  pkg.scripts.bootstrap = `node --env-file=.env ../../scripts/bootstrap.mjs --app ${name}`
+  pkg.scripts.bootstrap = `node --env-file-if-exists=.env ../../scripts/bootstrap.mjs --app ${name}`
   for (const dep of Object.keys(pkg.dependencies)) {
     if (dep.startsWith('@pukalani/')) delete pkg.dependencies[dep]
   }

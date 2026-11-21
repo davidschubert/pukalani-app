@@ -102,6 +102,12 @@ const bucketId = process.env.NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET || 'avatars'
 const gdprBucket = process.env.NUXT_PUBLIC_APPWRITE_GDPR_BUCKET || 'gdpr-exports'
 const apiKey = process.env.NUXT_APPWRITE_KEY || process.env.NUXT_APPWRITE_MIGRATIONS_KEY
 if (!endpoint || !projectId || !apiKey) {
+  // Der Paket-Befehl lädt die Datei mit `--env-file-if-exists` — so landet
+  // ein frischer Klon HIER und nicht bei Nodes „.env: not found" (DOC-006).
+  if (!existsSync(join(APP_DIR, '.env'))) {
+    console.error(`✗ apps/${APP_NAME}/.env fehlt — Vorlage: apps/${APP_NAME}/.env.example · lokale Datenbank: README.md („Setup")`)
+    process.exit(1)
+  }
   console.error(`✗ Fehlende Env-Vars (NUXT_PUBLIC_APPWRITE_ENDPOINT, NUXT_PUBLIC_APPWRITE_PROJECT_ID, NUXT_APPWRITE_KEY) — mit --env-file=apps/${APP_NAME}/.env aufrufen.`)
   process.exit(1)
 }
