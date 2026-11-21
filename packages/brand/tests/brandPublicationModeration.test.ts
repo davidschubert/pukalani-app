@@ -21,7 +21,7 @@ import {
 } from '../shared/brandPublication'
 
 /**
- * DIE REGELN DER MODERATION (docs/plans/DISCOVER-BRANDS.md §4.4, Paket D3).
+ * DIE REGELN DER MODERATION (docs/archiv/DISCOVER-BRANDS.md §4.4, Paket D3).
  *
  * Vier Zusagen, die man später nicht versehentlich verschieben darf:
  *  1. EINE Brand of the Day — und die Ablösung fasst die neue Zeile nie an.

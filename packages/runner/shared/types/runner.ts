@@ -1,7 +1,7 @@
 import type { Models } from 'node-appwrite'
 
 /**
- * Datenmodell des AI-Runners — docs/plans/AI-RUNNER.md § 4.
+ * Datenmodell des AI-Runners — docs/archiv/AI-RUNNER.md § 4.
  *
  * Alle drei Tabellen laufen mit `rowSecurity: false` und werden
  * AUSSCHLIESSLICH über Server-Routen (Admin-Client) geschrieben; gelesen wird

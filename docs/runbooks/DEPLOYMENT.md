@@ -663,8 +663,9 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 > nach Fehlversuchen (SEC-003, `.claude/rules/appwrite.md` „Bremsen").
 > **NICHT** auf den Server: `NUXT_APPWRITE_MIGRATIONS_KEY`. Der gehört nur zum
 > Migrationslauf (Schritt 2). Nach Env-Änderungen: `pm2 startOrReload
-> /home/ploi/comments.pukalani.app/ops/ecosystem-comments.config.cjs
-> --update-env` (downtime-frei; ein `pm2 restart` ginge auch, reißt aber
+> /home/ploi/<site>/ops/ecosystem-<app>.config.cjs
+> --update-env` (Site und App aus `ops/apps.conf`; das Beispiel von damals
+> nannte die gelöschte Site `comments`) (downtime-frei; ein `pm2 restart` ginge auch, reißt aber
 > eine Lücke).
 
 ## 4. Deploy auslösen

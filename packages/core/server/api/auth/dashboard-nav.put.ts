@@ -10,7 +10,7 @@ import type { DashboardNavResponse } from '../../../shared/types/auth-responses'
 
 /**
  * Persönliche Reihenfolge der Dashboard-Navigation speichern (NAV1 Paket 3,
- * Entscheidung 3 vom 2026-09-08 — docs/plans/DASHBOARD-NAV-JE-PERSON.md).
+ * Entscheidung 3 vom 2026-09-08 — docs/archiv/DASHBOARD-NAV-JE-PERSON.md).
  *
  * MECHANIK WIE `timezone.put.ts`: Session-Client, `account.updatePrefs` MIT
  * MERGE (updatePrefs ERSETZT sonst bio/avatarUrl & Co.), keine Tabelle. Die

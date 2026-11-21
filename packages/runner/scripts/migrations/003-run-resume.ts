@@ -1,6 +1,6 @@
 /**
  * Migration runner-003: `runs.resumeSessionId`.
- * Konzept: docs/plans/AI-RUNNER.md § 4 (needs_input ist TERMINAL) / § 9
+ * Konzept: docs/archiv/AI-RUNNER.md § 4 (needs_input ist TERMINAL) / § 9
  * (das „Antworten"-Feld).
  *
  * EINE Spalte, additiv. Sie trägt die `sessionId` des VORGÄNGER-Laufs, wenn

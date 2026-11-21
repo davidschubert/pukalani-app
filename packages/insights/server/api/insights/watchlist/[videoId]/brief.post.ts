@@ -28,7 +28,7 @@ import type { RunLeaseRow, RunLeaseStore } from '../../../../../../core/server/u
 
 /**
  * BRIEF AUS EINEM VIDEO (`insights.manage`, BI2 K5 — Plan
- * docs/plans/BRAND-INSIGHTS-KURATION.md §6, Entscheidung C4 vom 2026-10-27).
+ * docs/archiv/BRAND-INSIGHTS-KURATION.md §6, Entscheidung C4 vom 2026-10-27).
  *
  * Aus einem Fundstück wird ein BEITRAG IM ZUSTAND `draft`, dessen Brief das
  * Modell geschrieben hat, nachdem es das Video gesehen hat — Bild und Ton.

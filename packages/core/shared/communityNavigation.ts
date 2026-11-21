@@ -9,7 +9,7 @@
  * einer Instanz ist das richtig. Für den OWNER einer Community war es eine
  * Wand: er konnte weder etwas weglassen, was er nicht anbietet, noch etwas
  * anders nennen, als der Layer es nennt (Dashboard-Audit 2026-08-09 § 5;
- * docs/plans/DASHBOARD-IA.md führt „Navigation" als „existiert nirgends").
+ * docs/archiv/DASHBOARD-IA.md führt „Navigation" als „existiert nirgends").
  *
  * Davids Zuschnitt, und nur der: **ausblenden · umordnen · umbenennen**, dazu
  * **eigene Links** (auf CMS-Seiten dieser Community und auf externe

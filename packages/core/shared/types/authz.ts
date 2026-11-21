@@ -36,7 +36,7 @@ export type Capability =
   | 'courses.manage'
   | 'tickets.manage'
   /**
-   * Läufe des AI-Runners anlegen, abbrechen und lesen (docs/plans/AI-RUNNER.md
+   * Läufe des AI-Runners anlegen, abbrechen und lesen (docs/archiv/AI-RUNNER.md
    * § 4) — Betreiber-Werkzeug, ausschließlich in `apps/control`.
    *
    * BEWUSST ENGER ALS DAS GESCHWISTER `tickets.manage`: die trägt auch der

@@ -13,7 +13,7 @@ import {
 import { requireBrandPublicationOperator } from '../../utils/brandPublications'
 
 /**
- * DIE ANATOMIE EINER MARKE (docs/plans/DISCOVER-BRANDS.md §4.2, §6, Paket D2)
+ * DIE ANATOMIE EINER MARKE (docs/archiv/DISCOVER-BRANDS.md §4.2, §6, Paket D2)
  * — öffentlich, indexierbar, unter genau der Adresse, die beim Einreichen
  * vergeben wurde.
  *

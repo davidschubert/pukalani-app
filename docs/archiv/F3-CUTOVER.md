@@ -343,7 +343,7 @@ Rückweg mehr.
       Plausible-Stats-Key blieben unangetastet (mit anderen Sites geteilt).
 - [x] Stripe-Keys der Instanz: die Server-`.env` trug keine — es gab nichts zu
       widerrufen.
-- [ ] Plausible: eigene Site behalten ODER Host in den Sammel-Filter. Entscheidung: ______
+- (ohne Haken) Plausible: eigene Site behalten ODER Host in den Sammel-Filter. Entscheidung: ______
 - [x] Projekt `comments` — zunächst eingefroren, am **2026-08-18 von David in
       der Konsole GELÖSCHT** (Gegenprobe: `404 project_not_found`, kein
       Delete-500 diesmal; `account`-Projekt und Community-Host unberührt).

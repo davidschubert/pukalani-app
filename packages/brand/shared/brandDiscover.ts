@@ -11,7 +11,7 @@ import type {
 } from './types/brand'
 
 /**
- * DIE AUSWAHL-REGELN DER ÖFFENTLICHEN GALERIE (docs/plans/DISCOVER-BRANDS.md
+ * DIE AUSWAHL-REGELN DER ÖFFENTLICHEN GALERIE (docs/archiv/DISCOVER-BRANDS.md
  * §4.1/§4.2, Davids Entscheidungen 5 und 6 vom 2026-09-08) — pur, ohne h3,
  * ohne Appwrite, ohne Vue.
  *

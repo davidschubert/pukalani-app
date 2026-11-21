@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * DIE PRODUKT-ÜBERSICHT (PS1, Plan docs/plans/PRODUCTS-SEITE.md §3).
+ * DIE PRODUKT-ÜBERSICHT (PS1, Plan docs/archiv/PRODUCTS-SEITE.md §3).
  *
  * ── DIE REIHENFOLGE IST DER KUNDENWEG, NICHT DIE KARTE ────────────────────
  * Brand-Check (Audit) → Brand Foundation (Build) → Marktvergleich (Compare) →

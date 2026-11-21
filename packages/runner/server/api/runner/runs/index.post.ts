@@ -7,7 +7,7 @@ import { RUNNERS_TABLE, RUNS_TABLE, type RunRow, type RunnerRow } from '../../..
 import { softFail } from '../../../../../core/server/utils/softFail'
 
 /**
- * Einen Lauf anlegen — docs/plans/AI-RUNNER.md § 5, Board-Seite.
+ * Einen Lauf anlegen — docs/archiv/AI-RUNNER.md § 5, Board-Seite.
  *
  * Der Lauf wird hier nur HINGELEGT; abgeholt wird er vom Runner
  * (`runs/claim`). Es gibt bewusst keinen Weg, einem Rechner einen Lauf

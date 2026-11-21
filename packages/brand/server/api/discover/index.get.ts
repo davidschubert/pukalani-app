@@ -15,7 +15,7 @@ import {
 } from '../../utils/brandDiscover'
 
 /**
- * DIE ÖFFENTLICHE GALERIE (docs/plans/DISCOVER-BRANDS.md §4.1, §6, Paket D2) —
+ * DIE ÖFFENTLICHE GALERIE (docs/archiv/DISCOVER-BRANDS.md §4.1, §6, Paket D2) —
  * ohne Konto, ohne KI, ohne einen einzigen Schreibvorgang.
  *
  * ── DREI SCHRITTE, IN DIESER REIHENFOLGE ─────────────────────────────────

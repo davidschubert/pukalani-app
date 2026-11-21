@@ -1,6 +1,6 @@
 /**
  * Migration brand-006: `brand_access` — wer den Wizard nutzen darf
- * (docs/plans/BRAND-WIZARD-SCHEMA.md §5). Gemeinsame Regeln aller
+ * (docs/archiv/BRAND-WIZARD-SCHEMA.md §5). Gemeinsame Regeln aller
  * brand_*-Tabellen: Kopf von `001-brand-profiles.ts`.
  *
  * ── EINE ZEILE JE KONTO, UND SIE IST DAS RECHT ────────────────────────────

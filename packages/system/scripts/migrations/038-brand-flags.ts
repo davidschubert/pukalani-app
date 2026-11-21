@@ -1,6 +1,6 @@
 /**
  * Migration system-038: die zwei Laufzeit-Flags des Brand-Wizards
- * (docs/plans/BRAND-WIZARD-SCHEMA.md §8, Teil von P1a).
+ * (docs/archiv/BRAND-WIZARD-SCHEMA.md §8, Teil von P1a).
  *
  *   app_config.brandAdmissionMode — DREI Werte (Plan §3e):
  *     'closed' (Default) = keine NEUEN Zugänge; bestehende brand_access-Rows

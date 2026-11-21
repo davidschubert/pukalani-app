@@ -1,5 +1,8 @@
 # Dashboard-Informationsarchitektur
 
+> **Archiviert am 2026-11-21 (Q19).** Menü-Umbau und Community-Hub sind gebaut. Die restlichen Seiten aus Schritt 4 sind in der Runde vom 2026-08-13 einzeln entschieden: gebaut, gestrichen oder bewusst zurückgestellt (Abschnitt „Bewusst zurückgestellt“ in [OPEN-ITEMS.md](../OPEN-ITEMS.md)). Der Satz „Liegt weiter in `docs/plans/`“ unten ist der Stand vom 2026-08-09.
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 **Status (2026-08-09):** Menü-Umbau (Schritt 3) GEBAUT am 2026-07-31 (E9);
 **Community-Settings-Hub `/dashboard/community` GEBAUT am 2026-08-07/08
 (F50/F51)** · **Entschieden:** 2026-07-29/30 (David)

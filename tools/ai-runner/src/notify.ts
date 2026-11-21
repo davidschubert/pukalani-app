@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import type { RunFinalStatus } from './protocol.ts'
 
 /**
- * Native macOS-Mitteilung am Ende eines Laufs — docs/plans/AI-RUNNER.md § 7.2.
+ * Native macOS-Mitteilung am Ende eines Laufs — docs/archiv/AI-RUNNER.md § 7.2.
  *
  * Der BAU der `osascript`-Argumente ist PUR und einzeln gegengeprüft
  * (scripts/smoke.mjs); die AUSFÜHRUNG (`showNotification` → `spawn`) wird NIE

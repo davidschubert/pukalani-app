@@ -1,6 +1,6 @@
 /**
  * Produkt Layer: zentrales Kunden-Feedback (E10,
- * docs/plans/CUSTOMER-FEEDBACK.md).
+ * docs/archiv/CUSTOMER-FEEDBACK.md).
  *
  * Auf jeder Community- und Website-Seite sitzt unten links ein Feedback-Knopf;
  * was dort eingeht, läuft ZENTRAL im Control Plane auf — aus allen

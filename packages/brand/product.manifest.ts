@@ -2,9 +2,9 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 
 /**
  * Brand-Wizard (Phase 1 "Fundament") — KI-Markenberater "George".
- * Plan: docs/plans/BRAND-WIZARD-PHASE-1.md. Aktueller Stand: P1b — die sieben
+ * Plan: docs/archiv/BRAND-WIZARD-PHASE-1.md. Aktueller Stand: P1b — die sieben
  * brand_*-Tabellen stehen (scripts/migrations/001–007, Schema-Anhang
- * docs/plans/BRAND-WIZARD-SCHEMA.md); die Routen folgen.
+ * docs/archiv/BRAND-WIZARD-SCHEMA.md); die Routen folgen.
  *
  * Die Tabellen laufen NUR auf der `branding`-Instanz (branding.supply, Silo) —
  * der Layer steht deshalb im BRANDING_SOLL von

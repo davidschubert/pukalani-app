@@ -127,21 +127,21 @@ bei der ursprünglichen `site`-Variante der Knoten und ist mit `community` weg.
 
 ## Vor dem ersten Schritt
 
-- [ ] **Probe gegen eine Wegwerf-Instanz**, nicht gegen prod. Präzedenzfall:
+- (ohne Haken) **Probe gegen eine Wegwerf-Instanz**, nicht gegen prod. Präzedenzfall:
       die Restore-Probe (Dump in Wegwerf-MariaDB, Ziel #35). Ein Durchlauf
       Ende-zu-Ende, inklusive Rückweg.
-- [ ] **Backup je Instanz** unmittelbar davor (Muster C0b: „vorher je Instanz
+- (ohne Haken) **Backup je Instanz** unmittelbar davor (Muster C0b: „vorher je Instanz
       gesichert, danach gegengeprüft").
-- [ ] **Der Isolationsbeweis muss nach JEDEM Schritt grün sein** —
+- (ohne Haken) **Der Isolationsbeweis muss nach JEDEM Schritt grün sein** —
       `packages/comments/scripts/verify-pool-isolation.mjs`,
       `packages/core/scripts/verify-presence-boundary.mjs`,
       `packages/onboarding/scripts/verify-site-authz.mjs`. Diese drei sind der
       Grund, warum diese Umbenennung überhaupt verantwortbar ist: sie prüfen
       die Mandantengrenze gegen echte Appwrite, nicht gegen Mocks.
-- [ ] **Der ESLint-Backstop muss mitwandern** (`no-restricted-syntax` auf rohes
+- (ohne Haken) **Der ESLint-Backstop muss mitwandern** (`no-restricted-syntax` auf rohes
       `.tablesDB` in `server/api/**` und `server/plugins/**` der gepoolten
       Layer) — sonst fällt beim Umbau still eine Tür aus.
-- [ ] **Kein Wellen-Deploy während der Umbenennung.** Der Wellen-Pfad
+- (ohne Haken) **Kein Wellen-Deploy während der Umbenennung.** Der Wellen-Pfad
       (`pnpm migrate --wave`) war bis 2026-07-29 kaputt und ist gerade erst
       repariert; er ist der Mechanismus, mit dem Silo-Instanzen versorgt werden.
 

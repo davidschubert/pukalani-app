@@ -12,7 +12,7 @@
  * Die Schreibfläche musste dafür überredet werden: `@tiptap/markdown`
  * serialisiert einen Mention-KNOTEN sonst als `[@ id="…" label="…"]`. Der
  * eigene `renderMarkdown`-Handler in PostBodyEditor.vue macht `@handle` daraus
- * (gemessen, siehe docs/plans/COMPOSER-UEDITOR.md).
+ * (gemessen, siehe docs/archiv/COMPOSER-UEDITOR.md).
  *
  * ── WARUM ÜBER DEN AST UND NICHT ÜBER DEN ROHTEXT ──────────────────────────
  * Beide Leser gehen über `parseMarkdown`, nie über die rohe Zeichenkette. Das

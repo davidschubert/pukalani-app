@@ -1,6 +1,6 @@
 /**
  * Migration runner-001: runners + runs + run_events (+ Bucket `runner-files`).
- * Konzept: docs/plans/AI-RUNNER.md § 4.
+ * Konzept: docs/archiv/AI-RUNNER.md § 4.
  *
  * rowSecurity = false; Table-Read NUR für label:admin — bewusst ENGER als bei
  * `tickets`, wo admin UND moderator lesen. Ein Lauf trägt Repo-Schlüssel,

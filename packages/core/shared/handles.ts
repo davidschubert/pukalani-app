@@ -21,7 +21,7 @@
  * `a–z 0–9 _`, klein geschrieben verglichen, weder am Anfang noch am Ende ein
  * `_`. Der Grund ist nicht Geschmack, sondern die Schreibfläche: `@tiptap/
  * markdown` maskiert beim Speichern hartkodiert `\ ` * _ [ ] ~` in TEXT-Knoten
- * (Messung: docs/plans/COMPOSER-UEDITOR.md). Ein gespeichertes `@erika_muster`
+ * (Messung: docs/archiv/COMPOSER-UEDITOR.md). Ein gespeichertes `@erika_muster`
  * kommt beim erneuten Öffnen als `@erika\_muster` zurück.
  * DAS IST HIER UNGEFÄHRLICH und bleibt bewusst erlaubt, weil weder der
  * Renderer noch die server-seitige Auflösung je auf dem ROHEN Markdown

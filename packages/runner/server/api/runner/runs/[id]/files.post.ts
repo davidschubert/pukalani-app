@@ -5,7 +5,7 @@ import { MAX_RUN_ATTACHMENTS, RUNNER_FILES_BUCKET, RUNS_TABLE, type RunAttachmen
 import { softFail } from '../../../../../../core/server/utils/softFail'
 
 /**
- * Einen Anhang an einen ENTWURF hängen — docs/plans/AI-RUNNER.md § 6,
+ * Einen Anhang an einen ENTWURF hängen — docs/archiv/AI-RUNNER.md § 6,
  * Board-Seite (Session + `runner.manage`).
  *
  * EINE KOPIE, kein Verweis: die Datei landet im Bucket `runner-files` DIESES

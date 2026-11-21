@@ -34,7 +34,7 @@ import {
 } from './stream.ts'
 
 /**
- * EIN Lauf, von der Claim-Antwort bis zum `finish` — docs/plans/AI-RUNNER.md
+ * EIN Lauf, von der Claim-Antwort bis zum `finish` — docs/archiv/AI-RUNNER.md
  * § 7.2.
  *
  * DIE LEITREGEL DIESER DATEI: ein Lauf darf nie stumm hängen bleiben. Jeder

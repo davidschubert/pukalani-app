@@ -4,7 +4,7 @@ import type { FeedbackServicePath } from '../../../control/shared/customerFeedba
 /**
  * Die Naht zum Control Plane, aus Sicht einer RUNTIME-App.
  *
- * Davids Entscheidung 1 (docs/plans/CUSTOMER-FEEDBACK.md): „jedes Dashboard
+ * Davids Entscheidung 1 (docs/archiv/CUSTOMER-FEEDBACK.md): „jedes Dashboard
  * fragt seinen EIGENEN Server, der über dieselbe Service-Naht bei control
  * nachfragt." Es gibt damit EINE Wahrheit, keine Spiegelzeile — bewusst in
  * Kauf genommen sind eine Proxy-Route je Operation, etwas Latenz und die

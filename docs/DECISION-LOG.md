@@ -51,6 +51,8 @@ heißt dieselbe); ein Prozess, der fehlt, ist nur eine Warnzeile (ob eine App
 läuft, melden andere Blicke); keine Antwort ist keine Aussage. Der Blick
 sieht erst etwas, wenn das geänderte Tor von Hand auf dem Server liegt.
 
+---
+
 ## 2026-11-18 — Ausliefer-Weg (N12): ein Skript für Ausliefern und Rückweg, kein CI-Schlüssel mit Shell
 
 **Anlass:** Nacharbeiten-Gruppe N12 (CI1, RW1 c, SI1 c, MG1 c). Der Weg, über
@@ -92,6 +94,8 @@ Fragen nimm deine Empfehlung"):
 **Nicht entschieden, weil es eine Pflicht-Prüfung ändert:** ob `secrets` nur
 noch die Historie des geprüften Zweigs liest (OPEN-ITEMS „CW1" b) und ob die
 Startfrist der Test-Server in E2E steigt (CW1 a).
+
+---
 
 ## 2026-11-18 — Öffentlicher Brand-Check im Hintergrund (N13): wem ein Lauf ohne Konto gehört
 
@@ -143,6 +147,69 @@ Fragen nimm deine Empfehlung"):
 `.claude/rules/ki-mail-embed-moderation.md` („LANGE ARBEIT GEHÖRT NICHT IN
 DIE ANFRAGE", „ABGESCHNITTEN HEISST GEKENNZEICHNET"); Code-Kopf von
 `packages/brand/server/utils/brandCheckRunToken.ts`.
+
+---
+
+## 2026-11-18 — Nacharbeiten N15: sechs kleine Entscheidungen ohne Rückfrage
+
+**Kontext:** Gruppe N15 der Nacharbeiten, die letzten kleinen Reste
+([OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md), „N15"). Davids Regel vom
+2026-11-17: kleine, umkehrbare Fragen entscheidet die Sitzung selbst und
+schreibt sie auf.
+**Entscheidung (Sitzung N15, ohne Rückfrage):**
+1. **Die Bot-Prüfung am Erstgespräch von pukalani.studio ist mit dem Merge
+   scharf.** Die Schlüssel waren dort schon gesetzt; die Regel „öffentliches
+   Formular, das eine Mail auslöst" hat David am 2026-11-15 entschieden.
+   Zurück: ein Revert von Pull Request 381.
+2. **Die Frist für den Start des E2E-Test-Servers bleibt bei 120 Sekunden.**
+   Gemessen: 49 Läufe mit 20 bis 39 Sekunden, 7 mit vollen 120, dazwischen
+   nichts — eine längere Frist hätte keinen gerettet.
+3. **Ein Ticket zu kaufen zählt als Mitmachen**, nicht als Ändern von
+   Eigenem: bei offener Registrierung kann es der Beitritt sein, in einer
+   gesperrten Community bleibt es zu.
+4. **Eine 503 trägt im Fehler-Umschlag den Code `UNAVAILABLE`.** Der
+   Umschlag ist als fester Vertrag beschrieben; der Status bleibt 503, und im
+   Repo las niemand den alten Code.
+5. **Ein fertiger Übersetzungs-Vorschlag für eine Seite wird angeboten und
+   nicht ungefragt ins Formular gesetzt** — nur der Reiter, der den Lauf
+   gestartet hat, übernimmt ihn von selbst (Pull Request 387, Entwurf).
+6. **Alte Migrationen legen nichts wieder an, was eine spätere entfernt** —
+   über alle Layer, nicht nur die vier zuerst gezählten Stellen, und weiter
+   ohne Register (bewusst, wie beim Datenbank-Stand in `/api/health`).
+**Folgen im Alltag:** Wer das Erstgespräch mit blockierter Bot-Prüfung
+aufruft, kann nicht absenden (wie bei den anderen Formularen). Ein voller
+Lauf des Migrations-Runners auf einem Spiegel baut nichts mehr um; eine neue
+Migration, die etwas entfernt, verlangt an der anlegenden Stelle die Wache
+(der Test nennt sie).
+**Wieder prüfen:** das Erstgespräch nach Davids Klick auf der echten Seite
+(OPEN-ITEMS „KR1"); die E2E-Frist beim nächsten Lauf, in dem der Test-Server
+nicht startet (dann steht der Grund im Log).
+
+---
+
+## 2026-11-18 — Nacharbeiten N15: Seiten-Übersetzung im Hintergrund, Spalte wartet, Geheimnis-Prüfung je Zweig
+
+**Kontext:** die eine Fragerunde am Ende der Gruppe N15
+([OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md), „N15", Nachtrag).
+**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-18):**
+1. **Die neue Tabelle für die Seiten-Übersetzung wird in den vier echten
+   Datenbanken angelegt, der Umbau geht live.** Angeboten und nicht gewählt:
+   später. Zurück: den Pull Request zurücknehmen; die leere Tabelle kann
+   bleiben.
+2. **Die eigene Spalte für den Zeitpunkt, an dem eine Meldung erledigt wurde,
+   wartet.** Angeboten und nicht gewählt: jetzt bauen. Heute hält die
+   Ungenauigkeit Daten nur länger, nie kürzer.
+3. **Die Pflicht-Prüfung auf Geheimnisse liest je Pull Request nur noch den
+   eigenen Zweig; ein neuer Lauf liest einmal am Tag alle Zweige und meldet
+   einen Fund als Issue.** Angeboten und nicht gewählt: so lassen. Zurück:
+   eine Zeile in `lint.yml` zurückstellen.
+**Folgen im Alltag:** Ein Fund in einem Zweig, der kein Pull Request ist,
+kommt bis zu einem Tag später an — als Issue `geheimnis-alarm`, nicht als
+roter Haken an jedem Pull Request. Die Prüfung vor dem ersten Push eines
+Zweigs bleibt Pflicht der Sitzungen.
+**Wieder prüfen:** die Spalte aus 2, sobald eine Route erledigte Meldungen
+beschreibt; den Tages-Lauf, falls `geheimnis-alarm` zu oft wegen erfundener
+Testwerte offen ist.
 
 ---
 
@@ -201,6 +268,8 @@ Datenschutztexte nennen die neuen Fristen noch nicht (DT1).
 zentrale Stelle zieht; und wenn ein Lauf im Zähl-Modus Zahlen zeigt, die
 niemand erwartet hat.
 
+---
+
 ## 2026-11-17 — Tests über den echten Kundenpfad (P27): die Bühne läuft mit, hält aber noch nichts auf
 
 **Anlass:** Gesamtaudit, Paket P27 (OPS-009). Seit dem 2026-11-17 gibt es einen
@@ -239,6 +308,66 @@ stellen (OPEN-ITEMS BT1 c).
 
 ---
 
+## 2026-11-17 — Vertretung: erst nur Bescheid wissen; das Notfallblatt liegt außerhalb des Repos
+
+**Anlass:** Gesamtaudit 2026-11, Paket P24 (OPS-010). Jeder Alarmweg endet bei
+einer Person; es gab kein Blatt, das einer zweiten sagt, wo sie anfängt und
+was sie nie tut. Davids Entscheidung vom 2026-11-12: Eine Vertrauensperson
+bekommt die Alarme mit und ein Blatt mit den ersten Handgriffen, bevor der
+erste Kunde zahlt. Am 2026-11-17: Es gibt noch niemanden — das Blatt wird
+fertig vorbereitet, Name und Adresse bleiben frei.
+**Entscheidung (David, vier Fragen zum Anklicken am 2026-11-17):**
+1. **Das Blatt liegt als Ausdruck bei der Vertretung und als Notiz in Davids
+   Passwort-Tresor** — nie im Repo (öffentlich; es nennt Menschen und
+   Nummern). Angeboten und nicht gewählt: nur im Tresor; nur als Ausdruck.
+2. **Die Vertretung soll zuerst nur Bescheid wissen:** Alarme mitbekommen,
+   nachsehen, David anrufen, Kunden antworten. Keine eigenen Zugänge.
+   Angeboten und nicht gewählt: gleich ein eigenes GitHub-Konto und ein
+   eigenes Betreiber-Konto. Über Zugänge wird entschieden, wenn die Person
+   feststeht.
+3. **Das Blatt gibt es auf Deutsch und auf Englisch** (Betreiber-Sitz USA,
+   Märkte weltweit). Preis: zwei Fassungen pflegen.
+4. **Probealarm und lesendes Nachsehen auf dem Server: ja.**
+**Folgen im Alltag:** Ohne eigenen Zugang kann die Vertretung nichts
+reparieren. Fällt David aus und kippt etwas auf einem Server, bleibt es so,
+bis er zurück ist oder eine Technik-Hilfe mit Zugang eingreift — das Blatt
+sagt es ausdrücklich. Eine Wiederherstellung aus dem Backup kann weiterhin nur
+David (Eintrag vom 2026-11-16, Nr. 9). Die Alarm-Mail des Wächters nimmt
+seitdem mehrere Empfänger (Kommaliste im Secret); eingetragen wird die zweite
+Adresse erst mit der Person. Im Repo stehen nur der Zeiger auf das Blatt und
+je Alarm-Quelle der Handgriff
+([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), § 5). Beim Nachsehen
+gefunden: `NUXT_ALERT_EMAIL` ist auf keiner Site gesetzt — Missbrauchs-
+Meldungen und Statuswechsel der Kunden-Sites erreichen niemanden per Mail
+(OPEN-ITEMS „VT1" b).
+**Wieder prüfen:** sobald die Person benannt ist (Stufe mit eigenen Zugängen;
+dann auch die Ausnahme für den Besitzer aus dem Eintrag vom 2026-11-14 und
+die Frage des Backup-Schlüssels aus dem Eintrag vom 2026-11-16); und vor dem
+Stripe-Livegang (A2), falls bis dahin niemand benannt ist.
+
+---
+
+## 2026-11-17 — Nacharbeiten N03: zweite Erinnerung, Name der Zugangsart, Likes am Thema selbst
+
+**Kontext:** Gruppe N03 der Nacharbeiten (KU1, MM1, KK1 in
+[OPEN-ITEMS.md](OPEN-ITEMS.md)). Drei Punkte waren beim Bauen offen.
+**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-17):**
+1. **Wird ein Termin verschoben, nachdem schon erinnert wurde, kommt noch
+   einmal eine Erinnerung mit der neuen Uhrzeit.** Angeboten und nicht
+   gewählt: nur einmal erinnern. Preis: zwei Nachrichten zum selben Termin.
+2. **Die eine Zugangsart bei Kursen heißt „Für Mitglieder"** (englisch „For
+   members"). Angeboten und nicht gewählt: „Kostenlos", „Kostenlos für
+   Mitglieder". Sie sagt, was gilt: man muss Mitglied der Community sein.
+3. **Unter einem geschlossenen Thema sind nur die Kommentare eingefroren**
+   (Likes und Reaktionen an ihnen). Das Thema selbst darf weiter Likes und
+   Reaktionen bekommen. Angeboten und nicht gewählt: das ganze Thema einfrieren.
+**Folgen im Alltag:** Wer einen Termin mehrmals verschiebt, löst je neuer
+Uhrzeit eine Erinnerung aus; für dieselbe Uhrzeit bleibt es bei einer. Ein
+geschlossenes Thema zeigt an seinen Kommentaren den Stand vom Schließen.
+**Wieder prüfen:** wenn Rückmeldungen kommen, dass die zweite Erinnerung stört.
+
+---
+
 ## 2026-11-16 — Insights (P19): Änderungshinweis freiwillig, Vorschlag per Knopf, KI-Prüfung später
 
 **Anlass:** Gesamtaudit, Paket P19. Die Entscheidung „Änderungen an
@@ -271,6 +400,149 @@ fehlte der Zuschnitt.
   Artikel, der schon einmal veröffentlicht war.
 - Ein bestandenes Speichern an einem veröffentlichten Artikel trägt Namen und
   Zeit des speichernden Kontos als Freigabe.
+
+---
+
+## 2026-11-16 — Offene Punkte: Reihenfolge in sechs Schritten, 16 Entscheidungen
+
+**Anlass:** Die Liste der offenen Punkte war auf rund 1040 Zeilen gewachsen,
+mit falscher Zählung und einem doppelten Kürzel. David hat sie auswerten
+lassen, eine Reihenfolge angenommen und in einer Fragerunde entschieden.
+Diese Runde ändert nur die Doku; gebaut wird je Eintrag in
+[OPEN-ITEMS.md](OPEN-ITEMS.md).
+**Reihenfolge (David):** 1 Entscheidungen · 2 Davids Klick-Runde auf den
+echten Seiten (KR1) · 3 was Claude allein baut, SC2 zuerst · 4 ein
+Anwaltstermin für alles, danach die Datenschutztexte (DT1) · 5 die Geld-Kette
+A1 → A2 → BS1 Bezahlweg → Preis für Brand Book & Kit → F7 · 6 der erste
+Insights-Artikel (BI5).
+**Entscheidungen (David, Fragen zum Anklicken am 2026-11-16):**
+1. **AL1:** Die Aktivitätsliste im Admin-Bereich wird mit den vorhandenen
+   Konto-Ereignissen gefüllt, nicht entfernt.
+2. **KE3:** Ein Aufräum-Lauf löscht Profilbilder, die zu keinem Profil gehören.
+3. **KU1:** „Kostenlos" und „Mitglieder" bei Kursen werden zu EINER
+   Zugangsart zusammengelegt.
+4. **KU1:** Kurs-Vorschauen geschlossener Communities bleiben in
+   Suchmaschinen auffindbar. Keine Änderung, Punkt geschlossen.
+5. **MM1:** Unter geschlossenen Themen werden auch Likes gesperrt.
+6. **MM1:** Übersetzen nur noch für Mitglieder der Community.
+7. **RW1:** Kein Notweg für einen Ausfall von GitHub. Nichts bauen, Punkt
+   geschlossen.
+8. **RW1:** Vier alte Stände je App reichen. Punkt geschlossen.
+9. **Backup (BU1):** Der Backup-Schlüssel bekommt einen zweiten, getrennten
+   Ablageort bei David; KEINE zweite Person.
+   Nachtrag am selben Tag: Der Schlüssel liegt schon in Davids zwei
+   Passwort-Managern; David: „reicht so". Punkt geschlossen.
+10. **Backup (BU1):** Die Einstellungs-Dateien der Apps kommen verschlüsselt
+    ins nächtliche Backup.
+11. **AR1:** Erledigte Umzugs-Anleitungen wandern ins Archiv.
+12. **IN1:** Marken-Seiten (Profil, Duell, Ranking) laufen künftig durch
+    dieselbe Prüfung wie Artikel.
+13. **MG1:** Ein Datenbank-Rückstand wird gemeldet (Anzeige und Alarm), stoppt
+    das Ausliefern aber NICHT. Das harte Tor ist verworfen.
+14. **PB1:** Die Migrations-Schlüssel dürfen Dateilisten lesen (nur lesen).
+    Das Ändern der Schlüssel auf Production bleibt ein eigener Schritt mit
+    Davids Ja zum Zeitpunkt der Umsetzung.
+15. **CI1:** Die Dependabot-Pull-Requests 155 bis 157 werden geprüft und bei
+    grünen Prüfungen übernommen (beim Nachsehen schon zusammengeführt).
+16. **AB1 und P29:** Beide Server-Einstellungen werden eingeschaltet: der
+    gemeinsame Zähler der Anmelde-Bremse auf branding.supply und die Prüfung
+    auf gestohlene Passwörter am Appwrite-Server. Das grundsätzliche Ja liegt
+    vor; umgesetzt wird je mit Davids Ja am Tag der Änderung.
+**Folgen im Alltag:** Das Backup hieß in der Liste ebenfalls `BK1`; es trägt
+jetzt das Kürzel **BU1**, `BK1` gehört allein Brand Book & Kit. Verweise auf
+offene Punkte nennen das Kürzel, keine Nummer. Mit Nr. 9 ist die Frage der
+Vertrauensperson aus dem Eintrag vom 2026-11-15 beantwortet: Fällt David aus,
+kommt niemand an die Backups; das ist bewusst so entschieden.
+**Wieder prüfen:** wenn sich an Davids Vertretung etwas ändert (Nr. 9); und
+Nr. 13, falls ein Rückstand einmal Schaden anrichtet, bevor der Alarm gelesen
+wird.
+
+---
+
+## 2026-11-16 — Server-Einstellungen als Vorlage im Repo, Schutz-Kopfzeilen aus der App
+
+**Anlass:** Gesamtaudit 2026-11, Paket P23 (OPS-003, SEC-006, SEC-010). Die
+Webserver-Einstellungen der sechs Sites lagen nur in Ploi und waren von Hand
+gewachsen (zwei Sites reichten die Adresse des Aufrufers nicht weiter, zwei
+setzten Schutz-Kopfzeilen, sechs keine, HSTS keine), Zeitpläne standen nur auf
+den Servern, und Links in Mails kamen aus dem Namen der Anfrage. Davids
+Entscheidungen vom 2026-11-12: Vorlagen ins Repo mit täglichem Vergleich; die
+Schutz-Kopfzeilen setzt die App für alle Seiten gleich; Mail-Links nehmen in
+den Einzel-Sites die fest eingestellte Adresse.
+**Entscheidung (David, Fragen zum Anklicken am 2026-11-16):**
+1. **Nachsehen auf beiden Servern und in Ploi: ja, nur lesen.**
+2. **Handgriffe auf den Servern: ja, alle drei** — Prüf-Programm einspielen,
+   Schutz-Zeilen im Webserver entfernen und fehlende Pflicht-Zeilen
+   nachtragen, den alten Erinnerungs-Zeitplan entfernen. Angeboten und nicht
+   gewählt: nur das Prüf-Programm; nichts ändern.
+3. **Zugriffs-Log der Betreiber-Seite: ja, 14 Tage** — Zeit, Adresse des
+   Aufrufers, Methode und Pfad ohne Query, Ergebnis, Browser. Angeboten und
+   nicht gewählt: 7 Tage; kein Log.
+4. **„Nur noch verschlüsselt" (HSTS) in zwei Stufen in diesem Paket:** erst
+   ein Tag, nach einigen Stunden ohne Auffälligkeit ein Jahr. Ohne
+   `includeSubDomains`, ohne `preload`. Angeboten und nicht gewählt: zweite
+   Stufe erst nach einer Woche; noch nicht einschalten.
+5. **Probealarm für den neuen Blick: ja.**
+6. **Das allgemeine Zugriffs-Log des Webservers (Umleitungen, unbekannte
+   Namen) von 52 auf 14 Tage kürzen: ja.**
+7. **Die feste Adresse von pukalani.studio ändern: ja — und grundsätzlich:**
+   stellt ein Betreiber im Dashboard eine eigene Domain ein, sollen Mails und
+   alles andere der Site diese Domain von selbst benutzen, ohne Handgriff an
+   einer Server-Datei.
+**Folgen im Alltag:** In einer nginx-Datei steht kein `add_header` für eine
+Schutz-Kopfzeile mehr und nie `X-Frame-Options` (es kann die Erlaubnisliste
+des eingebetteten Produkts nicht ausdrücken). Eine neue Site entsteht aus
+der Vorlage ([NEUE-SITE.md](runbooks/NEUE-SITE.md)); ein neuer Zeitplan steht
+zuerst in `ops/cron.conf`. HSTS lässt sich nur langsam zurücknehmen: einen
+kleinen Wert senden und warten. Termin-Erinnerungen fährt die App selbst für
+alle Communities; auf dem Server gibt es dafür keinen Zeitplan mehr.
+**Wieder prüfen:** `includeSubDomains` für die eigenen Domains, sobald eine
+Liste aller Unter-Adressen vorliegt; die Skript-CSP schärfen, sobald Berichte
+eingesammelt werden (OPEN-ITEMS SE1).
+
+---
+
+## 2026-11-16 — Schreiben nur noch über den Server; Kontoanlage nur über unsere Anmeldung
+
+**Anlass:** Gesamtaudit 2026-11, Paket P13 (SEC-002, SEC-007, SEC-008,
+BE-003). Die Datenbank ist unter eigener Adresse für jedes Konto erreichbar;
+Schreibrechte an Tabellen und Zeilen galten deshalb neben unseren Routen, und
+ein Konto ließ sich an unserer Registrierung vorbei anlegen. Davids
+Entscheidung vom 2026-11-12: „künftig schreibt nur noch unser Server", Schritt
+für Schritt, Beiträge und Kommentare zuerst.
+
+**Entscheidung (David, Fragen zum Anklicken am 2026-11-16, je die empfohlene
+Antwort):**
+1. **Nachsehen auf Production: ja, nur lesen und zählen.**
+2. **Kontoanlage: „Tür zu und einmal fragen".** Die Anmelde-Wege der
+   Datenbank für Aufrufe ohne Schlüssel werden ausgeschaltet; für den
+   Google-Weg, der sich so nicht schließen lässt, fragt die Seite die
+   Zustimmung beim nächsten Besuch nach und weist Schreibversuche bis dahin
+   ab. Angeboten und nicht gewählt: nur nachfragen; nur sperren.
+3. **Je Etappe ein eigenes Ja für Rechte-Migration und Aufräum-Lauf** — erst
+   zählen, dann schreiben. Vier Etappen, alle am selben Tag freigegeben.
+4. **Sechs unbenutzte Alt-Tabellen im Projekt `portfolio`: verschließen**
+   (nicht löschen).
+5. **Die Sperre zuerst am ruhigsten echten Projekt proben** (`portfolio`),
+   danach in allen drei anderen. Lokal ließ sich kein Wegwerf-Projekt anlegen.
+6. **Konten mit Betreiber-Rolle werden nie gefragt und nie gesperrt.**
+7. **Betreiber einer Community bestätigen eigene Bedingungen per Kästchen,
+   wenn sie eine Community anlegen** (Davids Auftrag in derselben Runde; Text
+   als Entwurf, anwaltliche Prüfung steht aus, OPEN-ITEMS A1b).
+
+**Folgen im Alltag:** Keine Tabelle und keine Zeile bekommt ein Schreibrecht
+für Konten; Rechte an Zeilen regeln nur das Lesen. Eine neue Tabelle mit
+Inhalt von Konten steht in `scripts/lib/server-written-tables.mjs`, ihre
+Routen schreiben über die Operator-Klinke und prüfen selbst, wem die Zeile
+gehört. Eine bestehende Tabelle umstellen heißt: erst der Code live, dann die
+Rechte, dann die Zeilen — die eine begründete Ausnahme von „Migration vor dem
+Merge". Ein neues Projekt der Datenbank bekommt die Anmelde-Wege von Hand
+ausgeschaltet ([ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)). Jeder eigene
+Aufruf einer Anmelde-Methode läuft mit dem Schlüssel des Servers.
+
+**Wieder prüfen:** das direkte Lesen mit dem Pukalani-Konto
+([PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md), § 9); ein täglicher Blick auf
+die Anmelde-Wege und der Schalter „JWT" (OPEN-ITEMS SV1).
 
 ---
 
@@ -341,6 +613,9 @@ drei Fristen für Einträge ohne Konto sind entschieden, aber noch nicht gebaut
 
 **Wieder prüfen:** wenn das Pukalani-Konto (PK1) Export und Löschung an eine
 zentrale Stelle zieht — dann gehören die Fristen dorthin.
+
+---
+
 ## 2026-11-15 — Aufräumen (P26): was gelöscht wird, was ins Archiv zieht, und was nie in die app.config gehört
 
 **Anlass:** Gesamtaudit 2026-11 (Paket P26, Findings OPS-005, BE-023, BE-026,
@@ -388,6 +663,124 @@ mitgelesen und für lebendig gehalten.
 
 **Wieder prüfen:** beim nächsten Appwrite-Upgrade, ob die Regel „Kopie aus dem
 Archiv, nach dem Lauf zurück ins Archiv" trägt.
+
+---
+
+## 2026-11-15 — Ein schlechter Stand wird gemeldet, nicht von selbst zurückgestellt
+
+**Anlass:** Gesamtaudit 2026-11, Paket P10 (OPS-007). Für das Zurücknehmen
+einer schlechten Version gab es einen veralteten Satz im Runbook. Davids
+Entscheidung vom 2026-11-12: umsetzen und einmal an der Hilfe-Seite üben.
+Seit dem 2026-11-15 gibt es `ops/rollback.sh`, eine Eingabe für einen älteren
+Commit am manuellen Start, und das Ausliefern liest auch `ok`.
+**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-15):**
+1. **Übung an der Hilfe-Seite: „Ja, jetzt üben".** Nachsehen auf dem Server,
+   `help.pukalani.app` auf den vorigen Stand und wieder vor, Gegenprobe mit
+   einem Stand, den es nicht gibt.
+2. **Der Weg über GitHub: „Ja, mit vorigem Stand".** Der vorige Commit auf
+   alle sechs Apps, danach wieder der heutige — der Beweis, dass ein älterer
+   Stand wirklich ankommt, nicht nur, dass der Knopf geht.
+3. **Kein Automat: „Nein, nur melden".** Meldet eine App nach dem Ausliefern
+   nicht `ok:true`, endet der Lauf rot (Mail von GitHub); zurückgestellt wird
+   von Hand. Grund: Meist liegt es nicht am neuen Stand (Appwrite nicht
+   erreichbar, Einstellung fehlt), und ein alter Stand passt nicht immer zur
+   Datenbank. Angeboten und nicht gewählt: automatisch die betroffene App
+   zurückstellen, wenn sie vorher gesund war.
+**Folgen im Alltag:** Bei einem schlechten Stand gilt die Reihenfolge
+zurückstellen → `git revert` → Ursache
+([DEPLOYMENT.md](runbooks/DEPLOYMENT.md), Abschnitt A3). Ein roter
+Deploy-Lauf mit „Ausgeliefert, aber nicht gesund" heißt: Der Stand ist live,
+die Entscheidung liegt beim Menschen.
+**Wieder prüfen:** wenn ein schlechter Stand einmal länger live blieb, weil
+niemand die rote Meldung sah — dann ist der Automat neu zu bewerten.
+
+---
+
+## 2026-11-15 — Backup der Datenbank: ein Schlüssel an zwei Orten, 30 Tage außer Haus, Schnappschüsse
+
+**Anlass:** Gesamtaudit 2026-11, Paket P11 (OPS-001). Das nächtliche Backup
+der Appwrite-Instanz lief, sicherte aber den Schlüssel nicht mit, mit dem
+Appwrite Daten verschlüsselt, lag im Klartext außer Haus, prüfte nichts und
+war nie zurückgespielt worden. Davids Entscheidung vom 2026-11-12: Schlüssel
+mitsichern, verschlüsselt ablegen, prüfen, einmal üben und aufschreiben.
+**Entscheidung (David, Fragen zum Anklicken am 2026-11-15):**
+1. **Der private Schlüssel liegt in NordPass und in Apple Passwörter** — an
+   zwei Orten bei zwei Anbietern, nicht auf dem Server, nicht auf der Storage
+   Box, nicht auf dem Mac. Angeboten und nicht gewählt: NordPass plus ein
+   Ausdruck auf Papier (die Empfehlung); nur NordPass.
+2. **Aufbewahrung: 14 Tage auf dem Server, 30 Tage außer Haus.** Angeboten
+   und nicht gewählt: 14 Tage überall (wie bisher); 90 Tage außer Haus.
+   Länger heißt: Daten gelöschter Konten liegen entsprechend länger im Backup.
+3. **Schnappschüsse der Storage Box: ja,** täglich, zehn Stände — das zweite
+   Netz, falls auf dem Server jemand Backups löscht.
+4. **Die Wiederherstellung mit echten Daten üben: ja,** in einer eigenen,
+   danach gelöschten Maschine; die Kopie startet ohne die Dienste, die etwas
+   verschicken.
+5. **Alte Klartext-Kopien löschen: ja,** nach der gelungenen Übung und
+   nachdem der Zeitplan das neue Backup einmal von selbst gestartet hat.
+**Folgen im Alltag:** Die Backups öffnet nur der eine Schlüssel — geht er an
+beiden Orten verloren, sind alle Läufe wertlos; wird er getauscht, bleiben
+ältere Läufe nur mit dem alten lesbar. Zurückgespielt wird nach
+[APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md), nie
+auf einen Rechner, auf dem schon eine Instanz läuft. Nach jeder Änderung an
+den Skripten läuft die Attrappe, danach kommt die Fassung von Hand auf den
+Server. Ein roter Backup-Blick im Wächter heißt: Der Lauf dieser Nacht fehlt
+oder ist gescheitert; frühere Läufe liegen unberührt.
+**Wieder prüfen:** sobald eine Vertrauensperson benannt ist (wer außer David
+kommt an den Schlüssel — OPEN-ITEMS BU1 a, entschieden am 2026-11-16); und wenn die Datenbank so wächst,
+dass 30 Tage auf der Box spürbar Platz kosten.
+
+---
+
+## 2026-11-14 — Prüfungen sind Pflicht für `main`, Geheimnisse nur für den Hauptzweig
+
+**Anlass:** Gesamtaudit 2026-11, Paket P08 (SEC-041, SEC-042, SEC-043). Die
+vier Prüfungen hielten seit dem 2026-11-13 das Ausliefern auf, aber nicht das
+Zusammenführen: „erst grün, dann mergen" hielt nur, wer sich daran hielt.
+**Entscheidung (David, vier Fragen zum Anklicken):**
+1. **Pflicht-Prüfungen: Ja, mit Notausgang.** Ein Pull Request geht erst bei
+   grünem `test`, `lint`, `secrets`, `typecheck` und `e2e` in den Hauptzweig.
+   Direkte Pushes des Besitzers bleiben möglich (Ausnahme für die Rolle
+   Repository-Admin). Streng ohne Ausnahme wurde angeboten und nicht gewählt:
+   jede Doku-Zeile bräuchte dann einen Pull Request und die Wartezeit.
+2. **Geheimnisse nur für den Hauptzweig.** Zwei GitHub-Umgebungen
+   (`production`, `production-watch`), beide nur für `main`; auf Repo-Ebene
+   bleibt kein Secret. Ausliefern und Wächter haben getrennte Schlüssel.
+3. **Nur ausgewählte Bausteine, nur über einen Commit.** Erlaubt sind die
+   Actions von GitHub selbst und `pnpm/action-setup`.
+4. **Die drei unbenutzten Einträge** (alte Ploi-Auslöser) sind gelöscht.
+**Folgen im Alltag:** `gh pr merge` wartet nicht mehr auf Disziplin, sondern
+lehnt bei offenen oder roten Prüfungen ab. Ein Lauf von Hand von einem
+Arbeitszweig bekommt kein Secret (Wächter, Notfall-Job und Deploy laufen von
+`main`). Ein Zweig mit Workflow-Dateien von vor dem 2026-11-14 braucht erst
+`git merge origin/main`. Einzelheiten: `.claude/rules/hosts-ops.md`,
+docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md.
+**Wieder prüfen:** sobald eine zweite Person Schreibrecht bekommt (dann ist
+die Ausnahme für den Besitzer neu zu bewerten und eine Freigabe-Pflicht für
+die Umgebungen sinnvoll).
+
+---
+
+## 2026-11-13 — Aktivität zeigt auch Konto-Ereignisse („Konto und Sicherheit")
+
+**Anlass:** David hat auf `account.pukalani.app` sein Profilbild geändert und
+fand davon nichts unter `/profile/activity` — dort standen seit AH-3 nur eigene
+Inhalte (Beiträge, Kommentare, Zusagen, Einschreibungen). Geschrieben wurden
+die Konto-Ereignisse längst (`logAuthEvent` → `audit_logs`), lesen durfte sie
+nur der Betreiber.
+**Entscheidung (David, drei Fragen zum Anklicken):**
+1. **Welche Ereignisse:** Änderungen und Sicherheits-Signale — Profil geändert,
+   Passwort geändert / über den Mail-Link neu gesetzt, Zurücksetzen angefordert,
+   E-Mail bestätigt, Zwei-Faktor an/aus, falscher Zwei-Faktor-Code. **Keine**
+   normalen An- und Abmeldungen (sie begraben die wichtigen Einträge; wo man
+   angemeldet ist, zeigt die Sitzungsliste).
+2. **Wo:** ein **eigener Abschnitt** „Konto und Sicherheit" über den
+   Communities — keine gemischte Zeitleiste.
+3. **Herkunft:** **nur der Ort** (Stadt, Region), nie die IP-Adresse.
+**Folgen im Code:** zweiter Vertrag neben `ACCOUNT_ACTIVITY_KINDS`
+(`core/shared/accountEvents.ts`, Begründung dort), Leseweg in core an derselben
+Grenze wie `logAuthEvent` (kein Weg über den admin-Layer), dieselbe Route.
+Unverändert: was geschrieben wird, die Betreiber-Ansicht, der Community-Feed.
 
 ---
 
@@ -472,6 +865,8 @@ nur eine Eintrittskarte, die bei ihr allein gilt.
 
 **Nichts gebaut.** OPEN-ITEMS führt das Vorhaben als PK1 unter „Geparkt".
 
+---
+
 ## 2026-11-12 — branding.supply: offene Beta, mit Beta-Hinweis auf jeder Seite
 
 **Anlass:** In der Fragerunde zum Gesamtaudit kam heraus, dass die Site sich
@@ -528,6 +923,25 @@ Den App-Umschlag (`NUXT_INSTANCE_SECRETS_KEY`, `NUXT_BILLING_SETTINGS_KEY`)
 bekommt der Mac NICHT. Die damit versiegelten Zeilen werden lokal geleert, damit
 Live-Stripe- und KI-Keys verschlossen bleiben. Begründung: Runbook
 `docs/runbooks/APPWRITE-PROD-SPIEGEL.md`.
+
+---
+
+## 2026-11-09 — MCP-Rechte: Sperrliste statt Gateway (MCP1 verworfen)
+
+**Frage:** Nützt MCP1 (mcp1.com, MCP-Gateway von Appwrite) dem Projekt?
+**Entscheidung (David):** Nein. Stattdessen eine Sperrliste in
+`~/.claude/settings.json`: 25 Ploi-/Resend-Werkzeuge auf `deny`, 51 auf `ask`.
+**Warum:** Ein Gateway für Teams ist für eine Person der falsche Zuschnitt,
+legt den Ploi-Token (alle Server) bei einem weiteren Anbieter ab und leitet
+lokale MCP-Server nicht weiter. Den Kern („gefährliche Tools sperren") leistet
+die Sperrliste ohne Drittanbieter.
+**Zweite Entscheidung:** Gemessen wirkt `ask` im Bypass-Modus nicht (auch
+nicht per Hook). David: „so lassen". Die 51 bleiben Rückfrage-Regeln, damit
+Agenten weiter deployen und nginx neu laden können; wirklich gesperrt ist nur
+die `deny`-Liste.
+**Wieder prüfen:** sobald eine zweite Person oder ein Agent (AI-Runner) eigene,
+begrenzte MCP-Zugänge mit Audit-Log braucht. Details:
+docs/referenz/SESSION-HYGIENE.md, Abschnitt „MCP-Rechte".
 
 ---
 
@@ -898,6 +1312,7 @@ reichen nur noch ihren Rückfall herein. `noindex` bleibt bewusst dort, wo es li
 **Verworfen:** Silo-Sites behalten ihren eigenen, im Code stehenden Text — dann wäre der
 Sucheintrag dort eine Fläche ohne Wirkung, und wir müssten das Feld je Site ausblenden statt
 es zu bedienen.
+
 ---
 
 ## 2026-09-09 — Brand Book & Kit (Produkt 03): Prototyp freigegeben, Pakete K0–K8 verbindlich
@@ -1135,6 +1550,23 @@ nur enthaltene Kapitel, rechnender Kapitel-Kopf).
 
 ---
 
+## 2026-09-09 — Brand Design nach D9: drei Entscheidungen zur Abnahme
+
+**Entscheidung 1 (David, Empfehlung angenommen) — Kontrast-Regel:** das Knopf-Paar der
+Kontrast-Prüfung misst dieselbe adaptive Schriftfarbe, die die Vorschau-Szene setzt (Papier ODER
+tiefste Rampenstufe auf dem Akzent, je nach höherem Kontrast — `brandAccentInk`). Ein heller Akzent
+besteht damit mit dunkler Schrift, durch fällt der Mittelton. Grund: ein Urteil, das nicht zur
+Vorschau passt, wäre eine Lüge im Kapitel. Marken-Knöpfe dürfen dunkle Schrift tragen.
+**Entscheidung 2 (David) — Snapshot ohne rohe Design-Werte:** der Share-Snapshot trägt die Werte
+der sechs Design-Kapitel nur noch als Preset (`design`), nicht mehr zusätzlich als rohe Slot-Werte
+in `chapters`, sobald ein Preset dabei ist. Datensparsamkeit: der Link trägt nur, was er zeigt.
+**Entscheidung 3 (David) — Kleinkram:** der Playground-Klickdummy bleibt der abgenommene
+Phase-3-Stand (rechnet das Knopf-Paar weiter mit festem Papier); das Konzept §2.14 zieht den
+Ereignisnamen nach — gebaut ist das generische `step.completed` mit `stepKey`, kein eigenes
+`design.step.completed`.
+
+---
+
 ## 2026-09-08 — branding.supply/Brand Insights: vier Entscheidungen (I0 freigegeben, Art. 27 verschoben, B2B, activeMind → eRecht24)
 
 **Anlass:** Vier Punkte, die an drei Stellen offen lagen — die Freigabe des Insights-Prototyps
@@ -1172,21 +1604,6 @@ unverändert aus dem Faktenblatt und müssen in die activeMind-Gliederung passen
 **Was damit geschlossen ist:** BS1 §9.2 Punkte 3 und 4 · Faktenblatt-Lücken 9 und 11 · die
 Prototyp-Abnahme in BRAND-INSIGHTS §11.3. **Was neu offen ist:** `A27` (Wahl + Beauftragung,
 wartet auf R3) und die Anwaltsfrage 14 zur Selbstauskunft.
-
-## 2026-09-09 — Brand Design nach D9: drei Entscheidungen zur Abnahme
-
-**Entscheidung 1 (David, Empfehlung angenommen) — Kontrast-Regel:** das Knopf-Paar der
-Kontrast-Prüfung misst dieselbe adaptive Schriftfarbe, die die Vorschau-Szene setzt (Papier ODER
-tiefste Rampenstufe auf dem Akzent, je nach höherem Kontrast — `brandAccentInk`). Ein heller Akzent
-besteht damit mit dunkler Schrift, durch fällt der Mittelton. Grund: ein Urteil, das nicht zur
-Vorschau passt, wäre eine Lüge im Kapitel. Marken-Knöpfe dürfen dunkle Schrift tragen.
-**Entscheidung 2 (David) — Snapshot ohne rohe Design-Werte:** der Share-Snapshot trägt die Werte
-der sechs Design-Kapitel nur noch als Preset (`design`), nicht mehr zusätzlich als rohe Slot-Werte
-in `chapters`, sobald ein Preset dabei ist. Datensparsamkeit: der Link trägt nur, was er zeigt.
-**Entscheidung 3 (David) — Kleinkram:** der Playground-Klickdummy bleibt der abgenommene
-Phase-3-Stand (rechnet das Knopf-Paar weiter mit festem Papier); das Konzept §2.14 zieht den
-Ereignisnamen nach — gebaut ist das generische `step.completed` mit `stepKey`, kein eigenes
-`design.step.completed`.
 
 ---
 
@@ -1529,7 +1946,64 @@ Fassung 1 Studio-begleitet, Selbstbedienung später. Konzept: docs/archiv/BRAND-
 
 ---
 
+## 2026-09-08 — Discover Brands: Konzept freigegeben — Freigabe vor Veröffentlichung, /discover, beide Scores, Beispiel-Branding Kailua
+
+**Anlass:** David zieht DB1 vor („mach mit discover brands weiter"). Konzept
+docs/archiv/DISCOVER-BRANDS.md auf dem abgenommenen Klickdummy (Runde 97/176), der
+BF1-Leseansicht (Veröffentlichung = eingefrorener Snapshot mit `sensitivity`-Filter,
+derselbe Renderer) und den BC1/MV1-Daten. **Entscheidungen (David, Fragenrunde):**
+(1) **Freigabe VOR Veröffentlichung** — gegen die Empfehlung „sofort öffentlich +
+Ausblenden": Zustände pending/published/declined/hidden/withdrawn, Betreiber-Warteschlange;
+(2) Adresse **`/discover` + `/discover/<slug>`** (`/brands/<slug>` bleibt den Insights-Seiten
+externer Marken); (3) **Website-Score, sonst Fundament-Reife**, klar beschriftet;
+(4) Start mit eigenen Brands **plus Beispiel-Branding „Kailua Coffee Co."**, gebaut über den
+Wizard (echtes Fundament, als Beispiel markiert) statt als handgeschriebener Datensatz.
+**Festgezogen:** eigenes Opt-in-Feld `publicationVisibility` (keine Wiederverwendung von
+`marketVisibility` — eine Zustimmung gilt nur für das, wofür sie gegeben wurde), kein
+Remix (CTA immer „Starte deine eigene"), keine Creator-Profile (AH-7), Rechtstexte (A1)
+als Gate für die Öffnung an fremde Nutzer, nicht für den Bau. **Verworfen für Runde 1:**
+Bewertung in Dimensionen, Trending, Collections, Vorher/Nachher-Slider, Stil-/
+Positionierungs-Facetten (Daten fehlen bis Brand Design 02).
+**Prototyp D0 abgenommen (2026-09-08, Fragenrunde):** Kachel mit zwei Zahlen ⇒ Score im
+Ring, Reife als Zweitzeile; Brand of the Day genau eine (Server-Regel „letzte gewinnt");
+Teilen auf dem Telefon über das native Teilen-Blatt (`navigator.share`, Davids Wunsch),
+„Veröffentlichen" mobil im Export-Menü. Davids Arbeitsregel, erneut eingeschärft:
+Entscheidungen IMMER als Fragen mit Antwortmöglichkeiten und Empfehlung, nie als Fließtext.
+**Bezeichnung des Muster-Brandings (2026-09-08, Fragenrunde): „Beispiel" / „Example"** — nicht
+„Demo" (klingt nach Produkt-Vorführung, nicht nach einer vollständigen Marke) und nicht
+„Musterbeispiel" (zu lang für eine Kachel). Badge, Schalter und i18n bleiben wie gebaut.
+
+---
+
+## 2026-09-08 — Appwrite 2.0: Server und SDKs in EINEM Vorhaben (AW2)
+
+Davids Entscheidung (strukturierte Frage nach der Dependency-Runde; die
+Empfehlung „Stufe 1 jetzt, Server nach dem ersten 2.0.x-Patch" hat er
+BEWUSST NICHT genommen): **alles jetzt, Start sofort.** Reihenfolge, weil die
+SDK-Majors am Server hängen: (1) `node-appwrite` 26 → 28 mit Code (Health-
+Pillen auf REST, `account.createJWT` → `users.createJWT`) — Response-Format
+1.9.6, läuft gegen den heutigen Server, wird deployt; (2) Dev-Instanz
+(OrbStack `appwrite-maria`) 1.9.6 → 2.0.0 mit Dump + Config-Backup,
+Override-Patches (SMTP-KeepAlive, Traefik-XFF) gegen das neue Compose
+nachziehen, Beweise fahren; (3) Prod `api.pukalani.app` genauso, mit
+Downtime-Fenster; (4) erst danach `node-appwrite` 29 + `appwrite` 27
+(Response-Format 2.0.0) und die CI-Wegwerf-Appwrite auf 2.0.
+Benanntes Risiko: 2.0.0 ist vom 2026-09-04, kein Patch-Release vorhanden;
+`registers.php` trägt weiterhin `keepAlive: true` (Patch erneuern, nicht
+löschen).
+
+**Nachtrag 2026-09-08 (Ausführung):** Prod-Fenster nach Davids zweiter
+Entscheidung „nach grüner CI-E2E auf 2.0" um 05:00 UTC gezogen — unter 12
+Minuten, Nachweise im Runbook. Beide Instanzen und beide SDKs stehen auf der
+2.0-Linie; AW2 ist damit komplett (OPEN-ITEMS-COMPLETE).
+
+---
+
 ## 2026-09-07 — branding.supply Recht + Bezahlweg (BS1): acht Entscheidungen
+
+> **Überholt am 2026-09-08 (Teil: Widerrufsbelehrung):** branding.supply richtet sich nur an Unternehmen, ein Verbraucher-Widerruf entfällt — s. „2026-09-08 — branding.supply/Brand Insights: vier Entscheidungen“.
+>
+> **Überholt am 2026-09-08 (Teil: „es läuft kein Tracking“):** die Reichweitenmessung mit Plausible ist beschlossen — s. „2026-09-08 — Brand Insights (BI1): Konzeptrunde — acht Entscheidungen“, Punkt (3).
 
 **Anlass:** Die Site ist seit 2026-09-01 öffentlich, nimmt Konten auf, verschickt Mails und
 veröffentlicht Bewertungen fremder Marken — und hatte weder Impressum noch Datenschutz noch
@@ -1603,6 +2077,8 @@ oder auf die Anwaltsantwort gewartet wird (grob 200–400 €/Jahr) — Plan §9
 
 ## 2026-09-07 — Brand Insights (BI1): Redaktionskonzept — zwölf Entscheidungen
 
+> **Überholt am 2026-09-08 (Teil: Tabellen im `brand`-Layer):** Insights hat einen eigenen Layer `insights` — s. „2026-09-08 — Brand Insights (BI1): Konzeptrunde — acht Entscheidungen“, Punkt (1).
+
 **Anlass:** BI1 war seit dem Eintrag von heute früh („Discover Brands und Brand Insights als
 eigene Vorhaben notiert") an ein Redaktionskonzept gebunden — wer schreibt, wie oft, woher die
 Quellen kommen und was mit Bewertungen fremder Marken rechtlich zulässig ist. Fragenrunde mit
@@ -1662,32 +2138,6 @@ ohne Davids Zeichen · Newsletter im Launch.
 Marke anstösst) sowie vier NEUE Anwaltsfragen neben den sechs aus Marktvergleich Anhang G
 (Presse-/Wikipedia-Zitate, YouTube-Kommentare und API-Bedingungen, Score fremder Marken als
 Kritik/Meinung, Verantwortlicher bei namenloser Wir-Stimme) — Plan §4.3.
-## 2026-09-08 — Discover Brands: Konzept freigegeben — Freigabe vor Veröffentlichung, /discover, beide Scores, Beispiel-Branding Kailua
-
-**Anlass:** David zieht DB1 vor („mach mit discover brands weiter"). Konzept
-docs/plans/DISCOVER-BRANDS.md auf dem abgenommenen Klickdummy (Runde 97/176), der
-BF1-Leseansicht (Veröffentlichung = eingefrorener Snapshot mit `sensitivity`-Filter,
-derselbe Renderer) und den BC1/MV1-Daten. **Entscheidungen (David, Fragenrunde):**
-(1) **Freigabe VOR Veröffentlichung** — gegen die Empfehlung „sofort öffentlich +
-Ausblenden": Zustände pending/published/declined/hidden/withdrawn, Betreiber-Warteschlange;
-(2) Adresse **`/discover` + `/discover/<slug>`** (`/brands/<slug>` bleibt den Insights-Seiten
-externer Marken); (3) **Website-Score, sonst Fundament-Reife**, klar beschriftet;
-(4) Start mit eigenen Brands **plus Beispiel-Branding „Kailua Coffee Co."**, gebaut über den
-Wizard (echtes Fundament, als Beispiel markiert) statt als handgeschriebener Datensatz.
-**Festgezogen:** eigenes Opt-in-Feld `publicationVisibility` (keine Wiederverwendung von
-`marketVisibility` — eine Zustimmung gilt nur für das, wofür sie gegeben wurde), kein
-Remix (CTA immer „Starte deine eigene"), keine Creator-Profile (AH-7), Rechtstexte (A1)
-als Gate für die Öffnung an fremde Nutzer, nicht für den Bau. **Verworfen für Runde 1:**
-Bewertung in Dimensionen, Trending, Collections, Vorher/Nachher-Slider, Stil-/
-Positionierungs-Facetten (Daten fehlen bis Brand Design 02).
-**Prototyp D0 abgenommen (2026-09-08, Fragenrunde):** Kachel mit zwei Zahlen ⇒ Score im
-Ring, Reife als Zweitzeile; Brand of the Day genau eine (Server-Regel „letzte gewinnt");
-Teilen auf dem Telefon über das native Teilen-Blatt (`navigator.share`, Davids Wunsch),
-„Veröffentlichen" mobil im Export-Menü. Davids Arbeitsregel, erneut eingeschärft:
-Entscheidungen IMMER als Fragen mit Antwortmöglichkeiten und Empfehlung, nie als Fließtext.
-**Bezeichnung des Muster-Brandings (2026-09-08, Fragenrunde): „Beispiel" / „Example"** — nicht
-„Demo" (klingt nach Produkt-Vorführung, nicht nach einer vollständigen Marke) und nicht
-„Musterbeispiel" (zu lang für eine Kachel). Badge, Schalter und i18n bleiben wie gebaut.
 
 ---
 
@@ -1704,6 +2154,8 @@ Abnahme, dann Pakete D0–D9.
 ---
 
 ## 2026-09-07 — Brand Design (Produkt 02): Strategie freigegeben — fünf Schritte tief, Zeichen in drei Stufen inkl. KI-Bildlogos, Studio-begleitet, Schicht 2 der Werkstatt
+
+> **Überholt am 2026-09-07/09 (Teil: „ohne Preis … kein Stripe“):** die Ableitung hat einen Einmalpreis je Branding über Stripe Checkout — s. „2026-09-07 — branding.supply Recht + Bezahlweg (BS1): acht Entscheidungen“ und „2026-09-09 — Brand Book & Kit (Produkt 03): Strategie freigegeben“.
 
 **Anlass:** „Starte die Strategie für Produkt 02 Brand Design" — Phase 1 des Workflows
 (docs/archiv/BRAND-DESIGN.md §1: Bestandsaufnahme, Zielbild „Design-System statt
@@ -1756,6 +2208,22 @@ Kapitel 10, entscheidet aber nicht („gelesen wird hier, abgenommen im Kapitel"
 
 ---
 
+## 2026-09-07 — branding.supply: „Discover Brands" und „Brand Insights" als eigene Vorhaben notiert
+
+**Anlass (David):** Beide Bereiche waren Teil des Klickdummys (Discover-Seite Runde 97,
+Journal Runde 103, dazu Artikel/Profil/Duell/Anatomie) mit Filtern und Sortierung, sind aber
+nie ins Produkt gewandert; seit dem 404-Audit vom 2026-09-03 zeigt die Navigation nur echte
+Ziele, und nirgends stand, dass die beiden geparkt sind.
+
+**Festgehalten:** „Discover Brands" (DB1) kommt in „Jetzt dran" hinter BF1 und den Strang
+„Brand System" — die Daten dafür existieren seit Brand-Check und Marktvergleich (Score mit
+Opt-in, Archetyp, Kategorie, Freigabe fremder Marken). „Brand Insights" (BI1, früher „Journal",
+umbenannt 2026-08-30) wartet auf ein Redaktionskonzept und baut auf DB1 auf. Beide gehen den
+Weg Strategie → Konzept → Prototyp → Freigabe → Pakete; der Dummy bleibt als Vorlage im
+brand-Playground.
+
+---
+
 ## 2026-09-06 — Bibliothek: erfundene Einträge raus aus dem Produkt, echte nur mit Handzeichen
 
 **Davids Entscheidung.** Die kuratierte Bibliothek des Marktvergleichs lieferte seit dem
@@ -1781,22 +2249,6 @@ bitte `MARKET_LIBRARY_VERSION` heben" — beim ersten echten Durchgang hebt es s
 gespeicherte Berichte für aktuell). Zweitens: `frequency` fiel beim Vorrechnen weg, obwohl
 der Lauf sie GEMESSEN hatte — sie reist jetzt in den Entwurf und durch die Bibliothek
 durch; erfunden wird sie nach wie vor nirgends.
-
----
-
-## 2026-09-07 — branding.supply: „Discover Brands" und „Brand Insights" als eigene Vorhaben notiert
-
-**Anlass (David):** Beide Bereiche waren Teil des Klickdummys (Discover-Seite Runde 97,
-Journal Runde 103, dazu Artikel/Profil/Duell/Anatomie) mit Filtern und Sortierung, sind aber
-nie ins Produkt gewandert; seit dem 404-Audit vom 2026-09-03 zeigt die Navigation nur echte
-Ziele, und nirgends stand, dass die beiden geparkt sind.
-
-**Festgehalten:** „Discover Brands" (DB1) kommt in „Jetzt dran" hinter BF1 und den Strang
-„Brand System" — die Daten dafür existieren seit Brand-Check und Marktvergleich (Score mit
-Opt-in, Archetyp, Kategorie, Freigabe fremder Marken). „Brand Insights" (BI1, früher „Journal",
-umbenannt 2026-08-30) wartet auf ein Redaktionskonzept und baut auf DB1 auf. Beide gehen den
-Weg Strategie → Konzept → Prototyp → Freigabe → Pakete; der Dummy bleibt als Vorlage im
-brand-Playground.
 
 ---
 
@@ -1907,6 +2359,8 @@ werden beim G3-Deploy widerrufen.
 
 Plan: docs/archiv/BRAND-FOUNDATION-LESEANSICHT.md (Pakete G1–G5; Davids Gates:
 Schranken-Text + Preisanker, Richtungen-Katalog).
+
+---
 
 ## 2026-09-05 — Brand-Check: „Markenabdruck", Ampel-Matrix statt Heatmap, Befunde als Stärke · Chance · Nächster Schritt
 
@@ -2095,6 +2549,8 @@ Audit-Archive und der Klickdummy `packages/brand/.playground/app/pages/team.vue`
 bleiben, wie sie sind — letzterer mit einer Ruhestands-Notiz im Kopf. Ein
 Protokoll, das man nachträglich hübsch macht, ist keins mehr.
 
+---
+
 ## 2026-09-02 — Brand Wizard: EINE Stimme (George), das Team im Rücken — revidiert das sichtbare Beraterteam
 
 **Entscheidung (David, nach dem Gespräch-Dummy-Durchlauf):** George ist der
@@ -2116,6 +2572,8 @@ Name & Prüfung sind Kapitel der Foundation-Reise, kein zweiter Einstieg.
 verfünffacht Prompt-Pflege und Audits, macht Beta-Feedback unvergleichbar,
 verwässert George als Gesicht des Produkts. Die gute Essenz kommt später
 billiger als Ton-Regler auf EINER Person („direkter/weicher").
+
+---
 
 ## 2026-09-01 — Brand Wizard: sichtbares Beraterteam statt eines Alleskönners
 
@@ -2164,7 +2622,9 @@ Berater-Wechsel wird nicht persistiert — bei jedem Sprung zwischen zwei
 Bausteinen stünde sie sonst ein weiteres Mal im Verlauf.
 
 Prompt-Fassung: `george-a-4`. Nachtrag in
-docs/plans/BRAND-WIZARD-CONTENT-SPEC.md §1.
+docs/archiv/BRAND-WIZARD-CONTENT-SPEC.md §1.
+
+---
 
 ## 2026-08-23 — Mitglieder gehören in die Navigation, nicht in die Einstellungen
 
@@ -2202,6 +2662,20 @@ gültig, was wirklich Einstellung ist.
   Punkt grenzt sich hörbar von „Community-Einstellungen" ab. Verworfen:
   „Profileinstellungen" (dahinter liegen auch Sitzungen, Abrechnung und
   Kontolöschung — mehr als ein Profil).
+
+---
+
+## 2026-08-21 — Studio-Site: Wir-Stimme + Erstgespräch-Wizard (W1)
+
+Davids Entscheidungen: (1) pukalani.studio spricht als **„wir, Pukalani
+Studio"** — nie mehr Ich-Form; David bleibt benannte Person, keine Teamgröße
+wird behauptet („ausgewählte Partner je nach Projekt"). (2) Erstgespräch-
+Wizard nach tobiasnase-Vorbild (strukturierte Fragen, alle vier angenommen):
+Budget-Spannen < 5 k / 5–15 k / 15–50 k / > 50 k € + „noch offen" · Telefon
+optional · Erfolgsseite mit cal.com-Sofortbuchung UND 24-h-Rückfallzeile ·
+Speicherung Mail + App-lokale Tabelle `intro_requests` (kein Produkt-Layer —
+Eigenschaft der Marketing-Site, nicht der Plattform).
+Plan: docs/plans/STUDIO-ERSTGESPRAECH-FUNNEL.md.
 
 ---
 
@@ -2252,6 +2726,17 @@ Gestempelt: elf admin-Layer-Seiten + die vier /dashboard/themes-Seiten
 (gleicher operator-Nav-Eintrag, beim Bau als Lücke gefunden). Beweis am
 Worktree-Dev-Server 8/8 inkl. Gegenproben (Community-Dashboard bleibt,
 Kontroll-Host behält die Seiten, unbekannter Host 404 wie zuvor).
+
+---
+
+## 2026-08-20 — U16: Adressen bleiben, wie sie sind (Weg A)
+
+Davids Entscheidung (strukturierte Frage, Empfehlung angenommen): Kategorien
+und Kurse behalten den festen Slug, Themen und Events die Id — **kein Umbau,
+kein Alt-Slug-Gedächtnis**. Der einzige echte Druckpunkt (Umbenennen) ist
+heute kein Bedarf; wird er einer, ist Weg C (Id-Muster überall) die
+vorgezeichnete Lösung, nie Weg B (bei Themen bereits bewusst verworfen).
+Analyse: docs/archiv/ADRESS-MUSTER-KATEGORIEN.md.
 
 ---
 
@@ -2353,6 +2838,8 @@ Mitglieder existieren, sind Stilllegung und Übergabe gesperrt; wer sein
 Pukalani-Abo kündigen will, beendet zuerst die Mitglieder-Abos. Offen bleibt
 NUR die Anwaltsliste (§ 9, allen voran: greift Art. 9a bei unserer konkreten
 Checkout-/AGB-Gestaltung) und der Bau nach A2.
+
+---
 
 ## 2026-08-14 — Reaktionen auch auf Antworten (F57 ist damit komplett)
 
@@ -2470,6 +2957,8 @@ erzwingt es, der `, string`-Trick ist verboten. Der VORGESEHENE Weg
 (explizite Handler-Annotationen) wurde gemessen und verworfen: 1 % Wirkung
 bei 268 Handlern Aufwand. Coding-Rule in CLAUDE.md.
 
+---
+
 ## 2026-08-14 — F57-Stellschrauben + Reaktions-Zuschnitt
 
 **Davids Antworten:** (1) Einladungen durch Mitglieder: **5 pro Woche je
@@ -2530,6 +3019,8 @@ EINGELADENEN, das braucht einen eigenen Verleihungs-Pfad; sie ersatzweise an
 „3 bzw. 10 angenommene" zu hängen wurde verworfen (das Abzeichen hieße dann
 etwas anderes als das Konzept sagt).
 
+---
+
 ## 2026-08-13 — U15-Zuschnitt-Runde + MFA-Folgen
 
 **Davids Antworten (drei Fragerunden):** (1) Navigations-Editor: ausblenden +
@@ -2544,6 +3035,8 @@ Davids Weg: EHRLICH HINSCHREIBEN (Satz auf der Sicherheits-Karte, de+en),
 kein Bau gegen Appwrite. (5) MFA-Notausgang: KEIN Dashboard-Reset — der
 Konsolen-Eingriff ist der Weg (Runbook docs/runbooks/MFA-NOTAUSGANG.md);
 neu bewertet, wenn Support-Fälle sich häufen.
+
+---
 
 ## 2026-08-12 — Zweite Runde: Export-Zuschnitt, U19-Leser, Trichter-Site
 
@@ -2561,6 +3054,8 @@ sieben Trichter-Goals funktionieren damit, sobald David sie in der
 Plausible-UI anlegt. Umgesetzt als EIN Zweig in
 `packages/analytics/server/api/analytics/config.get.ts` (Kontroll-Host ⇒
 `shared`-Id aus der App-Config, weiterhin KEIN Datentür-Zugriff dort).
+
+---
 
 ## 2026-08-12 — Nach der UX-Kette: vier Entscheidungen in einem Rutsch
 
@@ -2582,13 +3077,15 @@ Community-Export geplant"; der Export selbst wird ein eigener
 OPEN-ITEMS-Punkt (M–L), weil Datenportabilität laut Benchmark der stärkste
 K4-Kontrast ist.
 
+---
+
 ## 2026-08-12 — F3 abgenommen: comments zieht in den Pool (AH-6)
 
 **Davids Abnahme** (strukturierte Fragen; zwei Rückfragen — „wieso bleibt
 apps/comments?" und „gibts auch apps/courses?" — beantwortet: Produkte sind
 LAYER, nie Apps; comments war die eine historische Ausnahme, apps/comments
 bleibt als Code das E2E-Fahrzeug + der Studio-Beweis nach dem photos-Muster,
-der BETRIEB verschwindet vollständig). Plan: docs/plans/F3-COMMENTS-POOL.md.
+der BETRIEB verschwindet vollständig). Plan: docs/archiv/F3-COMMENTS-POOL.md.
 Detail-Entscheidungen: (a) **Embed-Gäste: Verlust akzeptiert** — künftig
 kommentieren nur Angemeldete, Bestands-Gastkommentare bleiben lesbar.
 (b) **Konto-Merge fail-closed**: gleiche Mail = gleiche Person NUR bei
@@ -2597,6 +3094,8 @@ beidseitig bestätigter Adresse; Rest als Einzelfall-Liste an David.
 Wartungs-Mail ohne Link. Die sechs technischen Empfehlungen des Plans sind
 mit abgenommen (Einmal-Skript-Anlage, pro ohne Abo, David Owner,
 guest_authors nicht migrieren, Standard-Startseite, billing-Testdaten weg).
+
+---
 
 ## 2026-08-11 — Account-Horizont: ein Konto, das überall gilt
 
@@ -2626,6 +3125,8 @@ so heißt der Layer; endgültiger Name offen).
 Auth-Welten: account (alle Menschen) + admin (Betreiber); portfolio bleibt
 Davids eigenes Silo. **Dazu:** AP1 wird SOFORT deployt (URLs sind env-basiert,
 der Host-Umzug später ist eine Env-Zeile + Redirect).
+
+---
 
 ## 2026-08-10 — UX-Planungsrunde: sechs Entscheidungen zu den U-Paketen
 
@@ -2675,6 +3176,24 @@ Pukalani-ID = ein Handle überall, als eigener Punkt AH-7 nach AH-4/AH-5;
 Kollisionsregel: wer zuerst kam, behält. **Verworfen:** je Community
 behalten · Hybrid (konto-weit mit Community-Override, komplexeste Variante).
 
+---
+
+## 2026-08-09 — Audit-Nachlese: drei Oberflächen-Entscheidungen
+
+**Davids Entscheidungen** (strukturierte Fragen nach dem Session-Audit):
+(1) Die **Basic-Karte fliegt aus dem Plan-Raster** des Dashboards — nur noch
+Personal und Pro sind wählbar; den Ohne-Abo-Zustand erklärt die „Aktueller
+Plan"-Karte (Davids noPlanLabel-Wortlaut bleibt). Gleiche Logik wie die
+öffentliche Preisseite. (2) Der **Studio-CTA der Landing führt auf einen
+eigenen Kontakt-Abschnitt** (`#kontakt`, Sektion am Seitenende) — v1 als
+Mail-CTA mit sichtbarer Adresse, BEWUSST ohne Formular: die Landing-Site hat
+kein SMTP (nachgemessen), ein Formular würde still verwerfen (F44-Falle);
+andockbar, sobald NUXT_SMTP_* dort liegt. (3) Die **englische Landing sagt
+durchgehend „products"** statt „blocks" (E11: EIN Wort; 18 Text-Werte,
+JSON-Schlüssel bleiben).
+
+---
+
 ## 2026-08-08 — Die drei WCAG-Hell-Befunde aus F53: zweimal fixen, nie „lassen"
 
 **Davids Entscheidung** (strukturierte Fragen, je Empfehlung gewählt) zu den
@@ -2696,19 +3215,7 @@ bewusst kräftiger, die Hierarchie lebt. **Verworfen:** volles toned
 mitgenommen: die ~10 `text-primary-600`-Icons und das „−25 %" werden hell
 gedeckter. Details: OPEN-ITEMS-COMPLETE.md (F53-Nachtrag).
 
-## 2026-08-09 — Audit-Nachlese: drei Oberflächen-Entscheidungen
-
-**Davids Entscheidungen** (strukturierte Fragen nach dem Session-Audit):
-(1) Die **Basic-Karte fliegt aus dem Plan-Raster** des Dashboards — nur noch
-Personal und Pro sind wählbar; den Ohne-Abo-Zustand erklärt die „Aktueller
-Plan"-Karte (Davids noPlanLabel-Wortlaut bleibt). Gleiche Logik wie die
-öffentliche Preisseite. (2) Der **Studio-CTA der Landing führt auf einen
-eigenen Kontakt-Abschnitt** (`#kontakt`, Sektion am Seitenende) — v1 als
-Mail-CTA mit sichtbarer Adresse, BEWUSST ohne Formular: die Landing-Site hat
-kein SMTP (nachgemessen), ein Formular würde still verwerfen (F44-Falle);
-andockbar, sobald NUXT_SMTP_* dort liegt. (3) Die **englische Landing sagt
-durchgehend „products"** statt „blocks" (E11: EIN Wort; 18 Text-Werte,
-JSON-Schlüssel bleiben).
+---
 
 ## 2026-08-08 — Stripe-Verwaltung wandert ins Control-Dashboard (F55)
 
@@ -2729,6 +3236,8 @@ Nur-Status-Ausbau. Hintergrund: der Terminal-Weg scheiterte praktisch
 (Shell-Export-Verwechslung, zsh/bash-read, Key-Fragment im Chat ⇒ Key
 rotiert) — der Go-Live läuft nach dem Bau über die neue Seite.
 
+---
+
 ## 2026-08-07 — Fünfte Runde: Kündigung ist gleichgestellt mit nie-gezahlt
 
 **Davids Entscheidung** (strukturierte Frage, beim F49-Bau aufgetaucht): auch
@@ -2742,6 +3251,8 @@ noch bei `billingStatus === 'active'` auf (vorher `!== 'past_due'` — das
 hätte die neuen Sperren im nächsten stündlichen Lauf wieder aufgehoben), und
 der free-fallback-Zweig SETZT die Sperre statt sie zu räumen (abuse bleibt
 immer unangetastet).
+
+---
 
 ## 2026-08-07 — Vierte Runde: Priorisierung und Restfragen ALLER offenen Punkte
 
@@ -2767,6 +3278,8 @@ spielt die 6 Stripe-Testmodus-Proben NACH F49 durch (sonst probt man einen
 Ablauf, der sich direkt danach ändert) und schreibt dabei das Runbook aus
 der Workspace-Welt neu.
 
+---
+
 ## 2026-08-07 — Community-Settings-Hub: ein Menüpunkt, elf Reiter, zwei Ebenen sauber getrennt
 
 **Davids Entscheidungen** (strukturierte Fragen, dritte Runde): Neuer
@@ -2790,6 +3303,8 @@ machen, damit „Free" keinen funktionsfähigen Gratis-Plan verspricht.
 Technische Basis existiert: Registry `pukalani.admin.settingsTabs` + Hülle
 nach dem Muster von `/dashboard/settings` (F24).
 
+---
+
 ## 2026-08-07 — Konto-Modell bestätigt, Community-Switcher kommt, Karte-vor-Wizard verworfen
 
 **Davids Entscheidungen** (strukturierte Fragen, zweite Runde am selben Tag):
@@ -2806,6 +3321,8 @@ Registrierung „auf www" = Link der kontenlosen Landing auf my.pukalani.app;
 „erst joinen, dann mitmachen" ist das A5-Modell (erster Beitrag = Beitritt).
 Bekannte Grenze: auf eigenen Domains/Silos teilt der Browser das Cookie nicht —
 gleiches Konto, dort einmal neu einloggen.
+
+---
 
 ## 2026-08-07 — Pricing-Konzept: das Konto ist kein Plan, Testphase endet nur-lesend
 
@@ -2826,6 +3343,38 @@ Zwang „erst Stripe-Paket buchen, dann loslegen" bestand nie — der Ablauf ist
 schon registrieren → Dashboard → Wizard ohne Zahlungsdaten; korrigiert wird
 die Präsentation und das Trial-Ende, nicht die Architektur.
 
+---
+
+## 2026-08-07 — Eigene Domain je Community (Custom Domains)
+
+**Entscheidungen (David):** (1) Gate ab Plan **Pro** — klassischer
+Differenzierer, jede Kundendomain kostet real Betrieb. (2) Die alte Subdomain
+antwortet **301** auf die eigene Domain, sobald aktiv — ein kanonisches
+Zuhause, Subdomain bleibt Rückfall. (3) **Selbstbedienung komplett**: Owner
+trägt Domain ein, System prüft DNS und stößt Zertifikat + Appwrite-Platform
+automatisch an — kein Betreiber-Klick je Kunde. (4) **www + Apex automatisch**:
+beide Formen aktiv, eine leitet um.
+
+**Bekannte Grenze (vorab benannt):** der Konto-WS (Sofort-Abmeldung) ist
+Cookie-nativ und greift von fremder Root-Domain nicht — auf Kundendomains
+degradiert Session-Widerruf auf den 30-s-Poll. Bewusst akzeptiert.
+
+---
+
+## 2026-08-06 — Handle bleibt bei Zugangs-Entzug erhalten
+
+**Entscheidung (David):** Wird jemandem der Community-Zugang entzogen, bleibt
+seine `community_handles`-Zeile bestehen; bei Rückkehr ist der Name wieder da.
+Kein Ehemalig-Marker, keine Freigabe. Grund: alte Erwähnungen müssen weiter auf
+dieselbe Person auflösen (Historien-Regel), und eine Freigabe machte
+Identitätsübernahme in alten Beiträgen möglich. Preis, bewusst in Kauf
+genommen: ein einmal vergebener Name (`@vorstand`) ist in dieser Community
+endgültig belegt — seit H1 kann ihn aber nur noch ein Mitglied nehmen.
+Das ist das HEUTIGE Verhalten; es war offen, ob es Absicht ist — jetzt ist es
+entschieden, kein Code-Änderungsbedarf.
+
+---
+
 ## 2026-08-04 — Private Nachrichten: alle sieben Konzept-Entscheidungen
 
 **Davids Entscheidungen** (strukturierte Fragen; Volltext:
@@ -2840,6 +3389,8 @@ Datenschutz) · 6. **Datenmodell n:m-fähig, gebaut wird v1 nur 1:1**
 posts** (PN hängen an den Vertrauensstufen aus member_counters). Konzept
 damit entscheidungskomplett; Bau wartet auf Go.
 
+---
+
 ## 2026-08-04 — Trust Levels: Schwellen „Mittel" + v1-Rechte
 
 **Davids Entscheidungen** (strukturierte Fragen, Teilpaket 3): **Schwellen
@@ -2852,6 +3403,8 @@ bearbeiten; TL1/TL2 sind v1 sichtbarer Status + Abzeichen (ihre
 Katalog-Rechte kommen automatisch mit PN/Einladungen/Tages-Likes). Kein
 Abstieg; Besuchs-/Lese-Tracking bleibt draußen (Teil 4).
 
+---
+
 ## 2026-08-04 — Gemeinsames Paket: TL-Architektur, Aufstieg, Mehrfach-Verleihung
 
 **Davids Entscheidungen** (strukturierte Fragen; Volltext:
@@ -2862,6 +3415,8 @@ automatisch** über Schwellen, **TL4 nur von Hand**, kein Abstieg. (3)
 **Mehrfach-Verleihung für ALLE sinnvoll zählbaren Abzeichen** — bewusst gegen
 die Empfehlung (nur Posting-Gruppe) und als Revision der Stufe-4-Regel „genau
 einmal": auch der Jahrestag kommt jährlich neu.
+
+---
 
 ## 2026-08-04 — Stufe 4: Badge-Zuschnitt, Tracking abgelehnt, vier soziale Mechaniken
 
@@ -2909,6 +3464,28 @@ parallel zu A1/A2, die bei David liegen. **`ci/appwrite/ci.env`** verliert den
 Klartext-Schlüssel; `_APP_OPENSSL_KEY_V1` wird je CI-Lauf erzeugt (Repo ist
 öffentlich). **portfolios verwaiste Tabellen bleiben liegen** bis F3
 entscheidet — Löschen wäre unumkehrbar ohne aktuellen Nutzen.
+
+---
+
+## 2026-08-04 — Silo-Strategie: comments bleibt, neue Produkte ohne eigene Site
+
+> **Überholt am 2026-08-12 (Teil: „comments bleibt als das eine Silo“):** `comments` ist in den Pool gezogen, die Site ist seit dem 2026-08-18 gelöscht — s. „2026-08-12 — F3 abgenommen: comments zieht in den Pool (AH-6)“. Die Silo-Regel für neue Produkte gilt weiter.
+
+**Entscheidung (David):** `comments.pukalani.app` bleibt als das EINE lebende
+Silo bestehen — es verdient seine eigene Instanz durch drei Rollen, die kein
+anderer Host übernehmen kann: E2E-Anker (gesamte Playwright-Suite + CI-Wegwerf-
+Appwrite), Embed-Produkt für fremde Seiten, und der lebende Beweis, dass die
+Layer-Architektur die Silo-Form des Studio-/Enterprise-Angebots trägt. Dazu
+liefert es die Gegenform für Grenzbeweise (Silo `read("users")` vs. Pool-Labels
+— Presence- und Handle-Beweise brauchten BEIDE Formen).
+
+**Die Regel daraus:** Isolation im CODE und Isolation im DEPLOYMENT sind zwei
+Entscheidungen. Neue Produkte bekommen IMMER einen eigenen Layer (billig,
+erzwingt sauberen Schnitt) — aber standardmäßig KEINE eigene Site/Instanz
+(teuer: Migrationen je Instanz, Env-Drift wie F44, TLS, Schema-Parity).
+Entwickelt wird im Playground, gezeigt auf demo.pukalani.app; eine eigene Site
+gibt es nur mit kundenförmigem Grund. `photos` lebt das Muster bereits
+(App existiert, nie ausgerollt).
 
 ---
 
@@ -2973,6 +3550,8 @@ im stündlichen `trial-sweep` des Control Plane
 (`packages/control/server/utils/abuseReportPrune.ts`) — Melder ohne Konto
 erreicht kein GDPR-Contributor, deshalb braucht diese eine Spalte einen
 eigenen Sweep.
+
+---
 
 ## 2026-07-31 — C16: „Community löschen" heißt Stilllegen, nicht Vernichten
 
@@ -3078,7 +3657,130 @@ Key gegen die echte Instanz, beide Richtungen, Bestand eingeschlossen).
 
 ---
 
+## 2026-07-29 — Theme-Entscheidungen (David)
+
+16. **Entscheidung: Das Standard-Theme heißt „Aloha" (B3).** „Sunrise" (aus N6) stand im Picker direkt neben der Katalog-Farbwelt „Sunset" — zwei verwandt klingende Namen für Unverwandtes. Verworfen: die Id mit umbenennen — `default` steckt in `tenants.theme`, `data-theme`, CSS-Dateinamen und gespeicherten Kunden-Configs, ein Rename dort wäre eine Datenmigration ohne Nutzen. Geändert ist nur das Label in `packages/themes/app/utils/themeRegistry.ts` (kein i18n: Theme-Namen sind Eigennamen).
+
+17. **Entscheidung: Auf Community-Hosts gewinnen die Farben der Community (B5).** Bis dahin gewann immer das Theme-Cookie des Besuchers — wer sich irgendwann eins ausgesucht hatte, sah JEDE Community in seinen Farben, und zwei Besucher sahen dieselbe Community verschieden. Das bricht das Produktversprechen („unter deinem Namen und deinem Design"), für das der Kunde zahlt. Der Theme-Wähler VERSCHWINDET dort, statt als „nur für dich, nur hier" beschriftet zu werden (verworfene Alternative): die Wahl hätte nach der Umkehr auch für den Wählenden selbst keine Wirkung mehr, ein Wähler wäre also entweder wirkungslos oder falsch beschriftet. Hell/Dunkel bleibt ausdrücklich Besucher-Sache. Silo-Apps, Kontroll-Hosts und Playground unverändert.
+
+---
+
+## 2026-07-29/30 — Das Geschäftsmodell wird sortiert (David, in mehreren Runden)
+
+18. **Entscheidung: Die COMMUNITY ist das zahlende Objekt, `workspaces` fällt weg
+    (A6).** Befund davor: alle vier Checkout-Routen hingen an `workspaces`, das Wort
+    `tenant` kam im Geldpfad nicht vor, und `tenants.plan` — das Quota und
+    Produkt-Sichtbarkeit steuert — wurde nur vom Wizard, vom Testphasen-Sweep und
+    vom Betreiber-Auswahlfeld geschrieben. Ein Pool-Kunde hätte also bezahlen und
+    auf `basic` bleiben können. Verworfen: die fehlende Verbindung nachrüsten und
+    `workspaces` behalten — das hätte zwei Plan-Felder, zwei Mitglieder-Tabellen und
+    zwei Vokabulare dauerhaft festgeschrieben. Die Agentur-Idee (ein Kunde, mehrere
+    Sites unter einem Vertrag) war Horizont 2 und ist heute niemandes Bedarf.
+    Stripe-Kunde und Abo stehen künftig an der Community; eine **Besitz-Übergabe ist
+    gesperrt**, solange ein Abo läuft und der neue Owner keine Zahlungsmethode hat —
+    sonst reist die Karte des Vorbesitzers mit. Blockiert A2 (Stripe-Live).
+
+19. **Entscheidung: Gekauft wird im Dashboard der Community.** Dort ist der Owner,
+    wenn er an ein Limit stößt — Schranke und Ausweg an derselben Stelle.
+    `my.pukalani.app` zeigt Rechnungen und Zahlungsmethode.
+
+20. **Entscheidung: Bezahlte Communities (Owner nimmt Geld von seinen Mitgliedern)
+    kommen NACH dem Go-Live** — in der Navigation bleibt der Platz („Payments"), das
+    Produkt nicht. Das ist ein zweiter Geldfluss mit eigener Mechanik (Stripe
+    Connect) und rechtlichen Folgen (wer ist Verkäufer, wer schuldet Umsatzsteuer,
+    Auszahlungen, Widerruf). Erst muss Geldfluss 1 überhaupt ankommen.
+
+21. **Entscheidung: Sichtbarkeit wird PRO COMMUNITY wählbar, Default öffentlich.**
+    Heute sind Inhalte öffentlich (die posts-API antwortet Gästen mit 200), und die
+    gesamte SEO-Arbeit pro Community-Host (canonical, hreflang, sitemap, robots,
+    og:image) setzt das voraus. Verworfen: durchgehend geschlossen — das hätte die
+    SEO-Arbeit gegenstandslos gemacht und dem Embed-Einsatz widersprochen.
+    Der Preis der Wählbarkeit ist eine echte Grenze: bei „geschlossen" müssen
+    Row-Permissions, SEO-Tags, sitemap UND og:image mitziehen, sonst steht der
+    Inhalt in Googles Index und nicht auf der Seite.
+
+22. **Entscheidung: Die zwei Betriebsmodelle heißen `Plattform` und `Studio`**
+    (Kundensprache); `pool`/`silo` bleiben im Code. Folge: der Alias
+    `studio.pukalani.app` musste weg, sobald „Studio" der Kundenname ist — er zeigte
+    die Betreiber-Konsole. **Erledigt am 2026-07-30** (ploi → Domain aliases;
+    antwortet jetzt 404). Und die Seite „Theme-Studio" heißt künftig nur
+    „Themes", damit neben der Menügruppe „Studio" nichts Gleichnamiges steht.
+
+23. **Entscheidung: Die Umbenennung geht auf `community`, nicht auf `site` (E8).**
+    Zuerst hatte David „`site` gewinnt, vollständig" gewählt; seine eigene
+    Dashboard-Navigation hat die Frage Stunden später besser beantwortet — dort
+    heißen die Kunden-Objekte „Communities" und das Register „Websites". Damit heißt
+    jede Sache im Code wie in der Oberfläche, und die Kollision (`sites` war schon
+    belegt) entfällt, weil `sites` gar nicht mehr gebraucht wird.
+
+24. **Entscheidung: EINE Dashboard-Struktur mit drei Ebenen (E9)** — Betreiber nur
+    auf Kontroll-Hosts, Community auf ihrem Host für ihr Team, Konto überall.
+    Verworfen: alles in control bauen und den Kunden später bedienen — das hätte die
+    Community-Einstellungen ein zweites Mal entstehen lassen, mit zwei Wahrheiten,
+    genau wie bei Workspaces/Tenants. Folge für David: die Einstellungen seiner
+    eigenen Community sieht er auf ihrem Host, nicht in control.
+
+25. **Entscheidung: `UTable` ist der Standard für alle Datenlisten (B6).** Heute 2
+    von ~20; die übrigen 18 ziehen nach. Danach braucht keine neue Liste eine
+    Gestaltungsentscheidung.
+
+26. **Claudes Entscheidung (angekündigt, nicht widersprochen): die
+    `entitlements`-Mechanik bleibt stehen und verschwindet nur aus dem Menü.** Es ist
+    die Lizenz-Mechanik der Studio-Seite (eine signierte Datei sagt einer FREMDEN
+    Installation, welche Produkte sie betreiben darf) und nicht Teil der Abrechnung —
+    `workspaces` war nur ihr Rechnungs-Behälter. Heute unbenutzt und damit kostenlos;
+    beim ersten Studio-Kunden wäre der Neubau ein Projekt.
+
+27. **Entscheidung (David, 2026-07-31): die Marketing-Landingpage läuft VOLLSTÄNDIG
+    auf Nuxt UI** — keine individuellen UI-Eigenbauten, wo eine Komponente existiert.
+    Bewusst aufgegeben: die „kein JS / funktioniert vor Hydration"-Eigenschaften von
+    Header-Dropdown, Mobil-`<details>` und FAQ-`<details>`; die Scroll-Inszenierung
+    (`data-reveal`/Parallax) ist verzichtbar, wo sie der Struktur im Weg steht.
+    Umgesetzt in fünf Paketen (P1 Theme-Brücke: eigene `puka`-Palette als `primary`
+    statt der zweckentfremdeten Statusfarbe `warning` · P2 Karten/Badges/Grids ·
+    P3 Heros/CTAs · P4 Pricing · P5 Header/Footer/FAQ/Tabs). Dokumentierte Ausnahmen
+    ohne Äquivalent: Vergleichstabelle (Semantik), PukaMark, Glow, Produkt-Mock,
+    `tone-*`-Hintergründe. SEO-Netz dabei: FAQ-Antworten und alle Produkt-Links
+    bleiben per `unmount-on-hide=false` im SSR-HTML.
+
+---
+
+## 2026-07-28 — P10-Folgeentscheidungen (David: „leg los" auf die Empfehlungen)
+
+10. **N6:** Default-Theme wird im Kunden-Picker umbenannt (Anzeige-Label, KEIN Key/Datenwert).
+11. **N7:** /changelog wird auf Tenant-Hosts gegated (Betreiber-Changelog ist kein Kundeninhalt); Silo + Kontroll-Hosts unverändert.
+12. **N9:** Site-Owner dürfen Theme/Variante ihrer Community selbst wählen — über die Service-Naht (tenants.theme/variant, Muster S1-Registrierungs-Switch), Capability branding.manage. Das Operator-Theme-Studio (Custom-Theme-EDITOR) bleibt system.manage.
+13. **N4:** Die Demo bleibt bei Google indexierbar (Schaufenster).
+14. **help.pukalani.app** bestätigt; Deploy-Kette wird gebaut (Prod-Port 3006).
+15. **Nächstes Produkt:** Kurse durch die Datentür (letzter Silo-Gefangene der Produkt-Bilanz).
+
+---
+
+## 2026-07-27 — Audit-Folgeentscheidungen (David, per Klick-Fragen)
+
+1. **Header-Nav (S9):** Inline-Reihe mit Überlauf (ab ~5 Einträgen Mehr-Dropdown).
+2. **Sprach-UI (S9):** DisplaySettingsMenu überall (marketing behält den
+   schlanken Switcher — kein themes-Layer).
+3. **Footer (S9):** Brand + legalLinks + optionaler Changelog-Link, aus Config.
+4. **Mitglieder-Registrierung (S1):** pro Community schaltbar (USwitch „Offene
+   Registrierung", Default AN); Invite-Code bleibt nur fürs GRÜNDEN.
+   Übergang: ehrlicher Hinweis auf der Register-Seite.
+5. **Rechtstexte je Community (S7):** der Kunde pflegt Impressum/Datenschutz
+   als CMS-Seiten; Vorlagen beim Onboarding; Footer verlinkt sie. Demo
+   Morgenlicht verlinkt auf das pukalani.app-Impressum.
+6. **Demo-Seeds (S4):** ZWEISPRACHIG ausbauen (Davids Wahl, bewusst gegen die
+   Empfehlung „so lassen") — EN-Besucher sollen englische Beispiele sehen.
+7. **Wording (K10):** Kunden-Dashboard (admin-Layer) sagt „Produkte";
+   Control Plane bleibt bei „Features".
+8. **Pool-Reihenfolge:** Events zuerst durch die Datentür, dann Kurse.
+9. **Alte Worktrees:** Docs-App wird JETZT reviewt (Ergebnis an David);
+   Block-Editor bleibt geparkt (Feature-Stopp).
+
+---
+
 ## 2026-07-23 (Fragerunde) — Entscheidungen für die offenen Blöcke
+
+> **Überholt am 2026-08-12 (Teil: Gast-Kommentare ohne Bestätigung):** künftig kommentieren nur Angemeldete — s. „2026-08-12 — F3 abgenommen: comments zieht in den Pool (AH-6)“, Detail-Entscheidung (a).
 
 David hat per Fragerunde alle offenen Design-/Freigabe-Punkte beantwortet
 (autonome Umsetzung freigegeben). Reihenfolge der Abarbeitung: **Key-Tausch →
@@ -3091,7 +3793,7 @@ Quota → Homepage → E4**, danach Themes-Vollausbau.
   ein Account, der laut Cleanup (Task #69, `session-handover-2026-07-16`)
   gelöscht sein sollte. Bewusst NICHT für eine Prod-Sicherheitsoperation
   genutzt (Gegenteil von least-privilege; Session gehört ohnehin entfernt).
-  → Runbook für David in [PLATFORM-CONTROL-KEY-SWAP.md](runbooks/PLATFORM-CONTROL-KEY-SWAP.md);
+  → Runbook für David in [PLATFORM-CONTROL-KEY-SWAP.md](archiv/PLATFORM-CONTROL-KEY-SWAP.md);
   **zusätzlich: verwaisten Provisioner-Account/Session prüfen + löschen.**
 - **Quota-Zahlen**: Plan-Staffelung übernommen — free 200/Tag + 5.000 gesamt ·
   pro 1.000/Tag + 50.000 · business 5.000/Tag + 250.000; Silo ohne Limit. Ich
@@ -3112,6 +3814,8 @@ Quota → Homepage → E4**, danach Themes-Vollausbau.
   26×11 unbedienbar). Umsetzung: [THEMES-VOLLAUSBAU.md](archiv/THEMES-VOLLAUSBAU.md).
 - **Aufräumer**: Hetzner-Rescale-Thema geschlossen (CI-Build-Deploy → CX23
   reicht, Server baut nichts). Themes-Vollausbau rückt nach vorn.
+
+---
 
 ## 2026-07-22 (3) — apps/platform: der Multi-Tenant-Beweis end-to-end
 
@@ -3246,6 +3950,8 @@ autonom machbar:
 ---
 
 ## 2026-07-21 (Nacht) — Autonomer Durchlauf: Fixes + Analyse + Live-Preise
+
+> **Überholt am 2026-08-07 (Teil: Pläne Pro/Business und ihre Preise):** die Pläne heißen basic / personal / pro mit anderen Preisen — s. „2026-07-29/30 — Das Geschäftsmodell wird sortiert“ und „2026-08-07 — Pricing-Konzept: das Konto ist kein Plan, Testphase endet nur-lesend“.
 
 David gab Freigabe, nachts so viele offene Punkte wie möglich umzusetzen und
 aktiv nach neuen zu suchen. Ergebnis:
@@ -3484,581 +4190,8 @@ die Git-Historie. Format je Eintrag: **Kategorie: Titel** (Entscheidung /
 Korrektur / Änderung / Befund / Doku / Idee) + 2–4 Sätze „warum", inkl.
 verworfener Alternative, mit Verweis auf Commit/Doc.
 
-## 2026-07-27 — Audit-Folgeentscheidungen (David, per Klick-Fragen)
-
-1. **Header-Nav (S9):** Inline-Reihe mit Überlauf (ab ~5 Einträgen Mehr-Dropdown).
-2. **Sprach-UI (S9):** DisplaySettingsMenu überall (marketing behält den
-   schlanken Switcher — kein themes-Layer).
-3. **Footer (S9):** Brand + legalLinks + optionaler Changelog-Link, aus Config.
-4. **Mitglieder-Registrierung (S1):** pro Community schaltbar (USwitch „Offene
-   Registrierung", Default AN); Invite-Code bleibt nur fürs GRÜNDEN.
-   Übergang: ehrlicher Hinweis auf der Register-Seite.
-5. **Rechtstexte je Community (S7):** der Kunde pflegt Impressum/Datenschutz
-   als CMS-Seiten; Vorlagen beim Onboarding; Footer verlinkt sie. Demo
-   Morgenlicht verlinkt auf das pukalani.app-Impressum.
-6. **Demo-Seeds (S4):** ZWEISPRACHIG ausbauen (Davids Wahl, bewusst gegen die
-   Empfehlung „so lassen") — EN-Besucher sollen englische Beispiele sehen.
-7. **Wording (K10):** Kunden-Dashboard (admin-Layer) sagt „Produkte";
-   Control Plane bleibt bei „Features".
-8. **Pool-Reihenfolge:** Events zuerst durch die Datentür, dann Kurse.
-9. **Alte Worktrees:** Docs-App wird JETZT reviewt (Ergebnis an David);
-   Block-Editor bleibt geparkt (Feature-Stopp).
-
-## 2026-07-28 — P10-Folgeentscheidungen (David: „leg los" auf die Empfehlungen)
-
-10. **N6:** Default-Theme wird im Kunden-Picker umbenannt (Anzeige-Label, KEIN Key/Datenwert).
-11. **N7:** /changelog wird auf Tenant-Hosts gegated (Betreiber-Changelog ist kein Kundeninhalt); Silo + Kontroll-Hosts unverändert.
-12. **N9:** Site-Owner dürfen Theme/Variante ihrer Community selbst wählen — über die Service-Naht (tenants.theme/variant, Muster S1-Registrierungs-Switch), Capability branding.manage. Das Operator-Theme-Studio (Custom-Theme-EDITOR) bleibt system.manage.
-13. **N4:** Die Demo bleibt bei Google indexierbar (Schaufenster).
-14. **help.pukalani.app** bestätigt; Deploy-Kette wird gebaut (Prod-Port 3006).
-15. **Nächstes Produkt:** Kurse durch die Datentür (letzter Silo-Gefangene der Produkt-Bilanz).
-
-## 2026-07-29 — Theme-Entscheidungen (David)
-
-16. **Entscheidung: Das Standard-Theme heißt „Aloha" (B3).** „Sunrise" (aus N6) stand im Picker direkt neben der Katalog-Farbwelt „Sunset" — zwei verwandt klingende Namen für Unverwandtes. Verworfen: die Id mit umbenennen — `default` steckt in `tenants.theme`, `data-theme`, CSS-Dateinamen und gespeicherten Kunden-Configs, ein Rename dort wäre eine Datenmigration ohne Nutzen. Geändert ist nur das Label in `packages/themes/app/utils/themeRegistry.ts` (kein i18n: Theme-Namen sind Eigennamen).
-
-17. **Entscheidung: Auf Community-Hosts gewinnen die Farben der Community (B5).** Bis dahin gewann immer das Theme-Cookie des Besuchers — wer sich irgendwann eins ausgesucht hatte, sah JEDE Community in seinen Farben, und zwei Besucher sahen dieselbe Community verschieden. Das bricht das Produktversprechen („unter deinem Namen und deinem Design"), für das der Kunde zahlt. Der Theme-Wähler VERSCHWINDET dort, statt als „nur für dich, nur hier" beschriftet zu werden (verworfene Alternative): die Wahl hätte nach der Umkehr auch für den Wählenden selbst keine Wirkung mehr, ein Wähler wäre also entweder wirkungslos oder falsch beschriftet. Hell/Dunkel bleibt ausdrücklich Besucher-Sache. Silo-Apps, Kontroll-Hosts und Playground unverändert.
-
-## 2026-07-29/30 — Das Geschäftsmodell wird sortiert (David, in mehreren Runden)
-
-18. **Entscheidung: Die COMMUNITY ist das zahlende Objekt, `workspaces` fällt weg
-    (A6).** Befund davor: alle vier Checkout-Routen hingen an `workspaces`, das Wort
-    `tenant` kam im Geldpfad nicht vor, und `tenants.plan` — das Quota und
-    Produkt-Sichtbarkeit steuert — wurde nur vom Wizard, vom Testphasen-Sweep und
-    vom Betreiber-Auswahlfeld geschrieben. Ein Pool-Kunde hätte also bezahlen und
-    auf `basic` bleiben können. Verworfen: die fehlende Verbindung nachrüsten und
-    `workspaces` behalten — das hätte zwei Plan-Felder, zwei Mitglieder-Tabellen und
-    zwei Vokabulare dauerhaft festgeschrieben. Die Agentur-Idee (ein Kunde, mehrere
-    Sites unter einem Vertrag) war Horizont 2 und ist heute niemandes Bedarf.
-    Stripe-Kunde und Abo stehen künftig an der Community; eine **Besitz-Übergabe ist
-    gesperrt**, solange ein Abo läuft und der neue Owner keine Zahlungsmethode hat —
-    sonst reist die Karte des Vorbesitzers mit. Blockiert A2 (Stripe-Live).
-
-19. **Entscheidung: Gekauft wird im Dashboard der Community.** Dort ist der Owner,
-    wenn er an ein Limit stößt — Schranke und Ausweg an derselben Stelle.
-    `my.pukalani.app` zeigt Rechnungen und Zahlungsmethode.
-
-20. **Entscheidung: Bezahlte Communities (Owner nimmt Geld von seinen Mitgliedern)
-    kommen NACH dem Go-Live** — in der Navigation bleibt der Platz („Payments"), das
-    Produkt nicht. Das ist ein zweiter Geldfluss mit eigener Mechanik (Stripe
-    Connect) und rechtlichen Folgen (wer ist Verkäufer, wer schuldet Umsatzsteuer,
-    Auszahlungen, Widerruf). Erst muss Geldfluss 1 überhaupt ankommen.
-
-21. **Entscheidung: Sichtbarkeit wird PRO COMMUNITY wählbar, Default öffentlich.**
-    Heute sind Inhalte öffentlich (die posts-API antwortet Gästen mit 200), und die
-    gesamte SEO-Arbeit pro Community-Host (canonical, hreflang, sitemap, robots,
-    og:image) setzt das voraus. Verworfen: durchgehend geschlossen — das hätte die
-    SEO-Arbeit gegenstandslos gemacht und dem Embed-Einsatz widersprochen.
-    Der Preis der Wählbarkeit ist eine echte Grenze: bei „geschlossen" müssen
-    Row-Permissions, SEO-Tags, sitemap UND og:image mitziehen, sonst steht der
-    Inhalt in Googles Index und nicht auf der Seite.
-
-22. **Entscheidung: Die zwei Betriebsmodelle heißen `Plattform` und `Studio`**
-    (Kundensprache); `pool`/`silo` bleiben im Code. Folge: der Alias
-    `studio.pukalani.app` musste weg, sobald „Studio" der Kundenname ist — er zeigte
-    die Betreiber-Konsole. **Erledigt am 2026-07-30** (ploi → Domain aliases;
-    antwortet jetzt 404). Und die Seite „Theme-Studio" heißt künftig nur
-    „Themes", damit neben der Menügruppe „Studio" nichts Gleichnamiges steht.
-
-23. **Entscheidung: Die Umbenennung geht auf `community`, nicht auf `site` (E8).**
-    Zuerst hatte David „`site` gewinnt, vollständig" gewählt; seine eigene
-    Dashboard-Navigation hat die Frage Stunden später besser beantwortet — dort
-    heißen die Kunden-Objekte „Communities" und das Register „Websites". Damit heißt
-    jede Sache im Code wie in der Oberfläche, und die Kollision (`sites` war schon
-    belegt) entfällt, weil `sites` gar nicht mehr gebraucht wird.
-
-24. **Entscheidung: EINE Dashboard-Struktur mit drei Ebenen (E9)** — Betreiber nur
-    auf Kontroll-Hosts, Community auf ihrem Host für ihr Team, Konto überall.
-    Verworfen: alles in control bauen und den Kunden später bedienen — das hätte die
-    Community-Einstellungen ein zweites Mal entstehen lassen, mit zwei Wahrheiten,
-    genau wie bei Workspaces/Tenants. Folge für David: die Einstellungen seiner
-    eigenen Community sieht er auf ihrem Host, nicht in control.
-
-25. **Entscheidung: `UTable` ist der Standard für alle Datenlisten (B6).** Heute 2
-    von ~20; die übrigen 18 ziehen nach. Danach braucht keine neue Liste eine
-    Gestaltungsentscheidung.
-
-26. **Claudes Entscheidung (angekündigt, nicht widersprochen): die
-    `entitlements`-Mechanik bleibt stehen und verschwindet nur aus dem Menü.** Es ist
-    die Lizenz-Mechanik der Studio-Seite (eine signierte Datei sagt einer FREMDEN
-    Installation, welche Produkte sie betreiben darf) und nicht Teil der Abrechnung —
-    `workspaces` war nur ihr Rechnungs-Behälter. Heute unbenutzt und damit kostenlos;
-    beim ersten Studio-Kunden wäre der Neubau ein Projekt.
-
-27. **Entscheidung (David, 2026-07-31): die Marketing-Landingpage läuft VOLLSTÄNDIG
-    auf Nuxt UI** — keine individuellen UI-Eigenbauten, wo eine Komponente existiert.
-    Bewusst aufgegeben: die „kein JS / funktioniert vor Hydration"-Eigenschaften von
-    Header-Dropdown, Mobil-`<details>` und FAQ-`<details>`; die Scroll-Inszenierung
-    (`data-reveal`/Parallax) ist verzichtbar, wo sie der Struktur im Weg steht.
-    Umgesetzt in fünf Paketen (P1 Theme-Brücke: eigene `puka`-Palette als `primary`
-    statt der zweckentfremdeten Statusfarbe `warning` · P2 Karten/Badges/Grids ·
-    P3 Heros/CTAs · P4 Pricing · P5 Header/Footer/FAQ/Tabs). Dokumentierte Ausnahmen
-    ohne Äquivalent: Vergleichstabelle (Semantik), PukaMark, Glow, Produkt-Mock,
-    `tone-*`-Hintergründe. SEO-Netz dabei: FAQ-Antworten und alle Produkt-Links
-    bleiben per `unmount-on-hide=false` im SSR-HTML.
-
-## 2026-08-04 — Silo-Strategie: comments bleibt, neue Produkte ohne eigene Site
-
-**Entscheidung (David):** `comments.pukalani.app` bleibt als das EINE lebende
-Silo bestehen — es verdient seine eigene Instanz durch drei Rollen, die kein
-anderer Host übernehmen kann: E2E-Anker (gesamte Playwright-Suite + CI-Wegwerf-
-Appwrite), Embed-Produkt für fremde Seiten, und der lebende Beweis, dass die
-Layer-Architektur die Silo-Form des Studio-/Enterprise-Angebots trägt. Dazu
-liefert es die Gegenform für Grenzbeweise (Silo `read("users")` vs. Pool-Labels
-— Presence- und Handle-Beweise brauchten BEIDE Formen).
-
-**Die Regel daraus:** Isolation im CODE und Isolation im DEPLOYMENT sind zwei
-Entscheidungen. Neue Produkte bekommen IMMER einen eigenen Layer (billig,
-erzwingt sauberen Schnitt) — aber standardmäßig KEINE eigene Site/Instanz
-(teuer: Migrationen je Instanz, Env-Drift wie F44, TLS, Schema-Parity).
-Entwickelt wird im Playground, gezeigt auf demo.pukalani.app; eine eigene Site
-gibt es nur mit kundenförmigem Grund. `photos` lebt das Muster bereits
-(App existiert, nie ausgerollt).
-
-## 2026-08-06 — Handle bleibt bei Zugangs-Entzug erhalten
-
-**Entscheidung (David):** Wird jemandem der Community-Zugang entzogen, bleibt
-seine `community_handles`-Zeile bestehen; bei Rückkehr ist der Name wieder da.
-Kein Ehemalig-Marker, keine Freigabe. Grund: alte Erwähnungen müssen weiter auf
-dieselbe Person auflösen (Historien-Regel), und eine Freigabe machte
-Identitätsübernahme in alten Beiträgen möglich. Preis, bewusst in Kauf
-genommen: ein einmal vergebener Name (`@vorstand`) ist in dieser Community
-endgültig belegt — seit H1 kann ihn aber nur noch ein Mitglied nehmen.
-Das ist das HEUTIGE Verhalten; es war offen, ob es Absicht ist — jetzt ist es
-entschieden, kein Code-Änderungsbedarf.
-
-## 2026-08-07 — Eigene Domain je Community (Custom Domains)
-
-**Entscheidungen (David):** (1) Gate ab Plan **Pro** — klassischer
-Differenzierer, jede Kundendomain kostet real Betrieb. (2) Die alte Subdomain
-antwortet **301** auf die eigene Domain, sobald aktiv — ein kanonisches
-Zuhause, Subdomain bleibt Rückfall. (3) **Selbstbedienung komplett**: Owner
-trägt Domain ein, System prüft DNS und stößt Zertifikat + Appwrite-Platform
-automatisch an — kein Betreiber-Klick je Kunde. (4) **www + Apex automatisch**:
-beide Formen aktiv, eine leitet um.
-
-**Bekannte Grenze (vorab benannt):** der Konto-WS (Sofort-Abmeldung) ist
-Cookie-nativ und greift von fremder Root-Domain nicht — auf Kundendomains
-degradiert Session-Widerruf auf den 30-s-Poll. Bewusst akzeptiert.
-
-## 2026-08-20 — U16: Adressen bleiben, wie sie sind (Weg A)
-
-Davids Entscheidung (strukturierte Frage, Empfehlung angenommen): Kategorien
-und Kurse behalten den festen Slug, Themen und Events die Id — **kein Umbau,
-kein Alt-Slug-Gedächtnis**. Der einzige echte Druckpunkt (Umbenennen) ist
-heute kein Bedarf; wird er einer, ist Weg C (Id-Muster überall) die
-vorgezeichnete Lösung, nie Weg B (bei Themen bereits bewusst verworfen).
-Analyse: docs/archiv/ADRESS-MUSTER-KATEGORIEN.md.
-
-## 2026-08-21 — Studio-Site: Wir-Stimme + Erstgespräch-Wizard (W1)
-
-Davids Entscheidungen: (1) pukalani.studio spricht als **„wir, Pukalani
-Studio"** — nie mehr Ich-Form; David bleibt benannte Person, keine Teamgröße
-wird behauptet („ausgewählte Partner je nach Projekt"). (2) Erstgespräch-
-Wizard nach tobiasnase-Vorbild (strukturierte Fragen, alle vier angenommen):
-Budget-Spannen < 5 k / 5–15 k / 15–50 k / > 50 k € + „noch offen" · Telefon
-optional · Erfolgsseite mit cal.com-Sofortbuchung UND 24-h-Rückfallzeile ·
-Speicherung Mail + App-lokale Tabelle `intro_requests` (kein Produkt-Layer —
-Eigenschaft der Marketing-Site, nicht der Plattform).
-Plan: docs/plans/STUDIO-ERSTGESPRAECH-FUNNEL.md.
-
-## 2026-09-08 — Appwrite 2.0: Server und SDKs in EINEM Vorhaben (AW2)
-
-Davids Entscheidung (strukturierte Frage nach der Dependency-Runde; die
-Empfehlung „Stufe 1 jetzt, Server nach dem ersten 2.0.x-Patch" hat er
-BEWUSST NICHT genommen): **alles jetzt, Start sofort.** Reihenfolge, weil die
-SDK-Majors am Server hängen: (1) `node-appwrite` 26 → 28 mit Code (Health-
-Pillen auf REST, `account.createJWT` → `users.createJWT`) — Response-Format
-1.9.6, läuft gegen den heutigen Server, wird deployt; (2) Dev-Instanz
-(OrbStack `appwrite-maria`) 1.9.6 → 2.0.0 mit Dump + Config-Backup,
-Override-Patches (SMTP-KeepAlive, Traefik-XFF) gegen das neue Compose
-nachziehen, Beweise fahren; (3) Prod `api.pukalani.app` genauso, mit
-Downtime-Fenster; (4) erst danach `node-appwrite` 29 + `appwrite` 27
-(Response-Format 2.0.0) und die CI-Wegwerf-Appwrite auf 2.0.
-Benanntes Risiko: 2.0.0 ist vom 2026-09-04, kein Patch-Release vorhanden;
-`registers.php` trägt weiterhin `keepAlive: true` (Patch erneuern, nicht
-löschen).
-
-**Nachtrag 2026-09-08 (Ausführung):** Prod-Fenster nach Davids zweiter
-Entscheidung „nach grüner CI-E2E auf 2.0" um 05:00 UTC gezogen — unter 12
-Minuten, Nachweise im Runbook. Beide Instanzen und beide SDKs stehen auf der
-2.0-Linie; AW2 ist damit komplett (OPEN-ITEMS-COMPLETE).
-
-## 2026-11-09 — MCP-Rechte: Sperrliste statt Gateway (MCP1 verworfen)
-
-**Frage:** Nützt MCP1 (mcp1.com, MCP-Gateway von Appwrite) dem Projekt?
-**Entscheidung (David):** Nein. Stattdessen eine Sperrliste in
-`~/.claude/settings.json`: 25 Ploi-/Resend-Werkzeuge auf `deny`, 51 auf `ask`.
-**Warum:** Ein Gateway für Teams ist für eine Person der falsche Zuschnitt,
-legt den Ploi-Token (alle Server) bei einem weiteren Anbieter ab und leitet
-lokale MCP-Server nicht weiter. Den Kern („gefährliche Tools sperren") leistet
-die Sperrliste ohne Drittanbieter.
-**Zweite Entscheidung:** Gemessen wirkt `ask` im Bypass-Modus nicht (auch
-nicht per Hook). David: „so lassen". Die 51 bleiben Rückfrage-Regeln, damit
-Agenten weiter deployen und nginx neu laden können; wirklich gesperrt ist nur
-die `deny`-Liste.
-**Wieder prüfen:** sobald eine zweite Person oder ein Agent (AI-Runner) eigene,
-begrenzte MCP-Zugänge mit Audit-Log braucht. Details:
-docs/referenz/SESSION-HYGIENE.md, Abschnitt „MCP-Rechte".
-
-## 2026-11-13 — Aktivität zeigt auch Konto-Ereignisse („Konto und Sicherheit")
-
-**Anlass:** David hat auf `account.pukalani.app` sein Profilbild geändert und
-fand davon nichts unter `/profile/activity` — dort standen seit AH-3 nur eigene
-Inhalte (Beiträge, Kommentare, Zusagen, Einschreibungen). Geschrieben wurden
-die Konto-Ereignisse längst (`logAuthEvent` → `audit_logs`), lesen durfte sie
-nur der Betreiber.
-**Entscheidung (David, drei Fragen zum Anklicken):**
-1. **Welche Ereignisse:** Änderungen und Sicherheits-Signale — Profil geändert,
-   Passwort geändert / über den Mail-Link neu gesetzt, Zurücksetzen angefordert,
-   E-Mail bestätigt, Zwei-Faktor an/aus, falscher Zwei-Faktor-Code. **Keine**
-   normalen An- und Abmeldungen (sie begraben die wichtigen Einträge; wo man
-   angemeldet ist, zeigt die Sitzungsliste).
-2. **Wo:** ein **eigener Abschnitt** „Konto und Sicherheit" über den
-   Communities — keine gemischte Zeitleiste.
-3. **Herkunft:** **nur der Ort** (Stadt, Region), nie die IP-Adresse.
-**Folgen im Code:** zweiter Vertrag neben `ACCOUNT_ACTIVITY_KINDS`
-(`core/shared/accountEvents.ts`, Begründung dort), Leseweg in core an derselben
-Grenze wie `logAuthEvent` (kein Weg über den admin-Layer), dieselbe Route.
-Unverändert: was geschrieben wird, die Betreiber-Ansicht, der Community-Feed.
-
-## 2026-11-14 — Prüfungen sind Pflicht für `main`, Geheimnisse nur für den Hauptzweig
-
-**Anlass:** Gesamtaudit 2026-11, Paket P08 (SEC-041, SEC-042, SEC-043). Die
-vier Prüfungen hielten seit dem 2026-11-13 das Ausliefern auf, aber nicht das
-Zusammenführen: „erst grün, dann mergen" hielt nur, wer sich daran hielt.
-**Entscheidung (David, vier Fragen zum Anklicken):**
-1. **Pflicht-Prüfungen: Ja, mit Notausgang.** Ein Pull Request geht erst bei
-   grünem `test`, `lint`, `secrets`, `typecheck` und `e2e` in den Hauptzweig.
-   Direkte Pushes des Besitzers bleiben möglich (Ausnahme für die Rolle
-   Repository-Admin). Streng ohne Ausnahme wurde angeboten und nicht gewählt:
-   jede Doku-Zeile bräuchte dann einen Pull Request und die Wartezeit.
-2. **Geheimnisse nur für den Hauptzweig.** Zwei GitHub-Umgebungen
-   (`production`, `production-watch`), beide nur für `main`; auf Repo-Ebene
-   bleibt kein Secret. Ausliefern und Wächter haben getrennte Schlüssel.
-3. **Nur ausgewählte Bausteine, nur über einen Commit.** Erlaubt sind die
-   Actions von GitHub selbst und `pnpm/action-setup`.
-4. **Die drei unbenutzten Einträge** (alte Ploi-Auslöser) sind gelöscht.
-**Folgen im Alltag:** `gh pr merge` wartet nicht mehr auf Disziplin, sondern
-lehnt bei offenen oder roten Prüfungen ab. Ein Lauf von Hand von einem
-Arbeitszweig bekommt kein Secret (Wächter, Notfall-Job und Deploy laufen von
-`main`). Ein Zweig mit Workflow-Dateien von vor dem 2026-11-14 braucht erst
-`git merge origin/main`. Einzelheiten: `.claude/rules/hosts-ops.md`,
-docs/runbooks/CI-SCHLUESSEL-TAUSCHEN.md.
-**Wieder prüfen:** sobald eine zweite Person Schreibrecht bekommt (dann ist
-die Ausnahme für den Besitzer neu zu bewerten und eine Freigabe-Pflicht für
-die Umgebungen sinnvoll).
-
-## 2026-11-15 — Ein schlechter Stand wird gemeldet, nicht von selbst zurückgestellt
-
-**Anlass:** Gesamtaudit 2026-11, Paket P10 (OPS-007). Für das Zurücknehmen
-einer schlechten Version gab es einen veralteten Satz im Runbook. Davids
-Entscheidung vom 2026-11-12: umsetzen und einmal an der Hilfe-Seite üben.
-Seit dem 2026-11-15 gibt es `ops/rollback.sh`, eine Eingabe für einen älteren
-Commit am manuellen Start, und das Ausliefern liest auch `ok`.
-**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-15):**
-1. **Übung an der Hilfe-Seite: „Ja, jetzt üben".** Nachsehen auf dem Server,
-   `help.pukalani.app` auf den vorigen Stand und wieder vor, Gegenprobe mit
-   einem Stand, den es nicht gibt.
-2. **Der Weg über GitHub: „Ja, mit vorigem Stand".** Der vorige Commit auf
-   alle sechs Apps, danach wieder der heutige — der Beweis, dass ein älterer
-   Stand wirklich ankommt, nicht nur, dass der Knopf geht.
-3. **Kein Automat: „Nein, nur melden".** Meldet eine App nach dem Ausliefern
-   nicht `ok:true`, endet der Lauf rot (Mail von GitHub); zurückgestellt wird
-   von Hand. Grund: Meist liegt es nicht am neuen Stand (Appwrite nicht
-   erreichbar, Einstellung fehlt), und ein alter Stand passt nicht immer zur
-   Datenbank. Angeboten und nicht gewählt: automatisch die betroffene App
-   zurückstellen, wenn sie vorher gesund war.
-**Folgen im Alltag:** Bei einem schlechten Stand gilt die Reihenfolge
-zurückstellen → `git revert` → Ursache
-([DEPLOYMENT.md](runbooks/DEPLOYMENT.md), Abschnitt A3). Ein roter
-Deploy-Lauf mit „Ausgeliefert, aber nicht gesund" heißt: Der Stand ist live,
-die Entscheidung liegt beim Menschen.
-**Wieder prüfen:** wenn ein schlechter Stand einmal länger live blieb, weil
-niemand die rote Meldung sah — dann ist der Automat neu zu bewerten.
-
-## 2026-11-15 — Backup der Datenbank: ein Schlüssel an zwei Orten, 30 Tage außer Haus, Schnappschüsse
-
-**Anlass:** Gesamtaudit 2026-11, Paket P11 (OPS-001). Das nächtliche Backup
-der Appwrite-Instanz lief, sicherte aber den Schlüssel nicht mit, mit dem
-Appwrite Daten verschlüsselt, lag im Klartext außer Haus, prüfte nichts und
-war nie zurückgespielt worden. Davids Entscheidung vom 2026-11-12: Schlüssel
-mitsichern, verschlüsselt ablegen, prüfen, einmal üben und aufschreiben.
-**Entscheidung (David, Fragen zum Anklicken am 2026-11-15):**
-1. **Der private Schlüssel liegt in NordPass und in Apple Passwörter** — an
-   zwei Orten bei zwei Anbietern, nicht auf dem Server, nicht auf der Storage
-   Box, nicht auf dem Mac. Angeboten und nicht gewählt: NordPass plus ein
-   Ausdruck auf Papier (die Empfehlung); nur NordPass.
-2. **Aufbewahrung: 14 Tage auf dem Server, 30 Tage außer Haus.** Angeboten
-   und nicht gewählt: 14 Tage überall (wie bisher); 90 Tage außer Haus.
-   Länger heißt: Daten gelöschter Konten liegen entsprechend länger im Backup.
-3. **Schnappschüsse der Storage Box: ja,** täglich, zehn Stände — das zweite
-   Netz, falls auf dem Server jemand Backups löscht.
-4. **Die Wiederherstellung mit echten Daten üben: ja,** in einer eigenen,
-   danach gelöschten Maschine; die Kopie startet ohne die Dienste, die etwas
-   verschicken.
-5. **Alte Klartext-Kopien löschen: ja,** nach der gelungenen Übung und
-   nachdem der Zeitplan das neue Backup einmal von selbst gestartet hat.
-**Folgen im Alltag:** Die Backups öffnet nur der eine Schlüssel — geht er an
-beiden Orten verloren, sind alle Läufe wertlos; wird er getauscht, bleiben
-ältere Läufe nur mit dem alten lesbar. Zurückgespielt wird nach
-[APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md), nie
-auf einen Rechner, auf dem schon eine Instanz läuft. Nach jeder Änderung an
-den Skripten läuft die Attrappe, danach kommt die Fassung von Hand auf den
-Server. Ein roter Backup-Blick im Wächter heißt: Der Lauf dieser Nacht fehlt
-oder ist gescheitert; frühere Läufe liegen unberührt.
-**Wieder prüfen:** sobald eine Vertrauensperson benannt ist (wer außer David
-kommt an den Schlüssel — OPEN-ITEMS BU1 a, entschieden am 2026-11-16); und wenn die Datenbank so wächst,
-dass 30 Tage auf der Box spürbar Platz kosten.
-
-## 2026-11-16 — Offene Punkte: Reihenfolge in sechs Schritten, 16 Entscheidungen
-
-**Anlass:** Die Liste der offenen Punkte war auf rund 1040 Zeilen gewachsen,
-mit falscher Zählung und einem doppelten Kürzel. David hat sie auswerten
-lassen, eine Reihenfolge angenommen und in einer Fragerunde entschieden.
-Diese Runde ändert nur die Doku; gebaut wird je Eintrag in
-[OPEN-ITEMS.md](OPEN-ITEMS.md).
-**Reihenfolge (David):** 1 Entscheidungen · 2 Davids Klick-Runde auf den
-echten Seiten (KR1) · 3 was Claude allein baut, SC2 zuerst · 4 ein
-Anwaltstermin für alles, danach die Datenschutztexte (DT1) · 5 die Geld-Kette
-A1 → A2 → BS1 Bezahlweg → Preis für Brand Book & Kit → F7 · 6 der erste
-Insights-Artikel (BI5).
-**Entscheidungen (David, Fragen zum Anklicken am 2026-11-16):**
-1. **AL1:** Die Aktivitätsliste im Admin-Bereich wird mit den vorhandenen
-   Konto-Ereignissen gefüllt, nicht entfernt.
-2. **KE3:** Ein Aufräum-Lauf löscht Profilbilder, die zu keinem Profil gehören.
-3. **KU1:** „Kostenlos" und „Mitglieder" bei Kursen werden zu EINER
-   Zugangsart zusammengelegt.
-4. **KU1:** Kurs-Vorschauen geschlossener Communities bleiben in
-   Suchmaschinen auffindbar. Keine Änderung, Punkt geschlossen.
-5. **MM1:** Unter geschlossenen Themen werden auch Likes gesperrt.
-6. **MM1:** Übersetzen nur noch für Mitglieder der Community.
-7. **RW1:** Kein Notweg für einen Ausfall von GitHub. Nichts bauen, Punkt
-   geschlossen.
-8. **RW1:** Vier alte Stände je App reichen. Punkt geschlossen.
-9. **Backup (BU1):** Der Backup-Schlüssel bekommt einen zweiten, getrennten
-   Ablageort bei David; KEINE zweite Person.
-   Nachtrag am selben Tag: Der Schlüssel liegt schon in Davids zwei
-   Passwort-Managern; David: „reicht so". Punkt geschlossen.
-10. **Backup (BU1):** Die Einstellungs-Dateien der Apps kommen verschlüsselt
-    ins nächtliche Backup.
-11. **AR1:** Erledigte Umzugs-Anleitungen wandern ins Archiv.
-12. **IN1:** Marken-Seiten (Profil, Duell, Ranking) laufen künftig durch
-    dieselbe Prüfung wie Artikel.
-13. **MG1:** Ein Datenbank-Rückstand wird gemeldet (Anzeige und Alarm), stoppt
-    das Ausliefern aber NICHT. Das harte Tor ist verworfen.
-14. **PB1:** Die Migrations-Schlüssel dürfen Dateilisten lesen (nur lesen).
-    Das Ändern der Schlüssel auf Production bleibt ein eigener Schritt mit
-    Davids Ja zum Zeitpunkt der Umsetzung.
-15. **CI1:** Die Dependabot-Pull-Requests 155 bis 157 werden geprüft und bei
-    grünen Prüfungen übernommen (beim Nachsehen schon zusammengeführt).
-16. **AB1 und P29:** Beide Server-Einstellungen werden eingeschaltet: der
-    gemeinsame Zähler der Anmelde-Bremse auf branding.supply und die Prüfung
-    auf gestohlene Passwörter am Appwrite-Server. Das grundsätzliche Ja liegt
-    vor; umgesetzt wird je mit Davids Ja am Tag der Änderung.
-**Folgen im Alltag:** Das Backup hieß in der Liste ebenfalls `BK1`; es trägt
-jetzt das Kürzel **BU1**, `BK1` gehört allein Brand Book & Kit. Verweise auf
-offene Punkte nennen das Kürzel, keine Nummer. Mit Nr. 9 ist die Frage der
-Vertrauensperson aus dem Eintrag vom 2026-11-15 beantwortet: Fällt David aus,
-kommt niemand an die Backups; das ist bewusst so entschieden.
-**Wieder prüfen:** wenn sich an Davids Vertretung etwas ändert (Nr. 9); und
-Nr. 13, falls ein Rückstand einmal Schaden anrichtet, bevor der Alarm gelesen
-wird.
-
-## 2026-11-16 — Server-Einstellungen als Vorlage im Repo, Schutz-Kopfzeilen aus der App
-
-**Anlass:** Gesamtaudit 2026-11, Paket P23 (OPS-003, SEC-006, SEC-010). Die
-Webserver-Einstellungen der sechs Sites lagen nur in Ploi und waren von Hand
-gewachsen (zwei Sites reichten die Adresse des Aufrufers nicht weiter, zwei
-setzten Schutz-Kopfzeilen, sechs keine, HSTS keine), Zeitpläne standen nur auf
-den Servern, und Links in Mails kamen aus dem Namen der Anfrage. Davids
-Entscheidungen vom 2026-11-12: Vorlagen ins Repo mit täglichem Vergleich; die
-Schutz-Kopfzeilen setzt die App für alle Seiten gleich; Mail-Links nehmen in
-den Einzel-Sites die fest eingestellte Adresse.
-**Entscheidung (David, Fragen zum Anklicken am 2026-11-16):**
-1. **Nachsehen auf beiden Servern und in Ploi: ja, nur lesen.**
-2. **Handgriffe auf den Servern: ja, alle drei** — Prüf-Programm einspielen,
-   Schutz-Zeilen im Webserver entfernen und fehlende Pflicht-Zeilen
-   nachtragen, den alten Erinnerungs-Zeitplan entfernen. Angeboten und nicht
-   gewählt: nur das Prüf-Programm; nichts ändern.
-3. **Zugriffs-Log der Betreiber-Seite: ja, 14 Tage** — Zeit, Adresse des
-   Aufrufers, Methode und Pfad ohne Query, Ergebnis, Browser. Angeboten und
-   nicht gewählt: 7 Tage; kein Log.
-4. **„Nur noch verschlüsselt" (HSTS) in zwei Stufen in diesem Paket:** erst
-   ein Tag, nach einigen Stunden ohne Auffälligkeit ein Jahr. Ohne
-   `includeSubDomains`, ohne `preload`. Angeboten und nicht gewählt: zweite
-   Stufe erst nach einer Woche; noch nicht einschalten.
-5. **Probealarm für den neuen Blick: ja.**
-6. **Das allgemeine Zugriffs-Log des Webservers (Umleitungen, unbekannte
-   Namen) von 52 auf 14 Tage kürzen: ja.**
-7. **Die feste Adresse von pukalani.studio ändern: ja — und grundsätzlich:**
-   stellt ein Betreiber im Dashboard eine eigene Domain ein, sollen Mails und
-   alles andere der Site diese Domain von selbst benutzen, ohne Handgriff an
-   einer Server-Datei.
-**Folgen im Alltag:** In einer nginx-Datei steht kein `add_header` für eine
-Schutz-Kopfzeile mehr und nie `X-Frame-Options` (es kann die Erlaubnisliste
-des eingebetteten Produkts nicht ausdrücken). Eine neue Site entsteht aus
-der Vorlage ([NEUE-SITE.md](runbooks/NEUE-SITE.md)); ein neuer Zeitplan steht
-zuerst in `ops/cron.conf`. HSTS lässt sich nur langsam zurücknehmen: einen
-kleinen Wert senden und warten. Termin-Erinnerungen fährt die App selbst für
-alle Communities; auf dem Server gibt es dafür keinen Zeitplan mehr.
-**Wieder prüfen:** `includeSubDomains` für die eigenen Domains, sobald eine
-Liste aller Unter-Adressen vorliegt; die Skript-CSP schärfen, sobald Berichte
-eingesammelt werden (OPEN-ITEMS SE1).
-
-## 2026-11-16 — Schreiben nur noch über den Server; Kontoanlage nur über unsere Anmeldung
-
-**Anlass:** Gesamtaudit 2026-11, Paket P13 (SEC-002, SEC-007, SEC-008,
-BE-003). Die Datenbank ist unter eigener Adresse für jedes Konto erreichbar;
-Schreibrechte an Tabellen und Zeilen galten deshalb neben unseren Routen, und
-ein Konto ließ sich an unserer Registrierung vorbei anlegen. Davids
-Entscheidung vom 2026-11-12: „künftig schreibt nur noch unser Server", Schritt
-für Schritt, Beiträge und Kommentare zuerst.
-
-**Entscheidung (David, Fragen zum Anklicken am 2026-11-16, je die empfohlene
-Antwort):**
-1. **Nachsehen auf Production: ja, nur lesen und zählen.**
-2. **Kontoanlage: „Tür zu und einmal fragen".** Die Anmelde-Wege der
-   Datenbank für Aufrufe ohne Schlüssel werden ausgeschaltet; für den
-   Google-Weg, der sich so nicht schließen lässt, fragt die Seite die
-   Zustimmung beim nächsten Besuch nach und weist Schreibversuche bis dahin
-   ab. Angeboten und nicht gewählt: nur nachfragen; nur sperren.
-3. **Je Etappe ein eigenes Ja für Rechte-Migration und Aufräum-Lauf** — erst
-   zählen, dann schreiben. Vier Etappen, alle am selben Tag freigegeben.
-4. **Sechs unbenutzte Alt-Tabellen im Projekt `portfolio`: verschließen**
-   (nicht löschen).
-5. **Die Sperre zuerst am ruhigsten echten Projekt proben** (`portfolio`),
-   danach in allen drei anderen. Lokal ließ sich kein Wegwerf-Projekt anlegen.
-6. **Konten mit Betreiber-Rolle werden nie gefragt und nie gesperrt.**
-7. **Betreiber einer Community bestätigen eigene Bedingungen per Kästchen,
-   wenn sie eine Community anlegen** (Davids Auftrag in derselben Runde; Text
-   als Entwurf, anwaltliche Prüfung steht aus, OPEN-ITEMS A1b).
-
-**Folgen im Alltag:** Keine Tabelle und keine Zeile bekommt ein Schreibrecht
-für Konten; Rechte an Zeilen regeln nur das Lesen. Eine neue Tabelle mit
-Inhalt von Konten steht in `scripts/lib/server-written-tables.mjs`, ihre
-Routen schreiben über die Operator-Klinke und prüfen selbst, wem die Zeile
-gehört. Eine bestehende Tabelle umstellen heißt: erst der Code live, dann die
-Rechte, dann die Zeilen — die eine begründete Ausnahme von „Migration vor dem
-Merge". Ein neues Projekt der Datenbank bekommt die Anmelde-Wege von Hand
-ausgeschaltet ([ANMELDE-REGELN.md](runbooks/ANMELDE-REGELN.md)). Jeder eigene
-Aufruf einer Anmelde-Methode läuft mit dem Schlüssel des Servers.
-
-**Wieder prüfen:** das direkte Lesen mit dem Pukalani-Konto
-([PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md), § 9); ein täglicher Blick auf
-die Anmelde-Wege und der Schalter „JWT" (OPEN-ITEMS SV1).
-
-## 2026-11-17 — Vertretung: erst nur Bescheid wissen; das Notfallblatt liegt außerhalb des Repos
-
-**Anlass:** Gesamtaudit 2026-11, Paket P24 (OPS-010). Jeder Alarmweg endet bei
-einer Person; es gab kein Blatt, das einer zweiten sagt, wo sie anfängt und
-was sie nie tut. Davids Entscheidung vom 2026-11-12: Eine Vertrauensperson
-bekommt die Alarme mit und ein Blatt mit den ersten Handgriffen, bevor der
-erste Kunde zahlt. Am 2026-11-17: Es gibt noch niemanden — das Blatt wird
-fertig vorbereitet, Name und Adresse bleiben frei.
-**Entscheidung (David, vier Fragen zum Anklicken am 2026-11-17):**
-1. **Das Blatt liegt als Ausdruck bei der Vertretung und als Notiz in Davids
-   Passwort-Tresor** — nie im Repo (öffentlich; es nennt Menschen und
-   Nummern). Angeboten und nicht gewählt: nur im Tresor; nur als Ausdruck.
-2. **Die Vertretung soll zuerst nur Bescheid wissen:** Alarme mitbekommen,
-   nachsehen, David anrufen, Kunden antworten. Keine eigenen Zugänge.
-   Angeboten und nicht gewählt: gleich ein eigenes GitHub-Konto und ein
-   eigenes Betreiber-Konto. Über Zugänge wird entschieden, wenn die Person
-   feststeht.
-3. **Das Blatt gibt es auf Deutsch und auf Englisch** (Betreiber-Sitz USA,
-   Märkte weltweit). Preis: zwei Fassungen pflegen.
-4. **Probealarm und lesendes Nachsehen auf dem Server: ja.**
-**Folgen im Alltag:** Ohne eigenen Zugang kann die Vertretung nichts
-reparieren. Fällt David aus und kippt etwas auf einem Server, bleibt es so,
-bis er zurück ist oder eine Technik-Hilfe mit Zugang eingreift — das Blatt
-sagt es ausdrücklich. Eine Wiederherstellung aus dem Backup kann weiterhin nur
-David (Eintrag vom 2026-11-16, Nr. 9). Die Alarm-Mail des Wächters nimmt
-seitdem mehrere Empfänger (Kommaliste im Secret); eingetragen wird die zweite
-Adresse erst mit der Person. Im Repo stehen nur der Zeiger auf das Blatt und
-je Alarm-Quelle der Handgriff
-([PRODUKTIONS-ALARM.md](runbooks/PRODUKTIONS-ALARM.md), § 5). Beim Nachsehen
-gefunden: `NUXT_ALERT_EMAIL` ist auf keiner Site gesetzt — Missbrauchs-
-Meldungen und Statuswechsel der Kunden-Sites erreichen niemanden per Mail
-(OPEN-ITEMS „VT1" b).
-**Wieder prüfen:** sobald die Person benannt ist (Stufe mit eigenen Zugängen;
-dann auch die Ausnahme für den Besitzer aus dem Eintrag vom 2026-11-14 und
-die Frage des Backup-Schlüssels aus dem Eintrag vom 2026-11-16); und vor dem
-Stripe-Livegang (A2), falls bis dahin niemand benannt ist.
-
-## 2026-11-17 — Nacharbeiten N03: zweite Erinnerung, Name der Zugangsart, Likes am Thema selbst
-
-**Kontext:** Gruppe N03 der Nacharbeiten (KU1, MM1, KK1 in
-[OPEN-ITEMS.md](OPEN-ITEMS.md)). Drei Punkte waren beim Bauen offen.
-**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-17):**
-1. **Wird ein Termin verschoben, nachdem schon erinnert wurde, kommt noch
-   einmal eine Erinnerung mit der neuen Uhrzeit.** Angeboten und nicht
-   gewählt: nur einmal erinnern. Preis: zwei Nachrichten zum selben Termin.
-2. **Die eine Zugangsart bei Kursen heißt „Für Mitglieder"** (englisch „For
-   members"). Angeboten und nicht gewählt: „Kostenlos", „Kostenlos für
-   Mitglieder". Sie sagt, was gilt: man muss Mitglied der Community sein.
-3. **Unter einem geschlossenen Thema sind nur die Kommentare eingefroren**
-   (Likes und Reaktionen an ihnen). Das Thema selbst darf weiter Likes und
-   Reaktionen bekommen. Angeboten und nicht gewählt: das ganze Thema einfrieren.
-**Folgen im Alltag:** Wer einen Termin mehrmals verschiebt, löst je neuer
-Uhrzeit eine Erinnerung aus; für dieselbe Uhrzeit bleibt es bei einer. Ein
-geschlossenes Thema zeigt an seinen Kommentaren den Stand vom Schließen.
-**Wieder prüfen:** wenn Rückmeldungen kommen, dass die zweite Erinnerung stört.
-
-## 2026-11-18 — Nacharbeiten N15: sechs kleine Entscheidungen ohne Rückfrage
-
-**Kontext:** Gruppe N15 der Nacharbeiten, die letzten kleinen Reste
-([OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md), „N15"). Davids Regel vom
-2026-11-17: kleine, umkehrbare Fragen entscheidet die Sitzung selbst und
-schreibt sie auf.
-**Entscheidung (Sitzung N15, ohne Rückfrage):**
-1. **Die Bot-Prüfung am Erstgespräch von pukalani.studio ist mit dem Merge
-   scharf.** Die Schlüssel waren dort schon gesetzt; die Regel „öffentliches
-   Formular, das eine Mail auslöst" hat David am 2026-11-15 entschieden.
-   Zurück: ein Revert von Pull Request 381.
-2. **Die Frist für den Start des E2E-Test-Servers bleibt bei 120 Sekunden.**
-   Gemessen: 49 Läufe mit 20 bis 39 Sekunden, 7 mit vollen 120, dazwischen
-   nichts — eine längere Frist hätte keinen gerettet.
-3. **Ein Ticket zu kaufen zählt als Mitmachen**, nicht als Ändern von
-   Eigenem: bei offener Registrierung kann es der Beitritt sein, in einer
-   gesperrten Community bleibt es zu.
-4. **Eine 503 trägt im Fehler-Umschlag den Code `UNAVAILABLE`.** Der
-   Umschlag ist als fester Vertrag beschrieben; der Status bleibt 503, und im
-   Repo las niemand den alten Code.
-5. **Ein fertiger Übersetzungs-Vorschlag für eine Seite wird angeboten und
-   nicht ungefragt ins Formular gesetzt** — nur der Reiter, der den Lauf
-   gestartet hat, übernimmt ihn von selbst (Pull Request 387, Entwurf).
-6. **Alte Migrationen legen nichts wieder an, was eine spätere entfernt** —
-   über alle Layer, nicht nur die vier zuerst gezählten Stellen, und weiter
-   ohne Register (bewusst, wie beim Datenbank-Stand in `/api/health`).
-**Folgen im Alltag:** Wer das Erstgespräch mit blockierter Bot-Prüfung
-aufruft, kann nicht absenden (wie bei den anderen Formularen). Ein voller
-Lauf des Migrations-Runners auf einem Spiegel baut nichts mehr um; eine neue
-Migration, die etwas entfernt, verlangt an der anlegenden Stelle die Wache
-(der Test nennt sie).
-**Wieder prüfen:** das Erstgespräch nach Davids Klick auf der echten Seite
-(OPEN-ITEMS „KR1"); die E2E-Frist beim nächsten Lauf, in dem der Test-Server
-nicht startet (dann steht der Grund im Log).
-
-## 2026-11-18 — Nacharbeiten N15: Seiten-Übersetzung im Hintergrund, Spalte wartet, Geheimnis-Prüfung je Zweig
-
-**Kontext:** die eine Fragerunde am Ende der Gruppe N15
-([OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md), „N15", Nachtrag).
-**Entscheidung (David, drei Fragen zum Anklicken am 2026-11-18):**
-1. **Die neue Tabelle für die Seiten-Übersetzung wird in den vier echten
-   Datenbanken angelegt, der Umbau geht live.** Angeboten und nicht gewählt:
-   später. Zurück: den Pull Request zurücknehmen; die leere Tabelle kann
-   bleiben.
-2. **Die eigene Spalte für den Zeitpunkt, an dem eine Meldung erledigt wurde,
-   wartet.** Angeboten und nicht gewählt: jetzt bauen. Heute hält die
-   Ungenauigkeit Daten nur länger, nie kürzer.
-3. **Die Pflicht-Prüfung auf Geheimnisse liest je Pull Request nur noch den
-   eigenen Zweig; ein neuer Lauf liest einmal am Tag alle Zweige und meldet
-   einen Fund als Issue.** Angeboten und nicht gewählt: so lassen. Zurück:
-   eine Zeile in `lint.yml` zurückstellen.
-**Folgen im Alltag:** Ein Fund in einem Zweig, der kein Pull Request ist,
-kommt bis zu einem Tag später an — als Issue `geheimnis-alarm`, nicht als
-roter Haken an jedem Pull Request. Die Prüfung vor dem ersten Push eines
-Zweigs bleibt Pflicht der Sitzungen.
-**Wieder prüfen:** die Spalte aus 2, sobald eine Route erledigte Meldungen
-beschreibt; den Tages-Lauf, falls `geheimnis-alarm` zu oft wegen erfundener
-Testwerte offen ist.
+Wird eine frühere Entscheidung abgelöst, bekommt die ALTE Stelle direkt unter
+ihrer Überschrift eine Zeile „**Überholt am JJJJ-MM-TT:** …, s. „Titel des
+neuen Eintrags““ — wer die alte Stelle findet, soll die neue nicht suchen
+müssen. Die Datumsfolge der Überschriften (neueste zuerst) hält
+`pnpm check:doc-links`; ein Eintrag am Ende der Datei ist dort rot.

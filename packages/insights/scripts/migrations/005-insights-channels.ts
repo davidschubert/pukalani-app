@@ -1,7 +1,7 @@
 /**
  * Migration insights-005: `insights_channels` — DIE KURATIERTE KANALLISTE.
  *
- * Paket BI2 K3, Plan docs/plans/BRAND-INSIGHTS-KURATION.md §1. Gemeinsame
+ * Paket BI2 K3, Plan docs/archiv/BRAND-INSIGHTS-KURATION.md §1. Gemeinsame
  * Regeln wie insights-001…004 (server-only `permissions: []` /
  * `rowSecurity: false`, kein `communityId`, Indizes nur über
  * `createIndexSteps`, idempotent 409 → skip); sie läuft ausschliesslich auf

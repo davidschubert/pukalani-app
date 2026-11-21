@@ -1,7 +1,10 @@
 # Brand Insights — Kuration, Merkliste, Artikel aus Video (BI2)
 
+> **Archiviert am 2026-11-21 (Q19).** K2 bis K7 sind gebaut und live. Die Zeile „Sorte: Plan (noch nicht gebaut)“ unten ist der Stand vom 2026-09-09. Offene Reste führt nur [OPEN-ITEMS.md](../OPEN-ITEMS.md) (BI2, BI5).
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 > **Sorte:** Plan (noch nicht gebaut). Fortsetzung von
-> [BRAND-INSIGHTS.md](BRAND-INSIGHTS.md) — dort steht das Redaktionskonzept
+> [BRAND-INSIGHTS.md](../plans/BRAND-INSIGHTS.md) — dort steht das Redaktionskonzept
 > BI1, hier nur, was Davids Wünsche vom **2026-09-09** daran anbauen.
 > Offene Punkte gehören nach `docs/OPEN-ITEMS.md`, nicht in dieses Dokument.
 

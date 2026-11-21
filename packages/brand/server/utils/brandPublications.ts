@@ -45,7 +45,7 @@ import {
 
 /**
  * DIE VERÖFFENTLICHUNG EINER MARKE — Lesen, Adresse vergeben, Zustand
- * hinausgeben (docs/plans/DISCOVER-BRANDS.md §5, Paket D1).
+ * hinausgeben (docs/archiv/DISCOVER-BRANDS.md §5, Paket D1).
  *
  * Die REGELN (Zustände, Slug-Form, Voraussetzungen) stehen pur in
  * `shared/brandPublication.ts`; hier steht, was eine Datenbank dazu braucht.
@@ -385,7 +385,7 @@ export async function setBrandProfilePublicationVisibility(
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
- * DIE BETREIBER-SEITE (docs/plans/DISCOVER-BRANDS.md §4.4, Paket D3)
+ * DIE BETREIBER-SEITE (docs/archiv/DISCOVER-BRANDS.md §4.4, Paket D3)
  *
  * Alles ab hier hängt an `users.manage` und läuft über den Admin-Client. Es
  * steht in DERSELBEN Datei wie das Lesen des Kunden, weil es dieselbe Tabelle

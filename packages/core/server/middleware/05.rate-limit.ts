@@ -433,7 +433,7 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
    */
   { re: /^POST \/api\/contact$/, bucket: 'photos:contact', max: 3, windowMs: 600_000 },
   /**
-   * DER CLAIM-POLL DES AI-RUNNERS (docs/plans/AI-RUNNER.md § 5).
+   * DER CLAIM-POLL DES AI-RUNNERS (docs/archiv/AI-RUNNER.md § 5).
    *
    * Kein Spam-Schutz, sondern SELBST-DoS-SCHUTZ: der Runner fragt alle paar
    * Sekunden „hast du was für mich?", und ein Poll-Loop, der in einen Fehler
@@ -650,7 +650,7 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   { re: /^POST \/api\/brand\/check\/[^/]+\/correction$/, bucket: 'brand:correction', max: 3 },
   /**
    * IN DIE ÖFFENTLICHE GALERIE EINREICHEN UND WIEDER ZURÜCKZIEHEN
-   * (docs/plans/DISCOVER-BRANDS.md §6: „Drossel 10/Tag je Konto").
+   * (docs/archiv/DISCOVER-BRANDS.md §6: „Drossel 10/Tag je Konto").
    *
    * Jeder Aufruf friert ein bis zu 400 KB grosses Abbild ein, schreibt es über
    * den Admin-Client (an dem Appwrites eigene Bremse nicht greift) und legt
@@ -790,7 +790,7 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   { re: /^(PATCH|DELETE) \/api\/brand\/profiles\/[^/]+\/mark\/drafts\/[^/]+$/, bucket: 'brand:drafts-edit', max: 12 },
   /**
    * „HIER STIMMT ETWAS NICHT" — die Meldung zu einer Marke in der öffentlichen
-   * Galerie (docs/plans/DISCOVER-BRANDS.md §3.4/§6, Paket D3).
+   * Galerie (docs/archiv/DISCOVER-BRANDS.md §3.4/§6, Paket D3).
    *
    * Dieselbe Bauform und dieselbe Zahl wie beim Korrekturvorschlag zwei Zeilen
    * höher, und aus denselben Gründen: die Route hat KEIN Gate davor (gemeldet

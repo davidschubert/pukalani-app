@@ -1361,7 +1361,7 @@ export interface BrandShareViewResponse {
   expiresAt: string
 }
 
-// ── Veröffentlichen (docs/plans/DISCOVER-BRANDS.md §4.3) ────────────────────
+// ── Veröffentlichen (docs/archiv/DISCOVER-BRANDS.md §4.3) ────────────────────
 
 /**
  * DER ZUSTAND EINER VERÖFFENTLICHUNG, wie ihn Leseansicht und Brands-Karte
@@ -1435,7 +1435,7 @@ export interface BrandPublicationNotReadyData {
   blockers: BrandPublicationBlocker[]
 }
 
-// ── Moderation (docs/plans/DISCOVER-BRANDS.md §4.4, Paket D3) ───────────────
+// ── Moderation (docs/archiv/DISCOVER-BRANDS.md §4.4, Paket D3) ───────────────
 
 /**
  * EINE ZEILE DER BETREIBER-LISTE.
@@ -1960,7 +1960,7 @@ export interface BrandProfileScoresResponse {
   items: BrandProfileScores[]
 }
 
-// ── Discover Brands (docs/plans/DISCOVER-BRANDS.md §4.1/§4.2, Paket D2) ──────
+// ── Discover Brands (docs/archiv/DISCOVER-BRANDS.md §4.1/§4.2, Paket D2) ──────
 
 /**
  * WELCHE MESSUNG EINE ZAHL IST (Entscheidung 5): der Auftritt („Brand Score")

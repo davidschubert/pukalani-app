@@ -1,5 +1,7 @@
 # Gelöschtes zurückholen – Plan (WH1)
 
+> **Plan-Status (2026-11-21):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „WH1“).
+
 Stand: 2026-11-15. Noch nicht gebaut. Offener Punkt: **WH1** in
 [OPEN-ITEMS](../OPEN-ITEMS.md). Was heute gilt, steht in
 [EXPORT-UND-LOESCHUNG.md](../referenz/EXPORT-UND-LOESCHUNG.md).

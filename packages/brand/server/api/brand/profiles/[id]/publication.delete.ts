@@ -13,7 +13,7 @@ import {
 import { brandDb, loadOwnedProfile, requireProfileIdParam } from '../../../../utils/brandStore'
 
 /**
- * ZURÜCKZIEHEN (docs/plans/DISCOVER-BRANDS.md §3.2: „Zurückziehen ⇒ Seite 404,
+ * ZURÜCKZIEHEN (docs/archiv/DISCOVER-BRANDS.md §3.2: „Zurückziehen ⇒ Seite 404,
  * kein 410, kein Rest").
  *
  * ── DER ÖFFENTLICHE STAND WIRD GELÖSCHT, NICHT NUR UMGESCHALTET ──────────

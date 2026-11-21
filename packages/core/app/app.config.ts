@@ -225,7 +225,7 @@ export default defineAppConfig({
       imageModel: '',
       /**
        * VIDEOS LESEN (`aiVideo`, BI2 K5 — Plan
-       * docs/plans/BRAND-INSIGHTS-KURATION.md §6/§13) — LEER heisst AUS, und
+       * docs/archiv/BRAND-INSIGHTS-KURATION.md §6/§13) — LEER heisst AUS, und
        * das ist der Core-Default.
        *
        * Dieselbe Bauform wie die zwei Schlüssel darüber, mit einem zweiten

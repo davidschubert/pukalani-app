@@ -1,7 +1,9 @@
 # Doku-Karte
 
 Wo steht was — und was ist die **eine** Datei, in die offene Arbeit gehört.
-Stand: 2026-08-10; die Runbook-Tabelle ist am 2026-11-17 vervollständigt.
+Stand: 2026-11-21. Dass jede Datei der Sorten Steuerung, Referenz, Runbooks und
+Pläne hier steht, hält seitdem `pnpm check:doc-links` (eine neue Datei ohne
+Zeile in dieser Karte ist rot).
 
 ## Die vier Sorten
 
@@ -20,10 +22,10 @@ niemand weiß, ob ein Häkchen noch Arbeit bedeutet.
 
 | Datei | Inhalt |
 | --- | --- |
-| **[OPEN-ITEMS.md](OPEN-ITEMS.md)** | **DIE EINE offene-Punkte-Liste — und zwar NUR Offenes** (Regel von David, 2026-07-30). Eine Tabelle „Jetzt dran — in dieser Reihenfolge" mit Prio, Aufwand und „Braucht David?", darunter „Geparkt / wartet". Max. 3 Zeilen je Eintrag; Einzelheiten leben im verlinkten Plan. Neue offene Punkte kommen HIERHER — nie in ein Plan-Dokument. |
+| **[OPEN-ITEMS.md](OPEN-ITEMS.md)** | **DIE EINE offene-Punkte-Liste — und zwar NUR Offenes** (Regel von David, 2026-07-30). Sechs Schritte „Jetzt dran — in dieser Reihenfolge", je mit Tabellen (Prio, Aufwand, „Braucht David?"), darunter „Geparkt / wartet". Max. 3 Zeilen je Eintrag; Einzelheiten leben im verlinkten Plan oder je Kürzel unter [plans/offen/](plans/offen/README.md). Neue offene Punkte kommen HIERHER — nie in ein Plan-Dokument. |
 | **[OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md)** | **Finales Archiv der erledigten Punkte = unser Lern-Gedächtnis.** Jeder Eintrag vollständig, mit Datum und einer Zeile **Gelernt:**, wo etwas nicht auf Anhieb ging. Ausdrücklich KEINE Arbeitsliste — hier wird nachgelesen, nicht abgearbeitet. |
 | [GOALS.md](GOALS.md) | **Abgeschlossene Chronik** der `/goal`-Ära (Phasen 1–27, 09.06.–08.07.2026). Keine Arbeitsliste, keine neuen Phasen — was ansteht, steht in OPEN-ITEMS.md |
-| [DECISION-LOG.md](DECISION-LOG.md) | Beschluss-Protokoll: welche Entscheidung wann, mit Begründung |
+| [DECISION-LOG.md](DECISION-LOG.md) | Beschluss-Protokoll: welche Entscheidung wann, mit Begründung — neueste zuerst; eine abgelöste Entscheidung trägt die Zeile „Überholt am …" |
 | [CONCEPT.md](CONCEPT.md) | Architektur-Bibel A1–A15 (Layer-Grenzen, Verträge, Invarianten, Mandanten-Architektur) |
 
 Dazu im Repo-Wurzelverzeichnis: [../README.md](../README.md) (Einstieg +
@@ -51,6 +53,9 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [referenz/CHANGELOG-WORKFLOW.md](referenz/CHANGELOG-WORKFLOW.md) | Kunden-Changelog (von Hand im Dashboard; Function und Entwurfs-Werkzeug seit 2026-11-15 entfernt); Entwickler-CHANGELOG/release-please seit 2026-11-13 abgeschaltet |
 | [referenz/LIVE-BEWEISE.md](referenz/LIVE-BEWEISE.md) | Welche Beweis-Skripte es gibt und wogegen sie laufen |
 | [referenz/FIGMA-KORREKTURFLAECHE.md](referenz/FIGMA-KORREKTURFLAECHE.md) | Figma als Korrekturfläche: Zyklus, Token-Brücke, die vier Diff-Klassen |
+| [referenz/BRAND-WIZARD-SESSION-INHALTE.md](referenz/BRAND-WIZARD-SESSION-INHALTE.md) | Lese-Fassung der Session-Inhalte der Marken-Werkstatt (ERZEUGT aus dem Code) |
+| [referenz/BRANDING-SUPPLY-BILDMATERIAL.md](referenz/BRANDING-SUPPLY-BILDMATERIAL.md) | branding.supply: Bildmaterial-Register — je Kennung Ort, Format und Prompt |
+| [referenz/ART-27-VERTRETER-ANBIETER.md](referenz/ART-27-VERTRETER-ANBIETER.md) | EU-Vertreter nach Art. 27 DSGVO: Anbietervergleich (Unterlage zu A27, Stand 2026-09-08) |
 
 ## Runbooks — Schritt für Schritt im Betrieb
 
@@ -60,9 +65,8 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [runbooks/NEUE-SITE.md](runbooks/NEUE-SITE.md) | Neue Site auf dem App-Server: nginx aus der Vorlage (`ops/nginx/`), Pflicht-Zeilen, Kundendomain, neuer oder entfernter Zeitplan (`ops/cron.conf`) |
 | [runbooks/STRIPE-GO-LIVE-RUNBOOK.md](runbooks/STRIPE-GO-LIVE-RUNBOOK.md) | Stripe vom Testmodus auf echtes Geld |
 | [runbooks/STRIPE-TEST-WALKTHROUGH.md](runbooks/STRIPE-TEST-WALKTHROUGH.md) | Die 6 Testmodus-Proben davor |
-| [runbooks/PLATFORM-CONTROL-KEY-SWAP.md](runbooks/PLATFORM-CONTROL-KEY-SWAP.md) | Protokoll vom 2026-07-24: nur lesender Control-Plane-Schlüssel für `platform` (einmalig, erledigt; die Projektnamen dort sind die von damals) |
 | [runbooks/CI-SCHLUESSEL-TAUSCHEN.md](runbooks/CI-SCHLUESSEL-TAUSCHEN.md) | Die zwei SSH-Schlüssel der CI (Ausliefern, Wächter): wo sie liegen, was sie dürfen, tauschen ohne Stillstand, Tor-Skript auf appwrite-prod |
-| [runbooks/APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md) | Messung vom 2026-08-03: wer welchen Schlüssel im Betreiber-Projekt hielt (damals `control`, seit 2026-08-18 `admin`) — und wie man das nachmisst |
+| [runbooks/APPWRITE-KEYS.md](runbooks/APPWRITE-KEYS.md) | Schlüssel im Betreiber-Projekt `admin`: Messung vom 2026-08-03 (damals `control`), welcher Schlüssel was darf, wie man nachmisst. Der einmalige Tausch des Lese-Schlüssels für `platform` liegt als Protokoll im Archiv: [PLATFORM-CONTROL-KEY-SWAP](archiv/PLATFORM-CONTROL-KEY-SWAP.md) |
 | [runbooks/APPWRITE-WIEDERHERSTELLUNG.md](runbooks/APPWRITE-WIEDERHERSTELLUNG.md) | **Appwrite-Server weg:** aus dem nächtlichen Backup auf der Storage Box und dem einen Schlüssel zurück zur laufenden Instanz — Schritt für Schritt, dazu Betrieb des Backups, Übung, Protokoll |
 | [runbooks/DOCKER-APPS-WIEDERHERSTELLUNG.md](runbooks/DOCKER-APPS-WIEDERHERSTELLUNG.md) | **Docker-Server weg oder ein Dienst dort kaputt** (Plausible, Chatwoot, Umami, Shlink): aus dem täglichen Backup zurück — je Dienst Schritt für Schritt, dazu Betrieb des Backups, Übung, Protokoll |
 | [runbooks/APPWRITE-PROD-SPIEGEL.md](runbooks/APPWRITE-PROD-SPIEGEL.md) | Prod-Appwrite 1:1 in die lokale OrbStack-Appwrite spiegeln (Skript, was lokal bewusst anders ist, Rückweg) |
@@ -88,24 +92,29 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 Die Häkchen in Runbooks sind **echt** — sie werden pro Durchlauf abgehakt und
 gehören dort hin.
 
-## Pläne — noch nicht gebaut
+## Pläne — noch nicht (ganz) gebaut
+
+Jede Datei trägt oben die Zeile **Plan-Status** mit festem Wortlaut (nicht
+gebaut · teils gebaut — offen: … · Unterlage zu …); `pnpm check:doc-links`
+verlangt sie. Offene Punkte stehen trotzdem nur in [OPEN-ITEMS.md](OPEN-ITEMS.md).
 
 | Datei | Zustand |
 | --- | --- |
-| [archiv/BRAND-WIZARD-SESSIONS.md](archiv/BRAND-WIZARD-SESSIONS.md) | Branding-Atome (BW2): Pakete 1–8 ausgeführt 2026-09-04/05 — Lese-Fassung der 68 Session-Inhalte: [referenz/BRAND-WIZARD-SESSION-INHALTE.md](referenz/BRAND-WIZARD-SESSION-INHALTE.md) (generiert) |
-| [archiv/BRAND-MARKTVERGLEICH.md](archiv/BRAND-MARKTVERGLEICH.md) | Marktvergleich (MV1): **ausgeführt** — M0–M6b live seit 2026-09-06; offen nur noch Davids Rechts-Check und die Handprüfung der Rest-Entwürfe (OPEN-ITEMS Zeile 9) |
-| [archiv/BRAND-DESIGN.md](archiv/BRAND-DESIGN.md) | Brand Design (Produkt 02, BD1): Strategie, Konzept, Prototyp, Pakete D0–D9 + Audit — **ausgeführt und abgenommen 2026-09-09**, live auf branding.supply; Audit: [archiv/audits/BRAND-DESIGN-AUDIT-2026-09-09.md](archiv/audits/BRAND-DESIGN-AUDIT-2026-09-09.md) |
-| [plans/PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md) | Pukalani-Konto (PK1): ein Konto für alle Seiten — **Konzept geschrieben und entschieden 2026-11-12** (zentrale Anmeldung, je Seite eine Eintrittskarte, branding.supply als verbundener Dienst); setzt den Account-Horizont fort — Bau erst nach dem Gesamtaudit |
-| [plans/PRIVATE-NACHRICHTEN-KONZEPT.md](plans/PRIVATE-NACHRICHTEN-KONZEPT.md) | Stufe 1 komplett (inkl. F56, 2026-08-13); ungebaut nur Stufen 2/3 — bewusst keine offenen Punkte |
-| [plans/DASHBOARD-IA.md](plans/DASHBOARD-IA.md) | Schritt 3 + Community-Hub gebaut; **12 der 14 Schritt-4-Seiten fehlen** — als U15 jetzt in OPEN-ITEMS geführt |
-| [plans/KI-TEXTMODELL-WECHSEL.md](plans/KI-TEXTMODELL-WECHSEL.md) | Günstigeres Textmodell (KM1 c): **Aufstellung der Proben geschrieben 2026-11-19**, nichts gebaut — wartet auf Davids Ja oder Nein |
-| [plans/ANALYTICS-V2.md](plans/ANALYTICS-V2.md) | Pakete 1–4 live; Rest = Optionales (F47) |
-| [archiv/DISCOVER-BRANDS.md](archiv/DISCOVER-BRANDS.md) | Discover Brands (DB1): AUSGEFÜHRT 2026-09-08/09 — D0–D5 live (Galerie, Anatomie, Freigabe, Betreiber-Seite, Beispiel Kailua, Sitemap + OG-Bild); Konzept + acht Entscheidungen als Rezept. (Vorher: D0 (Prototyp am Dummy) wartet auf Abnahme |
-| [plans/BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) | Brand Book & Kit (Produkt 03, BK1): Strategie freigegeben + **Konzeption geschrieben 2026-09-09** (§1.11 acht + §2.20 sechs Entscheidungen: ein Produkt, dritte Schicht in `brand`, DTCG-Kit mit `brand.md`/`brand.json`, Lieferseite, Freischaltung „Ableitung", 149 € netto via BS1) — Prototyp (§2.15) wartet auf die Konzept-Freigabe |
-| [plans/BRAND-INSIGHTS.md](plans/BRAND-INSIGHTS.md) | Brand Insights (BI1): Redaktionskonzept entschieden 2026-09-07 (Davids zwölf Entscheidungen) — Strategie-/Konzeptrunde folgt nach DB1 |
-| [plans/BRAND-INSIGHTS-KURATION.md](plans/BRAND-INSIGHTS-KURATION.md) | Brand Insights Fortsetzung (BI2): Kanalliste bearbeitbar, Cluster erweitert, Filter/Sortierung, eigene Fundstück-Liste per YouTube-Link, Dreifach-Urteil, KI-Brief aus Video, Kommentare nach I3 — **Konzept geschrieben 2026-09-09, drei Entscheidungsfragen offen (A/B/C)** |
-| [plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) | branding.supply — Rechtstexte + Bezahlweg (BS1): Strategie + Konzept geschrieben 2026-09-07, acht Entscheidungsfragen offen; Vorbedingung fürs Öffnen der Beta |
-| [plans/F7-PAYMENTS-CONNECT.md](plans/F7-PAYMENTS-CONNECT.md) | Entscheidungsvorlage, nichts gebaut (F7) |
+| [plans/PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md) | Pukalani-Konto (PK1): ein Konto für alle Seiten — Konzept geschrieben und entschieden 2026-11-12, nichts gebaut; Bau erst nach dem Gesamtaudit |
+| [plans/ACCOUNT-HORIZONT.md](plans/ACCOUNT-HORIZONT.md) | Account-Horizont (AH-1 … AH-7): teils gebaut; die Fortsetzung ist das Pukalani-Konto |
+| [plans/WIEDERHERSTELLUNG.md](plans/WIEDERHERSTELLUNG.md) | Gelöschtes zurückholen (WH1): nicht gebaut, wartet auf die Freigabe des Prototyps |
+| [plans/KI-TEXTMODELL-WECHSEL.md](plans/KI-TEXTMODELL-WECHSEL.md) | Günstigeres Textmodell (KM1): Aufstellung der Proben vom 2026-11-19, nichts gebaut |
+| [plans/BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) | Brand Book & Kit (Produkt 03, BK1): K0 bis K6 gebaut; offen K7, K8 und Davids Blicke |
+| [plans/BRAND-INSIGHTS.md](plans/BRAND-INSIGHTS.md) | Brand Insights (BI1): I0 bis I5 und I6 Stufe 1 gebaut; offen I6 Stufe 2, Anwaltsantworten, Newsletter-Schalter. Die Fortsetzung BI2 (Kuration) ist gebaut: [archiv/BRAND-INSIGHTS-KURATION.md](archiv/BRAND-INSIGHTS-KURATION.md) |
+| [plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md](plans/BRANDING-SUPPLY-RECHT-UND-BEZAHLUNG.md) | branding.supply — Rechtstexte und Bezahlweg (BS1): entschieden 2026-09-07, teils gebaut; offen R2, R2c, R3, Z1 |
+| [plans/BRANDING-SUPPLY-FAKTENBLATT.md](plans/BRANDING-SUPPLY-FAKTENBLATT.md) | Unterlage zu BS1: Faktenblatt für den Rechtstext-Generator und den Anwalt |
+| [plans/BRANDING-SUPPLY-RECHTSTEXTE-ENTWURF.md](plans/BRANDING-SUPPLY-RECHTSTEXTE-ENTWURF.md) | Unterlage zu BS1: Erstfassung der Rechtstexte aus dem Generator — Entwurf, ungeprüft |
+| [plans/BRANDING-SUPPLY-INFRA.md](plans/BRANDING-SUPPLY-INFRA.md) | branding.supply als eigene Site: **gebaut und live seit 2026-09-01**. Liegt noch hier, weil `CLAUDE.md` auf diesen Pfad zeigt; zieht mit dem Zeiger um |
+| [plans/STUDIO-ERSTGESPRAECH-FUNNEL.md](plans/STUDIO-ERSTGESPRAECH-FUNNEL.md) | Studio-Funnel: der Erstgespräch-Wizard ist live; offen die Reste aus W2 bis W4 |
+| [plans/PRIVATE-NACHRICHTEN-KONZEPT.md](plans/PRIVATE-NACHRICHTEN-KONZEPT.md) | Private Nachrichten: Stufe 1 live; ungebaut der Rest von Stufe 2 und Stufe 3 — bewusst keine offenen Punkte |
+| [plans/F7-PAID-COMMUNITIES-KONZEPT.md](plans/F7-PAID-COMMUNITIES-KONZEPT.md) | Bezahlte Mitgliedschaften (F7): Konzept, vier Entscheidungen gefallen (2026-08-15), nichts gebaut |
+| [plans/F7-PAYMENTS-CONNECT.md](plans/F7-PAYMENTS-CONNECT.md) | F7, Geldfluss 2: Entscheidungsvorlage vom 2026-08-01, nichts gebaut |
+| [plans/offen/](plans/offen/README.md) | **Einzelheiten je offenem Punkt** (eine Datei je Kürzel, seit 2026-11-21): was bis dahin im Anhang von OPEN-ITEMS.md stand. Keine zweite Liste |
 
 **Regel:** Sobald ein Plan ausgeführt ist, wandert er nach `archiv/` und seine
 Reste nach `OPEN-ITEMS.md`. Ein Plan-Dokument ist nie eine To-do-Liste.
@@ -124,19 +133,35 @@ Erledigte Betriebs-Skripte (Appwrite-Upgrades) liegen unter
 [archiv/skripte/](archiv/skripte/README.md) — dort steht auch die Regel, wann
 ein Skript archiviert und wann es gelöscht wird.
 
-`archiv/` enthält 38 abgearbeitete Pläne (M1–M10, Phase 17, Themes-Vollausbau,
-Embed-Widget, Landingpage, SaaS-Roadmap, zuletzt das
-[Discussions-Konzept](archiv/DISCUSSIONS-KONZEPT.md) und den [Pool/Silo-Blueprint](archiv/HORIZONT-3-POOL-SILO-BLUEPRINT.md), …) und `archiv/audits/` die sechs
-Audits (Gesamtaudit 05.07., Pool-Audit 27.07., Dashboard-Audit 28.07. sowie
-die drei Berichte vom 09.08.: [UX-Trichter](archiv/audits/2026-08-09-ux-trichter.md),
+`archiv/` enthält die abgearbeiteten Pläne (M1–M10, Phase 17, Themes-Vollausbau,
+Embed-Widget, Landingpage, SaaS-Roadmap, das
+[Discussions-Konzept](archiv/DISCUSSIONS-KONZEPT.md), den
+[Pool/Silo-Blueprint](archiv/HORIZONT-3-POOL-SILO-BLUEPRINT.md), die Pläne der
+Marken-Werkstatt wie [Brand-Wizard Phase 1](archiv/BRAND-WIZARD-PHASE-1.md),
+[Branding-Atome](archiv/BRAND-WIZARD-SESSIONS.md),
+[Marktvergleich](archiv/BRAND-MARKTVERGLEICH.md),
+[Brand Design](archiv/BRAND-DESIGN.md) und
+[Discover Brands](archiv/DISCOVER-BRANDS.md), dazu
+[AI-Runner](archiv/AI-RUNNER.md), [Analytics v2](archiv/ANALYTICS-V2.md) und die
+[Dashboard-Informationsarchitektur](archiv/DASHBOARD-IA.md), …). Die Karte zählt
+sie nicht einzeln auf — ins Archiv kommt man über einen Verweis, nicht über
+eine Liste.
+
+`archiv/audits/` enthält die Audits: Gesamtaudit 05.07., Pool-Audit 27.07.,
+Dashboard-Audit 28.07., die drei Berichte vom 09.08.
+([UX-Trichter](archiv/audits/2026-08-09-ux-trichter.md),
 [UX-Dashboard](archiv/audits/2026-08-09-ux-dashboard.md),
-[Wettbewerbsvergleich](archiv/audits/2026-08-09-wettbewerb-benchmark.md) — ihre
-Pakete stehen als U1–U15 in [OPEN-ITEMS.md](OPEN-ITEMS.md)).
+[Wettbewerbsvergleich](archiv/audits/2026-08-09-wettbewerb-benchmark.md)), die
+Audits vom 15. und 16.08., das Audit der Session-Inhalte (04.09.) und das
+[Brand-Design-Audit](archiv/audits/BRAND-DESIGN-AUDIT-2026-09-09.md) (09.09.).
+Das Gesamtaudit 2026-11 liegt bewusst nicht im Repo
+([runbooks/GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md)).
 
 Sie sind wertvoll als **Begründung** („warum liegt das so?") und als **Rezept**
 (der nächste Server folgt Phase 17 wieder) — aber niemand muss sie lesen, um zu
 wissen, was zu tun ist. Ihre offenen Kästchen sind bewusst zu Aufzählungen
-entschärft, damit sie nicht als Arbeit gelesen werden.
+entschärft, damit sie nicht als Arbeit gelesen werden (ein offenes Kästchen im
+Archiv ist in `pnpm check:doc-links` rot).
 
 ## Doku-Site (`docs/content/`)
 

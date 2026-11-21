@@ -1,7 +1,7 @@
 /**
  * Migration control-032: E10 — zentrales Kunden-Feedback im Control Plane.
  *
- * Davids Auftrag (docs/plans/CUSTOMER-FEEDBACK.md): was auf irgendeiner
+ * Davids Auftrag (docs/archiv/CUSTOMER-FEEDBACK.md): was auf irgendeiner
  * Community- oder Website-Seite in den Feedback-Knopf getippt wird, läuft
  * ZENTRAL beim Betreiber auf. Deshalb liegen die Zeilen HIER und nirgends
  * sonst — es gibt eine Wahrheit, keine Spiegelzeile (Entscheidung 1).

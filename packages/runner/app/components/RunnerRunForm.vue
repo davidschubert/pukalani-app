@@ -8,7 +8,7 @@ import { PERMISSION_MODES, type PermissionMode, type RunStartOptions, type Runne
 
 /**
  * „Vor dem Lauf": Rechner, Modell, Modus, Repo, Budget, Testbefehle
- * (docs/plans/AI-RUNNER.md § 9).
+ * (docs/archiv/AI-RUNNER.md § 9).
  *
  * DAS FORMULAR BAUT DEN AUFTRAG NICHT — es wählt nur, WIE gelaufen wird. Was
  * gelaufen wird, baut der Server (RU1 b); `promptSource` und `promptTrusted`

@@ -1,7 +1,7 @@
 /**
  * Migration insights-007: `insights_watchlist` — DIE EIGENE VIDEO-LISTE.
  *
- * Paket BI2 K4, Plan docs/plans/BRAND-INSIGHTS-KURATION.md §4 und §5.
+ * Paket BI2 K4, Plan docs/archiv/BRAND-INSIGHTS-KURATION.md §4 und §5.
  * Gemeinsame Regeln wie insights-001…006 (server-only `permissions: []` /
  * `rowSecurity: false`, kein `communityId`, Indizes nur über
  * `createIndexSteps`, idempotent 409 → skip); sie läuft ausschliesslich auf

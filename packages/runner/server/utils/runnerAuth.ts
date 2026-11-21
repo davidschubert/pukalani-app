@@ -4,7 +4,7 @@ import { RUNNERS_TABLE, type RunnerRow } from '../../shared/types/runner'
 import { softFail } from '../../../core/server/utils/softFail'
 
 /**
- * Die Runner-Naht: Bearer-Secret statt Session (docs/plans/AI-RUNNER.md § 5).
+ * Die Runner-Naht: Bearer-Secret statt Session (docs/archiv/AI-RUNNER.md § 5).
  *
  * TOKEN-FORMAT `<runnerRowId>.<secret>`. Die Row-Id VOR dem Punkt ist kein
  * Schmuck: ohne sie müsste der Server jede Runner-Zeile laden und gegen jeden

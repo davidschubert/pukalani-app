@@ -1,6 +1,6 @@
 /**
  * Migration brand-005: `brand_invites` — die Einladungen der Beta
- * (docs/plans/BRAND-WIZARD-SCHEMA.md §5). Gemeinsame Regeln aller
+ * (docs/archiv/BRAND-WIZARD-SCHEMA.md §5). Gemeinsame Regeln aller
  * brand_*-Tabellen: Kopf von `001-brand-profiles.ts`.
  *
  * ── E-MAIL-GEBUNDEN UND NUR ALS HASH (M9-Muster) ──────────────────────────

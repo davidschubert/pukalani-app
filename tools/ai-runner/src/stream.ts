@@ -1,7 +1,7 @@
 import type { RunEventKind, RunFinalStatus } from './protocol.ts'
 
 /**
- * `stream-json` lesen und VERDICHTEN — docs/plans/AI-RUNNER.md § 4/§ 7.2
+ * `stream-json` lesen und VERDICHTEN — docs/archiv/AI-RUNNER.md § 4/§ 7.2
  * Schritt 6 und § 11.
  *
  * In `run_events` gehört BEWUSST NICHT das komplette Protokoll (§ 4): das volle

@@ -1,5 +1,8 @@
 # Umbau-Auftrag: Die echte Werkstatt wird „Gespräch als Bühne"
 
+> **Archiviert am 2026-11-21 (Q19).** Der Umbau „Gespräch als Bühne“ ist seit dem 2026-09-03 live (Eintrag in [OPEN-ITEMS-COMPLETE.md](../OPEN-ITEMS-COMPLETE.md)). Die Zeile „wartet auf Davids Freigabe“ unten ist der Stand vom 2026-09-02.
+> Dieses Dokument ist Protokoll, keine Arbeitsliste.
+
 Stand 2026-09-02 · Status: **wartet auf Davids Freigabe** · Ausführung: zwei
 Opus-Läufe (Zuschnitt unten), Verifikation im Fable-Hauptloop.
 

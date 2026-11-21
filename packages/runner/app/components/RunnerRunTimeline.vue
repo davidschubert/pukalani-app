@@ -2,7 +2,7 @@
 import type { RunEventRow } from '../../shared/types/runner'
 
 /**
- * Die Ereigniszeilen eines Laufs — docs/plans/AI-RUNNER.md § 9.
+ * Die Ereigniszeilen eines Laufs — docs/archiv/AI-RUNNER.md § 9.
  *
  * BEWUSST KEINE `UTable`, und das ist die begründete Ausnahme von B6: eine
  * Datenliste beantwortet „welche Zeile suche ich?" und braucht dafür

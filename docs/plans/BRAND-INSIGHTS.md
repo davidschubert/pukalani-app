@@ -1,5 +1,7 @@
 # Brand Insights — Redaktionskonzept (BI1)
 
+> **Plan-Status (2026-11-21):** teils gebaut — offen: I6 Stufe 2, zwei Anwaltsantworten, der Newsletter-Schalter ([OPEN-ITEMS](../OPEN-ITEMS.md) „BI1“). I0 bis I5 und I6 Stufe 1 sind gebaut; die Status-Zeile darunter ist der Stand vom 2026-09-08.
+
 Status: **Prototyp I0 FREIGEGEBEN 2026-09-08** (Davids Wort: „so bauen") — Phase 4
 des Workflows ist durch. Der **Bau I1+ startet trotzdem noch nicht**: er hängt an
 **DB1**, an der **Anwaltsantwort** und am **Google-API-Schlüssel** (die Gates aus
@@ -23,7 +25,7 @@ steht ausschliesslich in [OPEN-ITEMS.md](../OPEN-ITEMS.md) (Zeile `BI1`).
 
 „Brand Insights" ist der redaktionelle Bereich von branding.supply. Vorgemerkt
 ist er seit dem 2026-08-29 im Phase-1-Plan, Abschnitt „Journal &
-Content-Intelligence" ([BRAND-WIZARD-PHASE-1.md](BRAND-WIZARD-PHASE-1.md)); dort
+Content-Intelligence" ([BRAND-WIZARD-PHASE-1.md](../archiv/BRAND-WIZARD-PHASE-1.md)); dort
 stehen auch die Nav-Benennung vom 2026-08-30 (**„Brand Insights"** statt
 „Journal", die Galerie daneben heisst **„Discover Brands"**), YouTube als
 Research-Signal, der Content Opportunity Score, die Pipeline
@@ -1011,7 +1013,7 @@ die über den Zuschnitt von I4 hinausgehen: die Kanalliste einsehen und
 bearbeiten, die Cluster erweitern, filtern und sortieren, eine eigene
 Fundstück-Liste per YouTube-Link, ein Dreifach-Urteil je Video, und aus einem
 Video einen Artikel. Sie stehen als eigener Plan in
-**[BRAND-INSIGHTS-KURATION.md](BRAND-INSIGHTS-KURATION.md)** (Pakete K1–K7,
+**[BRAND-INSIGHTS-KURATION.md](../archiv/BRAND-INSIGHTS-KURATION.md)** (Pakete K1–K7,
 drei Entscheidungsfragen offen) — dieses Dokument bleibt der Stand von BI1.
 
 ### 9.7 Messung — drei Ziele, drei Zahlen

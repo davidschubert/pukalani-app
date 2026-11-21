@@ -174,25 +174,25 @@ dem Runner-Stopp; Werkzeug: `--phase inventory`.
 
 ## 5 · Verifikation (nichts davon ist optional, dreimal statt einmal)
 
-- [ ] Betreiber-Login auf `admin.pukalani.app` (OTP) — neues Cookie
+- (ohne Haken) Betreiber-Login auf `admin.pukalani.app` (OTP) — neues Cookie
       `a_session_admin`, Dashboard vollständig (Communities-Liste = 8 Rows).
 - [x] Mandanten-Auflösung über das NEUE Projekt: `demo.pukalani.app`,
       `comments.pukalani.app` UND `freelancer.supply` (Kundendomain) → je
       200; Health beider Sites 3× in Folge ok. (DIE Risiko-Stelle — grün.)
-- [ ] Realtime in der Konsole lebt: Glocke/Live-Theme reagiert (sonst
+- (ohne Haken) Realtime in der Konsole lebt: Glocke/Live-Theme reagiert (sonst
       Web-Platform aus Schritt 1 prüfen, F45).
 - [x] Presence-Probe gegen den neuen Runtime-Key: Liste, kein 401
       (AH-1-Stolperstein ausgeschlossen).
-- [ ] Stripe-Testereignis an `https://admin.pukalani.app/api/stripe/webhook`
+- (ohne Haken) Stripe-Testereignis an `https://admin.pukalani.app/api/stripe/webhook`
       → 200 (URL unverändert, aber der Handler liest jetzt aus `admin`).
 - [x] AI-Runner neu gestartet (12:44:06, KEINE Config-Änderung nötig — er
       spricht HTTP mit der Konsole, seine `runners`-Zeile wanderte mit) —
       Heartbeat `lastSeenAt` landet im Projekt `admin` (12:44:07): der
       authentifizierte Schreibpfad Konsole→admin ist damit Ende-zu-Ende
       bewiesen.
-- [ ] `packages/control/scripts/verify-onboarding.mjs` und
+- (ohne Haken) `packages/control/scripts/verify-onboarding.mjs` und
       `packages/onboarding/scripts/verify-control-exit.mjs`: ______ / ______
-- [ ] Eine Community anlegen/ändern über den Wizard-Weg (Service-Naht
+- (ohne Haken) Eine Community anlegen/ändern über den Wizard-Weg (Service-Naht
       platform→control schreibt jetzt in `admin`).
 
 ## 6 · Aufräumen (Schlüssel-Teil am 2026-08-18 vorgezogen — Davids Auftrag „Keys entfernen, Rechte anpassen")

@@ -1,7 +1,7 @@
 /**
  * Migration brand-020: DIE ÖFFENTLICHE MARKENGALERIE — `publicationVisibility`
  * am Profil, `brand_publications` und `brand_publication_reports`
- * (docs/plans/DISCOVER-BRANDS.md §5, Paket D1).
+ * (docs/archiv/DISCOVER-BRANDS.md §5, Paket D1).
  *
  * NUMMER: 019 (`brand-profiles-market-visibility`) war der letzte Stand auf
  * `origin/main` und in jedem Arbeitsbaum (2026-09-08 geprüft); 020 ist die

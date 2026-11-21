@@ -4,7 +4,7 @@ import type { RecentRunsResponse, RunRow, RunnerPublic, RunnerUpdatedResponse, R
 
 /**
  * AI-Runner — Rechner verwalten und Läufe verfolgen
- * (docs/plans/AI-RUNNER.md § 9, Paket 3).
+ * (docs/archiv/AI-RUNNER.md § 9, Paket 3).
  *
  * Zwei Tabellen, zwei Fragen: WELCHE Rechner gibt es (und meldet sich einer
  * noch?) und WAS lief zuletzt. Beides sind Datenlisten mit gleichartigen

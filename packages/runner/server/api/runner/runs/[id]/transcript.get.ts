@@ -2,7 +2,7 @@ import { FILE_RESPONSE_HEADERS } from '../../../../../../core/shared/fileDeliver
 import { RUNNER_FILES_BUCKET, RUNS_TABLE, type RunRow } from '../../../../../shared/types/runner'
 
 /**
- * Das Transkript eines Laufs herunterladen — docs/plans/AI-RUNNER.md § 5/§ 9,
+ * Das Transkript eines Laufs herunterladen — docs/archiv/AI-RUNNER.md § 5/§ 9,
  * BOARD-Seite (Session + `runner.manage`), NICHT die Runner-Naht.
  *
  * Das Gegenstück zu `transcript.post.ts` (der Runner LÄDT HOCH, mit

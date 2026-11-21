@@ -57,7 +57,7 @@ Browser des Owners
                                                  (packages/billing/server/api/stripe/webhook.post.ts)
       · apps/control/server/plugins/billing-fulfillment.ts
       · handleCommunitySubscriptionUpdate         (packages/control/server/utils/communityBilling.ts)
-      → schreibt die `communities`-Row im Projekt `control`
+      → schreibt die `communities`-Row im Projekt `admin`
 ```
 
 `communityId` kommt **nie** aus dem Body (`requireCommunityTeamGate` in
@@ -108,7 +108,8 @@ https://admin.pukalani.app/api/stripe/webhook
 ```
 
 **Stripe folgt keiner Weiterleitung:** der Altname `control.pukalani.app`
-antwortet seit dem AH-4-Cutover mit 301, das reicht für einen Webhook nicht.
+ist seit dem 2026-08-18 bewusst tot und antwortet 404 (vorher 301, auch das
+reichte für einen Webhook nicht).
 Die URL im Stripe-Dashboard aktiv umhängen — im Test-Modus genauso wie live.
 
 Die Ereignis-Liste ist seit 2026-08-02 **neun** Einträge lang, nicht mehr sechs
@@ -178,10 +179,10 @@ Stripe-Seite:
    (`apps/control/server/utils/communityCheckout.ts`).
 2. **Die Seite springt NICHT von selbst auf den neuen Plan.** Der Erfolgs-Toast
    sagt „in Kürze". Das ist Absicht und kein Fehler: `communities` liegt im
-   Projekt `control`, in dem dieser Browser weder Sitzung noch Leserecht hat —
+   Projekt `admin`, in dem dieser Browser weder Sitzung noch Leserecht hat —
    es gibt für Branding und Plan keine Live-Propagation (CLAUDE.md/D6). Nach
    dem nächsten Seitenaufbau (Resolver-Cache ≤ 30 s) steht der neue Plan da.
-3. **Im Projekt `control`, Tabelle `communities`, Zeile dieser Community:**
+3. **Im Projekt `admin`, Tabelle `communities`, Zeile dieser Community:**
 
    | Spalte | Soll |
    |---|---|
@@ -193,7 +194,7 @@ Stripe-Seite:
    | `pastDueSince` | leer |
    | `suspension` | leer (eine `billing`-Sperre fiele hier automatisch; eine `abuse`-Sperre bliebe) |
 
-4. **Im Projekt `control`, Tabelle `billing_subscriptions`:** eine Spiegel-Zeile
+4. **Im Projekt `admin`, Tabelle `billing_subscriptions`:** eine Spiegel-Zeile
    mit diesem `stripeSubscriptionId` und `status: active`.
 5. Im Stripe-Test-Dashboard: Subscription `active`, und auf ihr die Metadata
    `communityId` / `plan` / `userId`. **Ohne `communityId` in der Metadata
@@ -308,7 +309,7 @@ bewusst, und geprüft wäre nur die Signatur. Der ECHTE Weg läuft über eine
 
 **Und eine Frage, die diese Probe beantworten soll (offen, bitte hinsehen):**
 der Webhook legt zusätzlich eine In-App-Benachrichtigung „Zahlung
-fehlgeschlagen" an — im Projekt `control`, adressiert an
+fehlgeschlagen" an — im Projekt `admin`, adressiert an
 `billing_subscriptions.userId`. Dieser Wert stammt aus der Checkout-Metadata und
 ist die **Nutzer-Id aus dem Pool-Projekt** (`identity.userId` in
 `packages/control/server/utils/communityTeam.ts`), nicht die eines

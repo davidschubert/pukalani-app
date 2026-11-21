@@ -4,7 +4,7 @@ import type { RunnerApi } from './api.ts'
 import type { RunAttachment } from './protocol.ts'
 
 /**
- * Material für den Lauf — docs/plans/AI-RUNNER.md § 6.
+ * Material für den Lauf — docs/archiv/AI-RUNNER.md § 6.
  *
  * Der Ordner liegt beim Runner (`<stateDir>/runs/<runId>/`), NICHT im Repo.
  * Weil die CLI den Worktree selbst anlegt, startet der Agent mit cwd IM

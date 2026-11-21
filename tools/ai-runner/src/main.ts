@@ -7,7 +7,7 @@ import { isSafeRunId } from './protocol.ts'
 import { executeRun } from './run.ts'
 
 /**
- * Der Daemon — docs/plans/AI-RUNNER.md § 7.
+ * Der Daemon — docs/archiv/AI-RUNNER.md § 7.
  *
  * Er ZIEHT sich Arbeit (§ 3.2: Polling statt Realtime, weil ein
  * Hintergrunddienst Standby, Netzwechsel und VPN überleben soll) und fährt

@@ -15,7 +15,7 @@ import { brandDb } from '../../../utils/brandStore'
 
 /**
  * „HIER STIMMT ETWAS NICHT" — die öffentliche Meldung zu einer Marke in der
- * Galerie (docs/plans/DISCOVER-BRANDS.md §3.4, §6).
+ * Galerie (docs/archiv/DISCOVER-BRANDS.md §3.4, §6).
  *
  * Die dritte öffentliche SCHREIB-Route dieses Layers nach der Warteliste und
  * dem Korrekturvorschlag, und wie diese ohne jeden Beweis davor. Sie muss es

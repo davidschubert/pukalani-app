@@ -1,5 +1,7 @@
 # Pukalani-Konto — ein Konto für alle Seiten
 
+> **Plan-Status (2026-11-21):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
+
 **Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-12 · Status: Konzept
 geschrieben, Davids Entscheidungen gefallen (§ 10) — der Bau beginnt erst nach
 dem Gesamtaudit.** Nichts hiervon ist umgesetzt — keine Code-Änderung, keine

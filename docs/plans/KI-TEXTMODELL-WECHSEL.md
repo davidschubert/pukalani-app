@@ -1,5 +1,7 @@
 # Günstigeres Textmodell – Aufstellung der Proben (KM1 c)
 
+> **Plan-Status (2026-11-21):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „KM1“).
+
 Stand: 2026-11-19. Nichts gebaut, nichts gewechselt, kein Aufruf bezahlt.
 Offener Punkt: **KM1** in [OPEN-ITEMS](../OPEN-ITEMS.md). David hat am
 2026-11-19 geklickt: „Ja, Proben vorbereiten". Gewechselt wird erst nach
