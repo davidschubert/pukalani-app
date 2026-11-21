@@ -15,6 +15,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'feedback',
   tier: 'optional',
+  kind: 'product',
   hasMigrations: false,
   userData: true,
   apiPrefixes: ['/api/feedback'],

@@ -26,6 +26,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'blueprint',
   tier: 'foundation',
+  kind: 'seam',
   requires: ['posts', 'comments', 'events', 'courses'],
   hasMigrations: false,
   userData: false,

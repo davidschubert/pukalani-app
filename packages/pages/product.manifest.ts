@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'pages',
   tier: 'optional',
+  kind: 'product',
   hasMigrations: true,
   userData: false,
   // Schema-Probe (OPS-008): pages-007 legt `pages_runs` an (Lauf-Sperre der

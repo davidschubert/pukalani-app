@@ -14,6 +14,7 @@
  * und Header, die Entscheidungen hier sind reine Zeichenketten-Arbeit.
  */
 
+import { aiCrawlerPolicy, buildRobotsTxt, type AiCrawlerPolicy } from '../../../../packages/core/shared/aiCrawlers'
 import { primaryLocalePath, resolvePrimaryLocale, type PrimaryLocale } from '../../../../packages/core/shared/primaryLocale'
 import { discussionCategoryPath, discussionTopicPath, slugify, TOPIC_SLUG_FALLBACK } from '../../../../packages/posts/shared/discussionUrl'
 
@@ -229,18 +230,17 @@ export function tenantSitemapXml(origin: string, entries: readonly TenantSitemap
  * würde die Kunden-Domain gegen den Betreiber ausspielen); es ist derselbe
  * Grund, aus dem canonical/hreflang seit Befund B1 aus dem Request-Host kommen.
  */
-export function tenantRobotsTxt(origin: string): string {
-  return [
-    'User-agent: *',
-    'Allow: /',
+export function tenantRobotsTxt(origin: string, policy: AiCrawlerPolicy = aiCrawlerPolicy('community')): string {
+  // KI-Crawler (B2): Suche und Antworten ja, Training nein — die Texte gehören
+  // den Mitgliedern. `policy` ist der Platz für den späteren Owner-Schalter:
+  // die Route reicht dann `aiCrawlerPolicy('community', { training: … })`.
+  return buildRobotsTxt({
+    policy,
     // Kein Index-Material: API-Antworten (Health/Telemetrie/Daten) und der
     // Betreiberbereich (hinter Anmeldung, ein Crawler sieht dort nur Redirects).
-    'Disallow: /api/',
-    'Disallow: /dashboard/',
-    '',
-    `Sitemap: ${origin}/sitemap.xml`,
-    '',
-  ].join('\n')
+    rules: ['Allow: /', 'Disallow: /api/', 'Disallow: /dashboard/'],
+    sitemap: `${origin}/sitemap.xml`,
+  })
 }
 
 /**
@@ -261,13 +261,11 @@ export function tenantRobotsTxt(origin: string): string {
  * schmale Form wie auf der Betreiber-Oberfläche (Q04).
  */
 export function controlHostRobotsTxt(): string {
-  return [
-    'User-agent: *',
-    'Allow: /',
-    'Disallow: /api/',
-    'Disallow: /dashboard/',
-    '',
-  ].join('\n')
+  // KI-Crawler: unsere eigene Seite (B2) — Regel in `aiCrawlers.ts`.
+  return buildRobotsTxt({
+    policy: aiCrawlerPolicy('own'),
+    rules: ['Allow: /', 'Disallow: /api/', 'Disallow: /dashboard/'],
+  })
 }
 
 /**
@@ -287,9 +285,6 @@ export function controlHostRobotsTxt(): string {
  * braucht Tage bis Wochen, genau das sagt der Hinweis im Dashboard.
  */
 export function membersOnlyRobotsTxt(): string {
-  return [
-    'User-agent: *',
-    'Disallow: /',
-    '',
-  ].join('\n')
+  // KI-Crawler (B2, Art `closed`): auch ihre Gruppen sagen `Disallow: /`.
+  return buildRobotsTxt({ policy: aiCrawlerPolicy('closed'), rules: ['Disallow: /'] })
 }

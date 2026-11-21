@@ -5,6 +5,9 @@ paths:
   - "**/app.vue"
   - "**/pages/**"
   - "**/llms.txt*"
+  - "**/robots.txt*"
+  - "**/*Sitemap.ts"
+  - "packages/core/shared/aiCrawlers.ts"
   - "**/*sonLd.ts"
   - "scripts/check-i18n-keys.mjs"
   - "packages/core/shared/seoOrigin.ts"
@@ -94,3 +97,9 @@ paths:
   Verhalten, endet der PR mit `git grep` nach dem alten Satz in allen
   Sprachdateien. Feste Wörter für neuen Text: Konto/account ·
   Einladungscode/invite code · Markenberater/brand advisor.
+- KI-CRAWLER (B2, Q11): jede `robots.txt` baut mit `buildRobotsTxt()` aus
+  `packages/core/shared/aiCrawlers.ts` — eigene Seiten `own` (alles),
+  öffentliche Community `community` (kein Training), geschlossene `closed`.
+  Neuer Crawler-Name nur mit Quelle beim Anbieter. Wächter:
+  `packages/core/tests/aiCrawlers.test.ts` (jede Route), täglich
+  `scripts/ops/verify-delivery.mjs` (Prüfung `ki`). Eine Bitte, keine Sperre.

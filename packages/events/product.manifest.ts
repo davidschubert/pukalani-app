@@ -3,6 +3,9 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'events',
   tier: 'optional',
+  kind: 'product',
+  // Meldungen zu Terminen: Ziel registrieren, offene Meldungen lesen (Q18).
+  requires: ['moderation'],
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): events-013 legt events.translations an.

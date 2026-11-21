@@ -25,6 +25,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'marketing',
   tier: 'foundation',
+  kind: 'foundation',
   hasMigrations: false,
   userData: false,
   title: { en: 'Marketing chrome', de: 'Marketing-Chrome' },

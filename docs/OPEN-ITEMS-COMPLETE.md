@@ -92,6 +92,90 @@ ihr Ergebnis danach nicht mehr ablegen.
 
 ---
 
+### Q18 — Lint und Manifest: Lint aus dem Hauptordner prüft Server-Dateien, die Einordnung der Layer hat eine Quelle, `pnpm check` = Lint-Lauf der CI (ARC-003, ARC-004, Code-Teil von ARC-008, DOC-012) ✅ 2026-11-21
+
+**Was.** Vier Lücken mit derselben Ursache: eine von Hand geführte Liste neben
+der Quelle, oder eine Prüfung, die nicht prüfen konnte und trotzdem „grün"
+sagte.
+
+1. **Lint aus dem Hauptordner (ARC-004).** Die Nuxt-Vorlage schaltet
+   TypeScript nur ein, wenn das ARBEITSVERZEICHNIS `typescript` kennt. Aus dem
+   Hauptordner tat es das nicht: `eslint packages/<layer>/server/…` meldete
+   „ignored" mit Code 0 oder las TypeScript mit dem JavaScript-Parser
+   (Parse-Fehler). `eslint.config.mjs` schaltet es jetzt ausdrücklich ein
+   (`features.typescript: true`). `eslint packages apps` aus dem Hauptordner
+   liefert seither dasselbe wie `pnpm -r lint` (0 Fehler, dieselben 6
+   Warnungen wie vorher).
+2. **Eine Quelle für die Einordnung (ARC-008, Davids Entscheidung R1:
+   `admin`, `billing`, `themes` sind Fundament).** Neues Pflichtfeld `kind` in
+   jedem `product.manifest.ts`: `base` (core, system), `foundation`
+   (moderation, marketing, themes, admin, billing), `seam` (blueprint,
+   control, onboarding, domains), `product` (die übrigen 15).
+   `eslint.config.mjs` liest es (`scripts/lib/layer-kinds.mjs`, als Text,
+   damit auch ein Editor mit anderem Node die Konfiguration laden kann). Die
+   Regel ist zweistufig: Stufe 1 kennt nur sich, Stufe 2 nur Stufe 1 —
+   auch kein Nachbar derselben Stufe. Vorher galt „Fundament kennt Fundament",
+   und ein Import aus `core` nach `admin` oder `billing` ging durch.
+   `check:manifests` Prüfung 11 hält Manifest, Text-Leser und die Tabelle in
+   `docs/CONCEPT.md` A14 zusammen (A14 ist jetzt nach `kind` geordnet;
+   `market` und `insights` fehlten dort ganz). Die drei Layer halten die
+   Regel ein: kein einziger Import aus ihnen in Stufe 1, keiner quer.
+3. **Abhängigkeiten über Auto-Import (ARC-003).** `check:manifests` Prüfung
+   12 (`scripts/lib/autoimport-coupling.mjs`, < 1 s): nutzt ein Layer einen
+   Namen eines anderen Layers ohne Import-Zeile, steht dieser in `requires`
+   (auch transitiv) oder ist Stufe 1; ein Fundament-Layer verlangt nie ein
+   Produkt oder eine Naht. Gefunden und eingetragen: acht Paare — die drei
+   aus dem Befund (`insights` → `comments`, `control` → `feedback`,
+   `comments`/`control` → `admin`) und fünf weitere (`admin` → `themes`,
+   `events` → `moderation`, `onboarding` → `pages` und `themes`). Jede App,
+   die einen dieser Layer mitliefert, hatte den gebrauchten schon dabei —
+   Prüfung 3 (requires-Schluss) blieb grün. Ein Fall aus der Messung des
+   Audits war ein Fehlalarm (ein Parameter `siteProjectId`, kein Aufruf).
+4. **`pnpm check` (DOC-012).** Die Liste des Lint-Laufs steht in
+   `scripts/lib/check-steps.mjs`; `pnpm check` fährt sie (alle Schritte,
+   am Ende eine Tabelle mit Dauer), der Job `lint` ruft nur noch
+   `pnpm check`. `packages/core/tests/checkSteps.test.ts`: der Job ruft
+   genau diesen Befehl, jeder Schritt nennt ein vorhandenes Skript, jedes
+   `check:*`-Skript läuft irgendwo oder steht mit Grund in `NOT_IN_CHECK`
+   (heute nur `check:secrets`, eigener Job).
+
+**Beweise.** Gegenproben aus Session 8 als dauerhafte Tests:
+`packages/core/tests/eslintRootProbes.test.ts` (Proben 3, 4, 9, 10 aus dem
+Hauptordner rot, erlaubte Importe grün; ohne `typescript: true` werden 4 von
+7 Fällen rot), `packages/core/tests/layerKindsAndCoupling.test.ts` (ohne
+`comments` in `insights.requires` rot; ein Fundament-Layer mit Produkt in
+`requires` rot). A14-Gegenprobe: `admin` unter „Produkt-Layer" verschoben ⇒
+`check:manifests` rot.
+
+**Laufzeit.** Lokal vorher die 13 Schritte einzeln: zusammen rund 44 s
+(davon `pnpm -r lint` 18 s); nachher `pnpm check` 65,5 s (davon
+`pnpm -r lint` 32,8 s). Der Unterschied ist Last auf dem Rechner, nicht die
+Änderung: abwechselnd gemessen brauchte `pnpm -r lint` mit der alten
+Konfiguration 37 und 49 s, mit der neuen 30 und 56 s. `check:manifests` mit
+den Prüfungen 11 und 12: 1,2 s. CI (Job `lint`, ohne
+Einrichtung): vorher 102 s (die letzten vier Läufe auf `main` lagen zwischen
+94 und 167 s), im Pull Request 134 s, davon `pnpm check` 114 s
+(`pnpm -r lint` 58 s statt 40 s, `lint:typed` 25 statt 17 s). Auch das
+unveränderte `lint:prepare` war um denselben Anteil langsamer (15 statt
+10 s) — die Läufer schwanken; ein Mehraufwand durch die Änderung ist nicht
+belegt, aber auch nicht ausgeschlossen. Wer das nachmisst, vergleicht die
+Tabelle am Ende von `pnpm check` über mehrere Läufe auf `main`.
+
+**Nicht geprüft.** Der Produkt-Katalog im Control Plane (`product_catalog.requires`)
+wird von `scripts/control-jobs.mjs` geschrieben und trägt die neuen
+`requires` erst nach dessen nächstem Lauf. Die Auto-Import-Messung ist ein
+Muster, kein Compiler: sie sieht keine Namen aus `server/api`-Dateien
+anderer Layer und keine zusammengesetzten Komponenten-Namen.
+
+**Gelernt:** Ein Test, der eine Lint-Konfiguration „aus dem Hauptordner"
+prüfen soll, muss auch IM Hauptordner laufen — die Nuxt-Vorlage fragt
+`process.cwd()`, und Vitest läuft im Paketordner. Der erste Bau dieses Tests
+blieb ohne die Berichtigung grün; erst die Gegenprobe (Berichtigung
+zurücknehmen, Test muss rot werden) hat das gezeigt. Darum läuft ESLint dort
+in einem eigenen Prozess mit dem Hauptordner als Arbeitsverzeichnis.
+
+---
+
 ### Q15 — Dashboard: sechs Seiten weichen nicht mehr von der Server-Fassung ab, und ein Test hält das fest (FE-003) ✅ 2026-11-21
 
 **Was.** Auf sechs Dashboard-Seiten meldete der Browser „Hydration completed
@@ -281,6 +365,59 @@ Wegwerf-Rechner richtig, für einen Arbeitsordner eine Einladung, ihn
 mitzucommitten), und ein Muster wie `=\s*\S` liest über das Zeilenende
 hinweg in die nächste Zeile — eine leere Vorgabe galt dadurch als gesetzt,
 gefunden hat es erst der Test gegen die echte Vorlage von `apps/help`.
+
+---
+
+### Q11 — KI-Crawler: eine Regel für alle Hosts; Preise in den strukturierten Daten; `llms.txt` für pukalani.app und branding.supply (GEO-001, GEO-002, GEO-003) ✅ 2026-11-21
+
+**Was.**
+
+- **Davids Entscheidung B2 (2026-11-21, DECISION-LOG):** eigene Seiten
+  erlauben Suche, Antworten und Training; öffentliche Kunden-Communities
+  Suche und Antworten, kein Training; geschlossene Communities nichts.
+- **Eine Regel (`packages/core/shared/aiCrawlers.ts`).** Tabelle je Art
+  (`own`, `community`, `closed`), Crawler-Liste nach Zweck (Suche und
+  Antworten / Training) mit der Quelle beim Anbieter je Eintrag,
+  `buildRobotsTxt()` für die Datei und `aiCrawlerRobotsProblems()` für die
+  Prüfung. Jede robots-Route baut damit: pukalani.app, Hilfe, Studio,
+  branding.supply, Konsole, Kundenbereich, Community (öffentlich und
+  geschlossen). Dazu je Host eine Zeile `Content-Signal`.
+- **Der spätere Owner-Schalter** ändert nur einen Wert:
+  `tenantRobotsTxt(origin, aiCrawlerPolicy('community', { training }))`
+  (offen als KC1).
+- **Preise in den strukturierten Daten.** pukalani.app: `SoftwareApplication`
+  trägt zwei `offers` (Personal, Pro; Monat und Jahr je Monat). Die Zahlen
+  zogen aus `PricingSection.vue` nach `packages/marketing/shared/pricing.ts`
+  (`PLAN_PRICES_CENTS`); Preistabelle, JSON-LD und `llms.txt` lesen dort.
+  branding.supply: die Produktübersicht nennt je Produkt einen `Service`, mit
+  `offers` wo die Seite einen Preis nennt (`PRODUCT_PRICE_EUR`: Brand-Check
+  und Foundation kostenlos, Marktvergleich mit dem Betrag der Ableitung).
+  Kein Anbieter, keine Anschrift, keine Steuer-Angabe (offen als KC2).
+- **`llms.txt`** für pukalani.app und branding.supply, englisch mit den
+  deutschen Adressen daneben; jeder Satz aus der Sprachdatei, Preise aus der
+  einen Quelle, Seiten aus der Sitemap-Liste.
+- **Täglicher Blick:** `verify-delivery.mjs` hat die Prüfung `ki` — jede
+  `robots.txt` sagt dasselbe wie die Regel ihrer Art (`ai` in `HOSTS`).
+
+**Beweis.** Tests je Art mit Gegenprobe: `packages/core/tests/aiCrawlers.test.ts`
+(auch: jede robots-Route der Apps baut mit `buildRobotsTxt`),
+`packages/core/tests/verifyDelivery.test.ts` (Prüfung `ki`), die
+robots-Tests von marketing, help, branding und platform,
+`apps/marketing/tests/pricingJsonLd.test.ts`,
+`apps/branding/tests/productPricing.test.ts`, `marketingLlms.test.ts`,
+`brandingLlms.test.ts` (Preise ausgeschrieben, jeder Satz aus der
+Sprachdatei, ein ergänzter Satz fällt auf). Gegenprobe live vor dem
+Ausliefern: der Blick meldete auf allen sieben Hosts `ki`-Befunde.
+
+**Bewusst nicht.** `llms.txt` für Hilfe, Communities, Kundenbereich und
+Konsole; Googlebot in der Liste; eine Sperre (robots.txt bleibt eine Bitte).
+
+**Gelernt:** Ein Crawler mit eigener Gruppe in der robots.txt liest NUR diese
+Gruppe. Die Studio-Datei erlaubte KI-Crawlern „ausdrücklich" mit einem leeren
+`Disallow:` — und gab ihnen damit genau die Bereiche frei, die `*` sperrte
+(`/api/`, `/dashboard`). Wer einem Crawler eine eigene Gruppe gibt, muss ihr
+die Regeln von `*` mitgeben; die Prüfung vergleicht deshalb die Regeln der
+Gruppe mit denen von `*`, nicht nur „steht der Name da".
 
 ---
 

@@ -3,6 +3,9 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'admin',
   tier: 'foundation',
+  kind: 'foundation',
+  // Menü des Kontos zeigt den Farbmodus über `useTheme` (Auto-Import, Q18).
+  requires: ['themes'],
   hasMigrations: true,
   userData: false,
   // Schema-Probe (OPS-008): admin-003 legt changelog.titleEn an.

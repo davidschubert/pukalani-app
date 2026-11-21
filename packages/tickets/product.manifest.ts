@@ -3,6 +3,7 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'tickets',
   tier: 'optional',
+  kind: 'product',
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): tickets-004 legt tickets.origin an.

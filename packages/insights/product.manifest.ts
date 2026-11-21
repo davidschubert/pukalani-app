@@ -65,7 +65,9 @@ import type { ProductManifest } from '../core/shared/types/manifest'
 export default {
   key: 'insights',
   tier: 'optional',
-  requires: ['brand'],
+  kind: 'product',
+  // comments: der Kommentarbereich unter jedem Artikel (Auto-Import, Q18).
+  requires: ['brand', 'comments'],
   hasMigrations: true,
   userData: true,
   // Schema-Probe (OPS-008): insights-011 legt insights_posts.changeNotes an.
