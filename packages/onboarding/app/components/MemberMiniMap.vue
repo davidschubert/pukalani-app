@@ -57,13 +57,14 @@ function createMap(L: typeof import('leaflet'), el: HTMLDivElement, center: [num
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map)
 
-  // Rot mit weissem Ring liest sich auf jeder Kachel und in jedem Theme gleich
-  // (die Kacheln folgen unserem Theme nicht).
+  // Rot mit weissem Ring liest sich auf jeder Kachel gleich (die Kacheln folgen
+  // dem Modus nicht): darum die feste Stufe `error-600` der Farbwelt, nie das
+  // hell/dunkel wechselnde `bg-error` (Q25/UI-006).
   L.marker(center, {
     keyboard: false,
     icon: L.divIcon({
       className: '',
-      html: '<span class="block size-3 rounded-full bg-red-500 shadow ring-2 ring-white"></span>',
+      html: '<span class="block size-3 rounded-full bg-(--ui-color-error-600) shadow ring-2 ring-white"></span>',
       iconSize: [12, 12],
       iconAnchor: [6, 6],
     }),

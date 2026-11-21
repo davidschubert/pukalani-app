@@ -84,6 +84,9 @@ export default defineNuxtConfig({
    */
   extends: ['../../packages/themes', '../../packages/admin', '../../packages/comments', '../../packages/moderation', '../../packages/brand', '../../packages/market', '../../packages/insights', '../../packages/pages', '../../packages/core', '../../packages/system'],
 
+  // Die eigene Seitenbreite (R10) — eine Variable, Begründung in der Datei.
+  css: ['~/assets/css/branding.css'],
+
   // Port pro App eindeutig vergeben (3000–3009 vergeben — 3006 hält platform,
   // 3009 der brand-Playground; die erste Wahl 3006 kollidierte damit und ist
   // am 2026-09-01 hierher verschoben). Dev-Portkarte:

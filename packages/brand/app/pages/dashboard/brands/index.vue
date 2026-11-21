@@ -257,7 +257,7 @@ useBrandTitle(() => t('brand.brands.title'))
 
 <template>
   <div class="bw-root">
-    <div class="@container mx-auto w-full max-w-(--ui-container)">
+    <div class="@container mx-auto w-full max-w-7xl">
       <div class="mb-8">
         <div class="flex flex-wrap items-end justify-between gap-4">
           <div class="min-w-0">

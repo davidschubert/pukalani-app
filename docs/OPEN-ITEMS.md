@@ -160,6 +160,7 @@ den ersten zahlenden Kunden, also vor A2.
 | --- | --- | --- | --- | --- | --- |
 | PK1 | **Pukalani-Konto: ein Konto für alle Seiten.** Konzept geschrieben, Davids zehn Entscheidungen sind gefallen (2026-11-12). Fünf Etappen, nichts gebaut; erster Schritt ist der Beweis E0. Daran hängt auch, ob gelöschte **Konten** zurückholbar werden (WH1). | Hoch | XL (5 Etappen) | Ja: Freigabe je Etappe | **das Ende des Gesamtaudits (GA1)** — [PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md) |
 | VDB1 | **Semantische Suche mit Appwrite VectorsDB — geprüft 2026-11-06, lohnt jetzt nicht.** Self-hosted braucht es ein zweites Postgres und einen Embedding-Container, die eingebauten Modelle können nur Englisch. [Notiz](plans/offen/VDB1.md) | Niedrig | M | Ja: Strategie-Freigabe | ein mehrsprachiges Modell in Appwrite + eine Insights-Basis mit einigen hundert Einträgen |
+| TY1 | **Schriftgrößen als Stufen statt von Hand (Audit UI-007).** Im Brand-Layer und in der Marketing-Site stehen 154 feste Größen wie `text-[26px]`; Vorschlag: drei Überschriften-Klassen in `brand.css`, wenige Stufen in `marketing.css`. Kaum sichtbar, nur Pflege. | Niedrig | M | Nein | Davids Wahl bei Q25 (2026-11-21): ohne diesen Punkt; beim nächsten größeren Umbau des Brand-Layers |
 
 Die bewusst zurückgestellten Punkte stehen am Ende des Anhangs.
 

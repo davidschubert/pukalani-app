@@ -101,7 +101,7 @@ const faqItems = computed(() => FAQ_IDS.map(id => ({
 
 <template>
   <div class="pb-10">
-    <div class="@container mx-auto max-w-7xl">
+    <div class="@container mx-auto max-w-(--ui-container)">
       <!-- 0 · Die Reiter des Instruments -->
       <div class="mt-10">
         <BwBrandCheckTabs current="start" />

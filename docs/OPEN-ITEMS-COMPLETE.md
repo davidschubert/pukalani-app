@@ -70,6 +70,13 @@ etwa „Du besitzt keine Community“.
   im Browser-Test (beide Fehler-Fälle); `role="alert"` entfernt; Neuversuch
   ohne Sperre; Dialog ohne Sperre; Lint gegen die drei alten Insights-Stellen;
   Wächter mit neuer Seite, gestiegener Zahl und ausgedachtem Eintrag.
+- **Von Q25 übernommen** (lagen in Dateien dieses PR): der abgeschnittene
+  Satz der Karte „Offene Einladungen" (UI-011, Teil 1; `min-w-0` am inneren
+  Container der Karte, bei 375 px mit einer gestellten Einladung geprüft:
+  der Satz bricht um, die Tabelle rollt für sich) und die Breite der
+  Nutzer-Detailseite (UI-002, `max-w-7xl` wie das übrige Dashboard). Die
+  Ausnahme dafür im Breiten-Wächter `pageWidthGuard.test.ts` ist gelöscht;
+  Gegenprobe mit der alten Breite rot.
 
 **Nicht geprüft:** die Betreiber-Seiten (Nutzer, Einladungs-Codes, Abos), die
 Konto-Abrechnung, die Plan-Seite und die Detail-Seiten nicht im Browser,
@@ -82,6 +89,48 @@ ein Klick vor dem Übernehmen der Seite ist ein voller Aufruf. Über den
 Router der App (`__vue_app__…$router.push`) wechseln und zählen, dass der
 Abruf wirklich abgefangen wurde; sonst ist der Test grün, ohne etwas zu
 prüfen.
+
+### Q25 — Kleine UI-Korrekturen: Seitenbreiten, Farben aus der Farbwelt, ein Symbol, die Umfrage-Karte (UI-002, UI-006, UI-010, UI-011) ✅ 2026-11-21
+
+**Was.** Nur Darstellung, kein Verhalten. UI-007 (154 Schriftgrößen) entfällt
+nach Davids Wahl und steht als TY1 geparkt in OPEN-ITEMS.
+
+1. **Seitenbreiten (UI-002, Davids Ja zu R10).** branding.supply hat seine
+   Breite als EINE Variable: `--ui-container: 80rem` in
+   `apps/branding/app/assets/css/branding.css` (Selektor `:root:root`, damit
+   die Reihenfolge der CSS-Dateien zwischen App und Layern egal ist). Die 18
+   festen `max-w-7xl`-Hüllen in 17 öffentlichen Seiten von `apps/branding`,
+   `brand` und `insights` lesen jetzt `max-w-(--ui-container)`. Dashboard
+   (admin-Übersicht, drei Brand-Seiten) auf `max-w-7xl`. Neuer Wächter
+   `packages/core/tests/pageWidthGuard.test.ts`. Der Kommentar in `main.css`
+   war schon mit Q26 berichtigt. Gemessen lokal: Brand-Dashboard bei 1920 px
+   vorher 1440, nachher 1280; öffentliche Seiten von branding.supply 1280
+   (unverändert), andere Sites weiter 90rem.
+2. **Feste Farben (UI-006).** Karten-Markierungen (Mitglieder-Weltkarte,
+   Mini-Karte, Sitzungs-Dialog) nehmen FESTE STUFEN der Farbwelt
+   (`--ui-color-neutral-800`, `--ui-color-error-600`), nicht die Tokens, die
+   mit hell/dunkel wechseln: die Kacheln bleiben immer hell. Weiße Schrift
+   darauf: Rot 3,8 → 4,8 zu 1, dunkles Feld 10,3 → 14,3 bis 15,5 zu 1 (alle
+   neun Grundtöne). Im Brand-Layer tragen die Bildkacheln `bw-on-dark`, die
+   Schrift liest `var(--bw-ink)` statt `#f7f2ea` im `style` — derselbe Wert,
+   in hell und dunkel gemessen.
+3. **Doppeltes Symbol (UI-010).** „Beiträge" in der Moderation, die
+   Kennzahl „Beiträge" und „Feed" zeigen `i-ph-chat-text`; die drei Köpfe
+   bleiben bei den Mitgliedern (und bei „Communities" im Control Plane).
+4. **Umfrage-Karte (UI-011, Teil 2).** Der Rumpf ist ein bedingter Slot;
+   zugeklappt kein leeres Band mehr, „Gerne" klappt die Fragen wie vorher auf.
+5. **An Q14 abgegeben** (Dateien aus dem offenen PR 485): der abgeschnittene
+   Satz in „Offene Einladungen" (UI-011, Teil 1; Lösung lokal geprüft:
+   `:ui="{ container: 'min-w-0' }"` an der `UPageCard`) und die Breite in
+   `admin/…/users/[id].vue` (UI-002; bis dahin die eine Ausnahme im Wächter).
+
+**Gelernt:** Ein Inhalt mit `v-if` IM Slot lässt UCard trotzdem den Rumpf
+zeichnen — nur ein bedingter Slot (`<template v-if #default>`) lässt ihn weg.
+Und eine Karte, die auf dem Handy abschneidet, hat oft ein Flex-Kind mit
+`min-width: auto`; eine `overflow`-Hülle um die Tabelle hilft dann nicht, nur
+`min-w-0` am Kind, das die Breite weiterreicht.
+
+---
 
 ### Q26 — Aufräumen im Code: Doppelungen, tote Exporte, veraltete Kommentare, ein Satz zu den Rechten (ARC-005, ARC-006, ARC-007, ARC-009, DOC-016) ✅ 2026-11-21
 
