@@ -30,7 +30,7 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
-### Q06 — Stufe 1: eigene Mails mit einer Stimme, Anmelde-Mails als Vorlagen im Repo (BRD-001, BRD-006) ✅ 2026-11-21
+### Q06 — Mails mit einer Stimme: eigene Mails im gemeinsamen Rahmen, Anmelde-Mails von Appwrite auf Production im Ton der Marke (BRD-001, BRD-006) ✅ 2026-11-21
 
 **Davids Entscheidung (R6, 2026-11-21, „Ja, alle Empfehlungen"):** Anrede
 „Hallo {Name}," / „Hi {Name},", Schluss-Zeile mit dem Namen der Marke, Sprache
@@ -72,16 +72,49 @@ danach gelöscht, nachgezählt 0). Skript gegen die lokale Appwrite: Trockenlauf
 endet sauber mit 401 „missing scopes templates.read", fremdes Projekt,
 `--apply` ohne Sicherung und entferntes Ziel ohne Bestätigung brechen ab.
 
-**NICHT geprüft:** die Appwrite-Mails selbst in Mailpit — kein lokaler
-Schlüssel hat `templates.*`, und die lokale Konsole war in Davids Chrome nicht
-angemeldet. Offen als Stufe 2 in OPEN-ITEMS „Q06".
+**Stufe 2 auf Production (Davids Ja in der Session, 2026-11-21):**
+- Je Projekt (`account`, `admin`, `portfolio`, `branding`) ein Schlüssel
+  `mail-templates` (nur `templates.read`, `templates.write`, `project.read`),
+  angelegt in Davids Chrome über die Konsole; der Wert ging über einen
+  Empfänger auf 127.0.0.1 direkt in eine Datei, nie in eine Ausgabe. Nach dem
+  Lauf gelöscht und nachgezählt (0 übrig; Gegenprobe 401).
+- Trockenlauf je Projekt: 8 Vorlagen weichen ab, Projekt-SMTP AUS.
+- Projekt-SMTP je Projekt eingeschaltet: Resend, 587, TLS, Absender
+  `noreply@pukalani.app`, Name = Marke; Passwort ist ein NEUER Resend-Schlüssel
+  `appwrite-projekte` (von David angelegt und eingefügt). Je Projekt eine
+  SMTP-Testmail angekommen.
+- `--apply --backup` je Projekt: 32 Vorlagen gesetzt, zurückgelesen, danach
+  Trockenlauf „Alles stimmt." in allen vier. Sicherungen lagen im Scratchpad
+  der Session (Rückweg sonst: Konsole → Templates → Reset).
+- Anzeigenamen der Projekte: „Account" → „Pukalani Account", „Admin (Control
+  Panel)" → „Pukalani Admin", „Portfolio" → „Pukalani Studio" (Davids Wahl);
+  Ids unverändert.
+- Beweis laut Resend: Passwort-Mail `portfolio` de + en und `account` de
+  zugestellt, `account` en versendet; Absender „Pukalani" bzw. „Pukalani
+  Studio", Anrede mit Namen, Schluss-Zeile mit der Marke.
+
+**NICHT geprüft:** eine echte Anmelde-Mail aus `admin` und `branding` — dort
+gibt es kein Konto mit Davids Adresse, Appwrite antwortet absichtlich 201 ohne
+Versand (David: „So reicht es"). Anmelde-Code und Anmelde-Hinweis wurden nicht
+ausgelöst (nur die Passwort-Mail); lokal in Mailpit keine Appwrite-Mail (die
+lokale Konsole war nicht angemeldet). Die Sprache der Appwrite-Mails folgt
+weiter dem Sprach-Cookie der Anfrage, nicht `prefs.emailLocale`.
 
 **Gelernt:** Appwrite (2.7.4) nimmt eigene Mail-Vorlagen NUR an, wenn das
 PROJEKT eine eigene SMTP-Einstellung hat (400 „SMTP must be enabled") — die
 Vorlagen hängen also an einem Schritt mit Geheimnis, nicht nur an einem
 Schlüssel. Ohne Vorlage setzt Appwrite den PROJEKTNAMEN ein; daher das
-„Account team" im Pool. Und: eine Schleife `for c in "-r lint"` gibt pnpm EIN
-Wort „-r lint" — „Unknown option", Exit 1, aber kein Fehler im Code.
+„Account team" im Pool. Die VORSCHAUZEILE (unsichtbarer Kopf der Mail, im
+Postfach neben dem Betreff) kommt NICHT aus der Vorlage, sondern aus
+Appwrites Sprachtext mit dem Projektnamen — nur ein Umbenennen des Projekts
+hilft. Eigene SMTP je Projekt heißt auch: ein Schlüssel mehr, der beim Drehen
+mit muss (`RESEND-WEBHOOK.md` § 6.1). In der Konsole legt sich der
+Passwort-Manager über die Seite und sperrt Klicks und Bildschirmfotos der
+Erweiterung; Werte TIPPEN statt `form_input` (Svelte übernimmt gesetzte Werte
+sonst nicht) und „Secure protocol" nachlesen — einmal blieb es auf „None".
+Und zweimal zsh/pnpm: `for c in "-r lint"` gibt EIN Wort „-r lint", und
+`set -- $e` trennt in zsh nicht an Leerzeichen — beides sieht aus wie ein
+Fehler im Code.
 ### Q12 — Weniger Datenbank-Aufrufe je Seite: das Konto einmal, der Feed einmal, Kommentare in einem Zug (PERF-003, PERF-004, PERF-005, PERF-008, FE-006) ✅ 2026-11-21
 
 **Was.** Beim Rendern einer Seite ruft Nuxt die eigenen `/api`-Routen auf,

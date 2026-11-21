@@ -66,7 +66,7 @@ gelesen. Wer dort etwas ändert, ändert zuerst das Soll im Skript.
 
 - Der Abgleich mit Datenlecks lehnt seit dem 2026-11-18 wirklich ab: die
   Server-Variable ist gesetzt (Abschnitt „Abgleich mit Datenlecks").
-- Die Anmelde-Mail ist auf Production noch nicht angesehen (Sprache, Adresse).
+- Die Anmelde-Mail ist seit dem 2026-11-21 angesehen (Passwort-Mail `account` und `portfolio`, de und en; Q06).
 - Beweis-Skripte mit `@example.com`-Konten scheitern jetzt auch gegen
   Production-Projekte.
 
@@ -198,5 +198,11 @@ Appwrite nimmt eigene Vorlagen nur an, wenn das Projekt eine eigene
 SMTP-Einstellung hat (Settings → SMTP). Lokal stellt
 `--smtp-local host.docker.internal:1025` sie auf Mailpit (`--smtp-local off`
 schaltet zurück). Schlüssel: `templates.read`, `templates.write`, dazu
-`project.read` für die SMTP-Zeile und lokal `project.write`. Stand auf
-Production: [Q06](../plans/offen/Q06.md).
+`project.read` für die SMTP-Zeile und lokal `project.write`.
+
+Stand auf Production (seit 2026-11-21): in allen vier Projekten eingespielt,
+Projekt-SMTP an (eigener Resend-Schlüssel, `RESEND-WEBHOOK.md` § 6.1). Die
+Vorschauzeile im Postfach kommt aus Appwrites Sprachtext mit dem
+PROJEKTNAMEN — darum heißen die Projekte „Pukalani Account", „Pukalani Admin",
+„Pukalani Studio", „Branding Supply". Ein Schlüssel für das Skript wird je
+Lauf angelegt und danach gelöscht.

@@ -229,9 +229,15 @@ ist gelöscht. Die beiden anderen Pukalani-Schlüssel bleiben bewusst
 | `platform.pukalani.app` | **Ablage** `instance_secrets`, Zeile `smtp`, Projekt `account` — die `.env` hat seit 2026-08-19 KEIN `NUXT_SMTP_*` | Block entschlüsseln, nur `pass` tauschen, neu verschlüsseln (alter Umschlag als `instance_secrets-smtp.bak-<datum>-smtp.json` im Site-Ordner) — oder in der Konsole unter Instanz → Integrationen | ohne Reload, binnen 30 s (Mailer-Puffer) |
 | Appwrite-Instanz (`188.245.61.155`, `~/appwrite/.env`) | `_APP_SMTP_PASSWORD` (in Anführungszeichen) — OTP, Verifizierung, Passwort-Mails aller Projekte | Zeile ersetzen, Backup `.env.bak-<datum>-smtp` | `docker compose up -d` in `~/appwrite` — baut genau `appwrite` + `appwrite-worker` neu (vorher `--dry-run`), API ~11 s weg |
 
-Die Appwrite-PROJEKTE haben keine eigene SMTP (Feld `smtp` in
-`_console_projects` ist bei allen vier ein leerer Umschlag); geprüft
-2026-11-08.
+**Seit 2026-11-21 (Q06) haben die vier Appwrite-PROJEKTE eine eigene SMTP**
+— Voraussetzung für die eigenen Vorlagen der Anmelde-Mails. Sie nutzen einen
+EIGENEN Resend-Schlüssel `appwrite-projekte` (nur Senden, Domain
+`pukalani.app`), nicht den Schlüssel der fünf Stellen oben. Wer ihn dreht:
+Konsole → je Projekt (`account`, `admin`, `portfolio`, `branding`) Settings →
+SMTP → Passwort → Update, danach „Send test email". Solange diese Einstellung
+an ist, gilt für Anmelde-Mails DIESER Schlüssel, nicht `_APP_SMTP_PASSWORD`.
+Ausschalten (Schalter aus) fällt auf die Instanz zurück, aber dann nimmt
+Appwrite die eigenen Vorlagen nicht mehr.
 
 ### 6.2 Beweis
 
