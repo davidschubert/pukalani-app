@@ -70,6 +70,7 @@ beforeEach(() => {
   vi.stubGlobal('trustedClientIp', () => '203.0.113.7')
   vi.stubGlobal('$fetch', siteverify)
   vi.stubGlobal('requireTurnstile', requireTurnstile)
+  vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Testmarke' } } }))
   vi.stubGlobal('sendMail', async (_event: unknown, mail: unknown) => {
     mails.push(mail)
     return mailWorks
@@ -94,7 +95,7 @@ afterEach(() => {
 async function post(body: unknown): Promise<{ status: number, result?: unknown, error?: ThrownLike }> {
   const handler = (await load()).default as unknown as (event: unknown) => Promise<unknown>
   try {
-    return { status: 200, result: await handler({ body }) }
+    return { status: 200, result: await handler({ body, context: {} }) }
   }
   catch (thrown) {
     const error = thrown as ThrownLike
@@ -109,6 +110,10 @@ describe('POST /api/intro-call (öffentliches Formular)', () => {
     expect(run.result).toEqual({ ok: true })
     expect(mails).toHaveLength(1)
     expect(rows.map(row => row.tableId)).toEqual(['intro_requests'])
+    // Rahmen (Q06): Betreiber-Mail auf Deutsch, ohne Namen, Schluss mit der Marke.
+    const text = (mails[0] as { text: string }).text
+    expect(text.startsWith('Hallo,\n\n')).toBe(true)
+    expect(text).toContain('Viele Grüße\nTestmarke')
   })
 
   it.each([

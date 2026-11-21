@@ -86,7 +86,7 @@ vi.stubGlobal('useRuntimeConfig', () => ({
 vi.stubGlobal('trustedClientIp', () => '203.0.113.7')
 vi.stubGlobal('$fetch', siteverify)
 vi.stubGlobal('useRateLimitStore', () => ({ store: rateStore, prefix: 'rl:test:' }))
-vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { waitlistNotify: notifyTo } } }))
+vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Testmarke', waitlistNotify: notifyTo } } }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
   Object.assign(new Error(String(init.statusText)), init, { statusCode: init.status }))
@@ -182,6 +182,9 @@ describe('POST /api/brand/waitlist', () => {
     expect(mails[0]!.text).toContain('https://branding.supply/de/waitlist/confirm?token=')
     expect(mails[0]!.text).toContain('24 Stunden')
     expect(mails[0]!.text).toContain('ignoriert diese Mail')
+    // Rahmen (Q06): Anrede ohne Namen, Schluss mit der Marke.
+    expect(mails[0]!.text.startsWith('Hallo,\n\nFast geschafft')).toBe(true)
+    expect(mails[0]!.text).toContain('Viele Grüße\nTestmarke')
   })
 
   it('englische Anfragen bekommen den Link OHNE Präfix', async () => {

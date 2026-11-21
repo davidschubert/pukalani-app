@@ -1,6 +1,7 @@
 import { communityOrigin } from '../../core/shared/notificationLinks'
 import { CUSTOM_DOMAIN_GRACE_DAYS } from '../../control/shared/customDomain'
 import type { CustomDomainNoticeKind } from '../../control/shared/customDomainNotice'
+import { frameMail } from '../../core/shared/mailFrame'
 
 /**
  * DIE ZWEI HINWEIS-MAILS ZUR FRIST DER EIGENEN DOMAIN (BE-014) — Textbau pur,
@@ -17,6 +18,8 @@ import type { CustomDomainNoticeKind } from '../../control/shared/customDomainNo
  * wird ja abgeschaltet. Der Host kommt aus `communities.host` (vom Leser), das
  * Schema aus `communityOrigin()` — dieselbe Regel wie in den
  * Benachrichtigungs-Mails.
+ *
+ * RAHMEN (Q06): Anrede, Gruß und Marke kommen aus `core/shared/mailFrame.ts`.
  */
 
 export interface CustomDomainNoticeMailInput {
@@ -31,6 +34,10 @@ export interface CustomDomainNoticeMailInput {
   domain: string
   /** Ende der Frist = Tag des Abschaltens (ISO). */
   graceEndsAt: string
+  /** Marke in der Schluss-Zeile (`resolveMailBrand()`). */
+  brand: string
+  /** Anzeigename des EMPFÄNGERS (Anrede) — nicht der Community. */
+  recipientName?: string | null
 }
 
 export interface CustomDomainNoticeMailText {
@@ -72,34 +79,31 @@ export function buildCustomDomainNoticeMail(input: CustomDomainNoticeMailInput):
   const address = communityOrigin(input.host)
   const plan = customDomainNoticePlanUrl(input.host, input.locale)
 
+  const frame = (lines: string[]) => frameMail({
+    brand: input.brand,
+    locale: german ? 'de' : 'en',
+    name: input.recipientName,
+    lines,
+  }).text
+
   if (input.kind === 'start') {
     const subject = german
       ? `Deine Domain ${input.domain} bleibt noch bis zum ${date} aktiv`
       : `Your domain ${input.domain} stays active until ${date}`
     const lines = german
       ? [
-          'Hallo,',
-          '',
-          `der Pro-Plan von ${name} ist nicht mehr aktiv. Eine eigene Domain gehört zum Pro-Plan.`,
-          '',
+          `Der Pro-Plan von ${name} ist nicht mehr aktiv. Eine eigene Domain gehört zum Pro-Plan.`,
           `Deine Domain ${input.domain} bleibt noch ${CUSTOM_DOMAIN_GRACE_DAYS} Tage aktiv, bis zum ${date}. Danach schalten wir sie ab.`,
-          '',
           `Es wird nichts gelöscht. Deine Community bleibt unter ihrer Pukalani-Adresse erreichbar: ${address}`,
-          '',
           `So bleibt deine Domain aktiv: wähle wieder den Pro-Plan. ${plan}`,
         ]
       : [
-          'Hello,',
-          '',
           `The Pro plan of ${name} is no longer active. A custom domain is part of the Pro plan.`,
-          '',
           `Your domain ${input.domain} stays active for ${CUSTOM_DOMAIN_GRACE_DAYS} more days, until ${date}. After that we switch it off.`,
-          '',
           `Nothing is deleted. Your community stays reachable at its Pukalani address: ${address}`,
-          '',
           `To keep your domain active, choose the Pro plan again: ${plan}`,
         ]
-    return { subject, text: lines.join('\n') }
+    return { subject, text: frame(lines) }
   }
 
   const subject = german
@@ -107,33 +111,23 @@ export function buildCustomDomainNoticeMail(input: CustomDomainNoticeMailInput):
     : `We will switch off ${input.domain} in three days`
   const lines = german
     ? [
-        'Hallo,',
-        '',
-        `am ${date} schalten wir deine Domain ${input.domain} ab, weil der Pro-Plan von ${name} nicht mehr aktiv ist.`,
-        '',
+        `Am ${date} schalten wir deine Domain ${input.domain} ab, weil der Pro-Plan von ${name} nicht mehr aktiv ist.`,
         `Es wird nichts gelöscht. Deine Community bleibt unter ihrer Pukalani-Adresse erreichbar: ${address}`,
-        '',
-        `So bleibt deine Domain aktiv: wähle wieder den Pro-Plan. ${plan}`,
-        'Auch nach dem Abschalten kannst du sie mit dem Pro-Plan wieder einschalten.',
+        `So bleibt deine Domain aktiv: wähle wieder den Pro-Plan. ${plan}\nAuch nach dem Abschalten kannst du sie mit dem Pro-Plan wieder einschalten.`,
       ]
     : [
-        'Hello,',
-        '',
         `On ${date} we will switch off your domain ${input.domain}, because the Pro plan of ${name} is no longer active.`,
-        '',
         `Nothing is deleted. Your community stays reachable at its Pukalani address: ${address}`,
-        '',
-        `To keep your domain active, choose the Pro plan again: ${plan}`,
-        'Even after it is switched off, you can turn it back on with the Pro plan.',
+        `To keep your domain active, choose the Pro plan again: ${plan}\nEven after it is switched off, you can turn it back on with the Pro plan.`,
       ]
-  return { subject, text: lines.join('\n') }
+  return { subject, text: frame(lines) }
 }
 
 /**
  * Der kurze Text in der Glocke — in der Sprache des EMPFÄNGERS, weil
  * Glocken-Texte gespeicherter Rohtext sind (wie `PAST_DUE_NOTICE_BODY`).
  */
-export function customDomainNoticeBellBody(input: Omit<CustomDomainNoticeMailInput, 'name' | 'host'>): string {
+export function customDomainNoticeBellBody(input: Omit<CustomDomainNoticeMailInput, 'name' | 'host' | 'brand' | 'recipientName'>): string {
   const german = input.locale === 'de'
   const date = formatNoticeDate(input.graceEndsAt, german)
   if (input.kind === 'start') {

@@ -202,6 +202,19 @@ describe('ops/app-release.sh — einen Stand empfangen', () => {
     expect(readdirSync(releases()).filter(name => name.startsWith('.'))).toEqual(['.lock'].filter(() => existsSync(join(releases(), '.lock'))))
   })
 
+  // Q26-N: tar hört an der Ende-Marke auf; was zstd danach noch schreibt,
+  // träfe eine geschlossene Pipe (141, oder 70 „Broken pipe", wenn SIGPIPE
+  // geerbt ignoriert ist). Das Skript liest den Rest leer. Früher nur
+  // „manchmal" (unter Last), mit viel Nachlauf jedes Mal.
+  it('nimmt ein vollständiges Archiv an, auch wenn hinter der Ende-Marke noch etwas kommt', () => {
+    const tar = archive({ '.output/server/index.mjs': '// nachlauf\n' })
+    const packed = spawnSync('zstd', ['-q', '-c'], { input: Buffer.concat([tar, Buffer.alloc(4 * 1024 * 1024)]) })
+    expect(packed.status).toBe(0)
+    const { code, out } = gate(`release-put help ${NEXT}`, packed.stdout)
+    expect(code, out).toBe(0)
+    expect(readFileSync(join(releases(), NEXT, 'server', 'index.mjs'), 'utf8')).toBe('// nachlauf\n')
+  })
+
   it.each([
     ['ein abgeschnittenes Archiv', () => outputOf('halb').subarray(0, 40)],
     ['etwas, das kein Archiv ist', () => Buffer.from('kein archiv')],
@@ -318,6 +331,14 @@ describe('ops/app-release.sh — die Dateien der Site', () => {
     expect(readFileSync(join(opsDir(), 'ecosystem-help.config.cjs'), 'utf8')).toContain('neu: true')
     expect(lstatSync(join(opsDir(), 'pm2-heal.sh')).mode & 0o111).not.toBe(0)
     expect(lstatSync(join(opsDir(), 'cron.conf')).mode & 0o111).toBe(0)
+  })
+
+  // Q26-N: dieselbe Falle ohne zstd — `head` schreibt in die geschlossene Leitung.
+  it('nimmt eine Lieferung an, auch wenn hinter der Ende-Marke noch etwas kommt', () => {
+    const tar = archive({ 'pm2-heal.sh': '#!/usr/bin/env bash\nexit 0\n' })
+    const { code, out } = gate('ops-put help', Buffer.concat([tar, Buffer.alloc(4 * 1024 * 1024)]))
+    expect(code, out).toBe(0)
+    expect(out).toContain('empfangen: 1 Dateien für help')
   })
 
   it.each([

@@ -49,6 +49,7 @@ function makeError(init: Record<string, unknown>): Error {
 
 vi.stubGlobal('defineEventHandler', (fn: unknown) => fn)
 vi.stubGlobal('createError', makeError)
+vi.stubGlobal('useAppConfig', () => ({ pukalani: { brand: { name: 'Testmarke' } } }))
 vi.stubGlobal('useTenant', (e: H3Event) => e.context.tenant ?? null)
 vi.stubGlobal('readValidatedBody', async (e: H3Event & { body?: unknown }, parse: (b: unknown) => unknown) => {
   try {
@@ -148,6 +149,8 @@ describe('POST /api/community/removed-contact', () => {
     // Sprache des Empfängers — Olga de (trotz abgeschalteter Benachrichtigungs-Mails), Adam en.
     expect(mails.find(mail => mail.to === 'olga@example.test')?.text).toContain('Antworte einfach')
     expect(mails.find(mail => mail.to === 'adam@example.test')?.text).toContain('Simply reply')
+    // Q06: auf dem Community-Host unterschreibt die Community.
+    expect(mails.find(mail => mail.to === 'olga@example.test')?.text).toContain('Viele Grüße\nMorgenlicht')
     expect(mails.some(mail => mail.to === 'mo@example.test')).toBe(false)
   })
 

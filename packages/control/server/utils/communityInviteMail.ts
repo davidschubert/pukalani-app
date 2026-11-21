@@ -2,6 +2,8 @@ import type { H3Event } from 'h3'
 import type { CommunityRole } from '../../../core/shared/communityAuthz'
 import { oneMailLine } from '../../shared/mailText'
 import { softFail } from '../../../core/server/utils/softFail'
+import { frameMail, resolveMailLocale } from '../../../core/shared/mailFrame'
+import { resolveMailBrand } from '../../../core/server/utils/mailBrand'
 
 /**
  * Die Einladungs-Mail in EINE Kunden-Community (control-019).
@@ -26,7 +28,7 @@ export interface CommunityInviteMailInput {
   host: string
   token: string
   role: CommunityRole
-  /** Sprache der Mail — die des einladenden Dashboards ('de' | 'en'). */
+  /** Sprache der Mail — die des einladenden Dashboards ('de' | 'en'; sonst en). */
   locale: string
   /** Name der einladenden Person (leer = weglassen). */
   invitedByName: string
@@ -47,7 +49,10 @@ const ROLE_LABELS: Record<CommunityRole, { de: string, en: string }> = {
 
 export async function sendCommunityInviteMail(event: H3Event, input: CommunityInviteMailInput): Promise<boolean> {
   const scheme = input.host.endsWith('.localhost') || input.host.startsWith('localhost') ? 'http' : 'https'
-  const german = input.locale !== 'en'
+  // Die eine Sprach-Regel (Q06): die Sprache des einladenden Dashboards, sonst
+  // Englisch — die Eingeladene hat (noch) keine Konto-Einstellung hier.
+  const locale = resolveMailLocale({ request: input.locale })
+  const german = locale === 'de'
   // Locale-Prefix von Hand, weil hier kein localePath() existiert (Server-Util,
   // andere App): 'prefix_except_default' heißt /join für en und /de/join für de.
   const path = german ? '/de/join' : '/join'
@@ -60,31 +65,25 @@ export async function sendCommunityInviteMail(event: H3Event, input: CommunityIn
     ? `Einladung zu „${siteName}“`
     : `Invitation to “${siteName}”`
 
-  const text = german
+  // Rahmen (Q06): Anrede, Gruß und Marke aus `core/shared/mailFrame.ts`.
+  const lines = german
     ? [
         from
           ? `${from} lädt dich zu „${siteName}“ ein — als ${role}.`
           : `Du bist zu „${siteName}“ eingeladen — als ${role}.`,
-        '',
         `Einladung annehmen (7 Tage gültig): ${link}`,
-        '',
-        'Hast du schon ein Pukalani-Konto? Dann genügt ein Klick nach dem Anmelden.',
-        'Sonst legst du beim Öffnen des Links ein Konto an und bist danach direkt dabei.',
-        '',
+        'Hast du schon ein Pukalani-Konto? Dann genügt ein Klick nach dem Anmelden.\nSonst legst du beim Öffnen des Links ein Konto an und bist danach direkt dabei.',
         'Die Einladung gilt nur für diese E-Mail-Adresse. Wenn du sie nicht erwartet hast, ignoriere diese Mail.',
-      ].join('\n')
+      ]
     : [
         from
           ? `${from} invites you to “${siteName}” as ${role}.`
           : `You have been invited to “${siteName}” as ${role}.`,
-        '',
         `Accept the invitation (valid for 7 days): ${link}`,
-        '',
-        'Already have a Pukalani account? One click after signing in is all it takes.',
-        'If not, you can create one when you open the link and you are in right afterwards.',
-        '',
+        'Already have a Pukalani account? One click after signing in is all it takes.\nIf not, you can create one when you open the link and you are in right afterwards.',
         'The invitation is tied to this email address. If you did not expect it, simply ignore this email.',
-      ].join('\n')
+      ]
+  const { text } = frameMail({ brand: resolveMailBrand(event), locale, lines })
 
   return sendMail(event, { to: input.to, subject, text }).catch(softFail('control:utils/communityInviteMail:sendMail', false))
 }

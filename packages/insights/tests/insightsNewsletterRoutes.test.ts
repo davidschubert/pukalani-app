@@ -115,7 +115,7 @@ vi.stubGlobal('useRuntimeConfig', () => ({
   public: { appwriteDatabaseId: 'main', appwriteProjectId: 'branding', appUrl: 'https://branding.supply' },
 }))
 vi.stubGlobal('useAppConfig', () => ({
-  pukalani: { insights: { newsletter: { enabled: riegelOpen, from: newsletterFrom } } },
+  pukalani: { brand: { name: 'Testmarke' }, insights: { newsletter: { enabled: riegelOpen, from: newsletterFrom } } },
 }))
 vi.stubGlobal('createAdminClient', () => ({ tablesDB }))
 vi.stubGlobal('createError', (init: Record<string, unknown>) =>
