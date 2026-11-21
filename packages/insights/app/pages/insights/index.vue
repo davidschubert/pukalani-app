@@ -37,7 +37,12 @@ useSeoMeta({
   description: () => t('insights.public.listLead'),
   ogTitle: () => t('insights.public.listTitle'),
   ogDescription: () => t('insights.public.listLead'),
-  robots: 'index, follow',
+  // LEER ⇒ NICHT IN DIE SUCHE (SU1, SEO-008): ohne einen einzigen Beitrag ist
+  // die Seite ein leerer Zustand, und den bietet man keinem Index an. Die
+  // Sitemap lässt sie aus demselben Grund weg (apps/branding,
+  // `sitemap.xml.get.ts`). `follow` bleibt — die Links der Seite gelten.
+  // Ein LESEFEHLER zählt nicht als leer: der ist vorübergehend.
+  robots: () => (!error.value && posts.value.length === 0 ? 'noindex, follow' : 'index, follow'),
 })
 </script>
 

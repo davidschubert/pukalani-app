@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { resolvePrimaryLocale } from '../../../../packages/core/shared/primaryLocale'
 import {
   BRANDING_DISCOVER_PRIORITY,
   BRANDING_INSIGHTS_ENTRY_PRIORITY,
@@ -58,10 +59,16 @@ export default defineEventHandler(async (event) => {
   const brandOn = await productOn(event, 'brand')
   const insightsOn = brandOn && await productOn(event, 'insights')
 
+  const insights = insightsOn ? await insightsEntries(event) : []
+  // DAS JOURNAL NUR MIT BEITRAG (SU1, SEO-008): `/insights` ohne einen
+  // einzigen öffentlichen Beitrag ist ein leerer Zustand (die Seite trägt dann
+  // `noindex`). Die Ranking-Übersicht allein zählt nicht als Beitrag.
+  const journalHasPosts = insights.some(entry => entry.path !== '/rankings')
   const entries: BrandingSitemapEntry[] = [
-    ...brandingFixedRoutes({ brand: brandOn, insights: insightsOn }),
+    ...brandingFixedRoutes({ brand: brandOn, insights: insightsOn })
+      .filter(route => route.path !== '/insights' || journalHasPosts),
     ...(brandOn ? await discoverEntries(event) : []),
-    ...(insightsOn ? await insightsEntries(event) : []),
+    ...insights,
   ]
 
   setHeader(event, 'content-type', 'application/xml; charset=utf-8')
@@ -114,6 +121,9 @@ async function discoverEntries(event: H3Event): Promise<BrandingSitemapEntry[]> 
         // wandert auch, wenn nur ein Meldungs-Zähler hochgezählt wurde, und
         // das ist keine Änderung am INHALT der Seite.
         lastmod: row.updatedAt || row.publishedAt || '',
+        // NUR die Adresse in der Sprache der Marke (SU1) — dieselbe, die die
+        // Seite als `canonical` nennt (discover/[slug].vue).
+        locales: [resolvePrimaryLocale(row.locale)],
       }))
   }
   catch (error) {

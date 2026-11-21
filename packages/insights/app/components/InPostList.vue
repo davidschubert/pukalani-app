@@ -8,7 +8,6 @@ import type {
 import {
   INSIGHTS_FORMATS,
   INSIGHTS_LOCALES,
-  INSIGHTS_SORTS,
   INSIGHTS_SORTS_AVAILABLE,
   INSIGHTS_TOPICS,
   INSIGHTS_TOPIC_KEYS,
@@ -35,12 +34,12 @@ import type { InsightsPublicPostListItem } from '../../shared/insightsPublic'
  * (`insightsFilterPosts`, `insightsSortPosts`). Die Route trägt deshalb keine
  * Parameter und hat EINEN Microcache-Eintrag (Begründung in ihrem Kopf).
  *
- * ── „MEISTGELESEN" IST SICHTBAR GESPERRT ────────────────────────────────
- * Die Zahl käme aus Plausible, und das ist auf branding.supply erst mit BS1
- * R2c eingeschaltet (§11 Frage 3: „erst Text, dann Schalter"). Die Option
- * steht deshalb IN der Leiste, deaktiviert, mit dem Grund darunter — eine
- * unsichtbare Sperre erklärt sich nie, und eine stille Ersatz-Sortierung wäre
- * eine Zahl, die niemand gemessen hat.
+ * ── „MEISTGELESEN" STEHT NICHT IN DER LEISTE (SU1, SEO-008) ─────────────
+ * Die Zahl käme aus einer Besucher-Zählung, die auf branding.supply noch
+ * nicht läuft. Bis zum 2026-11-21 stand die Option gesperrt in der Leiste,
+ * mit einem Satz darunter, der Lesern einen internen Werkzeug-Namen und
+ * einen Bau-Stand erklärte. Jetzt bietet die Leiste nur, was es gibt
+ * (`INSIGHTS_SORTS_AVAILABLE`); kommt die Zählung, kommt die Option dazu.
  *
  * ── EIN BEITRAG OHNE ZIELSPRACHE BLEIBT SICHTBAR ────────────────────────
  * §11.2 Frage 4: er steht mit seiner Grundfassung da und sagt „Nur auf …".
@@ -86,8 +85,8 @@ const activeTopic = ref<InsightsTopicKey | 'all'>(props.fixedTopic ?? fromQuery(
 const activeLocale = ref<InsightsLocale | 'all'>(fromQuery('lang', INSIGHTS_LOCALES, 'all'))
 /**
  * Die Sortierung kennt kein „alle" und braucht deshalb ihren eigenen Leser.
- * Gelesen wird gegen die VERFÜGBAREN Werte: `?sort=mostRead` (gesperrt, s.
- * Kopf) fällt auf `newest` zurück, statt eine Sortierung zu wählen, die die
+ * Gelesen wird gegen die VERFÜGBAREN Werte: `?sort=mostRead` (noch nicht
+ * angeboten, s. Kopf) fällt auf `newest` zurück, statt eine Sortierung zu wählen, die die
  * Leiste selbst nicht anbietet.
  */
 function sortFromQuery(): InsightsSort {
@@ -148,11 +147,9 @@ const localeItems = computed(() => [
   { label: t('insights.list.localeDe'), value: 'de' },
   { label: t('insights.list.localeEn'), value: 'en' },
 ])
-const sortItems = computed(() => INSIGHTS_SORTS.map(sort => ({
+const sortItems = computed(() => INSIGHTS_SORTS_AVAILABLE.map(sort => ({
   label: t(`insights.list.sort${sort.charAt(0).toUpperCase()}${sort.slice(1)}`),
   value: sort,
-  // Gesperrt statt versteckt (s. Kopf).
-  disabled: !INSIGHTS_SORTS_AVAILABLE.includes(sort),
 })))
 
 const visible = computed(() => insightsSortPosts(
@@ -219,7 +216,6 @@ const visible = computed(() => insightsSortPosts(
 
     <p class="bw-label mt-3 flex flex-wrap items-center gap-x-3 gap-y-1" style="color: var(--bw-muted)">
       <span>{{ t('insights.list.count', { count: visible.length }) }}</span>
-      <span>{{ t('insights.list.sortMostReadHint') }}</span>
     </p>
 
     <!-- Leerer Zustand: der Core-Baustein, nie eine leere Fläche. -->

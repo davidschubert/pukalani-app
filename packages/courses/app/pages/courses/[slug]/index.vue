@@ -2,6 +2,7 @@
 import { markdownExcerpt } from '../../../../../core/shared/markdownExcerpt'
 import { COMMUNITY_SUSPENDED_CODE } from '../../../../../core/shared/communitySuspension'
 import { safeRedirectTarget } from '../../../../../core/shared/redirectTarget'
+import { courseStructuredData } from '../../../../shared/courseStructuredData'
 import {
   COURSE_NOT_A_MEMBER_CODE,
   COURSE_PAID_UNAVAILABLE_CODE,
@@ -63,6 +64,25 @@ useBrandTitle(() => course.value?.title ?? '', {
 
 // EINE MASSGEBLICHE ADRESSE (Q10, SEO-004): die in der Hauptsprache der Community.
 useCommunityContentSeo()
+
+// STRUKTURIERTE DATEN (SU1, SEO-003): `Course` aus der öffentlichen Vorschau,
+// in der Grundfassung (nicht der Übersetzung eines Besuchers) — Regeln:
+// shared/courseStructuredData.ts, Tor: core/shared/communityStructuredData.ts.
+const coursePrimaryLocale = usePrimaryLocale()
+const courseBrand = useBrandName()
+const courseUrl = useCommunityContentUrl(() => `/courses/${course.value?.slug ?? route.params.slug}`)
+useCommunityStructuredData(() => course.value
+  ? courseStructuredData({
+      url: courseUrl.value,
+      title: course.value.title,
+      description: course.value.description,
+      authorName: course.value.authorName,
+      providerName: courseBrand.value,
+      createdAt: course.value.$createdAt,
+      updatedAt: course.value.$updatedAt,
+      inLanguage: coursePrimaryLocale.value,
+    })
+  : null)
 
 /**
  * „Kurs bearbeiten" (F58, 2026-08-16) — dieselbe fehlende Tür wie in der
