@@ -62,6 +62,10 @@ const EXCEPTIONS: Record<string, string> = {
     'FEE_PROVIDERS ist eine Datenliste im Repo.',
   'apps/marketing/app/components/FeeCalculator.vue :: FEE_CUMULATIVE_SOURCE.href':
     'Konstante aus einer Datenliste im Repo.',
+  'packages/brand/app/pages/discover/[slug].vue :: kailuaCoffeeKitHref(\'bundle\')':
+    'Feste interne Adresse des Beispiel-Kits (packages/brand/shared/examples/kailuaCoffeeKit.ts).',
+  'packages/brand/app/pages/discover/[slug].vue :: kailuaCoffeeKitHref(tile.file)':
+    'Interne Adresse aus einer Konstanten-Liste im Repo (KAILUA_COFFEE_KIT_TILES).',
   'apps/portfolio/app/components/SiteFooter.vue :: CONTACT.calLink':
     'Kontakt-Konstante aus apps/portfolio/app/data/contact.',
   'apps/portfolio/app/pages/erstgespraech/index.vue :: CONTACT.calLink':
