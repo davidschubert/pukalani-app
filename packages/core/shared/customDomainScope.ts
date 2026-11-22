@@ -69,6 +69,7 @@ export const CUSTOM_DOMAIN_API_ALLOWED: readonly CustomDomainApiEntry[] = [
   { path: '/api/community/removed-contact', match: 'exact', reason: 'Hinweisseite für ehemalige Mitglieder: Nachricht an das Team dieser Community.' },
   { path: '/api/notifications', match: 'exact', reason: 'Eigene Benachrichtigungen (Glocke), gefiltert auf diese Community.' },
   { path: '/api/notifications/read', match: 'exact', reason: 'Eigene Benachrichtigungen als gelesen markieren.' },
+  { path: '/api/live/realtime', match: 'exact', methods: ['GET'], reason: 'Live-Verbindung über unseren Server (PK1 E1d): nur die Karte dieser Seite, nur Kanäle dieser Community.' },
   { path: '/api/presence', match: 'prefix', reason: 'Anwesenheit auf dieser Seite (Herzschlag, Verlassen, Zahl).' },
   { path: '/api/handles/search', match: 'exact', reason: 'Erwähnungen im Editor (Beiträge, Nachrichten).' },
   { path: '/api/storage', match: 'prefix', methods: ['GET', 'HEAD'], reason: 'Profilbilder ANZEIGEN (kontoweite Ablage der Avatare). Hochladen und Löschen sind Konto-Einstellungen und bleiben 404.' },

@@ -39,13 +39,24 @@ export function realtimeAllowed(
 /**
  * TOKEN FÜR DIE LIVE-VERBINDUNG? (PK1 E1b-2) — nur mit Sitzung, und nicht auf
  * der eigenen Domain einer Community im Modus `write`: dort antwortet
- * `/api/auth/realtime-token` 404 (bis E1d, Plan § 13.3 Weg 3). Der Socket
- * läuft dort als Gast weiter (öffentliche Kanäle), die Anwesenheit hält ihr
- * 20-s-Herzschlag über unseren Server. Ohne diese Weiche fragte jede Seite
+ * `/api/auth/realtime-token` 404. Seit E1d läuft der Socket dort über unseren
+ * Server (`realtimeRelayWanted`), ohne den Dienst als Gast (öffentliche
+ * Kanäle), die Anwesenheit hält dann ihr 20-s-Herzschlag. Ohne diese Weiche fragte jede Seite
  * und jeder 12-min-Takt vergeblich nach.
  */
 export function realtimeTokenWanted(loggedIn: boolean, customDomainScope: boolean): boolean {
   return loggedIn && !customDomainScope
+}
+
+/**
+ * LIVE ÜBER UNSEREN SERVER? (PK1 E1d, Plan § 13.3 Weg 3) — angemeldet, auf
+ * der eigenen Domain einer Community im Modus `write`, UND der Dienst ist dort
+ * bereit (`liveRelay`, SSR-Spiegel). Dann spricht der Socket `/api/live` auf
+ * DIESEM Host an statt Appwrite, und der Browser hält kein Token. Fehlt der
+ * Dienst, bleibt es beim Gast-Socket (E1b-2).
+ */
+export function realtimeRelayWanted(loggedIn: boolean, customDomainScope: boolean, liveRelay: boolean): boolean {
+  return loggedIn && customDomainScope && liveRelay
 }
 
 /**

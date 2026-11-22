@@ -266,6 +266,59 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1 E1d — Live-Verbindung unter eigenen Domains über unseren Server (Schalter aus) ✅ 2026-11-22
+
+**Was.** Davids K4 („auch dort live lassen") als Weg 3 aus Plan § 13.3:
+angemeldet auf der eigenen Domain einer Pool-Community (Modus `write`) setzt
+der Browser den Realtime-Endpunkt des Web-SDK auf `wss://<Host>/api/live` und
+hält kein Token. Die Route `/api/live/realtime` (core) ist WebSocket und
+HTTP zugleich: beim Aufbau prüft der Dienst Herkunft = Host, fragt sich dann
+selbst per `localFetch` nach einer Fahrkarte (Prozess-Geheimnis in einer
+Kopfzeile, sonst 404), damit die ganze Middleware-Kette läuft, und öffnet
+oben eine Appwrite-Verbindung mit einem an die Sitzung der Karte gebundenen
+JWT (10 min). Durch kommen nur Zeilen mit eigener `communityId` oder
+`read("any")`, Anwesenheit mit eigener `tenantId` und vom Konto-Kanal die
+Ereignis-Art ohne Kennungen und ohne Inhalt; die eigene Anwesenheit nur mit genau den
+Server-Rechten, bekannten Feldern und Name/Bild vom Server. Widerruf der
+Sitzung schließt sofort (401 durchgereicht); Domain, Community und
+Mitgliedschaft prüft der Dienst jede Minute nach (`4403`). Ping oben alle
+20 s, Neuverbinden 30 s vor JWT-Ablauf, JWT oben als Kopfzeile, Grenzen je
+Prozess/Konto (vor dem Warten reserviert), 32 KB je Nachricht, 1 MB
+Sende-Puffer, Bremse je Konto nur fürs Ausstellen. Ein Gegenlesen (Opus)
+fand neun Punkte — keinen Weg, auf dem eine Sitzung für jemand anderen oder
+über die Karte hinaus gilt; acht im selben Zweig behoben, einer (Schleife
+kurz vor Kartenablauf) als gewollt beschrieben. Das Review des Leitstands
+(L1–L4) danach ebenfalls im selben Zweig: die Bremse zählte je Adresse und
+auch die Nachprüfung (L1/L2), der Konto-Kanal trug Kennungen anderer Seiten
+(L3), der Sende-Puffer war ungeprüft (L4).
+WebSocket nur in `apps/platform`; ein globaler `upgrade`-Hook lässt nur den
+einen Pfad durch (sonst nähme crossws jeden Pfad als stillen Socket an).
+`/api/health` meldet `siteCard.liveRelay` nur mit `write`, Schlüssel und
+WebSocket im Build — daran hängt K6. Bühne (`verify-site-card`, neuer
+Abschnitt 4b und Nachprüfung in 5, 52/52 mit `write` — gegen den
+Dev-Server UND den gebauten Produktions-Server), mit `off` antwortet die
+Route wie eine unbekannte (404 mit demselben Text, auch als WebSocket), und
+die 34 Bühnen-Beweise eines Pull Requests sind grün. Im Browser: auf der
+gestellten Domain angemeldet, Sitzung bei Appwrite gelöscht ⇒ binnen 3 s
+„Sitzung beendet".
+
+**Gelernt:** `users.createJWT` mit `sessionId` stellt in Appwrite 2.7.4 auch
+für eine GELÖSCHTE Sitzung ein JWT aus (gemessen) — erst Appwrite-Realtime
+lehnt es ab. Wer an einer Sitzung etwas ausgibt, fragt sie vorher selbst
+(`getSession('current')`), sonst nimmt der Dienst nach einem Widerruf noch
+neue Verbindungen an; der Bühnen-Beweis fand es, die Unit-Tests nicht. Und
+`nitro.experimental.websocket` ist kein „Pfad an": crossws nimmt danach JEDEN
+Pfad als WebSocket an, wenn kein globaler `upgrade`-Hook ablehnt. Ein Beweis
+über die Naht braucht beide Server aus dem Worktree — die Platform suchte den
+Kontroll-Server auf Port 3004, und der Host-Wechsel war rot, ohne dass am
+Code etwas falsch war. Und eine abgeschaltete eigene Domain antwortet 302
+(Umleitung zur Pukalani-Adresse), nicht 404 — eine Nachprüfung, die nur
+401/403/404 als „gilt nicht mehr" zählt, hält die Verbindung offen; richtig
+ist fail-closed: alles außer 200, 429 und 5xx. Und eine Bremse vor einer
+Sicherheits-Nachprüfung macht die Prüfung selbst abschaltbar: wer den Topf
+füllt, verwandelt „gilt nicht mehr" in „unbekannt" — Nachprüfungen gehören
+nie in einen Topf, den der Geprüfte füllen kann.
+
 ### PK1 Review vor Schritt B — Ketten-Ablauf, Wettlauf, Lese-Wächter, Runbook (Anmeldung, Schalter-Stand `read`) ✅ 2026-11-22
 
 Ein unabhängiges Review der Schritte E1a bis E1c (und von E1d) vor dem

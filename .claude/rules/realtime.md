@@ -1,6 +1,8 @@
 ---
 paths:
   - "packages/core/app/composables/useRealtime*"
+  - "packages/core/shared/liveRelay.ts"
+  - "packages/core/server/utils/liveRelay.ts"
   - "packages/*/app/plugins/realtime-*"
   - "packages/core/shared/realtimeGate.ts"
   - "packages/core/app/utils/hostGate.ts"
@@ -63,5 +65,13 @@ paths:
   Verbindung kam so jede Sekunde wieder. Unsere Instanz zählt die DAUER
   (`core/shared/realtimeReconnect.ts`, eingehängt in `useRealtimeClient.ts`):
   1 s, 2 s, 4 s … 60 s, zurück erst nach 30 s stabiler Verbindung.
+- EIGENE DOMAIN (PK1 E1d): angemeldet auf der eigenen Domain einer
+  Community im Modus `write` geht der geteilte Socket an `/api/live` auf
+  DIESEM Host (`realtimeRelayWanted`, SSR-Spiegel `useLiveRelay`), nie an
+  Appwrite; der Server hält das JWT. Durch lässt er nur, was
+  `core/shared/liveRelay.ts` kennt (Zeilen, `presences`, `account`) — eine
+  NEUE Kanal-Art kommt dort sonst still nicht an: Regel und Test
+  (`core/tests/liveRelay.test.ts`) mit erweitern. Beweis:
+  `packages/core/scripts/verify-site-card.mjs` (Abschnitt 4b).
 - KEIN EIGENER ACCOUNT-WS (RT2): der `account`-Channel läuft auf dem geteilten
   Socket (Regel: `appwrite-presence.md`).

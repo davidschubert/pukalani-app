@@ -82,6 +82,9 @@ const METHODLESS_EXPECTED = [
   'apps/help/server/api/health.ts',
   'apps/marketing/server/api/health.ts',
   'packages/core/server/api/health.ts',
+  // PK1 E1d: WebSocket-Route (Nitro verlangt die Datei ohne Methode); ihr
+  // HTTP-Gesicht antwortet jeder Methode 404, nur dem Dienst selbst die Fahrkarte.
+  'packages/core/server/api/live/realtime.ts',
 ]
 
 /** Erwartete Anzahl je Klasse. Ändert sich eine Zahl, gehört die Begründung in den Commit. */
