@@ -71,24 +71,41 @@ useBrandTitle(() => t('posts.discussions.about.title'), {
   description: () => t('posts.discussions.about.description'),
 })
 
-const { data: stats } = await useFetch<DiscussionAboutResponse>('/api/posts/discussions/about')
+const { data: stats, error: statsError, refresh: refreshStats } = await useFetch<DiscussionAboutResponse>('/api/posts/discussions/about')
+
+/**
+ * Echter Ausfall (Status ab 500 oder kein Status = Netz) statt einer ERWARTETEN
+ * Ablehnung (404 ohne Seite/Mandant): nur der Ausfall bekommt den Fehler-Zustand,
+ * ein 404 bleibt still („nichts da").
+ */
+function isOutage(err: unknown): boolean {
+  if (!err) return false
+  return isFetchOutage(err)
+}
+const statsFailed = computed(() => isOutage(statsError.value))
 
 /**
  * `useRequestFetch` + `.catch(() => null)`: der SSR-interne Aufruf MUSS den
  * Host-Header weiterreichen (im Pool entscheidet er über den Mandanten), und
  * ein 404/403 ist hier ein ERWARTETES Ergebnis, kein Fehler — siehe oben.
  */
-const { data: about } = await useAsyncData(
+const { data: about, error: aboutError, refresh: refreshAbout } = await useAsyncData(
   () => `discussions-about-page-${locale.value}`,
   () => requestFetch<PublicPage>(`/api/pages/public/${DISCUSSIONS_ABOUT_SLUG}`, {
     query: { locale: locale.value },
-  }).catch(() => null),
+  }).catch((err: unknown) => {
+    if (isOutage(err)) throw err
+    return null
+  }),
   { watch: [locale] },
 )
 
-const { data: team } = await useAsyncData(
+const { data: team, error: teamError, refresh: refreshTeam } = await useAsyncData(
   'discussions-about-team',
-  () => requestFetch<AboutTeamResponse>('/api/community/team').catch(() => null),
+  () => requestFetch<AboutTeamResponse>('/api/community/team').catch((err: unknown) => {
+    if (isOutage(err)) throw err
+    return null
+  }),
 )
 
 /**
@@ -152,7 +169,8 @@ const figures = computed(() => {
 
     <!-- Der Text des Owners. Fehlt er, steht hier nichts — außer für den, der
          ihn schreiben kann. -->
-    <div v-if="about" class="mt-4">
+    <CoreInlineLoadError v-if="aboutError" class="mt-4" :retry="refreshAbout" />
+    <div v-else-if="about" class="mt-4">
       <MarkdownContent :source="about.body" />
     </div>
     <UAlert
@@ -174,7 +192,9 @@ const figures = computed(() => {
     <h2 class="mt-8 text-lg font-semibold">{{ t('posts.discussions.about.figuresTitle') }}</h2>
     <!-- Vier ODER fünf Kacheln: die Spaltenzahl folgt der Anzahl, damit die
          letzte nicht als einzelne Waise in einer zweiten Reihe steht. -->
+    <CoreInlineLoadError v-if="statsFailed" class="mt-3" :retry="refreshStats" />
     <dl
+      v-else
       class="mt-3 grid grid-cols-2 gap-3"
       :class="figures.length > 4 ? 'sm:grid-cols-3 lg:grid-cols-5' : 'sm:grid-cols-4'"
     >
@@ -185,7 +205,8 @@ const figures = computed(() => {
     </dl>
 
     <!-- Nur wenn die Naht etwas geliefert hat — siehe Kopf. -->
-    <template v-if="hasTeam">
+    <CoreInlineLoadError v-if="teamError" class="mt-8" :retry="refreshTeam" />
+    <template v-else-if="hasTeam">
       <h2 class="mt-8 text-lg font-semibold">{{ t('posts.discussions.about.teamTitle') }}</h2>
 
       <div v-if="admins.length > 0" class="mt-3">

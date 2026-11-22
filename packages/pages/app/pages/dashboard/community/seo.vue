@@ -78,9 +78,19 @@ const saving = ref(false)
  * `packages/core/tests/ssrTenantFetch.test.ts`.
  */
 const requestFetch = useRequestFetch()
-const { data: home } = await useAsyncData(
+/**
+ * Ein 404 (es gibt noch keine Startseite) ist ein ERWARTETES Ergebnis, kein
+ * Fehler. Nur ein echter Ausfall (Status ab 500 oder kein Status = Netz) geht
+ * weiter: sonst stünde unter dem Feld „nichts hinterlegt", obwohl nur der
+ * Abruf des Auszugs scheiterte.
+ */
+const { data: home, error: homeError, refresh: refreshHome } = await useAsyncData(
   () => `seo-home-${locale.value}`,
-  () => requestFetch<PublicPage>('/api/pages/public/home', { query: { locale: locale.value } }).catch(() => null),
+  () => requestFetch<PublicPage>('/api/pages/public/home', { query: { locale: locale.value } }).catch((err: unknown) => {
+    const status = (err as { statusCode?: number }).statusCode
+    if (status === undefined || status >= 500) throw err
+    return null
+  }),
   { watch: [locale] },
 )
 
@@ -167,7 +177,8 @@ async function save() {
             class="w-full"
           />
           <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <span class="text-muted">
+            <CoreInlineLoadError v-if="homeError" :retry="refreshHome" data-seo-home-error />
+            <span v-else class="text-muted">
               <template v-if="usingFallback">{{ t('pages.seo.field.usingExcerpt') }}</template>
               <template v-else-if="length === 0">{{ t('pages.seo.field.noneAtAll') }}</template>
               <template v-else>{{ t('pages.seo.field.hint') }}</template>

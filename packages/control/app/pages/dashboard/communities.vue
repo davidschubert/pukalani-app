@@ -338,7 +338,13 @@ function planLabel(key: string): string {
   const labelKey = planLabelKey(key)
   return labelKey ? t(labelKey) : key
 }
-const { data: plansData, refresh: refreshPlans } = await useFetch<{ plans: PlanLimitsDto[] }>('/api/control/plans', { lazy: true, server: false })
+const { data: plansData, error: plansError, refresh: refreshPlans } = await useFetch<{ plans: PlanLimitsDto[] }>('/api/control/plans', { lazy: true, server: false })
+// Nur ein ECHTER Ausfall (Status ab 500 oder kein Status = Netz) zeigt im
+// Quota-Katalog den kleinen Fehler-Zustand statt einer leeren Pläne-Liste.
+const plansFailed = computed(() => {
+  if (!plansError.value) return false
+  return isFetchOutage(plansError.value)
+})
 const planEdits = reactive<Record<string, { perDay: number, total: number }>>({})
 watch(() => plansData.value?.plans, (plans) => {
   for (const plan of plans ?? []) {
@@ -566,7 +572,8 @@ function rowActions(tenant: TenantDto): DropdownMenuItem[][] {
       <section class="mt-8 rounded-lg border border-default p-4" data-plan-limits>
         <h2 class="font-semibold">{{ t('control.plans.title') }}</h2>
         <p class="mt-1 text-sm text-muted">{{ t('control.plans.subtitle') }}</p>
-        <div class="mt-4 space-y-3">
+        <CoreInlineLoadError v-if="plansFailed" class="mt-4" :retry="refreshPlans" data-plan-limits-error />
+        <div v-else class="mt-4 space-y-3">
           <div v-for="plan in plansData?.plans ?? []" :key="plan.key" class="flex flex-wrap items-end gap-3" :data-plan-row="plan.key">
             <UBadge :color="plan.key === 'pro' ? 'primary' : plan.key === 'personal' ? 'info' : 'neutral'" variant="subtle" class="mb-1.5 w-36 justify-center" data-plan-label>
               {{ planLabel(plan.key) }}

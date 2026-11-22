@@ -78,9 +78,15 @@ interface StripeStatus {
   webhook: WebhookStatus | SectionError | null
 }
 
-const { data, refresh, status: fetchStatus } = await useFetch<StripeStatus>('/api/control/stripe/status', {
+const { data, error: fetchError, refresh, status: fetchStatus } = await useFetch<StripeStatus>('/api/control/stripe/status', {
   lazy: true,
   server: false,
+})
+// Nur ein ECHTER Ausfall (Status ab 500 oder kein Status = Netz): sonst stünde
+// in der Status-Karte „kein Schlüssel", obwohl nur der Abruf scheiterte.
+const statusFailed = computed(() => {
+  if (!fetchError.value) return false
+  return isFetchOutage(fetchError.value)
 })
 
 /** Hat der Abschnitt Daten? (`null` = kein Key, `{error:true}` = Stripe-Störung) */
@@ -323,7 +329,8 @@ async function ensureWebhook(recreate = false) {
             :description="t('control.stripe.status.liveHint')"
           />
 
-          <dl class="divide-y divide-default text-sm">
+          <CoreInlineLoadError v-if="statusFailed" :retry="refresh" data-stripe-status-error />
+          <dl v-else class="divide-y divide-default text-sm">
             <div class="flex items-center justify-between gap-4 py-3 first:pt-0">
               <dt class="text-muted">{{ t('control.stripe.status.mode') }}</dt>
               <dd>

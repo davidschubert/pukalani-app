@@ -24,22 +24,15 @@
  * Sie brauchen je Seite eine eigene Entscheidung und stehen für Schub 5.
  */
 export const LIST_STATE_BACKLOG: Readonly<Record<string, number>> = {
-  'apps/control/app/pages/dashboard/stripe.vue': 1,
-  'apps/control/app/pages/docs/[...slug].vue': 2,
   'apps/help/app/app.vue': 2,
   'apps/help/app/pages/[...slug].vue': 2,
   'apps/help/app/pages/index.vue': 1,
   'apps/platform/app/pages/index.vue': 1,
   'apps/portfolio/app/components/SiteFooter.vue': 1,
-  'packages/admin/app/pages/dashboard/index.vue': 6,
-  'packages/analytics/app/pages/dashboard/community/analytics.vue': 1,
-  'packages/billing/app/components/BillingPricingTable.vue': 1,
   // Bewusst offen (LZ1 Schub A): der Abruf teilt den Schlüssel `chrome-nav-pages-<locale>` mit
   // `useCommunityNav` (core), dessen Handler den Fehler dokumentiert verschluckt (keine CMS-Seiten
   // = Normalfall). Ein Fehler-Zustand hier hätte nie etwas zu lesen und gehört in den Core-Handler.
   'packages/blueprint/app/components/DiscussionSidebarLinks.vue': 1,
-  'packages/blueprint/app/pages/discussions/[category]/index.vue': 1,
-  'packages/blueprint/app/pages/discussions/about.vue': 3,
   'packages/brand/app/components/BwDiscoverTeaser.vue': 1,
   'packages/brand/app/pages/brand-check/[id].vue': 1,
   'packages/brand/app/pages/brand-check/vergleich.vue': 1,
@@ -51,17 +44,14 @@ export const LIST_STATE_BACKLOG: Readonly<Record<string, number>> = {
   'packages/brand/app/pages/dashboard/brands/[id]/score.vue': 3,
   'packages/brand/app/pages/dashboard/brands/index.vue': 2,
   'packages/brand/app/pages/invite.vue': 1,
-  'packages/comments/app/components/CommentSection.vue': 1,
-  'packages/comments/app/pages/dashboard/community/embed.vue': 1,
+  // Bleibt bewusst: die Prüfung der Einbetter-Adresse ist „best effort" und fällt bei einem
+  // Ausfall AUF (die harte Grenze ist die CSP, nicht diese Abfrage). Eine Meldung im iframe
+  // auf fremden Seiten würde die Kommentare wegen einer Zusatzprüfung verdecken.
   'packages/comments/app/pages/embed.vue': 1,
-  'packages/control/app/pages/dashboard/communities.vue': 1,
-  'packages/control/app/pages/dashboard/websites.vue': 1,
-  'packages/courses/app/components/LessonView.vue': 2,
   'packages/insights/app/pages/dashboard/insights/[id].vue': 1,
   'packages/insights/app/pages/dashboard/insights/radar.vue': 1,
   'packages/market/app/pages/brand/[profileId]/market.vue': 3,
-  'packages/pages/app/pages/dashboard/community/seo.vue': 1,
-  'packages/posts/app/components/PostComposer.vue': 1,
+  // Bleibt: der Feed zeigt den Fehler der ersten Seite schon (`loadFailed` + CoreLoadError);
+  // der Zähler sieht den Abruf nur nicht, weil er in einem Ausdruck mit `? await` steht.
   'packages/posts/app/components/PostFeed.vue': 1,
-  'packages/themes/app/pages/dashboard/themes/fonts.vue': 1,
 }
