@@ -72,8 +72,15 @@ const customerArea = customerAreaUrl(
  * Ein Fehler hier ist kein Fehler der Seite — dann gibt es eben keinen Knopf.
  */
 interface MyInvites { invites: { id: string, role: string, expiresAt: string }[], siteName: string }
-const { data: mine } = await useFetch<MyInvites>('/api/community/invites/mine', {
+const { data: mine, error: mineError, refresh: refreshMine } = await useFetch<MyInvites>('/api/community/invites/mine', {
   default: () => ({ invites: [], siteName: '' }),
+})
+/**
+ * LZ1: kein Knopf bleibt der Normalfall (401/403/404 = keine Einladung); nur ein
+ * echter AUSFALL (kein Status = Netz, oder 5xx) sagt es ehrlich, statt still zu schweigen.
+ */
+const inviteLookupFailed = computed(() => {
+  return isFetchOutage(mineError.value)
 })
 const pendingInvite = computed(() => mine.value?.invites?.[0] ?? null)
 
@@ -170,6 +177,7 @@ async function onSubmit(event: FormSubmitEvent<RemovedContactForm>) {
             </UButton>
           </template>
         </UAlert>
+        <CoreInlineLoadError v-else-if="inviteLookupFailed" :retry="refreshMine" data-removed-invite-error />
         <p v-if="acceptError" class="text-sm text-error">
           {{ acceptError === 'unverified' ? t('removedNotice.invite.unverified') : t('removedNotice.invite.failed') }}
         </p>

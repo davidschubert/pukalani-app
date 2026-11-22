@@ -113,7 +113,16 @@ const { data, refresh, status, error } = await useFetch<CommunityTeamResponse>('
  * angezeigt. Owner/Admin bekommen `unlimited: true` und sehen deshalb keine
  * Zahlen; für sie hat sich nichts geändert.
  */
-const { data: quota, refresh: refreshQuota } = await useFetch<MemberInviteQuotaView>('/api/community/invites/quota')
+const { data: quota, refresh: refreshQuota, error: quotaError } = await useFetch<MemberInviteQuotaView>('/api/community/invites/quota')
+
+/**
+ * LZ1: nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt statt des
+ * Satzes „gerade nicht möglich" den Fehler-Zustand. 401/403/404 sind hier
+ * ERWARTET (keine Einladungs-Berechtigung) und bleiben der ruhige Satz.
+ */
+const quotaFailed = computed(() => {
+  return isFetchOutage(quotaError.value)
+})
 
 /** Der Knopf erscheint GENAU DANN, wenn die Route ihn auch bedient. */
 const canInvite = computed(() => quota.value?.enabled === true)
@@ -470,6 +479,7 @@ function rowActions(member: CommunityMemberView): DropdownMenuItem[][] {
             <p v-if="showQuotaHint" class="text-sm text-muted" data-invite-quota>
               {{ t('members.invite.quotaLeft', { remaining: quota?.remaining ?? 0, limit: quota?.limit ?? 0 }) }}
             </p>
+            <CoreInlineLoadError v-else-if="quotaFailed" :retry="refreshQuota" data-invite-quota-error />
             <p v-else-if="!canInvite" class="text-sm text-muted" data-invite-disabled>
               {{ disabledReason }}
             </p>

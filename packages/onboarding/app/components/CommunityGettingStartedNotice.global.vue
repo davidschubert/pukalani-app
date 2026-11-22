@@ -28,10 +28,18 @@ const { t } = useI18n()
 const localePath = useLocalePath()
 const toast = useToast()
 
-const { data } = await useFetch<GettingStartedResponse | null>('/api/community/getting-started', {
+const { data, error, refresh } = await useFetch<GettingStartedResponse | null>('/api/community/getting-started', {
   lazy: true,
   server: false,
   default: () => null,
+})
+
+/**
+ * Nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt den Fehler-Zustand
+ * (LZ1). 401/403/404 sind hier ERWARTET (Gast, keine Rolle, kein Pool-Host).
+ */
+const failed = computed(() => {
+  return isFetchOutage(error.value)
 })
 
 /** Nach dem Klick sofort weg — der prefs-Merker ist schon geschrieben. */
@@ -130,4 +138,5 @@ async function dismiss() {
       </li>
     </ul>
   </UCard>
+  <CoreInlineLoadError v-else-if="failed" :retry="refresh" data-getting-started-error />
 </template>

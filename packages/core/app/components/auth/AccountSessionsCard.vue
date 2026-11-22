@@ -8,10 +8,14 @@ const auth = useAuthStore()
 
 // Private, per-User-Daten ohne SEO-Relevanz → client-seitig laden (kein SSR-Render,
 // damit kein Hydration-Mismatch über die NuxtPage-Async-Komponenten-Grenze entsteht).
-const { data, refresh } = useFetch<UserSessionListResponse>('/api/auth/sessions', {
+const { data, refresh, status, error } = useFetch<UserSessionListResponse>('/api/auth/sessions', {
   lazy: true,
   server: false,
 })
+
+// LZ1: „leer" heißt hier „noch keine Antwort"; eine leere Sitzungsliste zeichnet
+// die Tabelle selbst. Ein Fehler zeigt „Noch einmal versuchen" statt einer leeren Tabelle.
+const listing = computed(() => listState({ status: status.value, error: error.value, empty: !data.value }))
 
 // Live: Liste aktualisieren, wenn sich Sessions ändern (Abmeldung auf anderem
 // Gerät, Widerruf durch Admin) — entprellt.
@@ -99,19 +103,21 @@ async function signOutAll() {
           <UIcon name="i-ph-circle-notch" class="size-5 animate-spin text-muted" />
         </div>
       </template>
-      <SessionsTable :sessions="data?.sessions ?? []">
-        <template #actions="{ session }">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            :loading="busyId === session.$id"
-            @click="signOut(session as UserSession)"
-          >
-            {{ t('account.sessions.signOut') }}
-          </UButton>
-        </template>
-      </SessionsTable>
+      <CoreListState :state="listing" :retry="refresh" data-sessions-list>
+        <SessionsTable :sessions="data?.sessions ?? []">
+          <template #actions="{ session }">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              :loading="busyId === session.$id"
+              @click="signOut(session as UserSession)"
+            >
+              {{ t('account.sessions.signOut') }}
+            </UButton>
+          </template>
+        </SessionsTable>
+      </CoreListState>
     </ClientOnly>
   </UPageCard>
 </template>
