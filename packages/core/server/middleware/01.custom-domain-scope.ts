@@ -42,7 +42,7 @@ export default defineEventHandler((event) => {
 
   event.context.customDomainScope = true
 
-  if (!isCustomDomainApiAllowed(event.path, communityProductPrefixes())) {
+  if (!isCustomDomainApiAllowed(event.path, communityProductPrefixes(), event.method)) {
     throw createError({ status: 404, statusText: 'Not found' })
   }
 })

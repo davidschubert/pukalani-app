@@ -27,7 +27,7 @@ import {
   isErrorPageRenderPass,
 } from '../../shared/unknownHost'
 import { canonicalRedirectStatus, canonicalRedirectTarget } from '../../shared/canonicalHost'
-import { isManagementPagePath, staysOnPukalaniAddress } from '../../shared/customDomainScope'
+import { accountAreaUrl, isAccountAreaPagePath, isManagementPagePath, staysOnPukalaniAddress } from '../../shared/customDomainScope'
 import { isCustomDomainHost } from '../../shared/siteCard'
 import { siteCardSettings } from '../utils/siteCard'
 
@@ -198,6 +198,17 @@ export default defineEventHandler(async (event) => {
   if (scoped && tenant.pukalaniHost && isCustomDomainHost(host, tenant) && isManagementPagePath(event.path)) {
     setResponseHeader(event, 'Cache-Control', 'no-store')
     return await sendRedirect(event, `https://${tenant.pukalaniHost.trim().toLowerCase()}${event.path}`, canonicalRedirectStatus(event.method, 'temporary'))
+  }
+  // Konto-Seiten (Profil, Einstellungen, Meine Communities) gehören in den
+  // Kundenbereich — dorthin, ebenfalls ohne Siegel. Ohne Kontroll-Host bleibt
+  // es beim 404 der Seite.
+  if (scoped && isCustomDomainHost(host, tenant) && isAccountAreaPagePath(event.path)) {
+    // Lokal (`*.localhost`) trägt der Link den Port dieser Anfrage.
+    const accountArea = accountAreaUrl(controlHosts(event), (getHeader(event, 'host') ?? '').split(':')[1] ?? '')
+    if (accountArea) {
+      setResponseHeader(event, 'Cache-Control', 'no-store')
+      return await sendRedirect(event, `${accountArea}${event.path}`, canonicalRedirectStatus(event.method, 'temporary'))
+    }
   }
 
   const target = canonicalRedirectTarget(host, tenant.canonicalHost, event.path)

@@ -27,6 +27,8 @@
 export interface CustomDomainApiEntry {
   path: string
   match: 'exact' | 'prefix'
+  /** Nur diese Methoden (groß geschrieben); ohne Angabe jede. */
+  methods?: readonly string[]
   reason: string
 }
 
@@ -69,7 +71,7 @@ export const CUSTOM_DOMAIN_API_ALLOWED: readonly CustomDomainApiEntry[] = [
   { path: '/api/notifications/read', match: 'exact', reason: 'Eigene Benachrichtigungen als gelesen markieren.' },
   { path: '/api/presence', match: 'prefix', reason: 'Anwesenheit auf dieser Seite (Herzschlag, Verlassen, Zahl).' },
   { path: '/api/handles/search', match: 'exact', reason: 'Erwähnungen im Editor (Beiträge, Nachrichten).' },
-  { path: '/api/storage', match: 'prefix', reason: 'Hochladen, Anzeigen und Entfernen von Dateien für Beiträge; jede Ablage prüft ihre Rechte selbst.' },
+  { path: '/api/storage', match: 'prefix', methods: ['GET', 'HEAD'], reason: 'Profilbilder ANZEIGEN (kontoweite Ablage der Avatare). Hochladen und Löschen sind Konto-Einstellungen und bleiben 404.' },
   { path: '/api/reports', match: 'prefix', reason: 'Melden und Moderieren (moderation-Layer, Art foundation) — „moderieren wie bisher".' },
   { path: '/api/abuse/report', match: 'exact', reason: 'Öffentliches Formular „Missbrauch melden", ohne Konto.' },
 ]
@@ -91,11 +93,16 @@ function stripQuery(path: string): string {
   return path.split('?')[0] ?? ''
 }
 
-/** Steht dieser Pfad auf der Erlaubnisliste des Core? Liefert den Eintrag. */
-export function customDomainAllowedEntry(path: string): CustomDomainApiEntry | null {
+/**
+ * Steht dieser Pfad auf der Erlaubnisliste des Core? Liefert den Eintrag.
+ * Ohne `method` zählt nur der Pfad (Wächter über die Routen-Dateien).
+ */
+export function customDomainAllowedEntry(path: string, method?: string): CustomDomainApiEntry | null {
   const clean = stripQuery(path)
+  const verb = method?.toUpperCase()
   return CUSTOM_DOMAIN_API_ALLOWED.find(entry =>
-    entry.match === 'exact' ? clean === entry.path : matchesApiPrefix(clean, entry.path),
+    (entry.match === 'exact' ? clean === entry.path : matchesApiPrefix(clean, entry.path))
+    && (!verb || !entry.methods || entry.methods.includes(verb)),
   ) ?? null
 }
 
@@ -104,19 +111,27 @@ export function customDomainAllowedEntry(path: string): CustomDomainApiEntry | n
  * prüft die Regel nicht (Seiten, `/_nuxt`, `/_i18n`). `productPrefixes` sind
  * die `apiPrefixes` aller registrierten Layer der Art `product`.
  */
-export function isCustomDomainApiAllowed(path: string, productPrefixes: readonly string[]): boolean {
+export function isCustomDomainApiAllowed(path: string, productPrefixes: readonly string[], method?: string): boolean {
   const clean = stripQuery(path)
   if (!clean.startsWith('/api/')) return true
   if (CUSTOM_DOMAIN_API_DENIED_PREFIXES.some(prefix => matchesApiPrefix(clean, prefix))) return false
   if (productPrefixes.some(prefix => matchesApiPrefix(clean, prefix))) return true
-  return customDomainAllowedEntry(clean) !== null
+  return customDomainAllowedEntry(clean, method) !== null
 }
 
 /** Sprach-Präfix der Seiten (`prefix_except_default`, de + en). */
 const LOCALE_PREFIX = /^\/(?:de|en)(?=\/|$)/
 
+/**
+ * Klein geschrieben (der Vue-Router vergleicht Pfade ohne Groß/klein — `/Dashboard`
+ * öffnet dieselbe Seite) und ohne Sprach-Präfix.
+ */
 function withoutLocale(path: string): string {
-  return stripQuery(path).replace(LOCALE_PREFIX, '') || '/'
+  return stripQuery(path).toLowerCase().replace(LOCALE_PREFIX, '') || '/'
+}
+
+function matchesPagePrefix(clean: string, page: string): boolean {
+  return clean === page || clean.startsWith(`${page}/`)
 }
 
 /**
@@ -125,8 +140,23 @@ function withoutLocale(path: string): string {
  * mit oder ohne Sprach-Präfix.
  */
 export function isManagementPagePath(path: string): boolean {
+  return matchesPagePrefix(withoutLocale(path), '/dashboard')
+}
+
+/**
+ * Konto-Seiten des Kundenbereichs (dieselben vier wie `CONTROL_ONLY_PATHS` im
+ * onboarding-Layer; der Core kennt den Layer nicht, darum hier benannt):
+ * Profil, Einstellungen mit Sicherheit, Geräten, Export und Löschen, „Meine
+ * Communities" und das Anlegen. Auf einem Community-Host gibt es sie nicht
+ * (404); auf einer eigenen Domain im Modus `write` führt ein Aufruf per 302
+ * in den Kundenbereich.
+ */
+export const ACCOUNT_AREA_PAGES = ['/profile', '/settings', '/communities', '/start'] as const
+
+/** PURE: gehört diese Seite in den Kundenbereich (s. `ACCOUNT_AREA_PAGES`)? */
+export function isAccountAreaPagePath(path: string): boolean {
   const clean = withoutLocale(path)
-  return clean === '/dashboard' || clean.startsWith('/dashboard/')
+  return ACCOUNT_AREA_PAGES.some(page => matchesPagePrefix(clean, page))
 }
 
 /** Anmelde-Seiten, über die man unter der Pukalani-Adresse ins Dashboard kommt. */
@@ -143,7 +173,7 @@ export function staysOnPukalaniAddress(path: string): boolean {
   if (raw.startsWith('/api/') || raw.startsWith('/_')) return true
   if (isManagementPagePath(raw)) return true
   const clean = withoutLocale(raw)
-  return SIGN_IN_PAGES.some(page => clean === page || clean.startsWith(`${page}/`))
+  return SIGN_IN_PAGES.some(page => matchesPagePrefix(clean, page))
 }
 
 /**

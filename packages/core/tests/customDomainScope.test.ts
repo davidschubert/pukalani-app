@@ -10,6 +10,7 @@ import {
   accountAreaUrl,
   accountMenuLinks,
   customDomainAllowedEntry,
+  isAccountAreaPagePath,
   isCustomDomainApiAllowed,
   isManagementPagePath,
   matchesApiPrefix,
@@ -196,6 +197,15 @@ describe('Wächter: jede /api-Route ist auf einer eigenen Domain erlaubt (mit Gr
     }
   })
 
+  it('Ablage: nur Anzeigen (GET/HEAD), Hochladen und Löschen ⇒ 404', () => {
+    expect(isCustomDomainApiAllowed('/api/storage/avatars/f-1', productPrefixes, 'GET')).toBe(true)
+    expect(isCustomDomainApiAllowed('/api/storage/avatars/f-1', productPrefixes, 'head')).toBe(true)
+    expect(isCustomDomainApiAllowed('/api/storage/avatars', productPrefixes, 'POST')).toBe(false)
+    expect(isCustomDomainApiAllowed('/api/storage/avatars/f-1', productPrefixes, 'DELETE')).toBe(false)
+    // Gegenprobe: andere Einträge ohne Methoden-Angabe gelten für jede Methode.
+    expect(isCustomDomainApiAllowed('/api/auth/login', productPrefixes, 'POST')).toBe(true)
+  })
+
   it('Seiten und interne Pfade prüft die Regel nicht', () => {
     expect(isCustomDomainApiAllowed('/', productPrefixes)).toBe(true)
     expect(isCustomDomainApiAllowed('/_nuxt/x.js', productPrefixes)).toBe(true)
@@ -211,6 +221,19 @@ describe('Verwaltungs-Seiten und Ausnahmen der Umleitung', () => {
     }
     for (const path of ['/', '/de', '/dashboards', '/discussions/dashboard', '/api/dashboard', '/de/login']) {
       expect(isManagementPagePath(path), path).toBe(false)
+    }
+    // Groß/klein: der Router öffnet dieselbe Seite.
+    for (const path of ['/Dashboard', '/DE/dashboard/Members', '/EN/DASHBOARD']) {
+      expect(isManagementPagePath(path), path).toBe(true)
+    }
+  })
+
+  it('Konto-Seiten des Kundenbereichs, mit Sprach-Präfix und Groß/klein', () => {
+    for (const path of ['/settings', '/de/settings/notifications', '/profile', '/Profile/activity', '/communities', '/start/done', '/DE/Settings']) {
+      expect(isAccountAreaPagePath(path), path).toBe(true)
+    }
+    for (const path of ['/', '/settingsx', '/dashboard', '/discussions/settings', '/de/login']) {
+      expect(isAccountAreaPagePath(path), path).toBe(false)
     }
   })
 
@@ -271,7 +294,14 @@ describe('Verwaltungs-Seiten und Ausnahmen der Umleitung', () => {
     expect(decideCommunityAccess({ ...base, capability: 'pages.manage', customDomainScope: true }).allowed).toBe(true)
     expect(decideCommunityAccess({ ...base, capability: 'branding.manage', customDomainScope: false }).allowed).toBe(true)
     expect(decideCommunityAccess({ ...base, capability: 'branding.manage' }).allowed).toBe(true)
-    expect(decideCommunityAccess({ ...base, labels: ['admin'], capability: 'branding.manage', customDomainScope: true })).toEqual({ allowed: true, via: 'operator' })
+    // Betreiber-Labels tragen auf der eigenen Domain KEINE Rechte …
+    expect(decideCommunityAccess({ labels: ['admin'], tenantScoped: true, role: null, capability: 'branding.manage', customDomainScope: true }).allowed).toBe(false)
+    expect(decideCommunityAccess({ labels: ['admin'], tenantScoped: true, role: null, capability: 'reports.moderate', customDomainScope: true }).allowed).toBe(false)
+    // … ein Betreiber, der Mitglied ist, hat die begrenzten Rechte seiner Rolle.
+    expect(decideCommunityAccess({ ...base, labels: ['admin'], capability: 'branding.manage', customDomainScope: true }).allowed).toBe(false)
+    expect(decideCommunityAccess({ ...base, labels: ['admin'], capability: 'reports.moderate', customDomainScope: true })).toEqual({ allowed: true, via: 'role', role: 'owner' })
+    // Gegenprobe: ohne Merkmal der Not-Zugang wie bisher.
+    expect(decideCommunityAccess({ labels: ['admin'], tenantScoped: true, role: null, capability: 'branding.manage' })).toEqual({ allowed: true, via: 'operator' })
   })
 
   it('Wächter: jede Rechte-Frage unter server/ gibt das Merkmal mit (oder steht mit Grund in der Liste)', () => {
@@ -347,8 +377,8 @@ describe('01.custom-domain-scope', async () => {
   })
 
   /** `tenant: null` = kein Mandant (Kontroll-Host, Einzel-Instanz). */
-  function run(path: string, host: string, tenant: TenantContext | null = poolTenant(), context: Record<string, unknown> = {}): { thrown: Thrown | null, event: FakeEvent } {
-    const event: FakeEvent = { path, method: 'GET', headers: { host }, context: { ...context, ...(tenant ? { tenant } : {}) } }
+  function run(path: string, host: string, tenant: TenantContext | null = poolTenant(), context: Record<string, unknown> = {}, method = 'GET'): { thrown: Thrown | null, event: FakeEvent } {
+    const event: FakeEvent = { path, method, headers: { host }, context: { ...context, ...(tenant ? { tenant } : {}) } }
     try {
       middleware(event)
       return { thrown: null, event }
@@ -368,6 +398,8 @@ describe('01.custom-domain-scope', async () => {
     expect(ok.event.context.customDomainScope).toBe(true)
     expect(run('/api/auth/me', 'www.kunde.de').thrown).toBeNull()
     expect(run('/api/reports', 'www.kunde.de').thrown).toBeNull()
+    expect(run('/api/storage/avatars/f-1', 'www.kunde.de').thrown).toBeNull()
+    expect(run('/api/storage/avatars', 'www.kunde.de', poolTenant(), {}, 'POST').thrown?.status).toBe(404)
     expect(run('/', 'www.kunde.de').thrown).toBeNull()
   })
 
@@ -443,6 +475,23 @@ describe('00.tenant — Verwaltung bleibt unter der Pukalani-Adresse', async () 
     }
     await middleware(request('/discussions', 'kunde-a.pukalani.app'))
     expect(sendRedirect.mock.calls.at(-1)?.[1]).toBe('https://www.kunde.de/discussions')
+  })
+
+  it('write: Konto-Seiten auf der eigenen Domain ⇒ 302 in den Kundenbereich; Groß/klein beim Dashboard', async () => {
+    const { configureSiteCard: configure } = await import('../server/utils/siteCard')
+    configure({ mode: 'write', key })
+    await middleware(request('/de/settings/security', 'www.kunde.de'))
+    expect(sendRedirect.mock.calls.at(-1)?.[1]).toBe('https://account.pukalani.app/de/settings/security')
+    expect(sendRedirect.mock.calls.at(-1)?.[2]).toBe(302)
+    await middleware(request('/Dashboard', 'www.kunde.de'))
+    expect(sendRedirect.mock.calls.at(-1)?.[1]).toBe('https://kunde-a.pukalani.app/Dashboard')
+  })
+
+  it('Gegenprobe read: Konto-Seiten auf der eigenen Domain werden nicht umgeleitet', async () => {
+    const { configureSiteCard: configure } = await import('../server/utils/siteCard')
+    configure({ mode: 'read', key })
+    await middleware(request('/settings', 'www.kunde.de'))
+    expect(sendRedirect).not.toHaveBeenCalled()
   })
 
   it('write: Mitmach-Seiten auf der eigenen Domain bleiben dort', async () => {
