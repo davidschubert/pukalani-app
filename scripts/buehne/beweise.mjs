@@ -101,6 +101,8 @@ export const BEWEISE = [
   { skript: 'packages/core/scripts/verify-presence-boundary.mjs', lauf: 'e2e', env: 'platform', dauer: 3, braucht: ['appwrite', 'platform'], grund: E2E },
   { skript: 'packages/core/scripts/verify-rate-limits.mjs', lauf: 'buehne', env: 'keine', dauer: 1, braucht: ['platform'] },
   { skript: 'packages/core/scripts/verify-server-only-writes.mjs', lauf: 'buehne', env: 'platform', dauer: 1, braucht: ['appwrite'] },
+  // PK1 E1c: nur nachts im Modus write (zwei Resolver-Wartezeiten); ohne write ⇒ „übersprungen".
+  { skript: 'packages/core/scripts/verify-site-card.mjs', lauf: 'nacht', env: 'control', dauer: 75, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/core/scripts/verify-session-ip.mjs', lauf: 'hand', grund: 'Braucht die Standort-Datei und eine geänderte Proxy-Einstellung der Datenbank.' },
   { skript: 'packages/core/scripts/verify-timezone.mjs', lauf: 'nacht', env: 'einzel', dauer: 5, braucht: ['appwrite', 'einzel'] },
   { skript: 'packages/core/scripts/verify-ugc-translation.mjs', lauf: 'hand', grund: 'Braucht einen echten KI-Aufruf bei einem fremden Anbieter, der Geld kostet.' },

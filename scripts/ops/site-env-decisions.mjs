@@ -37,6 +37,7 @@ export const ENV_NOT_REQUIRED = {
   // Der Standard im Code ist der Wert für Production.
   NUXT_CUSTOM_DOMAIN_SERVER_IPS: 'Adresse des App-Servers für die DNS-Prüfung eigener Domains; der Standard im Code ist der heutige Server, setzen nur bei einem Server-Umzug.',
   NUXT_CUSTOM_DOMAIN_CNAME_TARGET: 'CNAME-Ziel für eigene Domains; der Standard im Code ist der heutige Name, setzen nur bei einem Umzug.',
+  NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL: 'Wo die Konsole den Schalter der Platform liest (PK1 K6); der Standard im Code ist der heutige Platform-Host, setzen nur lokal oder bei einem Umzug.',
   NUXT_CUSTOM_DOMAIN_DNS_SERVERS: 'Namens-Server für die DNS-Prüfung eigener Domains; ohne Angabe fragt die App zwei öffentliche Resolver.',
   NUXT_ONBOARDING_START_URL: 'Adresse des Kundenbereichs in Einladungs-Mails; der Standard im Code ist die Adresse für Production.',
   NUXT_PLOI_BASE_URL: 'Adresse der ploi-Schnittstelle; der Standard im Code ist die echte. Pflicht sind Token, Server-Id und Site-Id.',

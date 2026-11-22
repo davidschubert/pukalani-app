@@ -35,6 +35,13 @@
  * `verify-schema-parity.mjs`. Was dann zu tun ist:
  * docs/runbooks/PRODUKTIONS-ALARM.md, „Datenbank passt nicht zum Programm".
  *
+ * VORIGER SCHLÜSSEL DER KARTE (PK1 E1c): meldet eine App
+ * `siteCard.previous: true`, liegt neben dem Schlüssel der Eintrittskarte noch
+ * ein VORIGER zum Lesen (`NUXT_SITE_CARD_PREVIOUS_KEY`). Das ist während eines
+ * Tauschs richtig und danach ein vergessener Rest — der Wächter WARNT (eine
+ * Zeile, in der CI eine Anmerkung am Lauf), rot wird davon nichts. Was zu tun
+ * ist: docs/runbooks/PK1-EINSCHALTEN.md, „Schlüssel tauschen".
+ *
  * EIN AUSSETZER IST KEIN BEFUND: jeder Host bekommt nach einem Fehlschlag
  * genau EINEN zweiten Versuch nach kurzer Pause. Ein Wächter, der bei jedem
  * Netz-Schluckauf schreit, wird nach der dritten Fehlmeldung ignoriert — und
@@ -187,7 +194,11 @@ async function pruefe({ host, kind, url: fest, schema: mitSchema, kunde }) {
     return { ok: false, grund: `ok:${kunde ? (json?.ok === false ? 'false' : 'fehlt') : JSON.stringify(json?.ok)}${grund ? ` (${grund})` : ''}` }
   }
   const build = `build ${String(json.build || '—').slice(0, 8)}`
-  if (!mitSchema) return { ok: true, info: build }
+  // Nur ein Hinweis, nie rot (s. Kopf, „Voriger Schlüssel der Karte").
+  const warnung = json?.siteCard?.previous === true
+    ? 'voriger Schlüssel der Eintrittskarte gesetzt (NUXT_SITE_CARD_PREVIOUS_KEY) — nach dem Tausch entfernen, Runbook docs/runbooks/PK1-EINSCHALTEN.md'
+    : ''
+  if (!mitSchema) return { ok: true, info: build, warnung }
   let schema = json.schema
   if (host === schemaDrillHost) {
     const expected = Number.isInteger(schema?.expected) ? schema.expected : 1
@@ -195,7 +206,7 @@ async function pruefe({ host, kind, url: fest, schema: mitSchema, kunde }) {
   }
   const stand = pruefeSchema(schema)
   if (!stand.ok) return { ok: false, grund: `${stand.grund}${host === schemaDrillHost ? ' [PROBEALARM — vorgetäuscht]' : ''}`, schema: true }
-  return { ok: true, info: `${build} · ${stand.info}` }
+  return { ok: true, info: `${build} · ${stand.info}`, warnung }
 }
 
 // ── Kundendomains (s. Kopf) ────────────────────────────────────────────────
@@ -212,6 +223,8 @@ const planned = customer?.state === 'read'
 const failures = []
 console.log(ONLY_CUSTOMER && !hosts.length ? 'Erreichbarkeits-Wächter — nur Kundendomains' : `Erreichbarkeits-Wächter — ${hosts.length} Hosts${DRILL ? ' (PROBEALARM)' : ''}${SCHEMA_DRILL ? ' (PROBEALARM DATENBANK-STAND)' : ''}\n`)
 let schemaFailures = 0
+/** Hinweise ohne Rot (voriger Schlüssel der Karte). */
+const warnungen = []
 
 for (const eintrag of hosts) {
   let ergebnis = await pruefe(eintrag)
@@ -227,6 +240,7 @@ for (const eintrag of hosts) {
     continue
   }
   console.log(`✔ ${eintrag.host.padEnd(24)} ${ergebnis.info.padEnd(33)} — ${eintrag.note}`)
+  if (ergebnis.warnung) warnungen.push(`${eintrag.host}: ${ergebnis.warnung}`)
 }
 
 if (customer) console.log(`\n${customerStatusLine(customer, planned, MODE)}${customer.state === 'read' ? ' (Erreichbarkeit: nur die Hosts, die selbst antworten.)' : ''}`)
@@ -257,6 +271,12 @@ for (const entry of planned) {
     counted.push(entry)
     console.log(`· ${label.padEnd(24)} Nur gezählt: ${ergebnis.grund}`)
   }
+}
+// Hinweise kommen VOR dem Ergebnis und färben nichts (Kundendomains tragen
+// hier keinen Namen: die Liste enthält nur feste Hosts).
+for (const w of warnungen) {
+  console.log(`⚠ ${w}`)
+  if (process.env.GITHUB_ACTIONS === 'true') console.log(`::warning title=Eintrittskarte::${w}`)
 }
 if (counted.length) console.log(`\nNur gezählt: ${counted.length} Kundendomain(s) mit Befund an der Erreichbarkeit (Modus count — rot wird davon nichts).`)
 

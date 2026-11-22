@@ -249,10 +249,26 @@ jobs:
       # Control-Variablen lehnte er jede Anfrage ab, SEC-025). Nitro bündelt
       # die API-Routen beim Start; Seiten kompiliert der Server erst beim
       # ersten Zugriff, deshalb prüfen die Beweise hier Routen, keine Seiten.
+      #
+      # EINTRITTSKARTE (PK1 E1c): NACHTS läuft der Platform-Server im Modus
+      # `write` mit einem je Lauf zufällig erzeugten Schlüssel — kein
+      # Geheimnis im Repo, keins in den Secrets, verfällt mit dem Lauf. So
+      # laufen die Beweise nachts so, wie Production nach dem Einschalten
+      # läuft (Anmelden je Host, `verify-site-card`). Pull Requests und `main`
+      # bleiben `off` wie Production heute. Runbook:
+      # docs/runbooks/PK1-EINSCHALTEN.md.
       - name: Betreiber-App und Platform-Server starten
         run: |
           (cd apps/control && nohup pnpm exec nuxi dev --port "$CONTROL_PORT" > "$RUNNER_TEMP/control.log" 2>&1 &)
-          (cd apps/platform && nohup pnpm exec nuxi dev --port "$PLATFORM_PORT" > "$RUNNER_TEMP/platform.log" 2>&1 &)
+          if [ "$LAUF" = 'nacht' ]; then
+            SITE_CARD_KEY="$(openssl rand -base64 32)"
+            echo "::add-mask::$SITE_CARD_KEY"
+            (cd apps/platform && NUXT_SITE_CARD_MODE=write NUXT_SITE_CARD_KEY="$SITE_CARD_KEY" nohup pnpm exec nuxi dev --port "$PLATFORM_PORT" > "$RUNNER_TEMP/platform.log" 2>&1 &)
+            unset SITE_CARD_KEY
+            echo 'Platform-Server im Modus write (Eintrittskarte, Schlüssel je Lauf).'
+          else
+            (cd apps/platform && nohup pnpm exec nuxi dev --port "$PLATFORM_PORT" > "$RUNNER_TEMP/platform.log" 2>&1 &)
+          fi
           # Der Entwicklungs-Server gibt JSON eingerückt aus ("ok": true) —
           # deshalb der Vergleich ohne Leerzeichen. Verlangt wird je Server
           # `ok` UND der Datenbank-Stand `ok` (alle Migrationen sind da).
