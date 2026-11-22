@@ -1,0 +1,103 @@
+name: Seitengewicht
+
+# DAS SKRIPT-GEWICHT DER STARTSEITEN (Q22) — HART VOR DEM MERGE, NIE IM WEG
+# DES AUSLIEFERNS (Review-Befund B1, 2026-11-22).
+#
+# Bis dahin lief `check-page-weight.mjs` nur im Ausliefern, in der Schleife,
+# die ALLE Apps baut: riss EINE App ihre Grenze, blieb der Bau aller Apps
+# stehen — auch ein eiliger Fix für eine ganz andere App. Jetzt:
+#   - Pull Request: dieser Lauf baut die Apps mit Grenze und ist ROT, wenn eine
+#     reißt. Dort fällt es vor dem Merge auf.
+#   - Push auf `main`: derselbe Lauf, dazu EIN Issue mit Label `seitengewicht`
+#     (öffnet bei rot, schließt sich selbst bei grün) — falls ein Stand doch
+#     durchkam (Merge mit `--admin`, zwei PRs, die erst zusammen reißen).
+#   - Ausliefern (`deploy.yml`): misst weiter, WARNT aber nur.
+# Die Grenzen: `scripts/lib/page-weight-budgets.mjs`.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  page-weight:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      over: ${{ steps.measure.outputs.over }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Nur die Apps MIT Grenze; die Liste kommt aus derselben Datei wie die
+      # Grenzen, damit eine neue Grenze ohne Änderung hier mitläuft.
+      - name: Apps mit Grenze bauen und messen
+        id: measure
+        run: |
+          set -euo pipefail
+          apps=$(node -e "import('./scripts/lib/page-weight-budgets.mjs').then(m => console.log(Object.keys(m.PAGE_WEIGHT_BUDGETS).join(' ')))")
+          over=""
+          for app in $apps; do
+            echo "::group::Build $app"
+            pnpm --filter "$app" build
+            echo "::endgroup::"
+            node scripts/check-page-weight.mjs --app "$app" | tee -a "$RUNNER_TEMP/page-weight.txt" || over="$over $app"
+          done
+          echo "over=${over# }" >> "$GITHUB_OUTPUT"
+          if [ -n "$over" ]; then
+            echo "::error::Startseite zu schwer:$over — Grund suchen (scripts/lib/page-weight-budgets.mjs, Kopf)."
+            exit 1
+          fi
+
+  # Nur auf `main`: ein Issue statt eines stillen roten Hakens.
+  issue:
+    needs: page-weight
+    if: always() && github.event_name == 'push' && github.event.repository.fork == false && needs.page-weight.result != 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      LABEL: seitengewicht
+      OVER: ${{ needs.page-weight.outputs.over }}
+      RESULT: ${{ needs.page-weight.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      ASSIGNEE: ${{ github.repository_owner }}
+    steps:
+      - name: Issue öffnen oder schließen
+        run: |
+          set -euo pipefail
+          gh label create "$LABEL" --color D93F0B --force \
+            --description 'Startseite schwerer als ihre Grenze (scripts/lib/page-weight-budgets.mjs)' >/dev/null
+          nummer=$(gh issue list --label "$LABEL" --state open --limit 1 --json number \
+            --jq 'if length > 0 then .[0].number | tostring else "" end')
+          stand=$(date -u +'%Y-%m-%d')
+          if [ "$RESULT" != "success" ] && [ -z "$nummer" ]; then
+            body="Auf \`main\` reißt das Skript-Gewicht der Startseite: ${OVER:-(Bau fehlgeschlagen, s. Lauf)}. Ausgeliefert wird trotzdem (das Ausliefern warnt nur). Grund suchen, bevor die Grenze steigt: Kopf von \`scripts/lib/page-weight-budgets.mjs\`. Lauf: $RUN_URL — dieses Issue schließt der nächste grüne Lauf auf \`main\` selbst."
+            url=$(gh issue create --title "Seitengewicht über der Grenze ($stand)" --label "$LABEL" --assignee "$ASSIGNEE" --body "$body")
+            echo "Issue geöffnet: $url"
+          elif [ "$RESULT" != "success" ]; then
+            echo "Issue #$nummer ist schon offen."
+          elif [ -n "$nummer" ]; then
+            gh issue comment "$nummer" --body "✅ Wieder unter der Grenze ($stand). Lauf: $RUN_URL" >/dev/null
+            gh issue close "$nummer" --reason completed >/dev/null
+            echo "Issue #$nummer geschlossen."
+          else
+            echo "Alles unter der Grenze, kein offenes Issue."
+          fi
