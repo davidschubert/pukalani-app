@@ -1,14 +1,15 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { PLATFORM_QUOTA_PLANS } from '../shared/quotaPlans.ts'
 import { fillMissingPlanLimits, type TenantPlanLimits } from '../../../packages/control/shared/types/tenantRecord'
 import { mapTenantRowToContext } from '../../../packages/control/server/utils/tenantsResolver'
 
 /**
  * KONTINGENT-ZAHLEN IM KATALOG (KK1 c) — dieselben Zahlen vorher und nachher.
  *
- *  1. Die Zahlen sind unverändert aus `app/app.config.ts` umgezogen (die
- *     Tabelle unten ist der Stand von `main` vor dem Umzug, abgeschrieben am
- *     2026-11-22), und die app.config liest genau diese Datei.
+ *  1. Die Vorgabe in `app/app.config.ts` ist unverändert (die Tabelle unten
+ *     ist der Stand von `main` vor KK1 c, abgeschrieben am 2026-11-22), und
+ *     die Datei lädt OHNE Nuxt — so liest sie Migration control-042.
  *  2. RÜCKFALL: ohne Katalog-Zeilen (Production vor control-042) rechnet die
  *     echte Bremse `tenantLimitsFor` mit diesen Zahlen — wie vorher.
  *  3. NACH control-042 (Katalog gefüllt mit `fillMissingPlanLimits`, gelesen
@@ -43,11 +44,15 @@ const PLANS = ['basic', 'personal', 'pro'] as const
 
 type Limits = TenantPlanLimits | undefined
 let tenantLimitsFor: (event: unknown, kind: string) => Limits
-let appConfig: { pukalani: { tenancy: { quota: { enabled: boolean, plans: unknown } } } }
+type Plans = Record<string, Record<string, TenantPlanLimits>>
+let appConfig: { pukalani: { tenancy: { quota: { enabled: boolean, plans: Plans } } } }
+let PLATFORM_QUOTA_PLANS: Plans
 
 beforeAll(async () => {
   vi.stubGlobal('defineAppConfig', (config: unknown) => config)
-  appConfig = (await import('../app/app.config')).default as typeof appConfig
+  // Derselbe Weg wie control-042: Datei laden, defineAppConfig als Durchreiche.
+  appConfig = (await import('../app/app.config.ts')).default as typeof appConfig
+  PLATFORM_QUOTA_PLANS = appConfig.pukalani.tenancy.quota.plans
   vi.stubGlobal('useAppConfig', () => appConfig)
   vi.stubGlobal('useTenant', (event: { tenant: unknown }) => event.tenant)
   tenantLimitsFor = (await import('../../../packages/core/server/utils/tenantQuota')).tenantLimitsFor as typeof tenantLimitsFor
@@ -66,19 +71,20 @@ function effective(plan: string, catalog: Record<string, Record<string, TenantPl
 /** Der Katalog nach control-042 auf einer leeren Tabelle. */
 function filledCatalog(): Record<string, Record<string, TenantPlanLimits>> {
   const catalog: Record<string, Record<string, TenantPlanLimits>> = {}
-  for (const plan of PLANS) catalog[plan] = fillMissingPlanLimits({}, PLATFORM_QUOTA_PLANS[plan]).limits
+  for (const plan of PLANS) catalog[plan] = fillMissingPlanLimits({}, PLATFORM_QUOTA_PLANS[plan]!).limits
   return catalog
 }
 
 describe('Kontingent-Vorgabe der Platform-App (KK1 c)', () => {
-  it('die Zahlen sind dieselben wie vor dem Umzug', () => {
+  it('die Zahlen sind dieselben wie vor KK1 c, Quota bleibt an', () => {
     expect(PLATFORM_QUOTA_PLANS).toEqual(BEFORE_KK1C)
     expect(Object.keys(PLATFORM_QUOTA_PLANS)).toEqual(['basic', 'personal', 'pro'])
+    expect(appConfig.pukalani.tenancy.quota.enabled).toBe(true)
   })
 
-  it('app.config liest genau diese Datei, Quota bleibt an', () => {
-    expect(appConfig.pukalani.tenancy.quota.enabled).toBe(true)
-    expect(appConfig.pukalani.tenancy.quota.plans).toBe(PLATFORM_QUOTA_PLANS)
+  it('die app.config importiert keine Werte (sonst bricht der Build oder das Laden ohne Nuxt)', () => {
+    const source = readFileSync(fileURLToPath(new URL('../app/app.config.ts', import.meta.url)), 'utf8')
+    expect(source.match(/^import (?!type\b).*$/gm) ?? []).toEqual([])
   })
 })
 
@@ -116,11 +122,11 @@ describe('Bremse: Rückfall ohne Katalog und gleiche Zahlen mit Katalog', () => 
 
   it('Gegenprobe: das Füllen überschreibt eine vorhandene Art nie', () => {
     const stored = { comments: { perDay: 7, total: 70 } }
-    const { limits, added } = fillMissingPlanLimits(stored, PLATFORM_QUOTA_PLANS.personal)
+    const { limits, added } = fillMissingPlanLimits(stored, PLATFORM_QUOTA_PLANS.personal!)
     expect(limits.comments).toEqual({ perDay: 7, total: 70 })
     expect(added).toEqual(['pages', 'events', 'media'])
     expect(stored).toEqual({ comments: { perDay: 7, total: 70 } })
-    expect(fillMissingPlanLimits(limits, PLATFORM_QUOTA_PLANS.personal).added).toEqual([])
+    expect(fillMissingPlanLimits(limits, PLATFORM_QUOTA_PLANS.personal!).added).toEqual([])
   })
 
   it('Gegenprobe: ein Silo hat kein Kontingent, auch mit gefülltem Katalog', () => {

@@ -4,7 +4,8 @@
  * der Platform-App", „heutige Werte übernehmen").
  *
  * Trägt je Plan (basic, personal, pro) die Zahlen aus
- * `apps/platform/shared/quotaPlans.ts` in die Zeile von `community_plans` —
+ * `apps/platform/app/app.config.ts` (`pukalani.tenancy.quota.plans`, die eine
+ * Stelle im Code) in die Zeile von `community_plans` —
  * NUR für Arten, die dort FEHLEN (`fillMissingPlanLimits`). Eine Art, die im
  * Katalog steht, bleibt unverändert, auch wenn ihre Zahl von der Vorgabe
  * abweicht; die Migration nennt die Abweichung nur. Alt-Zeilen (`free`,
@@ -45,7 +46,6 @@
  */
 import '../../../../scripts/lib/assert-target.mjs'
 import { Client, TablesDB } from 'node-appwrite'
-import { PLATFORM_QUOTA_PLANS } from '../../../../apps/platform/shared/quotaPlans.ts'
 import { COMMUNITY_PLANS_TABLE, TENANT_PLANS, fillMissingPlanLimits, parseTenantPlanLimits, type TenantPlanLimits } from '../../shared/types/tenantRecord.ts'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
@@ -69,7 +69,18 @@ function hasCode(error: unknown, code: number): boolean {
 
 console.log(`Migration control-042 gegen ${endpoint} / Projekt ${projectId} / DB ${databaseId}`)
 
-const defaults: Record<string, Record<string, TenantPlanLimits>> = PLATFORM_QUOTA_PLANS
+// Die Vorgabe steht in der app.config der Platform-App. `defineAppConfig` ist
+// ein Nuxt-Auto-Import — hier gibt es ihn nicht, also als Durchreiche
+// (wie `scripts/check-i18n-keys.mjs`). Die Datei importiert keine Werte.
+;(globalThis as { defineAppConfig?: (config: unknown) => unknown }).defineAppConfig = config => config
+const platformConfig = (await import('../../../../apps/platform/app/app.config.ts')).default as {
+  pukalani?: { tenancy?: { quota?: { plans?: Record<string, Record<string, TenantPlanLimits>> } } }
+}
+const defaults = platformConfig.pukalani?.tenancy?.quota?.plans
+if (!defaults || Object.keys(defaults).length === 0) {
+  console.error('Keine Vorgabe in apps/platform/app/app.config.ts (pukalani.tenancy.quota.plans) — Abbruch, nichts geschrieben.')
+  process.exit(1)
+}
 
 for (const key of TENANT_PLANS) {
   const planDefaults = defaults[key]

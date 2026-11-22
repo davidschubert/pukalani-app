@@ -30,18 +30,17 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
-### KK1 (c) — Kontingent-Zahlen in den Katalog: eine Vorgabe-Datei, Daten-Migration control-042, Konsole je Art (Production-Schritt offen) ✅ 2026-11-22
+### KK1 (c) — Kontingent-Zahlen in den Katalog: Daten-Migration control-042 aus der app.config, Konsole je Art (Production-Schritt offen) ✅ 2026-11-22
 
 **Was.** Davids Antworten vom 2026-11-22 zum Plan
 `docs/plans/KONTINGENT-KATALOG.md`: 6a „Jetzt bauen", 6b die Vorgabe „bleibt
 in der Platform-App", 6c „heutige Werte übernehmen", Schreiben auf Production
 nur mit eigenem Ja. Gebaut:
 
-- Die Zahlen je Plan und Art zogen unverändert aus
-  `apps/platform/app/app.config.ts` in `apps/platform/shared/quotaPlans.ts`
-  (`PLATFORM_QUOTA_PLANS`). Die app.config liest genau diese Datei (der
-  Rückfall der Bremse), die Migration auch — es gibt die Zahlen im Code
-  einmal.
+- Die Zahlen je Plan und Art bleiben, wo sie stehen:
+  `apps/platform/app/app.config.ts` (`pukalani.tenancy.quota.plans`, die
+  eine Stelle im Code, unverändert). Die Migration lädt genau diese Datei ohne
+  Nuxt (wie `check:i18n-keys`); die app.config importiert dafür keine Werte.
 - Migration control-042 (nur Daten, `schema.latest` 042, Probe bleibt 040 ⇒
   `/api/health` bleibt ohne sie `schema: ok`): trägt je Plan die Vorgabe
   dort in `community_plans` ein, wo eine Art FEHLT
@@ -60,7 +59,8 @@ nur mit eigenem Ja. Gebaut:
   gar kein Konto).
 
 **Beweis.** `apps/platform/tests/quotaPlans.test.ts`: Zahlen gleich dem Stand
-vor dem Umzug (Tabelle abgeschrieben), app.config liest die Datei, ohne
+vor KK1 c (Tabelle abgeschrieben), app.config lädt ohne Nuxt und ohne
+Wert-Import, ohne
 Katalog rechnet die echte `tenantLimitsFor` mit den heutigen Zahlen, nach
 control-042 (über den echten `mapTenantRowToContext`) für jeden Plan und jede
 Art mit denselben; Gegenproben: Katalog-Zahl gewinnt, Füllen überschreibt
@@ -82,9 +82,12 @@ Personal-Kommentar-Grenze. control-042 ändert daran nichts (es
 
 **Offen (OPEN-ITEMS KK1):** control-042 auf Production, nur mit Davids Ja.
 
-**Gelernt:** Eine Liste von Zahlen, die ein Test als TEXT aus einer Datei
-liest (`packages/pages/tests/page-save-quota.test.ts`), zieht beim Umzug
-nicht mit — vor dem Verschieben nach dem alten Pfad greppen; und ein
+**Gelernt:** Der erste Wurf zog die Zahlen in eine eigene Datei, die
+`app.config.ts` per Wert-Import las. Dev-Server, Typecheck, Unit-Tests und
+`pnpm check` waren grün — erst der Produktions-Build (Prüfung `page-weight`
+im PR) brach ab: Rollup löste den Import aus dem Server-Bündel nicht auf. Eine
+`app.config.ts` importiert nur Typen; wer ihre Werte außerhalb von Nuxt
+braucht, lädt die Datei selbst (Durchreiche für `defineAppConfig`). Und ein
 Formular, das eine fehlende Zahl als 0 zeigt, schreibt beim Speichern
 „unbegrenzt".
 
