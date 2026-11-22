@@ -51,6 +51,11 @@ export const ENV_NOT_REQUIRED = {
   NUXT_PUBLIC_TENANCY_LEGACY_CONTROL_HOSTS: 'Frühere Namen des Kundenbereichs (antworten 301); die Liste für Production steht in der app.config der Platform-App.',
   NUXT_CONTACT_EMAIL: 'Empfänger des Kontaktformulars von apps/photos; die App wird nicht ausgerollt, und der Code hat einen Standard.',
 
+  // Eintrittskarte je Seite (PK1 E1a): optional, ohne Werte gilt „off" wie vor E1.
+  NUXT_SITE_CARD_MODE: 'Schalter der Eintrittskarte je Seite (off | read | write); leer heißt off, der Code läuft dann wie vor E1. Rückweg ohne Ausliefern: auf off setzen und neu starten (Kopf von core/server/utils/siteCard.ts).',
+  NUXT_SITE_CARD_KEY: 'Schlüssel der Eintrittskarte (32 Byte base64); nur nötig, wenn NUXT_SITE_CARD_MODE nicht off ist — ohne ihn gilt off und eine Log-Zeile site_card.config_invalid.',
+  NUXT_SITE_CARD_PREVIOUS_KEY: 'Nur während eines Tauschs des Karten-Schlüssels gesetzt (nur zum Lesen); leer heißt „kein Tausch".',
+
   // Nur während eines Wechsels gesetzt.
   NUXT_BILLING_SETTINGS_KEY_OLD: 'Nur während eines Wechsels des Umschlag-Schlüssels für die Stripe-Einstellungen gesetzt; leer heißt „kein Wechsel" (dauerhaft gesetzt wäre es ein zweiter gültiger Schlüssel).',
 

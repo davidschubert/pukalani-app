@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 // Plane — reiner Typ-Import, kein Laufzeit-Coupling.
 import type { MyCommunitiesResponse, MyCommunityView } from '../../../control/shared/myCommunities'
 import { deriveHandoffKey, sealHandoffToken } from '../../../core/server/utils/embedHandoff'
-import { sessionCookieName } from '../../../core/server/lib/appwrite'
+import { requestSessionSecret } from '../../../core/server/utils/requestSession'
 import { callControlPlane, mintRuntimeJwt } from './controlPlane'
 
 /**
@@ -90,7 +90,7 @@ export async function sealCommunityHandoff(
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
-  const secret = getCookie(event, sessionCookieName(event))
+  const secret = requestSessionSecret(event)
   if (!secret) {
     // Kein Cookie trotz Session-Kontext: dann käme ein Token heraus, das nichts
     // öffnet — lieber ehrlich 401 als ein Link, der beim Kunden scheitert.
@@ -143,7 +143,7 @@ export function sealControlHostHandoff(event: H3Event, host: string): SealedComm
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
-  const secret = getCookie(event, sessionCookieName(event))
+  const secret = requestSessionSecret(event)
   if (!secret) {
     // Kein Cookie trotz Session-Kontext: dann käme ein Token heraus, das nichts
     // öffnet — lieber ehrlich 401 als ein Link, der beim Kunden scheitert.

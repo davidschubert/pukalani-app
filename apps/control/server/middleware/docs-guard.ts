@@ -35,7 +35,7 @@ const CONTENT_API_PREFIX = '/__nuxt_content/'
  */
 async function resolveUser(event: H3Event) {
   if (event.context.user) return event.context.user
-  if (!getCookie(event, sessionCookieName(event))) return undefined
+  if (!requestSessionSecret(event)) return undefined
   try {
     const { account } = createSessionClient(event)
     event.context.user = await account.get()

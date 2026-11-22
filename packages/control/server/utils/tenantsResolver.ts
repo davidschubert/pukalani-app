@@ -137,6 +137,9 @@ export function mapTenantRowToContext(
   const address = row.host
     ? {
         canonicalHost: canonicalHostFor({ host: row.host, customDomain: row.customDomain, customDomainStatus: row.customDomainStatus }),
+        // Die Pukalani-Adresse selbst (PK1 E1a): daran erkennt der Lesepunkt
+        // der Sitzung, ob eine Anfrage über eine eigene Domain kommt.
+        pukalaniHost: row.host,
         /**
          * ABGESCHALTETE eigene Domain (control-040, BE-014): ihr Host löst
          * weiter auf (s. `findCommunityForHost`), kanonisch ist die
