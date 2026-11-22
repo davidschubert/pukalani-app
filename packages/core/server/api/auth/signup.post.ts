@@ -1,6 +1,7 @@
 import { Account, AppwriteException, Client, ID, Query } from 'node-appwrite'
 import { z } from 'zod'
 import { createAdminClient, requestLocale, setSessionCookie } from '../../lib/appwrite'
+import { freshSignInCard } from '../../utils/requestSession'
 import { registerSchema } from '../../../schemas/auth'
 import { passwordPolicyRejection } from '../../../shared/passwordPolicy'
 import { BUSINESS_REQUIRED_CODE, TERMS_REQUIRED_CODE, requiredConsents, type ConsentConfig } from '../../../shared/consent'
@@ -146,7 +147,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 400, statusText: 'Registration failed' })
   }
 
-  setSessionCookie(event, session.secret, session.expire)
+  setSessionCookie(event, session.secret, session.expire, { card: freshSignInCard(session) })
   // Bekanntes Gerät (P29): wer hier sein Konto angelegt hat, ist in diesem
   // Browser angemeldet. Wirft nie.
   rememberKnownDevice(event, { email, userId: session.userId })

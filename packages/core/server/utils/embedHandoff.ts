@@ -58,25 +58,51 @@ export function handoffAudience(rawHost: string | undefined | null): string {
 }
 
 /**
- * Session-Secret in ein kurzlebiges Token einsiegeln (base64url iv.tag.cipher).
- * `audience` = Host, der es einlösen darf (Pflicht, s. Kopf).
+ * Was ein Siegel trägt (PK1 E1b). `secret` immer; die übrigen Felder nur im
+ * Modus `write` des Kartenschalters — der Ziel-Host legt damit eine eigene
+ * Sitzung an und gibt den Zeitpunkt der URSPRÜNGLICHEN Anmeldung weiter.
+ * Ein Siegel ohne diese Felder (altes Format, oder `off`/`read`) bleibt
+ * gültig: das Ziel nimmt dann die Angaben der geprüften Quell-Sitzung.
  */
-export function sealHandoffToken(sessionSecret: string, key: Buffer, audience: string, now: number = Date.now()): string {
+export interface HandoffGrant {
+  secret: string
+  /** Konto der Quell-Sitzung. */
+  userId?: string
+  /** Die Quell-Sitzung. */
+  sessionId?: string
+  /** Zeitpunkt der ursprünglichen Anmeldung (ms seit 1970). */
+  authAt?: number
+}
+
+/**
+ * Siegel bauen (base64url iv.tag.cipher). `audience` = Host, der es einlösen
+ * darf (Pflicht, s. Kopf). Inhalt: `s` Geheimnis, `exp`, `a` Ziel-Host, dazu
+ * optional `u` Konto, `sid` Sitzung, `at` ursprüngliche Anmeldung.
+ */
+export function sealHandoff(grant: HandoffGrant, key: Buffer, audience: string, now: number = Date.now()): string {
   const target = handoffAudience(audience)
   if (!target) throw new Error('sealHandoffToken: audience is required')
   const iv = randomBytes(12)
   const cipher = createCipheriv('aes-256-gcm', key, iv)
-  const payload = JSON.stringify({ s: sessionSecret, exp: now + HANDOFF_TTL_MS, a: target })
+  const payload = JSON.stringify({
+    s: grant.secret,
+    exp: now + HANDOFF_TTL_MS,
+    a: target,
+    ...(grant.userId ? { u: grant.userId } : {}),
+    ...(grant.sessionId ? { sid: grant.sessionId } : {}),
+    ...(typeof grant.authAt === 'number' && Number.isFinite(grant.authAt) ? { at: grant.authAt } : {}),
+  })
   const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()])
   const tag = cipher.getAuthTag()
   return Buffer.concat([iv, tag, encrypted]).toString('base64url')
 }
 
 /**
- * Token öffnen — null bei Manipulation, falschem Schlüssel, Ablauf ODER
- * fremder Zielgruppe. `audience` ist der EIGENE Host des Einlösers.
+ * Siegel öffnen — null bei Manipulation, falschem Schlüssel, Ablauf, fremder
+ * Zielgruppe ODER einem Zusatzfeld mit falschem Typ. `audience` ist der
+ * EIGENE Host des Einlösers. Öffnet beide Fassungen (mit und ohne Zusatz).
  */
-export function openHandoffToken(token: string, key: Buffer, audience: string, now: number = Date.now()): string | null {
+export function openHandoff(token: string, key: Buffer, audience: string, now: number = Date.now()): HandoffGrant | null {
   const self = handoffAudience(audience)
   if (!self) return null
   try {
@@ -87,13 +113,31 @@ export function openHandoffToken(token: string, key: Buffer, audience: string, n
     const encrypted = raw.subarray(28)
     const decipher = createDecipheriv('aes-256-gcm', key, iv)
     decipher.setAuthTag(tag)
-    const payload = JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')) as { s?: unknown, exp?: unknown, a?: unknown }
+    const payload = JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')) as { s?: unknown, exp?: unknown, a?: unknown, u?: unknown, sid?: unknown, at?: unknown }
     if (typeof payload.s !== 'string' || typeof payload.exp !== 'number') return null
     if (typeof payload.a !== 'string' || payload.a !== self) return null
     if (payload.exp < now) return null
-    return payload.s
+    if (payload.u !== undefined && (typeof payload.u !== 'string' || !payload.u)) return null
+    if (payload.sid !== undefined && (typeof payload.sid !== 'string' || !payload.sid)) return null
+    if (payload.at !== undefined && (typeof payload.at !== 'number' || !Number.isFinite(payload.at))) return null
+    return {
+      secret: payload.s,
+      ...(payload.u ? { userId: payload.u } : {}),
+      ...(payload.sid ? { sessionId: payload.sid } : {}),
+      ...(typeof payload.at === 'number' ? { authAt: payload.at } : {}),
+    }
   }
   catch {
     return null
   }
+}
+
+/** Kurzform: nur das Geheimnis einsiegeln (Format vor E1b). */
+export function sealHandoffToken(sessionSecret: string, key: Buffer, audience: string, now: number = Date.now()): string {
+  return sealHandoff({ secret: sessionSecret }, key, audience, now)
+}
+
+/** Kurzform: nur das Geheimnis aus einem Siegel (beide Fassungen). */
+export function openHandoffToken(token: string, key: Buffer, audience: string, now: number = Date.now()): string | null {
+  return openHandoff(token, key, audience, now)?.secret ?? null
 }
