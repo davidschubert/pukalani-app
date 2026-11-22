@@ -19,6 +19,7 @@ paths:
   - "packages/control/shared/community*.ts"
   - "packages/onboarding/server/**"
   - "apps/platform/server/plugins/**"
+  - "packages/*/server/api/**"
 ---
 
 # Mandanten: Label, Beitritt, Entzug, Benachrichtigungen

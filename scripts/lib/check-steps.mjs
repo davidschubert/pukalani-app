@@ -50,5 +50,5 @@ export const CHECK_STEPS = [
  */
 export const NOT_IN_CHECK = new Map([
   ['check:secrets', 'braucht das Programm gitleaks; in der CI ein eigener Job `secrets` mit gepinnter Binärdatei'],
-  ['check:page-weight', 'braucht einen fertigen Build der App; läuft im Ausliefern nach jedem Build (`.github/workflows/deploy.yml`)'],
+  ['check:page-weight', 'braucht einen fertigen Build der App; läuft im Pull Request und auf `main` als eigener Lauf (`.github/workflows/page-weight.yml`), im Ausliefern nur als Warnung'],
 ])

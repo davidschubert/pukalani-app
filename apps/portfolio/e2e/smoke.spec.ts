@@ -71,3 +71,23 @@ test.describe('Fehlerseiten', () => {
     expect(response?.status()).toBe(404)
   })
 })
+
+// Review-Befund B2 (2026-11-22): auf Deutsch lief „EN" bei 375 px über den
+// Rand. Jeder sichtbare Kopfzeilen-Link liegt ganz im Fenster.
+test.describe('Kopfzeile auf schmalen Telefonen', () => {
+  for (const width of [360, 375]) {
+    test(`/de bei ${width} px: kein Kopfzeilen-Link ragt über den Rand`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 })
+      await page.goto('/de')
+      const edges = await page.locator('.header a').evaluateAll(links => links
+        .map(link => link.getBoundingClientRect())
+        .filter(box => box.width > 0)
+        .map(box => ({ left: box.left, right: box.right })))
+      expect(edges.length).toBeGreaterThanOrEqual(3)
+      for (const edge of edges) {
+        expect(edge.left).toBeGreaterThanOrEqual(0)
+        expect(edge.right).toBeLessThanOrEqual(width)
+      }
+    })
+  }
+})

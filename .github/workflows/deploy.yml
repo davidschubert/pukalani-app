@@ -531,7 +531,12 @@ jobs:
             pnpm --filter "$app" build
             # Skript-Gewicht der Startseite gegen die Grenze (Q22); Apps ohne
             # Grenze in scripts/lib/page-weight-budgets.mjs überspringt er.
-            node scripts/check-page-weight.mjs --app "$app"
+            # HIER NUR WARNEN (Review-Befund B1): eine zu schwere App hielt
+            # sonst das Ausliefern ALLER Apps auf. Hart prüft
+            # `.github/workflows/page-weight.yml` vor dem Merge, und auf `main`
+            # öffnet derselbe Lauf ein Issue.
+            node scripts/check-page-weight.mjs --app "$app" \
+              || echo "::warning::Seitengewicht: $app über der Grenze — ausgeliefert wird trotzdem (Issue mit Label seitengewicht, Lauf „Seitengewicht\" auf main)."
             echo "::endgroup::"
           done
 
