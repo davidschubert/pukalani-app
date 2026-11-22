@@ -892,8 +892,8 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   { re: /^(POST|PATCH|DELETE) \/api\/market\/profiles\/[^/]+\/competitors/, bucket: 'market:competitors', max: WRITE_MAX },
   /**
    * DIE KI-WEGE DER INSIGHTS-REDAKTION (IN1 d, 2026-11-17): Entwurf,
-   * Übersetzung und Vorschlag für den Änderungshinweis bezahlen je Klick einen
-   * Modell-Aufruf, der Video-Brief einen Video-Aufruf. Bis hierher bremste sie
+   * Übersetzung, Vorschlag für den Änderungshinweis und (seit IN1 a) die
+   * KI-Prüfung bezahlen je Klick einen Modell-Aufruf, der Video-Brief einen Video-Aufruf. Bis hierher bremste sie
    * nur das Kontingent IM Layer (10 je Stunde, 50 je Tag und Konto —
    * `packages/insights/shared/insightsAiLimits.ts`) — und das zählt erst, wenn
    * Sitzung, Rechte und Zeile schon gelesen sind. Diese Zeilen zählen je
@@ -906,7 +906,7 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
    * sich damit nicht den Editor sperren. Die GET-Routen daneben (Stand des
    * Briefs abfragen) stehen bewusst nicht hier.
    */
-  { re: /^POST \/api\/insights\/posts\/[^/]+\/(draft|translate|change-note)$/, bucket: 'insights:ai', max: 6 },
+  { re: /^POST \/api\/insights\/posts\/[^/]+\/(draft|translate|change-note|review)$/, bucket: 'insights:ai', max: 6 },
   { re: /^POST \/api\/insights\/watchlist\/[^/]+\/brief$/, bucket: 'insights:brief', max: 6 },
   /**
    * INHALTE ÜBERSETZEN (2026-08-17) — dieselbe Kostenklasse wie eine Zeile
