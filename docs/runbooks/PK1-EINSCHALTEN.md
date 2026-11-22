@@ -74,10 +74,13 @@ war — ein verlorener Schlüssel meldet alle mit Karte ab (kein Datenverlust).
 
 Nach JEDEM Schritt dieselbe Prüfung:
 
-- [ ] `/api/health` aller acht Hosts aus `scripts/ops/verify-health.mjs`
+- [ ] `/api/health` aller Hosts aus `scripts/ops/verify-health.mjs`
   (`node scripts/ops/verify-health.mjs`): `ok: true`, `.build` = Spitze von
-  `main`, `.siteCard.mode` = der eben gesetzte Wert, `cards: true`,
-  `previous: false`.
+  `main`. Auf den Hosts der vier Apps mit Anmeldung (platform mit `account.`
+  und `demo.`, `admin.`, `pukalani.studio`/`portfolio.`, `branding.supply`)
+  dazu `.siteCard.mode` = der eben gesetzte Wert, `cards: true`,
+  `previous: false`. Landing und Hilfe haben einen eigenen Health ohne
+  `siteCard` — dort nichts erwarten.
 - [ ] Kein offenes Issue `produktions-alarm`, kein neues `buehne-alarm`.
 - [ ] Log-Zeilen zählen (pm2-Log der App): `site_card.config_invalid` muss
   **0** sein; `auth.site_session_*` (Host-Wechsel) und
@@ -104,14 +107,23 @@ Niemand merkt etwas: Karten werden gelesen, aber noch nicht geschrieben.
      Kundenbereich, das Dashboard öffnet sich unter der Pukalani-Adresse.
 2. - [ ] **portfolio** und **branding** auf `write` (je eine Seite, kein
    Host-Wechsel): anmelden, Cookie beginnt mit `c1.`, abmelden.
-3. - [ ] **control (Konsole) zuletzt** auf `write`. Erst damit entfällt die
-   Freigabe-Pflicht für eigene Domains (K6): die Konsole fragt dafür
-   `/api/health` der Platform und lässt die Pflicht nur fallen, wenn die
-   Platform `write` mit Karten bestätigt (`customDomainApprovalWaiver.ts`,
-   fail-closed). Prüfen: im pm2-Log der Konsole steht einmal
-   `community.custom_domain_approval_waiver` mit `waived: true`; die Seite
-   „Eigene Domain" einer bezahlten Pro-Community ohne Freigabe zeigt das
-   Eingabefeld. Die Sperre in der Testphase bleibt.
+3. - [ ] **control (Konsole) zuletzt** auf `write` (Schlüssel + Modus wie
+   oben). Die Karte der Konsole selbst gilt damit sofort; die
+   **Freigabe-Pflicht für eigene Domains bleibt trotzdem** — sie entfällt
+   erst NACH E1d (Davids K4: Live-Verbindung auch unter eigenen Domains;
+   Plan § 13.3 Weg 3). Die Konsole lässt sie nur fallen, wenn die Platform
+   über `/api/health` `write`, `cards: true` UND `liveRelay: true` meldet —
+   `liveRelay` gibt es erst mit E1d (`customDomainApprovalWaiver.ts`,
+   fail-closed).
+4. - [ ] **Erst nach E1d, mit eigenem Ja:** auf der Konsole die Zeile
+   `NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL=https://platform.pukalani.app/api/health`
+   in die `.env` (Vorgabe leer ⇒ Pflicht bleibt; nur `https:` wird
+   angenommen), neu laden. Prüfen: die Log-Zeile
+   `community.custom_domain_approval_waiver` mit `waived: true` erscheint
+   erst beim ersten Aufruf einer Domain-Route (Owner öffnet „Eigene Domain")
+   bzw. beim nächsten stündlichen Fristen-Lauf — nicht beim Neuladen. Die
+   Seite „Eigene Domain" einer bezahlten Pro-Community ohne Freigabe zeigt
+   dann das Eingabefeld; die Sperre in der Testphase bleibt.
 
 ### Schritt C — der einmalige Abmelde-Lauf (§ 6 Punkt 4 im Plan)
 
@@ -130,14 +142,30 @@ Der Lauf beendet sie: für jedes Konto im Projekt `account`
 
 ## 4. Rückweg
 
-Zwei Stufen, beide ohne Ausliefern:
+Reihenfolge: **Konsole ZUERST, dann Platform** (umgekehrt zum Einschalten) —
+so gilt die Freigabe-Pflicht wieder, bevor die Karten unter eigenen Domains
+wegfallen. Je App zwei Stufen, beide ohne Ausliefern:
 
 1. **`write` → `read`**, neu laden: niemand fliegt raus — der Lesepunkt
-   versteht Karten weiter, neue Anmeldungen bekommen wieder Klartext. Die
-   Konsole nimmt die Freigabe-Pflicht nach höchstens einer Minute von selbst
-   wieder auf.
+   versteht Karten weiter, neue Anmeldungen bekommen wieder Klartext.
 2. **`read` → `off`**, neu laden: alle mit Karte sind abgemeldet (bewusst —
    ohne Lesepunkt ist eine Karte nur Text). Kein Datenverlust.
+
+**Freigabe-Pflicht nach dem Rückweg der Konsole** (nur nötig, wenn sie
+vorher aufgehoben war, also nach E1d): Die Pflicht gilt nach höchstens einer
+Minute wieder — aber nur für NEUE Eintragungen, Prüfungen und das
+Wieder-Einschalten. Domains, die in der Zwischenzeit OHNE Freigabe aktiv
+geworden sind, bleiben aktiv; erst der stündliche Fristen-Lauf startet für
+sie die 14-Tage-Frist. Darum gleich danach, nur lesend:
+
+- [ ] `admin.pukalani.app` → **Communities**, Spalte **Eigene Domain**: jede
+  Zeile mit Zustand **aktiv** und Schalter **freigegeben** AUS notieren (die
+  Namen nur dort ansehen, nie ins Repo, in ein Issue oder ein Protokoll).
+- [ ] Je Domain bewusst entscheiden: **freigeben** (Schalter an, die
+  Community ist bekannt) oder **sofort abschalten** (Schalter aus ⇒ die Seite
+  fragt nach und schaltet ohne Frist ab, [EIGENE-DOMAIN-FREIGABE.md](EIGENE-DOMAIN-FREIGABE.md)
+  Abschnitt 3). Ein eigenes Werkzeug dafür gibt es nicht und braucht es
+  nicht — die Tabelle zeigt Zustand und Freigabe nebeneinander.
 
 **Nie den Schlüssel tauschen ohne Übergang** (§ 6) — ein neuer Schlüssel ohne
 `PREVIOUS_KEY` meldet alle mit Karte ab.
@@ -157,17 +185,24 @@ Zwei Stufen, beide ohne Ausliefern:
 1. Neuen Wert erzeugen. Den bisherigen Wert nach `NUXT_SITE_CARD_PREVIOUS_KEY`,
    den neuen nach `NUXT_SITE_CARD_KEY`, neu laden. Karten beider Schlüssel
    gelten; neue Karten bekommen den neuen.
-2. Nach der Laufzeit einer Sitzung (Appwrite-Sitzungsdauer des Projekts)
-   `NUXT_SITE_CARD_PREVIOUS_KEY` entfernen, neu laden.
+2. Nach einem **festen Fenster von 30 Tagen** `NUXT_SITE_CARD_PREVIOUS_KEY`
+   entfernen, neu laden. (Nicht „nach der Laufzeit einer Sitzung" — die ist
+   heute ein Jahr, so lange soll kein alter Schlüssel liegen.) Wer dann noch
+   eine Karte mit dem alten Schlüssel hat, meldet sich einmal neu an.
 3. Bleibt der vorige Schlüssel stehen, meldet `/api/health` `siteCard.previous:
    true`, und der Erreichbarkeits-Wächter (`scripts/ops/verify-health.mjs`)
-   schreibt bei jedem Lauf eine Warnung (nicht rot) — dann Schritt 2 nachholen.
+   schreibt bei jedem Lauf eine Warnung (nicht rot) — dann Schritt 2 nachholen;
+   ohne ihn warnt er bis zum Entfernen.
 
 ## 7. Offene Grenzen
 
 - **Live-Verbindung unter einer eigenen Domain** kommt erst mit E1d (Weg 3,
   Plan § 13.3): bis dahin läuft der Socket dort als Gast, persönliche
-  Meldungen und die Anwesenheit kommen über den 20-s-Takt.
+  Meldungen und die Anwesenheit kommen über den 20-s-Takt. Darum bleibt bis
+  E1d auch die Freigabe-Pflicht für eigene Domains (Schritt B 3/4).
+- Die Bühne braucht `NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL` nicht: dort
+  läuft die Konsole im Modus `off`, die Pflicht bleibt also; die Regel
+  selbst prüfen die Unit-Tests (`packages/control/tests/customDomainApprovalWaiver.test.ts`).
 - **Das Siegel des Host-Wechsels ist nur einmal einlösbar — gemerkt je
   Prozess.** pm2 fährt je App genau eine Instanz; wer das ändert, braucht
   einen geteilten Merker (Redis), sonst lässt sich ein Siegel je Instanz

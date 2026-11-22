@@ -22,15 +22,21 @@ Etappe E1). Bis dahin gilt: Wer die DNS einer Kundendomain steuert, steuert
 auch, wohin die Anmeldung ihrer Mitglieder geht. Freigegeben wird deshalb nur
 eine Community, deren Betreiber wir kennen.
 
-**Die Pflicht fällt von selbst weg** (PK1 K6), sobald die Platform UND die
-Konsole bestätigt im Modus `write` laufen — Reihenfolge und Prüfung:
-[PK1-EINSCHALTEN.md](PK1-EINSCHALTEN.md), Schritt „Konsole zuletzt". Dann
+**Die Pflicht fällt erst mit E1d von selbst weg** (PK1 K6): wenn die Konsole
+im Modus `write` läuft, ihre Adresse zur Platform gesetzt ist und die Platform
+`write` mit Karten UND die Live-Weiterleitung unter eigenen Domains (E1d)
+meldet — Reihenfolge und Prüfung: [PK1-EINSCHALTEN.md](PK1-EINSCHALTEN.md),
+Schritt B 3 und 4. Bis dahin gilt alles hier unverändert. Danach
 braucht Bedingung 3 nicht mehr zu stimmen; der Schalter **freigegeben**
 bleibt sichtbar, wirkt aber nur noch beim Entziehen (Abschnitt 3: sofort
 abschalten), und der Owner kann danach wieder einschalten. Eine Community
 dauerhaft aufhalten heißt dann: sperren (`abuse`). Steht der Schalter auf
 Production wieder auf `read`/`off` oder antwortet die Platform nicht, gilt
-die Pflicht nach höchstens einer Minute wieder.
+die Pflicht nach höchstens einer Minute wieder — für NEUE Eintragungen; was
+in der Zwischenzeit ohne Freigabe aktiv wurde, prüft man von Hand
+([PK1-EINSCHALTEN.md](PK1-EINSCHALTEN.md) § 4). Antwortet die Platform nicht,
+startet der Fristen-Lauf für fehlende Freigaben keine Frist (Log-Zeile
+`custom_domain.sweep_approval_unknown`).
 
 Fehlt eine der drei Bedingungen, kann der Owner keine Domain eintragen, prüfen
 oder wieder einschalten. Lesen und Entfernen gehen immer.

@@ -128,8 +128,8 @@ Backup `.claude/rules/ops-ausliefern.md`.
   Link in eine Mail legt ⇒ `resolveSiteLinkBase(event)` statt
   `config.public.appUrl`.
 - EIGENE DOMAIN EINER POOL-COMMUNITY (BE-014/SEC-022): nicht in der
-  Testphase; Freigabe des Betreibers, bis die Eintrittskarte auf Platform UND
-  Konsole bestätigt `write` steht (PK1 K6, `docs/runbooks/PK1-EINSCHALTEN.md`); 14 Tage nach Plan-Ende ⇒ `paused`
+  Testphase; Freigabe des Betreibers, bis die Eintrittskarte samt E1d auf
+  Platform UND Konsole bestätigt live ist (PK1 K6, `docs/runbooks/PK1-EINSCHALTEN.md`); 14 Tage nach Plan-Ende ⇒ `paused`
   (ploi-Eintrag und Zertifikat BLEIBEN, für Weiterleitung und Wieder-
   Einschalten). Läufe `custom-domain-sweep` (Konsole; `dry-run` zählt nur)
   und `custom-domain-notice` (Platform) stehen in `ops/timed-jobs.conf`.

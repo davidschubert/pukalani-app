@@ -81,12 +81,18 @@ Regel, `customDomainEntitlement(row, now)` in
    Konsole prüft die Pflicht, die Karten gelten aber in der Platform — darum
    zwei Bedingungen: der eigene Schalter der Konsole steht auf `write` mit
    brauchbarem Schlüssel UND `/api/health` der Platform meldet
-   `siteCard.mode: write`, `cards: true` (nur lesend, Adresse
-   `NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL`, Vorgabe der Platform-Host).
-   Keine Antwort, kein Feld, anderer Modus ⇒ die Pflicht bleibt (fail-closed;
-   „ja" 60 s, „nein" 30 s zwischengespeichert, ein Wechsel schreibt
-   `community.custom_domain_approval_waiver`). Dieselbe Ausnahme nimmt der
-   Fristen-Lauf (einmal je Lauf gefragt). Die Testphasen-Sperre bleibt immer.
+   `siteCard.mode: write`, `cards: true` und `liveRelay: true` — das letzte
+   erst mit E1d (Live-Verbindung unter eigenen Domains, Davids K4), bis
+   dahin bleibt die Pflicht also immer (Gegenlesen E1c). Nur lesend, Adresse
+   `NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL` (Vorgabe LEER, nur `https:` oder
+   ein lokaler Host). Keine Antwort, kein Feld, anderer Modus ⇒ die Pflicht
+   bleibt (fail-closed; „ja" 60 s, „nein" 30 s zwischengespeichert, ein
+   Wechsel schreibt `community.custom_domain_approval_waiver`). Der
+   Fristen-Lauf fragt einmal je Lauf und unterscheidet: Platform hat
+   geantwortet und bestätigt nicht ⇒ Pflicht wie heute; keine Antwort ⇒ für
+   Domains, denen nur die Freigabe fehlt, keine neue Frist und keine
+   Abschaltung (`custom_domain.sweep_approval_unknown`). Die
+   Testphasen-Sperre bleibt immer.
    Der Freigabe-Schalter der Betreiber-Tabelle bleibt danach stehen, wirkt
    aber nur noch beim Entziehen (sofort abschalten); der Owner kann eine so
    abgeschaltete Domain wieder einschalten — wer eine Community wirklich

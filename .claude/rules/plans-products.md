@@ -67,8 +67,9 @@ paths:
   Eintrag im Protokoll). Die FREIGABE-PFLICHT ENTFÄLLT (PK1 K6) nur mit
   `approvalWaived` aus `customDomainApprovalWaived()`
   (`control/server/utils/customDomainApprovalWaiver.ts`): Konsole auf `write`
-  mit Schlüssel UND Platform bestätigt `write` über `/api/health`, sonst
-  bleibt sie (fail-closed); die Testphase bleibt immer gesperrt. Sie gilt beim Eintragen, Prüfen, Freischalten und
+  mit Schlüssel UND Platform meldet über `/api/health` `write`, Karten und
+  `liveRelay` (erst mit E1d), sonst bleibt sie (fail-closed; ohne Antwort
+  startet der Fristen-Lauf dafür keine Frist); die Testphase bleibt gesperrt. Sie gilt beim Eintragen, Prüfen, Freischalten und
   Wieder-Einschalten (403 `plan_required` | `trial_not_included` |
   `approval_required`); Lesen und Entfernen gehen immer. Eine NEUE Stelle, die
   über eine eigene Domain entscheidet, fragt DIESE Funktion, nie den Plan
