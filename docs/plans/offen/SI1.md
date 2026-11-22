@@ -24,12 +24,15 @@ Moderations-Label nach einer Herabstufung; seine Ops-Route ist gebremst.
   Platform-App (`community_label.reconcile`) steht über 0, bis die Zeilen von
   Hand auf `removed` stehen (`disabledStale` fällt nach dem ersten Entzug auf
   0 — Runbook und Kommentar nannten bis dahin die falsche Zahl).
-  **Empfehlung, wenn es von selbst gehen soll:** ein eigener stündlicher Lauf
-  in der Betreiber-App (sie darf im Control Plane schreiben), der genau diese
-  Zeilen auf `removed` stellt — zuerst nur zählend, scharf erst mit Davids Ja
-  zur Zahl. Dazu gehört eine Zeile in `ops/timed-jobs.conf`; deshalb erst,
-  wenn der Umbau des Ausliefer-Wegs fertig ist. Im lokalen Spiegel waren es
-  drei Zeilen.
+  **Der zweite Lauf ist gebaut (2026-11-22, COMPLETE „SI1 (b)"):**
+  `disabled-member-sweep` in der Betreiber-App, live nur zählend
+  (`dry-run`). **Offen zum Scharfschalten:** (1) nach dem Ausliefern die
+  Log-Zeile `community_members.disabled_sweep_dry_run` auf der Betreiber-App
+  lesen (`activeRows`, `affectedCommunities`); (2) Davids Ja zu genau dieser
+  Zahl; (3) in `apps/control/app/app.config.ts` unter `control`
+  `disabledMembershipSweep: 'apply'`, ausliefern, im nächsten Takt
+  `…_applied` lesen (`removed` = Zahl, `failed` 0). Runbook:
+  LABEL-ABGLEICH.md, „Der zweite Lauf".
   Weiter offen und klein: eine Herabstufung, die älter ist als 26 Stunden und
   in der Zeit keinen Lauf sah, heilt erst der nächste Besuch. Die zwei neuen
   Listen haben einen Deckel von 1.000 Zeilen ohne Lesestelle (steht im Log,
