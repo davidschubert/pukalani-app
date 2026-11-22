@@ -21,8 +21,10 @@ useBrandTitle(() => t('themes.fonts.title'))
 // Eigener Abruf statt `refreshCustomFonts()` (das schluckt Fehler bewusst,
 // „best effort" fürs App-Start-Plugin): diese Seite ZEIGT die Liste, und ein
 // gescheiterter Abruf darf nicht wie „noch keine Schriften" aussehen.
+// `useRequestFetch`: im SSR trägt der Abruf den Host der Anfrage (Mandant).
+const requestFetch = useRequestFetch()
 const { status, error, refresh } = await useAsyncData('pukalani-fonts-admin', async () => {
-  const data = await $fetch<{ fonts: CustomFontDto[] }>('/api/fonts')
+  const data = await requestFetch<{ fonts: CustomFontDto[] }>('/api/fonts')
   fonts.value = data.fonts
   return true
 })
