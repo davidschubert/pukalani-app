@@ -208,6 +208,15 @@ export interface TenantAddress {
    * ein gemerkter 301 bände den Browser an die Pukalani-Adresse.
    */
   canonicalRedirect?: 'temporary'
+  /**
+   * Die Pukalani-Adresse dieser Community (`communities.host`, ohne
+   * Schema/Port) — unabhängig davon, welcher Host gerade kanonisch ist. Sie
+   * beantwortet „läuft diese Anfrage über eine eigene Domain?"
+   * (`isCustomDomainHost`, `core/shared/siteCard.ts`): jeder andere Host,
+   * unter dem derselbe Mandant auflöst, gehört nicht uns. Fehlt das Feld,
+   * gilt der Host dort als eigene Domain (fail-closed).
+   */
+  pukalaniHost?: string
 }
 
 /**

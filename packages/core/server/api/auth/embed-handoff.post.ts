@@ -1,5 +1,5 @@
 import { deriveHandoffKey, handoffAudience, sealHandoffToken } from '../../utils/embedHandoff'
-import { sessionCookieName } from '../../lib/appwrite'
+import { requestSessionSecret } from '../../utils/requestSession'
 
 /**
  * E2 Embed-Login, Schritt 1 (läuft im POPUP, Top-Level = first-party Cookie):
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   if (!event.context.user) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
-  const secret = getCookie(event, sessionCookieName(event))
+  const secret = requestSessionSecret(event)
   if (!secret) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }

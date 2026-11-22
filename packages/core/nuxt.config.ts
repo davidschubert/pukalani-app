@@ -402,6 +402,20 @@ export default defineNuxtConfig({
      * DER SCHALTER — dieselbe Regel wie eine Zeile höher.
      */
     geoCitiesPath: '',
+    /**
+     * server-only! Eintrittskarte je Seite (PK1 E1a) — Kopf von
+     * server/utils/siteCard.ts. Env: NUXT_SITE_CARD_MODE (off | read | write,
+     * leer = off), NUXT_SITE_CARD_KEY (32 Byte base64, `openssl rand -base64
+     * 32`), NUXT_SITE_CARD_PREVIOUS_KEY (nur zum Lesen während eines
+     * Tauschs). ALLE OPTIONAL: ohne sie läuft alles wie vor E1. Fehlt der
+     * Schlüssel zu einem Modus oder ist er ungültig ⇒ off + eine Log-Zeile.
+     * Rückweg: Modus auf off, App neu starten.
+     */
+    siteCard: {
+      mode: 'off',
+      key: '',
+      previousKey: '',
+    },
     public: {
       // Deployter Commit (Build-Zeit aus git) — /api/health spiegelt ihn,
       // der Deploy-Workflow verifiziert damit, dass ploi den erwarteten
