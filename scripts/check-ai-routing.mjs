@@ -362,6 +362,7 @@ export function checkRoutingKeys(files, { delegates = DELEGATES, constants = ROU
  */
 export const DIRECT_SCRIPTS = {
   'packages/brand/scripts/verify-brand-context.mjs': 'Prüfskript für den Brand Context, von Hand gefahren; sendet die Bindung wörtlich',
+  'scripts/ki-modell-probe.mjs': 'KM1-Probe zweier Textmodelle, von Hand gefahren; baut den Rumpf mit dem Core-Transport und prüft die Bindung wörtlich',
 }
 
 /** Kein Weg an den Transporten vorbei: `chat/completions` steht nur in ihnen. */

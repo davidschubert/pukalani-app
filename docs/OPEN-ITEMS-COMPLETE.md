@@ -70,6 +70,38 @@ eine Sicherung, die wirklich eine Datei ist: `cp datei ordner/bak` schrieb in
 einen gleichnamigen Ordner, die Rückkopie scheiterte still; erst `git status`
 zeigte die vier noch veränderten Quellen.
 
+---
+
+### KM1 c — Probe für ein günstigeres Textmodell gebaut und lokal gefahren ✅ 2026-11-22
+
+**Was.** Davids Klick 2026-11-19/21: „Ja, Probe vorbereiten". Neu ist
+`scripts/ki-modell-probe.mjs`: fünf Text-Aufgaben (Marke: DNA-Vorschlag,
+Zeichen-Brief; Insights: Entwurf, Übersetzung, Änderungsnotiz) mit fester,
+erfundener Eingabe, je Modell; Prompt, `temperature`, `max_tokens` und die
+Prüfung der Antwort lädt es per jiti aus dem echten Code. Standard ist ein
+Trockenlauf mit gestellten Antworten; `--live` zeigt die geschätzten
+Höchstkosten und bricht über `--max-usd` ab. Den Rumpf baut
+`buildAiRequestBody` aus dem Core-Transport; vor dem Senden prüft das Skript
+die Europa-Bindung wörtlich und steht deshalb in `DIRECT_SCRIPTS` von
+`scripts/check-ai-routing.mjs`.
+
+**Beweis.** Lokal mit dem eingerichteten Entwicklungs-Schlüssel, zusammen
+rund 0,09 $: Haiku 4.5 15 von 15, Haiku 5.5 wie heute
+gerufen 12 von 15 (Insights-Entwurf 0 von 3, Decke voll), Haiku 5.5 mit
+`reasoning: none` 10 von 10 bei einem Sechstel bis Achtel der Kosten je
+Aufruf. `temperature` lehnt der Vermittler beim neuen Modell nicht ab, er
+lässt sie still fallen. Zahlen, Rechnung und Reihenfolge:
+[plans/KI-TEXTMODELL-WECHSEL.md](plans/KI-TEXTMODELL-WECHSEL.md). Offen
+bleibt nur Davids Entscheidung (OPEN-ITEMS „KM1").
+
+**Gelernt:** Ein Preis aus der Liste ist nicht der Preis je Aufgabe. Haiku
+5.5 „denkt" ungefragt; die Denk-Tokens stehen nicht im Text, werden aber als
+Ausgabe bezahlt und füllen `max_tokens`. Wer ein Modell vergleicht, misst
+`usage.completion_tokens_details.reasoning_tokens` und `finish_reason` mit —
+sonst sieht ein abgeschnittener Lauf aus wie „kein JSON".
+
+---
+
 ### Bahn 7 — Farbwelten ganz optimieren: Hauptfarbe, Gelb, Blau und Fokus-Rahmen erreichen als Schrift 4,5 zu 1 (Rest von UX-002) ✅ 2026-11-22
 
 **Was.** Nach Q07 waren als Schrift noch zu blass: die Hauptfarbe jeder

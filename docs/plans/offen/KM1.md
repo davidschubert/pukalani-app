@@ -11,18 +11,17 @@ Europa-Endpunkte jetzt in einer zweiten Liste, die Aufrufe liefen die ganze
 Zeit (COMPLETE „KA1"). Von den Vorschlägen danach ist (a) gebaut, (b)
 abgelehnt und (e) gebaut (COMPLETE „KM1 a" und „KM1 e"). Offen:
 
-- **(c) Günstigeres Textmodell.** `anthropic/claude-haiku-5.5` hat dieselben
-  zwei Europa-Endpunkte und kostet dort ein Zehntel (0,11 / 0,55 $ je
-  Million Tokens statt 1,10 / 5,50 $). Kein Handlungsbedarf. Davids Klick
-  vom 2026-11-19: die Proben vorbereiten. Die Aufstellung steht in
-  [plans/KI-TEXTMODELL-WECHSEL.md](../../plans/KI-TEXTMODELL-WECHSEL.md): 21
-  Stellen rufen das Textmodell, 8 davon haben schon eine echte Probe, für
-  12 bräuchte es ein neues Probe-Skript (ein Arbeitstag). Alle Proben
-  zusammen kosten höchstens rund 6 $. Das neue Modell führt die
-  Einstellung `temperature` nicht mehr, die der Code bei jedem Aufruf
-  mitschickt — das klärt die erste Probe (ein Aufruf, unter 1 Cent).
-  Was der Wechsel spart, hängt an der Monatssumme beim Anbieter; die
-  kennt nur Davids Konto dort. Gewechselt wird erst nach einem weiteren Ja.
+- **(c) Günstigeres Textmodell — Probe gefahren, wartet auf Davids
+  Entscheidung.** `anthropic/claude-haiku-5.5` kostet in Europa ein Zehntel.
+  Die Probe (`scripts/ki-modell-probe.mjs`, lokal am 2026-11-22, rund
+  0,09 $) zeigt: wie die App heute ruft, „denkt" das Modell von selbst, das
+  frisst beim Insights-Entwurf die Decke (0 von 3) und lässt nur das Zwei- bis
+  Siebenfache an Ersparnis. Mit abgeschaltetem Denken bestehen alle fünf
+  Aufgaben bei einem Sechstel bis Achtel der Kosten — dafür braucht der
+  Transport erst ein Feld mehr. `temperature` fällt beim neuen Modell still
+  weg. Ergebnis, Rechnung und Reihenfolge:
+  [plans/KI-TEXTMODELL-WECHSEL.md](../../plans/KI-TEXTMODELL-WECHSEL.md).
+  Gewechselt wird erst nach Davids Ja.
 - **(d) Zur Kenntnis.** Der Anbieter bietet „nur Europa" inzwischen auch als
   eigene Adresse an (in einem teureren Tarif). Nötig ist das nicht, solange
   die Bindung je Aufruf greift — und das ist am 2026-11-18 gemessen. Ob auf
