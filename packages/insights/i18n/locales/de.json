@@ -598,6 +598,26 @@
         "needsChange": "Erst etwas am Artikel ändern — dann gibt es etwas zu beschreiben.",
         "suggested": "Vorschlag eingetragen. Bitte lesen und anpassen — er erscheint erst mit Speichern.",
         "unsaved": "Neue Hinweise und Änderungen erscheinen erst mit Speichern."
+      },
+      "aiReview": {
+        "title": "KI-Prüfung",
+        "hint": "Liest die aktuelle Fassung im Editor, auch ungespeichert, und meldet, was unstimmig wirkt, was inhaltlich fehlt und was den Artikel für Leser und Suche besser macht. Die Prüfung berät nur: sie ändert nichts am Artikel und kann sich irren. Was gesperrt ist, entscheiden weiter die Prüfregeln.",
+        "start": "KI-Prüfung starten",
+        "cost": "Ein bezahlter KI-Lauf, etwa 1 bis 5 Cent. Geprüft wird die Grundfassung.",
+        "needsText": "Erst Fliesstext schreiben — dann gibt es etwas zu prüfen.",
+        "running": "Die Prüfung läuft, meist unter einer Minute. Du kannst weiterarbeiten.",
+        "alreadyRunning": "Für diesen Artikel läuft schon eine Prüfung. Das Ergebnis erscheint hier.",
+        "stalled": "Die Prüfung ist nicht zurückgekommen. Bitte noch einmal starten.",
+        "failed": "Die Prüfung hat nicht geklappt. Bitte noch einmal starten.",
+        "failedEmpty": "Das Modell hat keine brauchbare Rückmeldung geliefert. Bitte noch einmal starten.",
+        "failedDisabled": "Die KI ist gerade abgeschaltet.",
+        "gone": "Ergebnis nicht mehr da — noch einmal prüfen.",
+        "staleHint": "Die Punkte beziehen sich auf die Fassung beim Start der Prüfung. Nichts davon ist am Artikel geändert.",
+        "kinds": {
+          "inconsistency": "Wirkt unstimmig",
+          "missing": "Fehlt inhaltlich",
+          "improvement": "Besser für Leser und Suche"
+        }
       }
     },
     "admin": {

@@ -1,4 +1,5 @@
 import type { RunLeaseState } from '../../../core/shared/runLease'
+import type { InsightsAiReviewView } from '../insightsAiReview'
 import type { InsightsChannel, InsightsChannelPreview } from '../insightsChannel'
 import type { InsightsVerdict, InsightsWatchItem } from '../insightsWatchlist'
 import type {
@@ -256,6 +257,15 @@ export interface InsightsDraftResponse {
 export interface InsightsChangeNoteSuggestionResponse {
   de: string
   en: string
+}
+
+/**
+ * `POST /api/insights/posts/:id/review` (202, der Lauf rechnet im
+ * Hintergrund) und `GET /api/insights/posts/:id/review` (Stand und, wenn
+ * fertig, die Funde) — IN1 a. Die Ansicht steht in `shared/insightsAiReview.ts`.
+ */
+export interface InsightsAiReviewResponse {
+  run: InsightsAiReviewView
 }
 
 // ── Themenradar (BI1 I4, §9.6) ─────────────────────────────────────────────

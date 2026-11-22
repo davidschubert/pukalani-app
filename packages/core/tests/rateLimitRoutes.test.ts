@@ -274,7 +274,7 @@ describe('Teure Wege ohne Bremse (BE-002)', () => {
   // das Kontingent im Layer — je Anschluss und VOR der Route zählte niemand.
   it('deckelt die KI-Wege der Insights-Redaktion wie die übrigen bezahlten Modell-Aufrufe', () => {
     const generate = ersterTreffer('POST /api/brand/profiles/b1/steps/purpose/generate')
-    for (const weg of ['draft', 'translate', 'change-note']) {
+    for (const weg of ['draft', 'translate', 'change-note', 'review']) {
       const treffer = ersterTreffer(`POST /api/insights/posts/p1/${weg}`)
       expect(treffer, `${weg} fehlt in WRITE_LIMITED`).not.toBeNull()
       expect(treffer?.bucket).toBe('insights:ai')
@@ -285,6 +285,8 @@ describe('Teure Wege ohne Bremse (BE-002)', () => {
     expect(brief?.max).toBe(generate?.max)
     // Lesen und die Geschwister-Routen ohne Modell-Aufruf bleiben frei.
     expect(ersterTreffer('GET /api/insights/watchlist/v1/brief')).toBeNull()
+    // IN1 a: den Stand der KI-Prüfung abzufragen kostet nichts.
+    expect(ersterTreffer('GET /api/insights/posts/p1/review')).toBeNull()
     expect(ersterTreffer('POST /api/insights/posts/p1/state')).toBeNull()
     expect(ersterTreffer('POST /api/insights/posts/p1/evidence')).toBeNull()
   })
