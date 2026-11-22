@@ -259,6 +259,49 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1 Review vor Schritt B — Ketten-Ablauf, Wettlauf, Lese-Wächter, Runbook (Anmeldung, Schalter-Stand `read`) ✅ 2026-11-22
+
+Ein unabhängiges Review der Schritte E1a bis E1c (und von E1d) vor dem
+Umstellen auf `write` fand nichts Schweres, aber vier mittlere Punkte (B1–B4)
+und drei kleine. Behoben bzw. entschieden:
+
+- **B1 Ablauf über Ketten:** Das Siegel für den Host-Wechsel trägt jetzt den
+  Ablauf der Quell-KARTE (`ex`). Das Ziel kürzt seine Karte — eigene Sitzung
+  wie Kopie — auf das Minimum aus Quell-Karte, Quell-Sitzung und neuer
+  Sitzung (`earliestExpire`, `sessionHandoff.ts`); ebenso die eingebettete
+  Kopie (`embed-session`) und — beim Rückweg auf `read` — das Siegel einer
+  Karte (Gegenlesen dieses Schritts). Vorher konnte jeder
+  weitere Wechsel die Anmeldung verlängern, weil Appwrite für eine neu
+  angelegte Sitzung ihren eigenen, späteren Ablauf meldet.
+- **B7 Wettlauf:** Nach `users.createSession` prüft der Wechsel, ob die Quelle
+  noch lebt (`users.listSessions`). Weg ⇒ neue Sitzung gelöscht, 401;
+  nicht lesbar ⇒ neue Sitzung gelöscht, Kopie.
+- **B5 Lese-Wächter:** `sessionCookieReadGuard.test.ts` meldet jetzt auch das
+  rohe Lesen der Cookie-Kopfzeile (`parseCookies`, `headers.cookie`,
+  `headers.get('cookie')`, h3-Kopfzeile); einzige Ausnahme mit Grund ist
+  `pageCache.ts`.
+- **B2 Sitzungs-Obergrenze:** Runbook berichtigt — gekürzt wird nach jeder
+  echten Anmeldung über ALLE Sitzungen des Kontos; Wert vorher ablesen.
+- **B4:** Platform geht erst auf `write`, wenn E1d live ist (Runbook).
+- **B3:** Nachrichten und „Meine Beiträge" unter eigener Domain nur über die
+  Pukalani-Adresse — bewusst hingenommen, offen unter PK1-EIN.
+- Runbook: Beobachten im Moment des Umstellens (`cards: true`, drei
+  Log-Zeilen bei 0, Sitzungszahl nach einer Stunde) und
+  Passwortwechsel-Schalter ablesen.
+- Befunde zu E1d (L1–L4) gingen an die E1d-Session.
+
+Gegenproben: Grenze im Ziel entfernt ⇒ 2 Tests rot; Nachprüfung entfernt ⇒ 2
+Tests rot; jede erfundene Roh-Lesezeile ⇒ erkannt.
+
+**Gelernt:** Wer einen Ablauf „vom Vorgänger erbt", muss ihn vom VORGÄNGER
+nehmen, den der Mensch wirklich hatte (seine Karte), nicht von dem, was der
+Server über dessen Sitzung meldet — bei neu angelegten Sitzungen sind das
+zwei verschiedene Zeiten, und eine Kette addiert die Differenz. Und ein
+Wächter gegen „am Lesepunkt vorbei" muss nach dem ROHEN Zugang suchen, nicht
+nur nach dem einen bekannten Aufruf.
+
+---
+
 ### PK1 E1c — Bühne im Modus write, Schalter in /api/health, Freigabe-Pflicht am Schalter, Runbook (Schalter aus) ✅ 2026-11-22
 
 **Was.** Neun Bühnen-Beweise, die EIN Cookie auf mehreren Hosts benutzten,
