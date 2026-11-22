@@ -124,20 +124,31 @@ export type CustomDomainSweepRow = Pick<TenantRow, 'status' | 'mode'> & Partial<
  *    entfernen" leeren, die Freigabe bleibt).
  *
  * `approvalWaived` (PK1 K6): dieselbe Ausnahme wie an der Tür der Domain-Routen
- * — der Lauf fragt sie EINMAL je Lauf (`customDomainApprovalWaived`), nie je
- * Zeile.
+ * — der Lauf fragt sie EINMAL je Lauf (`customDomainApprovalWaiverState`),
+ * nie je Zeile.
+ *
+ * `approvalUnknown` (PK1 K6, Gegenlesen E1c): die Frage „entfällt die
+ * Freigabe-Pflicht?" kam in diesem Lauf NICHT zustande (Platform ohne
+ * Antwort, Fehler). Dann startet der Lauf für eine Zeile, der NUR die
+ * Freigabe fehlt (`approval_required`), keine Schonfrist und ändert eine
+ * laufende nicht — ein Ausfall soll keine Domain abschalten. Hat die
+ * Platform geantwortet und bestätigt nicht, gilt die Pflicht wie heute.
  */
 export function decideCustomDomainSweep(
   row: CustomDomainSweepRow,
   now: number,
-  options: { approvalWaived?: boolean } = {},
+  options: { approvalWaived?: boolean, approvalUnknown?: boolean } = {},
 ): CustomDomainSweepDecision {
   if (row.status !== 'active' || row.mode !== 'pool' || !row.customDomain) return { action: 'none' }
   const status = resolveCustomDomainStatus(row.customDomainStatus)
 
   if (status === 'active') {
-    const entitled = customDomainEntitlement(row, now, options).allowed
+    const entitlement = customDomainEntitlement(row, now, { approvalWaived: options.approvalWaived })
+    const entitled = entitlement.allowed
     const graceRaw = row.customDomainGraceEndsAt ?? ''
+    if (!entitlement.allowed && entitlement.reason === 'approval_required' && options.approvalUnknown === true) {
+      return { action: 'none' }
+    }
     if (entitled) {
       return graceRaw
         ? { action: 'clear_grace', patch: { customDomainGraceEndsAt: null } }
@@ -203,4 +214,16 @@ export interface CustomDomainSweepReport {
 /** Antwort der Betreiber-Route `GET /api/control/sweeps/custom-domain`. */
 export interface CustomDomainSweepRouteResponse extends CustomDomainSweepReport {
   configuredMode: CustomDomainSweepMode
+}
+
+/**
+ * PURE (PK1 K6): hält eine unbeantwortete Frage nach der Freigabe-Pflicht
+ * diese Zeile an? Genau dann, wenn sie aktiv ist und ihr NUR die Freigabe
+ * fehlt — der Lauf zählt solche Zeilen für seine Log-Zeile.
+ */
+export function customDomainSweepHeldByUnknownApproval(row: CustomDomainSweepRow, now: number): boolean {
+  if (row.status !== 'active' || row.mode !== 'pool' || !row.customDomain) return false
+  if (resolveCustomDomainStatus(row.customDomainStatus) !== 'active') return false
+  const entitlement = customDomainEntitlement(row, now)
+  return !entitlement.allowed && entitlement.reason === 'approval_required'
 }

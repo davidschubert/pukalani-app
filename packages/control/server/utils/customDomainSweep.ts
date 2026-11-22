@@ -10,6 +10,7 @@ import {
 import { RUN_LEASE_BUSY_CODE } from '../../../core/shared/runLease'
 import { customDomainNoticesDue } from '../../shared/customDomainNotice'
 import {
+  customDomainSweepHeldByUnknownApproval,
   decideCustomDomainSweep,
   resolveCustomDomainSweepMode,
   type CustomDomainSweepAction,
@@ -20,7 +21,7 @@ import {
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/types/communityMember'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 import { controlLockStore } from './controlLock'
-import { customDomainApprovalWaived } from './customDomainApprovalWaiver'
+import { customDomainApprovalWaiverState, type CustomDomainApprovalWaiverState } from './customDomainApprovalWaiver'
 import { clearCustomDomainEntry } from './customDomainRemoval'
 import { normalizePloiConfig, type PloiConfig } from './ploi'
 
@@ -66,10 +67,10 @@ export interface CustomDomainSweepDeps {
   /** `null` = ohne Sperre (nur `dry-run`). */
   leaseStore: RunLeaseStore | null
   /**
-   * Entfällt die Freigabe-Pflicht (PK1 K6)? Ohne Angabe: nein — die Pflicht
-   * bleibt (fail-closed).
+   * Entfällt die Freigabe-Pflicht (PK1 K6), und kam die Frage zustande? Ohne
+   * Angabe: Pflicht gilt, Frage beantwortet — der Lauf wie vor K6.
    */
-  approvalWaived?: () => Promise<boolean>
+  approvalWaiver?: () => Promise<CustomDomainApprovalWaiverState>
 }
 
 /** Der Schalter aus der app.config — unbekannt ⇒ `off`. */
@@ -86,7 +87,7 @@ function defaultDeps(mode: 'dry-run' | 'apply'): CustomDomainSweepDeps {
     databaseId: config.public.appwriteDatabaseId,
     ploi: normalizePloiConfig(config as unknown as Record<string, unknown>),
     leaseStore: mode === 'apply' ? controlLockStore() : null,
-    approvalWaived: () => customDomainApprovalWaived(),
+    approvalWaiver: () => customDomainApprovalWaiverState(),
   }
 }
 
@@ -161,13 +162,21 @@ export async function runCustomDomainSweep(
   try {
     const { tablesDB, databaseId } = deps
     // EINMAL je Lauf gefragt, gilt für jede Zeile (PK1 K6).
-    const sweepOptions = { approvalWaived: deps.approvalWaived ? await deps.approvalWaived() : false }
+    const waiver = deps.approvalWaiver ? await deps.approvalWaiver() : { waived: false, answered: true }
+    const sweepOptions = { approvalWaived: waiver.waived, approvalUnknown: !waiver.answered }
     // VOLLSTÄNDIG, nicht die erste Seite (listAllRows, Index idx_custom_domain).
     // `!= ''` schließt auch `null` aus (Bestand von vor control-035) — beides
     // heißt „keine Domain".
     const rows = await listAllRows<TenantRow>(tablesDB, databaseId, COMMUNITIES_TABLE, [
       Query.notEqual('customDomain', ''),
     ])
+    // Kam die Frage nicht zustande, hält der Lauf Zeilen an, denen NUR die
+    // Freigabe fehlt (keine neue Schonfrist, keine Abschaltung) — gezählt in
+    // EINER Zeile, damit ein dauerhafter Ausfall auffällt.
+    if (!waiver.answered) {
+      const held = rows.filter(row => customDomainSweepHeldByUnknownApproval(row, now)).length
+      logEvent('warn', 'custom_domain.sweep_approval_unknown', { held, checked: rows.length })
+    }
 
     const report: CustomDomainSweepReport = {
       mode: options.mode,

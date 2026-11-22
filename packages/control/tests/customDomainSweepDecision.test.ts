@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CUSTOM_DOMAIN_GRACE_DAYS } from '../shared/customDomain'
 import {
   CUSTOM_DOMAIN_CLEARED_PATCH,
+  customDomainSweepHeldByUnknownApproval,
   decideCustomDomainSweep,
   resolveCustomDomainSweepMode,
   type CustomDomainSweepRow,
@@ -93,6 +94,15 @@ describe('decideCustomDomainSweep — Freigabe-Pflicht entfällt (PK1 K6)', () =
   it('mit bestätigter Ausnahme ist eine bezahlte Pro-Domain ohne Freigabe berechtigt', () => {
     expect(decideCustomDomainSweep(row({ customDomainApproved: false }), NOW, { approvalWaived: true })).toEqual({ action: 'none' })
     expect(decideCustomDomainSweep(row({ customDomainApproved: false, customDomainGraceEndsAt: iso(NOW + DAY) }), NOW, { approvalWaived: true }).action).toBe('clear_grace')
+  })
+
+  it('Frage nicht zustande gekommen: nur-Freigabe-fehlt hält an, andere Gründe nicht', () => {
+    expect(decideCustomDomainSweep(row({ customDomainApproved: false }), NOW, { approvalUnknown: true })).toEqual({ action: 'none' })
+    expect(decideCustomDomainSweep(row({ customDomainApproved: false, customDomainGraceEndsAt: iso(NOW - 1) }), NOW, { approvalUnknown: true })).toEqual({ action: 'none' })
+    expect(decideCustomDomainSweep(row({ plan: 'basic', customDomainApproved: false }), NOW, { approvalUnknown: true }).action).toBe('start_grace')
+    expect(customDomainSweepHeldByUnknownApproval(row({ customDomainApproved: false }), NOW)).toBe(true)
+    expect(customDomainSweepHeldByUnknownApproval(row({ plan: 'basic', customDomainApproved: false }), NOW)).toBe(false)
+    expect(customDomainSweepHeldByUnknownApproval(row(), NOW)).toBe(false)
   })
 
   it('die Testphasen-Sperre bleibt auch mit Ausnahme', () => {

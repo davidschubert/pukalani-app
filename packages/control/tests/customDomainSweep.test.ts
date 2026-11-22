@@ -257,6 +257,46 @@ describe('apply', () => {
   })
 })
 
+describe('Freigabe-Pflicht und ihre Frage (PK1 K6)', () => {
+  function unapproved() {
+    // Bezahltes Pro ohne Freigabe: eine ohne Frist, eine mit abgelaufener Frist.
+    community('c-noapp-new', { customDomainApproved: false })
+    community('c-noapp-due', { customDomainApproved: false, customDomainGraceEndsAt: iso(NOW - 60_000) })
+  }
+  const withWaiver = (state: { waived: boolean, answered: boolean }) => ({ ...deps(), approvalWaiver: async () => state })
+
+  it('Platform hat geantwortet und bestätigt nicht ⇒ Pflicht gilt wie heute (Frist, Abschalten)', async () => {
+    unapproved()
+    await runCustomDomainSweep({ mode: 'apply', now: NOW }, withWaiver({ waived: false, answered: true }))
+    const rows = table('communities')
+    expect(rows.get('c-noapp-new')!.customDomainGraceEndsAt).toBe(iso(NOW + 14 * DAY))
+    expect(rows.get('c-noapp-due')!.customDomainStatus).toBe('paused')
+    expect(logs.some(log => log.name === 'custom_domain.sweep_approval_unknown')).toBe(false)
+  })
+
+  it('Frage kam nicht zustande ⇒ keine neue Frist, keine Abschaltung, eine Log-Zeile mit der Zahl', async () => {
+    unapproved()
+    const report = asReport(await runCustomDomainSweep({ mode: 'apply', now: NOW }, withWaiver({ waived: false, answered: false })))
+    const rows = table('communities')
+    expect(rows.get('c-noapp-new')!.customDomainGraceEndsAt).toBeNull()
+    expect(rows.get('c-noapp-due')).toMatchObject({ customDomainStatus: 'active', customDomainGraceEndsAt: iso(NOW - 60_000) })
+    const line = logs.find(log => log.name === 'custom_domain.sweep_approval_unknown')
+    expect(line?.detail).toMatchObject({ held: 2 })
+    // Andere Gründe laufen weiter wie heute (Gegenprobe: Plan-Ende von c-start und c-pause).
+    expect(report.counts.startGrace).toBe(1)
+    expect(report.counts.pause).toBe(1)
+    expect(rows.get('c-start')!.customDomainGraceEndsAt).toBe(iso(NOW + 14 * DAY))
+  })
+
+  it('bestätigte Aufhebung ⇒ ohne Freigabe berechtigt, eine laufende Frist wird geräumt', async () => {
+    unapproved()
+    await runCustomDomainSweep({ mode: 'apply', now: NOW }, withWaiver({ waived: true, answered: true }))
+    const rows = table('communities')
+    expect(rows.get('c-noapp-new')!.customDomainGraceEndsAt).toBeNull()
+    expect(rows.get('c-noapp-due')).toMatchObject({ customDomainStatus: 'active', customDomainGraceEndsAt: null })
+  })
+})
+
 describe('Betreiber-Route GET /api/control/sweeps/custom-domain', () => {
   const event = (permissions: string[]) => ({ context: { permissions } }) as unknown as H3Event
 

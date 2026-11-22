@@ -209,18 +209,42 @@ export function customDomainEntitlement(
 }
 
 /**
- * PURE (PK1 E1c, K6): bestätigt diese Antwort von `/api/health` der Platform,
- * dass dort Karten geschrieben werden (`siteCard.mode === 'write'` UND
- * `siteCard.cards === true`)? Alles andere — kein JSON, fehlendes Feld (Stand
- * vor E1c), anderer Modus, kein brauchbarer Schlüssel — ist „nein": die
- * Freigabe-Pflicht bleibt.
+ * PURE (PK1 E1c, K6): erlaubt diese Antwort von `/api/health` der Platform,
+ * die Freigabe-Pflicht fallen zu lassen? Nur mit `siteCard.mode === 'write'`,
+ * `cards === true` UND `liveRelay === true`. Das letzte Merkmal meldet die
+ * Platform erst mit E1d (Live-Verbindung unter eigenen Domains über unseren
+ * Server, Davids K4) — bis dahin bleibt die Pflicht (Gegenlesen E1c, Fund 1).
+ * Alles andere — kein JSON, fehlendes Feld, anderer Modus, kein Schlüssel —
+ * ist „nein".
  */
-export function healthConfirmsSiteCardWrite(body: unknown): boolean {
+export function healthConfirmsApprovalWaiver(body: unknown): boolean {
   if (!body || typeof body !== 'object') return false
   const siteCard = (body as { siteCard?: unknown }).siteCard
   if (!siteCard || typeof siteCard !== 'object') return false
-  const { mode, cards } = siteCard as { mode?: unknown, cards?: unknown }
-  return mode === 'write' && cards === true
+  const { mode, cards, liveRelay } = siteCard as { mode?: unknown, cards?: unknown, liveRelay?: unknown }
+  return mode === 'write' && cards === true && liveRelay === true
+}
+
+/**
+ * PURE (PK1 K6): darf die Konsole diese Adresse nach dem Schalter der
+ * Platform fragen? Nur `https:` — oder `http:` auf einem lokalen Host
+ * (`localhost`, `127.0.0.1`, `[::1]`, `*.localhost`) für Entwicklung und
+ * Bühne. Leer oder anders ⇒ nein (die Pflicht bleibt).
+ */
+export function platformHealthUrlAllowed(raw: string): boolean {
+  if (!raw) return false
+  let url: URL
+  try {
+    url = new URL(raw)
+  }
+  catch {
+    return false
+  }
+  if (url.username || url.password) return false
+  if (url.protocol === 'https:') return true
+  if (url.protocol !== 'http:') return false
+  const host = url.hostname.toLowerCase()
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.endsWith('.localhost')
 }
 
 /** Antwort der Betreiber-Route `POST /api/control/tenants/[id]/custom-domain`

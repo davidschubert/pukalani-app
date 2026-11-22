@@ -30,7 +30,8 @@ import {
   normalizeCustomDomain,
   resolveCustomDomainStatus,
   validateCustomDomain,
-  healthConfirmsSiteCardWrite,
+  healthConfirmsApprovalWaiver,
+  platformHealthUrlAllowed,
 } from '../shared/customDomain'
 import { isDryRunFlag } from '../server/utils/ploi'
 
@@ -527,19 +528,40 @@ describe('customDomainEntitlement — Freigabe-Pflicht entfällt (PK1 K6)', () =
   })
 })
 
-describe('healthConfirmsSiteCardWrite (PK1 K6)', () => {
+describe('healthConfirmsApprovalWaiver (PK1 K6)', () => {
   it.each([
-    [{ ok: true, siteCard: { mode: 'write', cards: true, previous: false } }, true],
-    [{ ok: false, siteCard: { mode: 'write', cards: true } }, true],
-    [{ ok: true, siteCard: { mode: 'write', cards: false } }, false],
-    [{ ok: true, siteCard: { mode: 'read', cards: true } }, false],
+    // Erst mit E1d meldet die Platform `liveRelay` — nur dann entfällt die Pflicht.
+    [{ ok: true, siteCard: { mode: 'write', cards: true, previous: false, liveRelay: true } }, true],
+    [{ ok: false, siteCard: { mode: 'write', cards: true, liveRelay: true } }, true],
+    // Der heutige Stand (E1c): write mit Karten, aber ohne Live-Weiterleitung ⇒ Pflicht bleibt.
+    [{ ok: true, siteCard: { mode: 'write', cards: true, previous: false } }, false],
+    [{ ok: true, siteCard: { mode: 'write', cards: true, liveRelay: false } }, false],
+    [{ ok: true, siteCard: { mode: 'write', cards: false, liveRelay: true } }, false],
+    [{ ok: true, siteCard: { mode: 'read', cards: true, liveRelay: true } }, false],
     [{ ok: true, siteCard: { mode: 'off', cards: false } }, false],
-    [{ ok: true, siteCard: { mode: 'write', cards: 'true' } }, false],
+    [{ ok: true, siteCard: { mode: 'write', cards: 'true', liveRelay: true } }, false],
     [{ ok: true }, false],
     [{ ok: true, siteCard: null }, false],
     [null, false],
     ['write', false],
   ])('%j ⇒ %s', (body, expected) => {
-    expect(healthConfirmsSiteCardWrite(body)).toBe(expected)
+    expect(healthConfirmsApprovalWaiver(body)).toBe(expected)
+  })
+})
+
+describe('platformHealthUrlAllowed (PK1 K6)', () => {
+  it.each([
+    ['https://platform.pukalani.app/api/health', true],
+    ['http://localhost:3250/api/health', true],
+    ['http://127.0.0.1:3250/api/health', true],
+    ['http://app.localhost:3250/api/health', true],
+    ['', false],
+    ['http://platform.pukalani.app/api/health', false],
+    ['http://localhost.example.com/api/health', false],
+    ['ftp://platform.pukalani.app/api/health', false],
+    ['https://user:pw@platform.pukalani.app/api/health', false],
+    ['kein-url', false],
+  ])('%s ⇒ %s', (url, expected) => {
+    expect(platformHealthUrlAllowed(url)).toBe(expected)
   })
 })
