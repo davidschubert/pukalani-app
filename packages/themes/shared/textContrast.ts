@@ -223,3 +223,214 @@ export function neutralTextCssBlocks(attr: string, tokens: NeutralTextTokens): s
     `.dark[data-neutral='${attr}'] {\n  --ui-text-dimmed: ${tokens.dark.dimmed};\n  --ui-text-muted: var(--ui-color-neutral-400);\n}`,
   ]
 }
+
+// ── Die Hauptfarbe einer Farbwelt (Bahn 7, Rest von UX-002) ─────────────────
+
+/**
+ * Nicht-Text (Bedienelement ohne Schrift, große Fläche): WCAG 1.4.11 verlangt
+ * 3 zu 1 gegen die Fläche daneben.
+ */
+export const NON_TEXT_MIN_RATIO = 3
+
+/** Suchziel für Nicht-Text, mit demselben Abstand wie `SEARCH_TARGET`. */
+const NON_TEXT_SEARCH_TARGET = 3.04
+
+/**
+ * Die Klassen, mit denen Nuxt UI die Hauptfarbe als VOLLE FLÄCHE malt (Knopf,
+ * Etikett, Häkchen, Schalter, gewählter Kalendertag, Schritt, Reiter-Pille).
+ * Genau diese Elemente bekommen in einer Farbwelt mit „Fläche bleibt" die
+ * Flächenfarbe und die passende Schrift darauf. `~=` trifft nur das ganze
+ * Wort: `bg-primary/10` (weiche Fläche, Schrift in der Hauptfarbe) bleibt
+ * draußen. Quelle: die Komponenten-Themen von Nuxt UI 4.12
+ * (`.nuxt/ui/*.ts`, Suche nach `bg-primary` und `text-inverted`). Neue
+ * Nuxt-UI-Fassung ⇒ diese Liste gegen die Themen halten.
+ */
+export const PRIMARY_FILL_SELECTOR = [
+  ...[
+    'bg-primary',
+    'data-selected:bg-primary',
+    'data-[state=checked]:bg-primary',
+    'group-hover:bg-primary',
+    'group-data-[state=completed]:bg-primary',
+    'group-data-[state=active]:bg-primary',
+    'after:bg-primary',
+  ].map(token => `[class~='${token}']`),
+  // Reiter als Pille: die Fläche ist ein Geschwister, die Schrift sitzt im Reiter
+  `[class~='data-[state=active]:text-inverted'][class~='outline-primary/25']`,
+].join(', ')
+
+/** Wo die Hauptfarbe steht: als Schrift (und Fläche) oder als Fläche mit eigener Schrift darauf. */
+export interface PrimaryModeTokens {
+  /** `--ui-primary`: Schrift, Rahmen, weiche Fläche — und Fläche, solange `fill` fehlt */
+  text: string
+  /** Nur wenn die Fläche bleibt und die Schrift sich ändert: die Flächenfarbe */
+  fill?: string
+  /** Schrift auf der Fläche (`--ui-text-inverted`), nur zusammen mit `fill` */
+  onFill?: string
+}
+
+export interface PrimaryTokens {
+  light: PrimaryModeTokens
+  dark: PrimaryModeTokens
+}
+
+/** Schrift auf einer dunklen Fläche im Dunkeln: die 900er der Palette, wie Nuxt UI es setzt. */
+export const DARK_ON_FILL_NEUTRAL = 'var(--ui-color-neutral-900)'
+
+function lightTextPasses(c: string, ramps: NeutralRamp[]): boolean {
+  return ramps.every(ramp => neutralSurfaces(ramp).light.every(bg =>
+    ratio(c, bg) >= SEARCH_TARGET && ratio(c, compositeOver(c, bg, SOFT_ALPHA)) >= SEARCH_TARGET))
+}
+
+function darkTextPasses(c: string, ramps: NeutralRamp[]): boolean {
+  return ramps.every(ramp => neutralSurfaces(ramp).dark.every(bg =>
+    ratio(c, bg) >= SEARCH_TARGET && ratio(c, compositeOver(c, bg, SOFT_ALPHA)) >= SEARCH_TARGET))
+}
+
+/** Die Schrift auf einer Fläche: der erste Kandidat, der 4,5 zu 1 erreicht (Schwarz erreicht es immer, wenn Weiß es nicht tut). */
+function pickOnFill(fill: string, candidates: string[], ramps: NeutralRamp[]): string {
+  const passes = (c: string) => c === DARK_ON_FILL_NEUTRAL
+    ? ramps.every(ramp => ratio(ramp[900], fill) >= SEARCH_TARGET)
+    : ratio(c, fill) >= SEARCH_TARGET
+  const hit = candidates.find(passes)
+  if (hit) return hit
+  return ratio('#000000', fill) >= ratio('#ffffff', fill) ? '#000000' : '#ffffff'
+}
+
+/**
+ * Die Hauptfarbe einer Farbwelt für beide Schemata.
+ *
+ * DIE REGEL (wie bei Text- und Statusfarben): Farbton und Sättigung bleiben,
+ * die Helligkeit rückt von der bisherigen Stufe aus nur so weit, bis die
+ * Farbe als SCHRIFT auf jeder Fläche jeder neutralen Palette besteht (Seite,
+ * gedämpfte und erhöhte Fläche, die eigene 10-Prozent-Fläche).
+ *
+ * Zwei Wege für die Fläche (z. B. Knopf):
+ * - `keepFill: false` — die Fläche IST die Schriftfarbe. Im Hellen trägt
+ *   sie weiße Schrift (Weiß ist eine der geprüften Flächen, besteht also
+ *   von selbst), im Dunkeln die 900er der Palette (eigens geprüft).
+ * - `keepFill: true` — die Fläche behält die bisherige Stufe, nur die
+ *   Schrift DARAUF wird passend gewählt (Weiß, sonst die 950er der
+ *   Farbwelt, sonst Schwarz); `--ui-primary` als Schrift rückt trotzdem.
+ *   Für Farbwelten, deren Fläche beim Abdunkeln ihren Charakter verlöre
+ *   (Gelb wird Braun), und für Custom Themes: die Farbe des Owners bleibt.
+ */
+export function primaryTokens(
+  ramp: Record<Shade, string>,
+  opts: {
+    lightShade: Shade
+    darkShade: Shade
+    keepFill: boolean
+    ramps: NeutralRamp[]
+    /** false = die Fläche bleibt EXAKT (Custom Theme: die Farbe des Owners); true = sie rückt höchstens bis 3 zu 1 */
+    fillNonText?: boolean
+  },
+): PrimaryTokens | null {
+  const { lightShade, darkShade, keepFill, ramps, fillNonText = true } = opts
+  const lightText = shiftLightnessUntil(ramp[lightShade], -1, c => lightTextPasses(c, ramps))
+  const darkText = shiftLightnessUntil(ramp[darkShade], 1, c => darkTextPasses(c, ramps)
+    && (keepFill || ramps.every(r => ratio(r[900], c) >= SEARCH_TARGET)))
+  // Eine bleibende Fläche muss als Bedienelement 3 zu 1 neben JEDER Fläche
+  // halten (auch der erhöhten) — sonst rückt auch sie, aber nur bis dahin.
+  const lightFill = fillNonText
+    ? shiftLightnessUntil(ramp[lightShade], -1, c => ramps.every(r =>
+      neutralSurfaces(r).light.every(bg => ratio(c, bg) >= NON_TEXT_SEARCH_TARGET)))
+    : ramp[lightShade]
+  const darkFill = fillNonText
+    ? shiftLightnessUntil(ramp[darkShade], 1, c => ramps.every(r =>
+      neutralSurfaces(r).dark.every(bg => ratio(c, bg) >= NON_TEXT_SEARCH_TARGET)))
+    : ramp[darkShade]
+  if (!lightText || !darkText || !lightFill || !darkFill) return null
+
+  const light: PrimaryModeTokens = { text: lightText }
+  if (keepFill && lightText !== lightFill) {
+    light.fill = lightFill
+    light.onFill = pickOnFill(lightFill, ['#ffffff', ramp[950], '#000000'], ramps)
+  }
+  const dark: PrimaryModeTokens = { text: darkText }
+  if (keepFill && darkText !== darkFill) {
+    dark.fill = darkFill
+    dark.onFill = pickOnFill(darkFill, [DARK_ON_FILL_NEUTRAL, '#ffffff', '#000000'], ramps)
+  }
+  return { light, dark }
+}
+
+/**
+ * DAS GATE für die Hauptfarbe: alle Paarungen der fertigen Werte, über jede
+ * Palette. Schrift 4,5 zu 1; eine eigene Fläche zusätzlich 3 zu 1 gegen die
+ * Seite (Bedienelement ohne Schrift, etwa Schalter oder Häkchen-Kasten).
+ */
+export function auditPrimaryTokens(name: string, tokens: PrimaryTokens, ramps: Record<string, NeutralRamp>): ContrastFinding[] {
+  const findings: ContrastFinding[] = []
+  const check = (where: string, a: string, b: string, min = TEXT_MIN_RATIO) => {
+    const value = ratio(a, b)
+    if (value < min) findings.push({ where: `${where} (${a} auf ${b})`, ratio: value })
+  }
+  const { light, dark } = tokens
+  if (!light.fill) check(`${name} hell: Weiß auf der Fläche`, '#ffffff', light.text)
+  else check(`${name} hell: Schrift auf der Fläche`, light.onFill!, light.fill)
+  for (const [palette, ramp] of Object.entries(ramps)) {
+    const surfaces = neutralSurfaces(ramp)
+    for (const bg of surfaces.light) {
+      check(`${name} hell, ${palette}: als Schrift`, light.text, bg)
+      check(`${name} hell, ${palette}: auf der 10-Prozent-Fläche`, light.text, compositeOver(light.text, bg, SOFT_ALPHA))
+      if (light.fill) check(`${name} hell, ${palette}: Fläche neben der Seite`, light.fill, bg, NON_TEXT_MIN_RATIO)
+    }
+    for (const bg of surfaces.dark) {
+      check(`${name} dunkel, ${palette}: als Schrift`, dark.text, bg)
+      check(`${name} dunkel, ${palette}: auf der 10-Prozent-Fläche`, dark.text, compositeOver(dark.text, bg, SOFT_ALPHA))
+      if (dark.fill) check(`${name} dunkel, ${palette}: Fläche neben der Seite`, dark.fill, bg, NON_TEXT_MIN_RATIO)
+    }
+    if (!dark.fill) check(`${name} dunkel, ${palette}: dunkle Schrift auf der Fläche`, ramp[900], dark.text)
+    else if (dark.onFill === DARK_ON_FILL_NEUTRAL) check(`${name} dunkel, ${palette}: Schrift auf der Fläche`, ramp[900], dark.fill)
+  }
+  if (dark.fill && dark.onFill !== DARK_ON_FILL_NEUTRAL) check(`${name} dunkel: Schrift auf der Fläche`, dark.onFill!, dark.fill)
+  return findings
+}
+
+/** Wert für `--ui-primary`: die Stufe, solange sie unverändert besteht, sonst die gerechnete Farbe. */
+export function primaryValue(text: string, ramp: Record<Shade, string>, shade: Shade): string {
+  return text === ramp[shade] ? `var(--ui-color-primary-${shade})` : text
+}
+
+/**
+ * Die Flächen-Blöcke einer Farbwelt mit „Fläche bleibt". `attrs` ist der
+ * Attribut-Teil des Selektors (`[data-theme='honey']`, mit Variante
+ * `[data-theme='honey'][data-variant='soft']`). Hell über `:not(.dark)`,
+ * damit der helle Block im Dunkeln nicht mitgilt. `cancel` = diese Stellung
+ * braucht KEINEN Flächen-Block, ihre Grundfarbwelt aber schon: die Werte
+ * fallen auf die der Seite zurück.
+ */
+export function primaryFillCssBlocks(
+  attrs: string,
+  mode: 'light' | 'dark',
+  tokens: PrimaryModeTokens | 'cancel',
+  fillShade: Shade,
+  fillRamp?: Record<Shade, string>,
+): string {
+  const scope = mode === 'light' ? `:root${attrs}:not(.dark)` : `.dark${attrs}`
+  const body = tokens === 'cancel'
+    ? ['  --ui-primary: inherit;', '  --ui-text-inverted: inherit;', '  --ui-primary-focus: inherit;']
+    : [
+        `  --ui-primary: ${tokens.fill === fillRamp?.[fillShade] ? `var(--ui-color-primary-${fillShade})` : tokens.fill};`,
+        `  --ui-text-inverted: ${tokens.onFill};`,
+        `  --ui-primary-focus: ${tokens.text};`,
+      ]
+  return `${scope} :is(${PRIMARY_FILL_SELECTOR}) {\n${body.join('\n')}\n}`
+}
+
+/**
+ * FOKUS-RAHMEN: Nuxt UI malt ihn mit 25 Prozent Deckkraft der Farbe
+ * (`outline-primary/25`) — auf heller Seite unter 3 zu 1. Hier volle
+ * Deckkraft; jede dieser Farben besteht als Schrift 4,5 zu 1, also als
+ * Rahmen erst recht 3 zu 1. Die Hauptfarbe nimmt in einem Flächen-Element
+ * die Schriftfarbe (`--ui-primary-focus`), nicht die hellere Fläche.
+ */
+export function focusRingCss(): string {
+  const colors = ['secondary', 'success', 'info', 'warning', 'error']
+  return [
+    `.outline-primary\\/25:focus-visible {\n  outline-color: var(--ui-primary-focus, var(--ui-primary));\n}`,
+    ...colors.map(c => `.outline-${c}\\/25:focus-visible {\n  outline-color: var(--ui-${c});\n}`),
+    `.outline-inverted\\/25:focus-visible {\n  outline-color: var(--ui-text-highlighted);\n}`,
+  ].join('\n\n')
+}
