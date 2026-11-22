@@ -166,4 +166,26 @@ const links = computed(() => [
     display: none;
   }
 }
+/* Schmale Telefone (Review-Befund B2, 2026-11-22): auf Deutsch lief „EN" bei
+   375 px über den Rand (rechte Kante 388 px). Übrig sind hier nur Marke,
+   „Erstgespräch" und DE/EN — die rücken enger zusammen, statt dass etwas
+   verschwindet. Gemessen bei 360 und 375 px auf /de. */
+@media (max-width: 420px) {
+  .header__inner {
+    gap: 0.5rem;
+  }
+  .header__brand {
+    font-size: 0.95rem;
+  }
+  .header__nav {
+    gap: 0.6rem;
+  }
+  .header__link,
+  .header__lang {
+    letter-spacing: 0.04em;
+  }
+  .header__lang {
+    gap: 0.25rem;
+  }
+}
 </style>
