@@ -30,10 +30,10 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
-### KK1 (c) — Kontingent-Zahlen in den Katalog: Daten-Migration control-042 aus der app.config, Konsole je Art (Production-Schritt offen) ✅ 2026-11-22
+### KK1 (c) — Kontingent-Zahlen in den Katalog: Daten-Migration control-042 aus der app.config, Konsole je Art, auf Production gefahren ✅ 2026-11-22
 
 **Was.** Davids Antworten vom 2026-11-22 zum Plan
-`docs/plans/KONTINGENT-KATALOG.md`: 6a „Jetzt bauen", 6b die Vorgabe „bleibt
+`docs/archiv/KONTINGENT-KATALOG.md`: 6a „Jetzt bauen", 6b die Vorgabe „bleibt
 in der Platform-App", 6c „heutige Werte übernehmen", Schreiben auf Production
 nur mit eigenem Ja. Gebaut:
 
@@ -72,15 +72,20 @@ Konsole (Seiten bei Pro zurück auf Vorgabe ⇒ nur `pages` fiel aus der Zeile;
 eigene Zahl 40/250 ⇒ die Speicher-Anzeige der Community zeigte nach 20 s
 250). Danach lokaler Katalog auf den Stand vor control-042 zurückgesetzt.
 
-**Befund nebenbei.** Im lokalen Katalog (Spiegel von Production) steht für
-`pro` bei Kommentaren 1000/50.000 — die Vorgabe sagt 5000/250.000. Das ist
-die Saat von control-014 (damals hieß der mittlere Plan `pro`), die die
-Umbenennung mitgenommen hat; der Katalog gewinnt. Steht es auf Production
-genauso (dort NICHT gelesen), haben Pro-Communities heute die
-Personal-Kommentar-Grenze. control-042 ändert daran nichts (es
-überschreibt nie); ob die Zahl korrigiert wird, entscheidet David.
+**Production (Davids Ja vom 2026-11-22, „Ja, fahren").** PR 549 live
+(`26a700a1`), danach `pnpm migrate --app control --env … --only control-042`
+erst mit `--dry-run`, dann `--prod`: basic ergänzt `pages`, personal und pro
+ergänzt `pages`, `events`, `media`; vorher stand je Plan nur `comments`. Ein
+zweiter Lauf meldet für alle drei Pläne „alle Arten stehen schon im
+Katalog"; alle sieben Hosts mit Datenbank `ok`, `schema: ok`.
 
-**Offen (OPEN-ITEMS KK1):** control-042 auf Production, nur mit Davids Ja.
+**Befund nebenbei (offen, OPEN-ITEMS KK1).** Auf Production wie im lokalen
+Spiegel steht für `pro` bei Kommentaren 1000/50.000 — die Vorgabe sagt
+5000/250.000. Das ist die Saat von control-014 (damals hieß der mittlere Plan
+`pro`), die die Umbenennung mitgenommen hat; der Katalog gewinnt, also haben
+Pro-Communities heute die Kommentar-Grenze von Personal. control-042 hat das
+nicht angefasst (es überschreibt nie); ob die Zahl korrigiert wird,
+entscheidet David (Konsole, Kasten „Pläne & Limits").
 
 **Gelernt:** Der erste Wurf zog die Zahlen in eine eigene Datei, die
 `app.config.ts` per Wert-Import las. Dev-Server, Typecheck, Unit-Tests und
