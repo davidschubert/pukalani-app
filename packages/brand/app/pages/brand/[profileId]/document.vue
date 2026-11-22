@@ -133,6 +133,13 @@ if (shell.data.value && !shell.data.value.found) {
   throw createError({ status: 404, statusText: 'Unknown brand profile' })
 }
 
+/**
+ * Das Profil ist AUSGEFALLEN (LZ1, 2026-11-22; FAIL-SOFT oben): die Seite
+ * steht, und die Mitte sagt es mit „Noch einmal versuchen", solange nicht
+ * ohnehin schon die Zeile des Dokuments darüber steht.
+ */
+const shellFailed = computed(() => isFetchOutage(shell.error.value))
+
 const view = computed(() => doc.data.value)
 const chapters = computed<BrandDocumentChapter[]>(() => view.value?.chapters ?? [])
 
@@ -596,6 +603,8 @@ useBrandTitle(() => (store.profile?.title || view.value?.title || t('brand.docum
             :label="t('brand.document.readFoundation')"
           />
         </div>
+
+        <CoreInlineLoadError v-if="shellFailed && !doc.error.value" :retry="shell.refresh" data-brand-shell-error />
 
         <p v-if="doc.error.value" class="bw-pending">{{ t('brand.document.loadFailed') }}</p>
         <p v-else-if="!chapters.length" class="bw-pending">{{ t('brand.document.empty') }}</p>

@@ -87,11 +87,18 @@ const code = computed(() => queryCode.value || inviteCookie.value?.trim() || '')
  * verlangt). Bis zur Antwort zeigt die Seite `checking` (s. unten), beim SSR
  * und beim Hydrieren gleich — kein Hydration-Unterschied.
  *
- * Ein Fehler ist hier KEIN Fehler, sondern ein `false`: die Route antwortet
- * ohnehin neutral, und ein 429 oder ein Netzabbruch darf keine Fehlerseite
- * über eine Einladung legen.
+ * Eine ABLEHNUNG ist hier KEIN Fehler, sondern ein `false`: die Route
+ * antwortet ohnehin neutral, und ein 429 darf keine Fehlerseite über eine
+ * Einladung legen.
+ *
+ * EIN AUSFALL IST KEIN „UNGÜLTIG" (LZ1, 2026-11-22): ein Netzabbruch oder ein
+ * 5xx (`isFetchOutage`) sagte vorher „Code ungültig oder abgelaufen" — eine
+ * falsche Auskunft über einen vielleicht gültigen Code. Er bleibt jetzt in
+ * `error` stehen, und die Karte zeigt eine ruhige Zeile mit „Noch einmal
+ * versuchen" statt eines Urteils. Der Cookie bleibt dabei unberührt (das
+ * Aufräumen unten verlangt `success`).
  */
-const { data: check, status: checkStatus } = await useAsyncData<BrandInviteCheckResponse>(
+const { data: check, status: checkStatus, error: checkError, refresh: refreshCheck } = await useAsyncData<BrandInviteCheckResponse>(
   'brand-invite-check',
   async () => {
     if (!code.value) return { valid: false }
@@ -101,7 +108,8 @@ const { data: check, status: checkStatus } = await useAsyncData<BrandInviteCheck
         body: { code: code.value },
       })
     }
-    catch {
+    catch (error) {
+      if (isFetchOutage(error)) throw error
       return { valid: false }
     }
   },
@@ -154,6 +162,9 @@ const state = computed(() => inviteViewState({
  */
 const checking = computed(() =>
   Boolean(code.value) && (checkStatus.value === 'idle' || checkStatus.value === 'pending'))
+
+/** Die Prüfung ist ausgefallen (s. Kopf des Abrufs) — kein Urteil über den Code. */
+const checkFailed = computed(() => Boolean(code.value) && isFetchOutage(checkError.value))
 
 /** Die eigene Adresse MIT Code — Ziel nach Anmeldung und nach Kontoanlage. */
 const selfPath = computed(() =>
@@ -256,6 +267,10 @@ async function submitCode(): Promise<void> {
       <div v-if="checking" class="flex items-center gap-2 text-sm text-muted" data-invite-checking>
         <UIcon name="i-ph-circle-notch" class="size-4 animate-spin" />
         {{ t('brand.invite.checking') }}
+      </div>
+
+      <div v-else-if="checkFailed" data-invite-check-error>
+        <CoreInlineLoadError :retry="refreshCheck" />
       </div>
 
       <!--

@@ -871,9 +871,15 @@ const setup = () => {
    * das niemand mehr zuordnen kann. Die `system`-Zeilen bleiben draussen — die
    * Bühne kennt zwei Sprecher, und ein dritter hätte weder Avatar noch Platz.
    *
-   * FAIL-SOFT: bleibt der Abruf aus, ist die Bühne eben leer und George
-   * eröffnet neu. Ein Fehlerbanner über einen ungeladenen Verlauf wäre lauter
-   * als der Verlust.
+   * FAIL-SOFT bei einer ANTWORT (4xx): die Bühne ist eben leer und George
+   * eröffnet neu.
+   *
+   * EIN AUSFALL WIRD WEITERGEWORFEN (LZ1, 2026-11-22): kein Status oder 5xx
+   * hieß vorher „er hat hier noch nicht gesprochen" — George eröffnete eine
+   * Session, deren Verlauf nur nicht zu lesen war (ein bezahlter KI-Zug auf
+   * eine falsche Auskunft). Jetzt steht der Fehler im `error` des Abrufs der
+   * Werkstatt, sie zeigt „Noch einmal versuchen", und eröffnet wird erst,
+   * wenn der Verlauf wirklich da ist.
    */
   async function loadSessionMessages(
     profileId: string,
@@ -906,8 +912,10 @@ const setup = () => {
         }))
       return response.messages.some(message => message.role === 'george')
     }
-    catch {
+    catch (error) {
       streamMessages.value = []
+      const status = errorStatus(error)
+      if (status === null || status >= 500) throw error
       return false
     }
   }

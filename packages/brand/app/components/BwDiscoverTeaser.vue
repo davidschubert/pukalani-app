@@ -19,6 +19,12 @@ import type { BrandDiscoverItem, BrandDiscoverListResponse } from '../../shared/
  * nichts zu tun. `useFetch` bekommt deshalb einen eigenen Schlüssel und einen
  * `default`, und der Abschnitt verschwindet bei allem, was schiefgeht — auch
  * dann, wenn `brand_publications` noch gar nicht existiert.
+ *
+ * AUSFALL ≠ „NOCH NICHTS FREIGEGEBEN" (LZ1, 2026-11-22): bei einem echten
+ * Ausfall (`isFetchOutage`: kein Status oder 5xx) bleiben Überschrift und
+ * Weg zur Galerie stehen, und an Stelle der Kacheln steht eine ruhige Zeile
+ * mit „Noch einmal versuchen". Ein 4xx bleibt still (der Abschnitt fehlt),
+ * ebenso „keine Marke freigegeben" — beides ist kein Ausfall.
  */
 const props = withDefaults(defineProps<{
   /** Wie viele Kacheln — drei passen neben den Text (§4.1). */
@@ -36,11 +42,13 @@ const localePath = useLocalePath()
  * `default: () => null` verengt bei Nuxts Überladungen den Typ auf `Ref<undefined>`
  * statt auf die Antwort (Typecheck-Fehler TS2769/TS2339, live erwischt).
  */
-const { data } = await useFetch<BrandDiscoverListResponse>('/api/discover', {
+const { data, error, refresh } = await useFetch<BrandDiscoverListResponse>('/api/discover', {
   key: 'brand-discover-teaser',
 })
 
 const items = computed<BrandDiscoverItem[]>(() => (data.value?.items ?? []).slice(0, props.limit))
+/** Echter Ausfall (s. Kopf) — nur dann die Fehler-Zeile statt der Kacheln. */
+const failed = computed(() => isFetchOutage(error.value))
 
 function industryLabel(id: string): string {
   const key = `brand.industry.${id}`
@@ -67,7 +75,7 @@ function paletteName(paletteId: string): string {
 </script>
 
 <template>
-  <section v-if="items.length" data-discover-teaser>
+  <section v-if="items.length || failed" data-discover-teaser>
     <div class="flex flex-wrap items-end justify-between gap-6">
       <div class="min-w-0">
         <p class="bw-label uppercase tracking-widest" style="color: var(--bw-muted)">
@@ -87,7 +95,11 @@ function paletteName(paletteId: string): string {
       />
     </div>
 
-    <div class="mt-10 grid gap-x-6 gap-y-10 @sm:grid-cols-3">
+    <div v-if="failed" class="mt-10" data-discover-teaser-error>
+      <CoreInlineLoadError :retry="refresh" />
+    </div>
+
+    <div v-else class="mt-10 grid gap-x-6 gap-y-10 @sm:grid-cols-3">
       <NuxtLink
         v-for="item in items" :key="item.slug"
         :to="localePath(`/discover/${item.slug}`)" class="group block"

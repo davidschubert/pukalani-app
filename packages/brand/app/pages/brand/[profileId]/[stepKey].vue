@@ -1213,6 +1213,24 @@ const sessionHistory = await useAsyncData(
 )
 
 /**
+ * AUSFALL STATT STILLE (LZ1, 2026-11-22): Profil, Baustein und Verlauf werfen
+ * einen echten Ausfall (kein Status oder 5xx) weiter — `loadProfile` und
+ * `loadStep` schon immer, `loadSessionMessages` seit LZ1. Vorher blieb der
+ * Fehler ungelesen: eine leere Werkstatt ohne Wort, und beim Verlauf eröffnete
+ * George neu. Jetzt steht über dem Gespräch eine ruhige Zeile mit „Noch
+ * einmal versuchen"; der Eröffnungszug wartet, weil `data` dann leer ist.
+ * Server und Browser lesen denselben `error` aus dem Payload — kein
+ * Zweigtausch bei der Hydration.
+ */
+const workshopLoadFailed = computed(() =>
+  isFetchOutage(shell.error.value) || isFetchOutage(sessionHistory.error.value))
+
+async function retryWorkshopLoad(): Promise<void> {
+  if (shell.error.value) await shell.refresh()
+  if (sessionHistory.error.value) await sessionHistory.refresh()
+}
+
+/**
  * DER ERÖFFNUNGSZUG (§6) — George spricht zuerst, wenn die Session noch stumm
  * ist. Er läuft NUR im Browser: die Route streamt, und ein Strom im SSR wäre
  * eine Antwort, die niemand liest.
@@ -2948,6 +2966,9 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
       />
 
       <div v-else class="flex min-h-0 flex-1 flex-col gap-7 pb-4">
+        <!-- Ausfall beim Laden (LZ1, s. `workshopLoadFailed`). -->
+        <CoreInlineLoadError v-if="workshopLoadFailed" :retry="retryWorkshopLoad" data-workshop-load-error />
+
         <!-- Ein RUHIGER Hinweis, kein Toast-Gewitter: „KI ist aus" und „hier
              entwirft niemand" sind Zustände, in denen weitergearbeitet wird. -->
         <p v-if="generationNotice" class="bw-pending flex items-center gap-2">

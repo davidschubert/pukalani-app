@@ -1801,7 +1801,8 @@
         "score": "Brand Score: {score}",
         "empty": "Brand Score: none yet",
         "open": "View score",
-        "addUrl": "Add a website"
+        "addUrl": "Add a website",
+        "loadFailed": "The brand scores could not be loaded just now."
       },
       "list": {
         "nav": "Brand Scores",

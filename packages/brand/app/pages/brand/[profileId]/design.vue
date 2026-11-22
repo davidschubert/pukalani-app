@@ -70,6 +70,14 @@ if (shell.data.value && !shell.data.value.found) {
   throw createError({ status: 404, statusText: 'Unknown brand profile' })
 }
 
+/**
+ * Das Profil der Leiste ist AUSGEFALLEN (LZ1, 2026-11-22): `loadProfile` wirft
+ * alles außer 404 weiter. Ohne Profil fehlen Titel und Marken-Wähler — die
+ * Mitte sagt es mit „Noch einmal versuchen", solange nicht ohnehin schon die
+ * Zeile des Dokuments darüber steht.
+ */
+const shellFailed = computed(() => isFetchOutage(shell.error.value))
+
 const view = computed(() => doc.data.value)
 const title = computed(() => store.profile?.title || view.value?.title || '')
 
@@ -275,6 +283,8 @@ useBrandTitle(() => (title.value
           </h1>
           <p class="bw-label mt-2" style="color: var(--bw-muted)">{{ t('brand.foundation.design.lead') }}</p>
         </div>
+
+        <CoreInlineLoadError v-if="shellFailed && !doc.error.value" :retry="shell.refresh" data-brand-shell-error />
 
         <p v-if="doc.error.value" class="bw-pending">{{ t('brand.foundation.loadFailed') }}</p>
 
