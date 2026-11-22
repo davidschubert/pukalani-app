@@ -23,7 +23,7 @@ Umstellung, von Hand im selben Commit.
 **Stand am 2026-11-22 (Bahn 8, Schübe A bis C):** 14 Dateien. Umgestellt 42
 (Erledigt-Liste „LZ1 Bahn 8"). Offen: die 12 Dateien in `packages/brand` und
 `apps/portfolio/app/components/SiteFooter.vue` — am 2026-11-22 Gebiet einer
-parallelen Bahn, deshalb nicht angefasst; das Muster steht (Hinweis/Kachel ⇒
+parallelen Bahn, deshalb nicht angefasst; Entscheidung 2026-11-22: Bahn 9 stellt sie um; das Muster steht (Hinweis/Kachel ⇒
 `CoreInlineLoadError` bei `isFetchOutage`, Liste ⇒ `listState`), je Datei klein.
 Bleibt mit im Browser bestätigtem Grund: `DiscussionSidebarLinks.vue` (der
 geteilte Core-Abruf schluckt den Fehler). Wer die 13 erledigt, stellt danach den
