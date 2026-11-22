@@ -5,7 +5,10 @@
 > Ist der Punkt erledigt, zieht der Eintrag nach
 > [OPEN-ITEMS-COMPLETE.md](../../OPEN-ITEMS-COMPLETE.md) und diese Datei wird gelöscht.
 
-**VDB1 — Appwrite VectorsDB für semantische Suche.** Geprüft am 2026-11-06
+**VDB1 — Appwrite VectorsDB für semantische Suche.** Neu geprüft am
+2026-11-22 (Davids „Doch weiter verfolgen“): Varianten, Empfehlung und
+erster Schritt in [plans/SEMANTISCHE-SUCHE.md](../SEMANTISCHE-SUCHE.md).
+Die erste Prüfung, geprüft am 2026-11-06
 anhand der Doku, des 2.6.2-Quellcodes (`app/init/registers.php`,
 `docker-compose.yml`, `.env`) und von node-appwrite 29. Live probiert wurde
 nichts, OrbStack war aus.
