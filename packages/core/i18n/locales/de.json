@@ -209,7 +209,8 @@
       "loading": "Lädt …",
       "errorTitle": "Konnte nicht geladen werden",
       "errorText": "Die Daten ließen sich gerade nicht abrufen. Versuch es noch einmal; klappt es dann nicht, lade die Seite neu.",
-      "retry": "Noch einmal versuchen"
+      "retry": "Noch einmal versuchen",
+      "inlineError": "Konnte gerade nicht geladen werden."
     },
     "empty": {
       "noResultsTitle": "Keine Treffer",

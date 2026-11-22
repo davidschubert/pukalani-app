@@ -242,8 +242,13 @@ const summaryRows = computed(() => [
 // Testphase einmal je Konto (BE-015): die Zusammenfassung sagt VOR dem Klick,
 // ob es eine gibt. Nur im Browser (kein Aufruf beim Server-Rendern); scheitert
 // die Frage, steht ein neutraler Satz da.
-const { data: trialCheck } = useFetch<TrialAvailability>('/api/onboarding/trial', { server: false, lazy: true })
+const { data: trialCheck, error: trialError, refresh: refreshTrial } = useFetch<TrialAvailability>('/api/onboarding/trial', { server: false, lazy: true })
 const trialAvailable = computed(() => trialCheck.value?.trialAvailable)
+// LZ1: zum neutralen Satz kommt bei einem echten AUSFALL (kein Status = Netz, oder 5xx)
+// der Neuversuch; 401/404 sind erwartet und lassen es beim Satz.
+const trialFailed = computed(() => {
+  return isFetchOutage(trialError.value)
+})
 
 useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboarding.gate.title')}`)
 </script>
@@ -348,7 +353,10 @@ useBrandTitle(() => `${t(`onboarding.steps.${step.value}.title`)} · ${t('onboar
                 <p class="font-medium">{{ t('onboarding.summary.noTrialTitle') }}</p>
                 <p class="text-muted">{{ t('onboarding.summary.noTrialBody') }}</p>
               </template>
-              <p v-else class="text-muted">{{ t('onboarding.summary.trialUnknown') }}</p>
+              <template v-else>
+                <p class="text-muted">{{ t('onboarding.summary.trialUnknown') }}</p>
+                <CoreInlineLoadError v-if="trialFailed" :retry="refreshTrial" data-trial-check-error />
+              </template>
             </div>
           </div>
 

@@ -10,7 +10,7 @@ const { t, locale } = useI18n()
 const toast = useToast()
 const loading = ref(false)
 
-const { data } = await useFetch<{
+const { data, error, refresh } = await useFetch<{
   emailNotifications: EmailMode
   mailerConfigured: boolean
   /** RS1 b: Resend meldet die aktuelle Adresse als unzustellbar. */
@@ -73,9 +73,13 @@ async function save() {
       data-notification-undeliverable
     />
 
-    <URadioGroup v-model="mode" :items="items" data-notification-mode />
+    <!-- LZ1: gescheitert ⇒ kein Schalter, der „Aus" behauptet und beim Speichern
+         die echte Einstellung überschriebe. -->
+    <CoreInlineLoadError v-if="error" :retry="refresh" data-notification-load-error />
 
-    <div class="flex justify-end">
+    <URadioGroup v-else v-model="mode" :items="items" data-notification-mode />
+
+    <div v-if="!error" class="flex justify-end">
       <UButton :loading="loading" data-notification-save @click="save">
         {{ t('notifications.email.save') }}
       </UButton>

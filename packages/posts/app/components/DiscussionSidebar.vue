@@ -16,7 +16,16 @@ const localePath = useLocalePath()
 
 const { categoryName } = useCategoryText()
 
-const { data } = await useFetch<DiscussionSidebarResponse>('/api/posts/discussions/sidebar')
+const { data, error, refresh } = await useFetch<DiscussionSidebarResponse>('/api/posts/discussions/sidebar')
+
+/**
+ * LZ1: nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt den
+ * Neuversuch statt einer fehlenden Seitenleiste; 403/404 (Produkt aus) sind
+ * ERWARTET und lassen sie weiter still weg.
+ */
+const failed = computed(() => {
+  return isFetchOutage(error.value)
+})
 
 const rows = computed(() => data.value?.rows ?? [])
 const heading = computed(() => t(`posts.discussions.sidebar.${data.value?.source ?? 'largest'}`))
@@ -47,4 +56,5 @@ const activeSlug = computed(() => {
       {{ t('posts.discussions.allCategories') }}
     </NuxtLink>
   </nav>
+  <CoreInlineLoadError v-else-if="failed" :retry="refresh" data-discussions-sidebar-error />
 </template>
