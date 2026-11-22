@@ -42,10 +42,18 @@ import type { ProfileSignalResponse } from '../../shared/profileSignal'
 const { t } = useI18n()
 const toast = useToast()
 
-const { data } = await useFetch<ProfileSignalResponse | null>('/api/community/profile-signal', {
+const { data, error, refresh } = await useFetch<ProfileSignalResponse | null>('/api/community/profile-signal', {
   lazy: true,
   server: false,
   default: () => null,
+})
+
+/**
+ * Nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt den Fehler-Zustand
+ * (LZ1). 401/403/404 sind hier ERWARTET (Gast, keine Rolle, kein Pool-Host).
+ */
+const failed = computed(() => {
+  return isFetchOutage(error.value)
 })
 
 /** Nach dem Klick sofort weg — der Merker bzw. die Antwort ist geschrieben. */
@@ -235,4 +243,5 @@ async function postpone(mode: 'later' | 'never') {
       </div>
     </template>
   </UCard>
+  <CoreInlineLoadError v-else-if="failed" :retry="refresh" data-profile-signal-error />
 </template>

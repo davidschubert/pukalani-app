@@ -52,11 +52,20 @@ watch(handle, (value) => {
 })
 onBeforeUnmount(() => clearTimeout(searchTimer))
 
-const { data: suggestions } = await useFetch<HandleSuggestion[]>('/api/handles/search', {
+const { data: suggestions, error: suggestionsError, refresh: refreshSuggestions } = await useFetch<HandleSuggestion[]>('/api/handles/search', {
   query: { q: query },
   lazy: true,
   server: false,
   default: () => [],
+})
+
+/**
+ * LZ1: nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt statt fehlender
+ * Vorschläge den Neuversuch. 429 (gedrosselt) und 4xx sind hier ERWARTET — der
+ * Name lässt sich auch ohne Vorschlag eintippen.
+ */
+const suggestionsFailed = computed(() => {
+  return isFetchOutage(suggestionsError.value)
 })
 
 async function submit() {
@@ -112,6 +121,7 @@ async function submit() {
               @click="handle = item.id"
             />
           </div>
+          <CoreInlineLoadError v-else-if="suggestionsFailed" :retry="refreshSuggestions" class="mt-2" data-compose-suggestions-error />
         </UFormField>
 
         <UFormField :label="t('messages.compose.body')">
