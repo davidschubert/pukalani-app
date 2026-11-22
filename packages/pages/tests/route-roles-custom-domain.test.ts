@@ -72,6 +72,23 @@ describe('eigene Domain, Modus write', () => {
   })
 })
 
+describe('Betreiber-Label auf der eigenen Domain (write): keine Rechte', () => {
+  it('Sucheintrag und Seite speichern ⇒ 403 für den Betreiber ohne Community-Rolle', async () => {
+    const { run, written } = await seo('operator', 'write', OWN_DOMAIN)
+    expect(run.status).toBe(403)
+    expect(written).toBe(0)
+    expect((await save('operator', 'write', OWN_DOMAIN)).status).toBe(403)
+  })
+
+  it('Gegenprobe: auf der Pukalani-Adresse und mit read kommt der Betreiber durch (Not-Zugang)', async () => {
+    for (const [mode, host] of [['write', PUKALANI_ADDRESS], ['read', OWN_DOMAIN]] as const) {
+      const { run, written } = await seo('operator', mode, host)
+      expect(run.status, `${mode}/${host}`).toBe(200)
+      expect(written, `${mode}/${host}`).toBe(1)
+    }
+  })
+})
+
 describe('Gegenproben: wie bisher', () => {
   it('Pukalani-Adresse im Modus write: Owner und Admin ändern den Sucheintrag', async () => {
     for (const who of ['owner', 'admin'] as const) {
