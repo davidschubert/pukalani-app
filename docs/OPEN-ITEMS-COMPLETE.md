@@ -209,14 +209,25 @@ oben eine Appwrite-Verbindung mit einem an die Sitzung der Karte gebundenen
 JWT (10 min). Durch kommen nur Zeilen mit eigener `communityId` oder
 `read("any")`, Anwesenheit mit eigener `tenantId` und vom Konto-Kanal die
 Ereignis-Namen ohne Inhalt; die eigene Anwesenheit nur mit genau den
-Server-Rechten. Widerruf schließt sofort (401 durchgereicht), Ping oben alle
-20 s, Neuverbinden 30 s vor JWT-Ablauf, Grenzen je Prozess/Konto/Verbindung.
+Server-Rechten, bekannten Feldern und Name/Bild vom Server. Widerruf der
+Sitzung schließt sofort (401 durchgereicht); Domain, Community und
+Mitgliedschaft prüft der Dienst jede Minute nach (`4403`). Ping oben alle
+20 s, Neuverbinden 30 s vor JWT-Ablauf, JWT oben als Kopfzeile, Grenzen je
+Prozess/Konto (vor dem Warten reserviert), 32 KB je Nachricht, eigene
+Bremse. Ein Gegenlesen (Opus) fand neun Punkte — keinen Weg, auf dem eine
+Sitzung für jemand anderen oder über die Karte hinaus gilt; acht im selben
+Zweig behoben, einer (Schleife kurz vor Kartenablauf) als gewollt
+beschrieben.
 WebSocket nur in `apps/platform`; ein globaler `upgrade`-Hook lässt nur den
 einen Pfad durch (sonst nähme crossws jeden Pfad als stillen Socket an).
 `/api/health` meldet `siteCard.liveRelay` nur mit `write`, Schlüssel und
 WebSocket im Build — daran hängt K6. Bühne (`verify-site-card`, neuer
-Abschnitt 4b, 50/50 mit `write`), mit `off` antwortet die Route wie eine
-unbekannte (404, auch als WebSocket).
+Abschnitt 4b und Nachprüfung in 5, 52/52 mit `write` — gegen den
+Dev-Server UND den gebauten Produktions-Server), mit `off` antwortet die
+Route wie eine unbekannte (404 mit demselben Text, auch als WebSocket), und
+die 34 Bühnen-Beweise eines Pull Requests sind grün. Im Browser: auf der
+gestellten Domain angemeldet, Sitzung bei Appwrite gelöscht ⇒ binnen 3 s
+„Sitzung beendet".
 
 **Gelernt:** `users.createJWT` mit `sessionId` stellt in Appwrite 2.7.4 auch
 für eine GELÖSCHTE Sitzung ein JWT aus (gemessen) — erst Appwrite-Realtime
@@ -227,7 +238,10 @@ neue Verbindungen an; der Bühnen-Beweis fand es, die Unit-Tests nicht. Und
 Pfad als WebSocket an, wenn kein globaler `upgrade`-Hook ablehnt. Ein Beweis
 über die Naht braucht beide Server aus dem Worktree — die Platform suchte den
 Kontroll-Server auf Port 3004, und der Host-Wechsel war rot, ohne dass am
-Code etwas falsch war.
+Code etwas falsch war. Und eine abgeschaltete eigene Domain antwortet 302
+(Umleitung zur Pukalani-Adresse), nicht 404 — eine Nachprüfung, die nur
+401/403/404 als „gilt nicht mehr" zählt, hält die Verbindung offen; richtig
+ist fail-closed: alles außer 200, 429 und 5xx.
 
 ---
 

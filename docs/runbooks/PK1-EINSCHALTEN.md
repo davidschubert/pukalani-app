@@ -209,10 +209,12 @@ sie die 14-Tage-Frist. Darum gleich danach, nur lesend:
 - **Live-Verbindung unter einer eigenen Domain** (E1d, Weg 3) läuft über
   die Platform selbst: je offenem Browser-Fenster eine Verbindung zu uns und
   eine von uns zu Appwrite (Grenzen je Prozess 2000, je Konto 12, in
-  `core/server/utils/liveRelay.ts`). Ein abgeschaltetes Domain-Recht oder ein
-  entferntes Mitglied fällt aus einer OFFENEN Verbindung erst beim nächsten
-  Neuverbinden heraus (spätestens nach 10 Minuten, JWT-Laufzeit); ein
-  Widerruf der Sitzung schließt sofort. Ein Neustart der Platform trennt alle
+  `core/server/utils/liveRelay.ts`). Ein Widerruf der Sitzung schließt
+  sofort; eine abgeschaltete Domain, eine gesperrte Community oder ein
+  entferntes Mitglied schließt die Nachprüfung binnen einer Minute (Log-Zeile
+  `live_relay.revoked`). Steht `live_relay.recheck_unknown` gehäuft im Log,
+  antwortet die Nachprüfung nicht (Bremse oder Störung) — dann gilt bis zum
+  JWT-Ablauf (10 min) der Stand beim Aufbau. Ein Neustart der Platform trennt alle
   Live-Verbindungen; die Browser verbinden selbst neu.
 - Fällt der Dienst aus (`liveRelay: false` trotz `write`): die Seiten laufen
   weiter, der Socket unter eigenen Domains bleibt Gast (öffentliche Inhalte

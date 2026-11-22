@@ -422,15 +422,25 @@ nach einer Fahrkarte (`localFetch` mit einem Prozess-Geheimnis), damit die
 ganze Middleware-Kette läuft; die Fahrkarte verlangt eine Karte dieses
 Hosts, eine Sitzung, die bei Appwrite JETZT lebt (`getSession('current')` —
 `users.createJWT` stellt auch für eine gelöschte Sitzung ein JWT aus,
-gemessen), und gibt ein an diese Sitzung gebundenes JWT (10 min). Durch
-kommen Zeilen mit eigener `communityId` oder `read("any")`, Anwesenheit mit
-eigener `tenantId`, vom Konto-Kanal nur die Ereignis-Namen; die eigene
-Anwesenheit nur mit genau den Server-Rechten. Widerruf ⇒ Appwrite meldet 401
-und schließt, wir reichen es durch und schließen. Ping nach oben alle 20 s,
-das SDK pingt uns alle 20 s (unter 60 s nginx). 30 s vor JWT-Ablauf schließt
-der Server unten mit `4000`, das SDK verbindet neu und holt eine frische
-Fahrkarte. Grenzen: 2000 Verbindungen je Prozess, 12 je Konto, 64 Abos je
-Verbindung. `/api/health` meldet `siteCard.liveRelay` nur mit `write`,
+gemessen), und gibt ein an diese Sitzung gebundenes JWT (10 min, oben als
+Kopfzeile `x-appwrite-jwt`, nie in der Adresse). Durch kommen Zeilen mit
+eigener `communityId` oder `read("any")`, Anwesenheit mit eigener
+`tenantId`, vom Konto-Kanal nur die Ereignis-Namen; die eigene Anwesenheit
+nur mit genau den Server-Rechten, bekannten Feldern und Name/Bild vom
+Server. Widerruf der Sitzung ⇒ Appwrite meldet 401 und schließt, wir reichen
+es durch und schließen (sofort, wie heute). Alles andere, was die Karte
+wertlos macht (Domain abgeschaltet, Community gesperrt, Mitglied entfernt),
+prüft der Dienst jede Minute mit derselben Kette nach (ohne neues JWT) und
+schließt dann mit `4403` — also **bis zu einer Minute** statt sofort; bei
+einer Störung der Nachprüfung bleibt die Verbindung bis zum JWT-Ablauf.
+Ping nach oben alle 20 s, das SDK pingt uns alle 20 s (unter 60 s nginx).
+30 s vor JWT-Ablauf schließt der Server unten mit `4000`, das SDK verbindet
+neu und holt eine frische Fahrkarte; hat die Sitzung weniger als eine Minute
+Rest, gibt es keine Fahrkarte mehr (das SDK versucht es mit wachsendem
+Abstand weiter, ohne auf Appwrite direkt auszuweichen). Grenzen: 2000
+Verbindungen je Prozess, 12 je Konto (vor dem Warten reserviert), 64 Abos
+je Verbindung, 32 KB je Nachricht, Bremse `live:ticket` 60 je Minute und
+Adresse. `/api/health` meldet `siteCard.liveRelay` nur mit `write`,
 Schlüssel und WebSocket im Build. Beweis: Bühne
 (`packages/core/scripts/verify-site-card.mjs`, Abschnitt 4b) und
 `packages/core/tests/{liveRelay,route-roles-live-relay}.test.ts`.
