@@ -20,6 +20,20 @@ test.describe('Landing', () => {
     await expect(page.locator('[data-cases]')).toBeVisible()
   })
 
+  // W3 (Studio-Funnel): Problem-Spiegel VOR den Leistungen, Vergleich und
+  // Selbst-Selektion DAHINTER — die Reihenfolge ist die Zusage des Plans.
+  test('W3: Problem-Spiegel vor den Leistungen, Vergleich dahinter, CTA auf den Wizard', async ({ page }) => {
+    await page.goto('/')
+    const order = await page.locator('main section[id], section[id]').evaluateAll(nodes => nodes.map(n => n.id))
+    const idx = (id: string) => order.indexOf(id)
+    expect(idx('kennen-sie-das')).toBeGreaterThan(-1)
+    expect(idx('kennen-sie-das')).toBeLessThan(idx('leistungen'))
+    expect(idx('passt-das')).toBeGreaterThan(idx('leistungen'))
+    await expect(page.locator('#passt-das table tbody tr')).toHaveCount(6)
+    await expect(page.locator('#passt-das a[href$="/erstgespraech"]')).toHaveCount(1)
+    await expect(page.locator('.results-disclaimer')).toBeVisible()
+  })
+
   test('liefert hreflang-Alternates + canonical (useLocaleHead)', async ({ page }) => {
     await page.goto('/')
     await expect(page.locator('link[rel="alternate"][hreflang="de"]')).toHaveCount(1)
