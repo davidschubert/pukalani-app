@@ -213,7 +213,7 @@ sie die 14-Tage-Frist. Darum gleich danach, nur lesend:
   sofort; eine abgeschaltete Domain, eine gesperrte Community oder ein
   entferntes Mitglied schließt die Nachprüfung binnen einer Minute (Log-Zeile
   `live_relay.revoked`). Steht `live_relay.recheck_unknown` gehäuft im Log,
-  antwortet die Nachprüfung nicht (Bremse oder Störung) — dann gilt bis zum
+  antwortet die Nachprüfung nicht (Störung) — dann gilt bis zum
   JWT-Ablauf (10 min) der Stand beim Aufbau. Ein Neustart der Platform trennt alle
   Live-Verbindungen; die Browser verbinden selbst neu.
 - Fällt der Dienst aus (`liveRelay: false` trotz `write`): die Seiten laufen

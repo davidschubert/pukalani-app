@@ -208,16 +208,19 @@ Kopfzeile, sonst 404), damit die ganze Middleware-Kette läuft, und öffnet
 oben eine Appwrite-Verbindung mit einem an die Sitzung der Karte gebundenen
 JWT (10 min). Durch kommen nur Zeilen mit eigener `communityId` oder
 `read("any")`, Anwesenheit mit eigener `tenantId` und vom Konto-Kanal die
-Ereignis-Namen ohne Inhalt; die eigene Anwesenheit nur mit genau den
+Ereignis-Art ohne Kennungen und ohne Inhalt; die eigene Anwesenheit nur mit genau den
 Server-Rechten, bekannten Feldern und Name/Bild vom Server. Widerruf der
 Sitzung schließt sofort (401 durchgereicht); Domain, Community und
 Mitgliedschaft prüft der Dienst jede Minute nach (`4403`). Ping oben alle
 20 s, Neuverbinden 30 s vor JWT-Ablauf, JWT oben als Kopfzeile, Grenzen je
-Prozess/Konto (vor dem Warten reserviert), 32 KB je Nachricht, eigene
-Bremse. Ein Gegenlesen (Opus) fand neun Punkte — keinen Weg, auf dem eine
-Sitzung für jemand anderen oder über die Karte hinaus gilt; acht im selben
-Zweig behoben, einer (Schleife kurz vor Kartenablauf) als gewollt
-beschrieben.
+Prozess/Konto (vor dem Warten reserviert), 32 KB je Nachricht, 1 MB
+Sende-Puffer, Bremse je Konto nur fürs Ausstellen. Ein Gegenlesen (Opus)
+fand neun Punkte — keinen Weg, auf dem eine Sitzung für jemand anderen oder
+über die Karte hinaus gilt; acht im selben Zweig behoben, einer (Schleife
+kurz vor Kartenablauf) als gewollt beschrieben. Das Review des Leitstands
+(L1–L4) danach ebenfalls im selben Zweig: die Bremse zählte je Adresse und
+auch die Nachprüfung (L1/L2), der Konto-Kanal trug Kennungen anderer Seiten
+(L3), der Sende-Puffer war ungeprüft (L4).
 WebSocket nur in `apps/platform`; ein globaler `upgrade`-Hook lässt nur den
 einen Pfad durch (sonst nähme crossws jeden Pfad als stillen Socket an).
 `/api/health` meldet `siteCard.liveRelay` nur mit `write`, Schlüssel und
@@ -241,7 +244,10 @@ Kontroll-Server auf Port 3004, und der Host-Wechsel war rot, ohne dass am
 Code etwas falsch war. Und eine abgeschaltete eigene Domain antwortet 302
 (Umleitung zur Pukalani-Adresse), nicht 404 — eine Nachprüfung, die nur
 401/403/404 als „gilt nicht mehr" zählt, hält die Verbindung offen; richtig
-ist fail-closed: alles außer 200, 429 und 5xx.
+ist fail-closed: alles außer 200, 429 und 5xx. Und eine Bremse vor einer
+Sicherheits-Nachprüfung macht die Prüfung selbst abschaltbar: wer den Topf
+füllt, verwandelt „gilt nicht mehr" in „unbekannt" — Nachprüfungen gehören
+nie in einen Topf, den der Geprüfte füllen kann.
 
 ---
 
