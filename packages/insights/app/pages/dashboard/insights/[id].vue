@@ -57,7 +57,7 @@ const localePath = useLocalePath()
 
 const id = computed(() => String(route.params.id ?? ''))
 
-const { data, refresh, status } = await useFetch<InsightsPostDetailResponse>(
+const { data, refresh, status, error } = await useFetch<InsightsPostDetailResponse>(
   () => `/api/insights/posts/${id.value}`,
   { lazy: true, server: false },
 )
@@ -73,6 +73,9 @@ const { data, refresh, status } = await useFetch<InsightsPostDetailResponse>(
 const hydrated = ref(false)
 onMounted(() => { hydrated.value = true })
 const pending = computed(() => hydrated.value && status.value === 'pending')
+/** Ein AUSFALL (kein Status oder 5xx) ist nicht „Beitrag nicht gefunden" (LZ1);
+ *  ein 404 bleibt der leere Zustand. Erst nach dem Mounten, wie `pending`. */
+const loadFailed = computed(() => hydrated.value && !pending.value && isFetchOutage(error.value))
 
 /**
  * DER STAND, DEN DER EDITOR SIEHT. Er kommt aus der Abfrage, wird aber von
@@ -653,6 +656,10 @@ async function createBrand(input: { name: string, homepage: string, industry: st
           @create-brand="createBrand"
           @suggest-change-note="suggestChangeNote"
           @ai-review="startAiReview"
+        />
+        <CoreLoadError
+          v-else-if="loadFailed"
+          :retry="refresh"
         />
         <CoreEmptyState
           v-else-if="hydrated && !pending"

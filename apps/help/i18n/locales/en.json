@@ -12,7 +12,8 @@
     },
     "search": {
       "button": "Search …",
-      "placeholder": "Search the help …"
+      "placeholder": "Search the help …",
+      "loadFailed": "Search could not be loaded."
     }
   }
 }

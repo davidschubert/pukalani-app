@@ -20,6 +20,15 @@ eine Datei dazukommt, eine Zahl steigt, oder ein Eintrag nicht mehr stimmt
 (Datei weg, weniger Abrufe offen) — die Liste schrumpft also mit jeder
 Umstellung, von Hand im selben Commit.
 
+**Stand am 2026-11-22 (Bahn 8, Schübe A bis C):** 14 Dateien. Umgestellt 42
+(Erledigt-Liste „LZ1 Bahn 8"). Offen: die 12 Dateien in `packages/brand` und
+`apps/portfolio/app/components/SiteFooter.vue` — am 2026-11-22 Gebiet einer
+parallelen Bahn, deshalb nicht angefasst; das Muster steht (Hinweis/Kachel ⇒
+`CoreInlineLoadError` bei `isFetchOutage`, Liste ⇒ `listState`), je Datei klein.
+Bleibt mit im Browser bestätigtem Grund: `DiscussionSidebarLinks.vue` (der
+geteilte Core-Abruf schluckt den Fehler). Wer die 13 erledigt, stellt danach den
+Wächter auf „nur noch diese eine Ausnahme" um.
+
 **Stand am 2026-11-21 (Bahn 4):** 56 Dateien mit 77 Abrufen — Insights-Rankings, Insights-Themen und Brand-Scores umgestellt; (e) bis (g) erledigt (COMPLETE „LZ1 Nachtrag“). Davor nach Schub 4: 59 Dateien mit 80 Abrufen. Der Rest sind Hinweis-Kästen, Zusatz-Auskünfte und Seiten mit eigenem Fehlerweg — Gründe im Kopf von `listStateBacklog.ts`, je Seite eine eigene Entscheidung (Schub 5). Davor nach Schub 3: 64 Dateien mit 86 Abrufen (Schub 3 = Onboarding-Listen, Marken- und Insights-Tabellen der Betreiber). Davor nach Schub 2: 75 Dateien mit 97 Abrufen. Schub 2 = Betreiber-Seiten (admin, control, pages, messages, feedback). Offen bleibt dort bewusst: die Übersichts-Kacheln des Dashboards (`admin/dashboard/index.vue`, mehrere Zusatz-Abrufe). Davor: 92 Dateien mit 116 Abrufen (Ausgang: 110 Dateien, 136 Abrufe). Schub 1 = Community-Seiten und Moderations-Listen (Kurse, Termine, Feed, Diskussionen, Nachrichten, Medien, Kommentare, Seiten, Rückmeldungen). Bewusst offen aus Schub 1: Hilfs-Listen der Diskussionen (Seitenleiste, Filter, Eröffnen-Knopf, Composer — Ausfall blendet nur die Auswahl aus), `LessonView` und `CommentSection` (Fehler geht über 404 beziehungsweise den Store). Der Rest unten gilt vom Ausgang. Nach Layer (Dateien):
 brand 17, onboarding 14, posts 11, admin 10, insights 10, control 6,
 blueprint 4, comments 4, core 4, courses 4, messages 4, events 3, feedback 3,

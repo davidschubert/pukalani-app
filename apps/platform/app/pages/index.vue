@@ -33,7 +33,7 @@ const isControlCenter = useIsControlCenter()
 // der eingehenden Anfrage weiterreichen, sonst löst die Tenant-Middleware
 // den falschen/keinen Mandanten auf und die home-Seite bliebe leer.
 const requestFetch = useRequestFetch()
-const { data: page } = await useAsyncData(
+const { data: page, error, refresh } = await useAsyncData(
   () => `home-${locale.value}`,
   // Auf dem Kundenbereich gibt es keinen Mandanten und deshalb auch keine
   // `home`-Seite: `/api/pages/public/home` steht dort nicht in
@@ -42,9 +42,19 @@ const { data: page } = await useAsyncData(
   // mögliche Antwort ein Fehler ist, gehört nicht abgeschickt.
   () => (isControlCenter
     ? Promise.resolve(null)
-    : requestFetch<PublicPage>('/api/pages/public/home', { query: { locale: locale.value } }).catch(() => null)),
+    : requestFetch<PublicPage>('/api/pages/public/home', { query: { locale: locale.value } }).catch((cause: unknown) => {
+      // NUR „keine home-Seite" (404) ist der Normalfall und zeigt die
+      // Willkommens-Seite. Jeder andere Fehler wird weitergereicht (LZ1): ein
+      // Ausfall darf nicht wie eine leere Community aussehen.
+      if ((cause as { statusCode?: number, status?: number }).statusCode === 404
+        || (cause as { status?: number }).status === 404) return null
+      throw cause
+    })),
   { watch: [locale] },
 )
+
+/** Nur ein echter Ausfall (kein Status oder 5xx) zeigt die Fehler-Zeile. */
+const failed = computed(() => !page.value && isFetchOutage(error.value))
 
 // `[[comments]]` (eigene Zeile) trennt den Markdown-Body vom Kommentar-Block.
 const COMMENT_MARKER = /^\s*\[\[comments\]\]\s*$/m
@@ -114,6 +124,10 @@ if (!isControlCenter) {
         class="mt-8"
       />
     </article>
+
+    <section v-else-if="failed" class="mx-auto max-w-2xl py-16 text-center">
+      <CoreInlineLoadError :retry="refresh" class="justify-center" data-home-error />
+    </section>
 
     <section v-else class="mx-auto max-w-2xl py-16 text-center">
       <h1 class="text-3xl font-bold tracking-tight">{{ t('app.tagline') }}</h1>

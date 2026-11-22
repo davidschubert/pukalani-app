@@ -59,9 +59,17 @@ const params = parsed.data
 // Einbetter-Hosts bzw. nicht freigegebene targetTypes bekommen eine
 // freundliche Meldung statt einer Kommentar-Sektion.
 const { t } = useI18n()
-const { data: siteCheck } = await useFetch<{ verdict: string }>('/api/comments/embed-site', {
+const { data: siteCheck, error: siteCheckError } = await useFetch<{ verdict: string }>('/api/comments/embed-site', {
   query: { url: params.url, targetType: params.targetType },
 })
+/**
+ * SCHEITERT DIE PRÜFUNG, BLEIBEN DIE KOMMENTARE SICHTBAR (LZ1, bewusst): die
+ * Prüfung ist nur das freundliche Netz, die harte Grenze ist die CSP. Eine
+ * Fehlermeldung im iframe auf einer fremden Seite verdeckte die Kommentare
+ * wegen einer Zusatzprüfung. Der Ausfall steht deshalb nur als unsichtbares
+ * Merkmal am Bereich (`data-embed-check="failed"`, für Fehlersuche und Tests).
+ */
+const embedCheckFailed = computed(() => !!siteCheckError.value)
 const embedBlocked = computed(() => {
   const verdict = siteCheck.value?.verdict
   return verdict === 'unknown-host' || verdict === 'target-type-blocked'
@@ -139,6 +147,7 @@ onMounted(() => {
   />
   <CommentSection
     v-else
+    :data-embed-check="embedCheckFailed ? 'failed' : undefined"
     :target-id="params.targetId"
     :target-type="params.targetType"
     :target-url="route.fullPath"
