@@ -2,9 +2,7 @@
 paths:
   - "packages/core/shared/controlCenter.ts"
   - "packages/core/shared/legacyControlHosts.ts"
-  - "packages/core/server/middleware/00.legacy-control-hosts.ts"
-  - "packages/core/server/middleware/00.tenant.ts"
-  - "packages/core/server/middleware/03.csrf-origin.ts"
+  - "packages/core/server/middleware/**"
   - "packages/core/server/utils/csrfOrigin.ts"
   - "packages/core/shared/csrfOriginExempt.ts"
   - "packages/core/server/utils/trustedOrigin.ts"

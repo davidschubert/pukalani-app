@@ -30,6 +30,46 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Review nach der Umsetzung: Befunde B1 bis B4 und B6 behoben ✅ 2026-11-22
+
+**Was.** Ein unabhängiges Review der umgesetzten Pakete (Leitstand, 2026-11-22)
+fand sechs Befunde; B5 hatte sich erledigt (der Live-Build hatte aufgeholt).
+
+- **B1 (mittel) — das Seitengewicht hält das Ausliefern nicht mehr auf.**
+  `check-page-weight.mjs` lief in der Schleife des Ausliefern, die ALLE Apps
+  baut; riss EINE App ihre Grenze, wurde gar nichts ausgeliefert. Jetzt prüft
+  der neue Lauf `.github/workflows/page-weight.yml` hart im Pull Request (baut
+  nur die Apps mit Grenze) und öffnet auf `main` ein Issue mit Label
+  `seitengewicht`, das sich beim nächsten grünen Lauf selbst schließt. Das
+  Ausliefern misst weiter, warnt aber nur. Puffer von rund 5 auf rund 10 %
+  über den Messwerten des Ausliefern-Laufs von #533 (portfolio hatte nur
+  noch 3 % Luft). Probe: die Schleife mit `bash -e` wie in der CI, eine App
+  zu schwer — neu läuft sie durch (Warnung), der alte Stand brach nach der
+  ersten App ab.
+- **B2 — Kopfzeile von pukalani.studio bei 375 px.** Auf Deutsch endete „EN"
+  bei 388 px. Unter 420 px rücken Marke, „Erstgespräch" und DE/EN enger
+  zusammen (Abstände, Laufweite); gemessen bei 360 und 375 px, neuer Fall in
+  `apps/portfolio/e2e/smoke.spec.ts`.
+- **B3/B4 — Tests für das Räumen der Merker.**
+  `packages/admin/tests/memoForgetting.test.ts`: Sperren, Sitzungen beenden
+  und Sammel-Sperre räumen den Anmelde-Merker des Ziel-Kontos;
+  `mutateAppConfig` räumt den Instanz-Merker. Gegenprobe: jeder der vier
+  Aufrufe entfernt ⇒ der jeweilige Fall rot.
+- **B6 — Lade-Pfade.** `tenant-mitglieder.md` lädt wieder bei
+  `packages/*/server/api/**` (dort steht `notify(`), `hosts-ops.md` bei allen
+  `packages/core/server/middleware/**`.
+
+**Offen bleibt:** `page-weight` zur Pflicht-Prüfung von `main` zu machen ist
+eine Einstellung bei GitHub (Davids Klick); bis dahin ist der Lauf rot
+sichtbar, hält einen Merge aber nicht auf.
+
+**Gelernt:** Ein Wächter, der IM Ausliefern hart prüft, schützt nicht vor dem
+schlechten Stand, sondern hält alle anderen Apps mit auf — hart prüfen gehört
+vor den Merge, im Ausliefern nur melden. Und eine Gegenprobe per `sed` braucht
+eine Sicherung, die wirklich eine Datei ist: `cp datei ordner/bak` schrieb in
+einen gleichnamigen Ordner, die Rückkopie scheiterte still; erst `git status`
+zeigte die vier noch veränderten Quellen.
+
 ### Bahn 7 — Farbwelten ganz optimieren: Hauptfarbe, Gelb, Blau und Fokus-Rahmen erreichen als Schrift 4,5 zu 1 (Rest von UX-002) ✅ 2026-11-22
 
 **Was.** Nach Q07 waren als Schrift noch zu blass: die Hauptfarbe jeder
