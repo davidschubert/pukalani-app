@@ -1,123 +1,143 @@
-# Günstigeres Textmodell – Aufstellung der Proben (KM1 c)
+# Günstigeres Textmodell – Probe und Entscheidung (KM1 c)
 
-> **Plan-Status (2026-11-21):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „KM1“).
+> **Plan-Status (2026-11-22):** Unterlage zu KM1 — Probe gebaut und lokal gefahren, nichts gewechselt ([OPEN-ITEMS](../OPEN-ITEMS.md) „KM1“).
 
-Stand: 2026-11-19. Nichts gebaut, nichts gewechselt, kein Aufruf bezahlt.
-Offener Punkt: **KM1** in [OPEN-ITEMS](../OPEN-ITEMS.md). David hat am
-2026-11-19 geklickt: „Ja, Proben vorbereiten". Gewechselt wird erst nach
-einem weiteren Ja.
+Stand: 2026-11-22. Die Probe-Vorrichtung steht im Repo
+(`scripts/ki-modell-probe.mjs`), ein echter Probelauf ist gefahren (lokal,
+erfundene Eingaben, zusammen rund 0,09 $). Auf Production ist nichts
+umgestellt. **Es fehlt nur Davids Entscheidung** (unten „Was David
+entscheidet").
 
-## Worum es geht
+## Kurz
 
-Alle Texte der Plattform schreibt heute `anthropic/claude-haiku-4.5`. Das
-neuere `anthropic/claude-haiku-5.5` hat dieselben zwei Europa-Endpunkte und
-steht in der Liste ohne Datenspeicherung.
+- **Haiku 5.5 kostet in Europa ein Zehntel** von Haiku 4.5 (Liste des
+  Vermittlers, gelesen am 2026-11-22: 0,11 / 0,55 $ statt 1,10 / 5,50 $ je
+  Million Tokens Eingabe / Ausgabe, dieselben zwei Europa-Endpunkte).
+- **So, wie die App heute ruft, spart es nur das Zwei- bis Siebenfache — und
+  der Insights-Entwurf geht kaputt.** Haiku 5.5 „denkt" von selbst nach. Die
+  Denk-Tokens stehen nicht im Text, werden aber als Ausgabe bezahlt und füllen
+  `max_tokens`. Beim Insights-Entwurf war die Decke 3 von 3 Mal voll, bevor das
+  JSON zu Ende war.
+- **Mit abgeschaltetem Denken bestehen alle Aufgaben, und jeder Aufruf kostet
+  ein Sechstel bis ein Achtel.** Dafür muss der Transport ein Feld mehr
+  schicken (`reasoning`), das heute nicht vorgesehen ist — eine kleine
+  Code-Änderung VOR jedem Wechsel.
+- **`temperature` nimmt das neue Modell nicht.** Der Vermittler lehnt den
+  Aufruf nicht ab, er lässt den Wert still fallen. Die fünf Stellen, die mit 0
+  „immer dieselbe Antwort" wollen, bekommen das nicht mehr.
 
-| | Haiku 4.5 (heute) | Haiku 5.5 |
-| --- | --- | --- |
-| Preis in Europa je Million Tokens (Eingabe / Ausgabe) | 1,10 / 5,50 $ | 0,11 / 0,55 $ |
-| Europa-Endpunkte | `amazon-bedrock/eu-west-1`, `google-vertex/europe` | dieselben zwei |
-| Größte Eingabe / größte Ausgabe | 200.000 / 64.000 Tokens | 1.000.000 / 128.000 Tokens |
-| Einstellung `temperature` | wird angenommen | **steht nicht mehr in der Liste** |
+## Die Probe
 
-Gemessen am 2026-11-19 aus den öffentlichen Listen des Vermittlers, ohne
-Schlüssel. Ein Preis aus einer Liste ist noch kein Beleg: der Beleg ist die
-Abrechnung eines echten Aufrufs (Probe 0).
+`node scripts/ki-modell-probe.mjs` stellt fünf Aufgaben mit einer festen,
+erfundenen Eingabe nach (eine Bäckerei und ein Werkzeughersteller, die es
+nicht gibt). Prompt, `temperature`, `max_tokens` und die Prüfung der Antwort
+lädt es aus dem echten Code; „bestanden" heißt: die Antwort übersteht die
+Klemmung bzw. das Schema, mit dem die Route sie annimmt. Ohne Schalter ist es
+ein Trockenlauf mit gestellten Antworten (kostet nichts, prüft, dass Prompts
+laden und die Prüfung greift). `--live` zeigt vorher die geschätzten
+Höchstkosten und bricht über `--max-usd` (Standard 1) ab. Gerufen wird mit
+dem Rumpf des Core-Transports; das Skript prüft vor dem Senden, dass die
+Europa-Bindung wörtlich stimmt (`pnpm check:ai-routing` kennt es).
+Ergebnis: `ergebnis.json` und `vergleich.md` (Antworten nebeneinander).
 
-**Was der Wechsel spart, weiß heute niemand.** Dafür braucht es die Summe,
-die der Vermittler im Monat abrechnet. Die steht in Davids Konto beim
-Vermittler; im Repo steht sie nicht. Sind es wenige Dollar im Monat, lohnt
-der Aufwand unten kaum.
+```bash
+node scripts/ki-modell-probe.mjs --live --runs 3 --env-file apps/comments/.env
+node scripts/ki-modell-probe.mjs --live --runs 2 --models anthropic/claude-haiku-5.5 --reasoning none --env-file apps/comments/.env
+```
 
-## Was sich mit dem neuen Modell ändern kann
+### Gemessen am 2026-11-22 (Kosten laut Vermittler je Aufruf, Mittel)
 
-1. **`temperature`.** Der Transport schickt sie bei JEDEM Textaufruf mit
-   (`packages/core/server/utils/aiComplete.ts`, Standard 0,2; fünf Stellen
-   setzen 0, damit dieselbe Eingabe dieselbe Antwort gibt). Das neue Modell führt sie nicht mehr. Entweder lehnt der
-   Vermittler den Aufruf ab, oder er lässt den Wert still fallen — dann
-   gibt es „immer dieselbe Antwort" nicht mehr. Das klärt Probe 0.
-2. **Die Form der Antwort.** 20 der 21 Stellen erwarten JSON. Die Reparatur
-   kaputter Antworten (`packages/core/shared/aiJson.ts`) ist an Läufen mit
-   Haiku 4.5 geeicht (4 von 52 Antworten waren kaputt).
-3. **Die Länge der Antwort.** Die Decke für Insights-Entwürfe
-   (`packages/insights/shared/insightsDraftBudget.ts`) ist aus 52 Läufen mit
-   Haiku 4.5 gerechnet. Schreibt das neue Modell länger, reißt die Decke
-   mitten im Text.
-4. **Der Ton.** Der Markenberater und das Gespräch sind freier Text. Ob er
-   noch so klingt wie gewollt, kann nur ein Mensch lesen.
+| Aufgabe | Haiku 4.5 heute | Haiku 5.5 wie heute gerufen | Haiku 5.5, Denken aus | Faktor (Denken aus) |
+| --- | --- | --- | --- | --- |
+| Marke: DNA-Vorschlag | 3/3, 0,0063 $ (JSON 3× repariert) | 3/3, 0,0012 $ | 2/2, 0,0010 $ | ≈ 6× |
+| Marke: Zeichen-Brief | 3/3, 0,0035 $ | 3/3, 0,0005 $ | 2/2, 0,0005 $ | ≈ 7× |
+| Insights: Entwurf (400 Wörter) | 3/3, 0,0087 $ | **0/3 — Decke voll** | 2/2, 0,0011 $ | ≈ 8× |
+| Insights: Übersetzung | 3/3, 0,0015 $ | 3/3, 0,0005 $ | 2/2, 0,0002 $ | ≈ 7× |
+| Insights: Änderungsnotiz | 3/3, 0,0012 $ | 3/3, 0,0005 $ | 2/2, 0,0002 $ | ≈ 6× |
 
-## Die 21 Stellen
+Mit Denken auf „low" war es dazwischen: alles bestanden, aber der Entwurf
+brauchte 3.400 von 3.400 möglichen Tokens (rund die Hälfte Denken) — eine
+Decke ohne Luft. Zwei Läufe je Variante sind wenig; für die Entscheidung
+genügt es, für die Eichung nicht.
 
-„Echte Probe gibt es" heißt: ein Skript im Repo ruft diese Stelle schon
-heute mit einem echten Aufruf.
+### Was die Probe NICHT deckt
 
-| Gruppe | Stellen | Antwort | Echte Probe gibt es |
-| --- | --- | --- | --- |
-| Übersetzen von Beiträgen, Kommentaren, Kursen, Lektionen, Terminen | 5 | JSON, von Hand geprüft | ja (`packages/core/scripts/verify-ugc-translation.mjs`) |
-| Übersetzen ganzer Seiten | 1 | JSON, von Hand geprüft | ja (`packages/pages/scripts/verify-page-languages.mjs`) |
-| Übersetzen von Kategorien | 1 | JSON, von Hand geprüft | nein |
-| Hilfe beim Moderieren (Beitrag, Kommentar) | 2 | JSON, von Hand geprüft | nein |
-| Tickets einordnen | 1 | JSON, von Hand geprüft | nein |
-| Markenberater: Entwurf und Gespräch | 1 | freier Text | ja, nur das Gespräch (`packages/brand/scripts/verify-brand-sessions.mjs`) |
-| Marke: Website-Urteil, DNA-Vorschlag, Zeichen-Brief | 3 | JSON, eine Stelle mit Schema | nein |
-| Marke: Review (eine Stelle, zwei Stufen) | 1 | JSON mit Schema | nein |
-| Insights: Entwurf, Übersetzung, Änderungsnotiz | 3 | JSON mit Schema | nein |
-| Marktvergleich: Auslesen und Bericht | 2 | JSON mit Schema | ja, nur das Auslesen (`packages/market/scripts/market-library-compute.mjs`) |
-| Marktvergleich: „Außensicht" (heute aus) | 1 | JSON mit Schema | nein, und nicht nötig, solange sie aus ist |
+- **Freier Text: der Markenberater (George).** Er streamt; die Probe ruft ihn
+  nicht. Ob er noch so klingt wie gewollt, kann nur ein Mensch lesen
+  (`packages/brand/scripts/verify-brand-sessions.mjs` mit
+  `NUXT_AI_MODEL=anthropic/claude-haiku-5.5`).
+- **Prompts in Routen:** Moderations-Hilfe, Tickets einordnen, Kategorien
+  übersetzen, UGC-Übersetzen. Ihre Prompts stecken in der Route und sind nicht
+  ohne Server ladbar; für UGC und Seiten gibt es eigene Skripte
+  (`verify-ugc-translation.mjs`, `verify-page-languages.mjs`).
+- **Review und Dokument-Check der Marke, Marktvergleich.** Laden den Server mit
+  (`brandGenerators`); Marktvergleich hat `market-library-compute.mjs`.
+- **Die Ton-Frage** auch bei den fünf Aufgaben: `vergleich.md` legt die
+  Antworten nebeneinander, gelesen hat sie noch niemand.
 
-Bild-Lesen, Video-Lesen und Bild-Erzeugen haben eigene Modelle und sind
-nicht betroffen. `node scripts/check-ai-routing.mjs` zählt die Stellen.
+## Was der Wechsel im Monat spart
 
-## Die Proben, in dieser Reihenfolge
+Die Monatssumme beim Vermittler kennt nur Davids Konto; im Repo und in
+den Protokollen ohne Schlüssel steht sie nicht. Deshalb in Anteilen:
 
-Jede Stufe hört auf, sobald sie etwas findet. Alles läuft lokal, mit
-Test-Konten und mit der Europa-Bindung des Codes, nie gegen Production.
+**Ersparnis ≈ Monatssumme × Anteil Text × (1 − 1/Faktor)**
 
-- **Probe 0 – ein Aufruf.** Antwortet das neue Modell unter unserer Bindung?
-  Wird zum Europa-Preis abgerechnet? Was passiert mit `temperature`?
-  Kosten: unter 1 Cent. Fällt sie durch, endet das Vorhaben hier.
-- **Probe 1 – die vier Skripte, die es schon gibt.** Dieselben Läufe einmal
-  mit dem alten und einmal mit dem neuen Modell, die Ergebnisse
-  nebeneinander. Deckt 8 Stellen ab.
-- **Probe 2 – ein neues Probe-Skript für die 12 Stellen ohne Probe.** Es
-  nimmt die echten Prompts aus dem Code und feste Beispiel-Eingaben, ruft
-  jede Stelle zehnmal je Modell und zählt: Antwort lesbar? Schema erfüllt?
-  Decke gerissen? Das Skript ist der eigentliche Aufwand.
-- **Probe 3 – lesen.** David liest je fünf Antworten des Markenberaters und
-  je zwei Insights-Entwürfe, alt und neu nebeneinander, ohne zu wissen,
-  welches Modell welche geschrieben hat.
+- *Anteil Text*: was nicht Bild-Erzeugen, Bild-Lesen oder Video-Lesen ist
+  (die haben eigene Modelle und bleiben). Beim Vermittler je Modell ablesbar.
+- *Faktor*: gemessen 6 bis 8 mit Denken aus, 2 bis 5 wie heute gerufen.
 
-**Was die Proben kosten.** Ein Durchgang über alle Stellen mit beiden
-Modellen erzeugt höchstens rund 82.000 Tokens Ausgabe je Modell (die Summe
-aller Decken). Das sind höchstens 0,62 $ je Durchgang. Mit zehn Wiederholungen
-in Probe 2: höchstens rund 6 $, erwartet unter 2 $, weil die meisten
-Antworten weit unter ihrer Decke bleiben. Jede Stufe über Probe 0 hinaus
-braucht Davids Klick.
+**Beispiel (erfundene Summe):** 50 $ im Monat, davon 60 % Text = 30 $.
+Mit Denken aus (Faktor ≈ 6,5): 30 × (1 − 1/6,5) ≈ **25 $ im Monat
+gespart**. Wie heute gerufen (Faktor ≈ 3): ≈ 20 $ — aber der
+Insights-Entwurf fällt aus, also keine echte Option. Bei 10 $ im Monat
+sind es rund 5 $; das trägt die Arbeit unten kaum.
 
-**Was sie an Arbeit kosten.** Probe 0 und 1: eine Stunde. Probe 2: ein
-Arbeitstag für das Skript und die Beispiel-Eingaben. Probe 3: eine halbe
-Stunde Lesen für David.
+**Wie oft die Aufgaben laufen** (aus dem Code; Zahlen aus Protokollen gibt
+es ohne Schlüssel nicht): der Markenberater läuft je Gesprächszug und ist
+vermutlich der größte Posten; UGC-Übersetzen, Moderations-Hilfe und Tickets
+je Klick bzw. je Ticket; Insights je Beitrag (wenige im Monat); DNA,
+Zeichen-Brief und Review einmal je Marke; der Marktvergleich alle paar
+Monate für vier Einträge. Welche Aufgabe das Geld ausgibt, zeigt die
+Aktivitätsliste beim Vermittler (Spalte „App"/Modell).
 
-## Wenn die Proben gut ausgehen: was dann anzufassen ist
+## Je Aufgabe: heutiges Modell, Kandidat, Risiko, Empfehlung
 
-- **Drei Modell-Felder:** `pukalani.ai.model` (Core), das Feld der Tickets,
-  `reviewModel` (Marke). Dazu der feste Rückfall im Transport.
-- **Vier weitere Stellen, die den alten Namen nennen:** die Auswahl-Liste
-  und der Hinweistext in den Ticket-Einstellungen (de + en), das Skript
-  `verify-brand-context.mjs`, und `market-library-compute.mjs` (dort auch
-  die Preise).
-- **Neu eichen:** die Decke der Insights-Entwürfe, die Kosten-Gewichte der
-  Review (`packages/brand/shared/brandAiLimits.ts`) und, je nach Probe 0,
-  der Umgang mit `temperature`.
-- **Erst auf einem Deployment.** Das Core-Modell lässt sich je Deployment
-  auf der Config-Seite umstellen, ohne Ausliefern und mit einem Klick
-  zurück. `reviewModel` hat diesen Weg nicht; es wechselt nur mit einem
-  Ausliefern. Die Umstellung auf der Config-Seite ändert die echte
-  Datenbank und ist Davids Klick.
+| Aufgabe(n) | Heute | Kandidat | Risiko | Empfehlung |
+| --- | --- | --- | --- | --- |
+| UGC-, Seiten-, Kategorie-Übersetzen (7 Stellen) | Haiku 4.5 (`aiModel`) | Haiku 5.5, Denken aus | gering; JSON hielt, Übersetzung kürzer im Denken | wechseln, nach einem Lauf der zwei UGC/Seiten-Skripte |
+| Moderations-Hilfe, Tickets (3) | Haiku 4.5 (`aiModel` bzw. `ticketsAiModel`) | Haiku 5.5, Denken aus | gering; nur Rat, der Mensch entscheidet | wechseln |
+| Insights: Entwurf, Übersetzung, Notiz (3) | Haiku 4.5 | Haiku 5.5, Denken aus | **hoch ohne Denken-aus** (Decke reißt); danach Decke neu eichen | wechseln erst mit Transport-Änderung und neuer Eichung |
+| Marke: DNA, Zeichen-Brief, Website-Urteil (3) | Haiku 4.5 | Haiku 5.5, Denken aus | gering; 5.5 lieferte sauberes JSON, 4.5 brauchte Reparatur | wechseln |
+| Marke: Review (2 Stufen) | Haiku 4.5 (`reviewModel`, nur per Ausliefern) | Haiku 5.5 | mittel: `temperature` 0 fällt weg, Urteile schwanken | zuletzt, nach eigener Probe |
+| Markenberater (Stream) | Haiku 4.5 | Haiku 5.5 | **Ton** — nur lesbar | erst nach Davids Lese-Probe (je fünf Antworten blind) |
+| Marktvergleich (Auslesen, Bericht) | Haiku 4.5 (`market.ai.*`) | Haiku 5.5 | mittel: `temperature` 0; Bibliothek wird nur alle paar Monate gerechnet | nicht wechseln — spart fast nichts |
 
-## Empfehlung
+## Wenn David Ja sagt: die Reihenfolge
 
-Erst die Monatssumme beim Vermittler ansehen. Liegt sie unter 20 $, bleibt
-alles, wie es ist: der Wechsel spart dann weniger, als Probe 2 an Arbeit
-kostet. Liegt sie darüber, Probe 0 und 1 machen (eine Stunde, unter 50
-Cent) und danach neu entscheiden.
+1. **Transport (Code, eine Session):** `aiComplete`/`aiCompleteStream`
+   schicken `reasoning: { effort: 'none' }` mit, wenn das Modell es trägt
+   (Haiku 4.5 trägt es auch, dort ist Denken ohnehin aus). Test dazu;
+   `temperature` bleibt im Rumpf (der Vermittler lässt sie still fallen).
+2. **Probe erweitern:** dieselbe Probe mit `--runs 10`, dazu die zwei
+   UGC/Seiten-Skripte und der Markenberater mit dem neuen Modell (zusammen
+   unter 2 $). Decke der Insights-Entwürfe und Kosten-Gewichte der Review
+   neu eichen.
+3. **Davids Lese-Probe:** `vergleich.md` und fünf Antworten des
+   Markenberaters, ohne zu wissen, welches Modell welche schrieb.
+4. **Erst ein Deployment:** `aiModel` auf der Config-Seite umstellen (ein
+   Klick zurück, kein Ausliefern) — das ist die echte Datenbank und Davids
+   Klick. Danach die übrigen; `reviewModel` und die Ticket-Auswahl wechseln
+   per Ausliefern.
+
+Daneben anzufassen: die Auswahl-Liste und der Hinweistext in den
+Ticket-Einstellungen (de + en), `verify-brand-context.mjs`,
+`market-library-compute.mjs` (Preise), `pnpm ops:ai-models` läuft danach.
+
+## Was David entscheidet
+
+- **Monatssumme ansehen** (Konto beim Vermittler, Anteil Text). Unter 20 $:
+  alles bleibt, wie es ist — Schritt 1 bis 3 kosten mehr Arbeit, als der
+  Wechsel spart.
+- **Darüber: Ja oder Nein zu Schritt 1 und 2** (eine Session, Proben unter
+  2 $). Der eigentliche Wechsel auf Production (Schritt 4) ist danach ein
+  eigenes Ja.
