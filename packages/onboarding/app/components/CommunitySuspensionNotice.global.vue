@@ -38,10 +38,18 @@ const localePath = useLocalePath()
  * zeigen, und das ist kein Fehler. `default` fängt es ab, damit die Übersicht
  * keinen Fehler-Toast wegen einer Auskunft bekommt, die es dort gar nicht gibt.
  */
-const { data } = await useFetch<{ suspension: string, reason: string }>('/api/community/suspension', {
+const { data, error, refresh } = await useFetch<{ suspension: string, reason: string }>('/api/community/suspension', {
   lazy: true,
   server: false,
   default: () => ({ suspension: '', reason: '' }),
+})
+
+/**
+ * Nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt den Fehler-Zustand
+ * (LZ1). 401/403/404 sind hier ERWARTET (Gast, keine Rolle, kein Pool-Host).
+ */
+const failed = computed(() => {
+  return isFetchOutage(error.value)
 })
 
 const kind = computed(() => data.value?.suspension ?? '')
@@ -71,4 +79,5 @@ const reason = computed(() => (data.value?.reason ?? '').trim())
     data-suspension-notice
     :data-suspension-kind="kind"
   />
+  <CoreInlineLoadError v-else-if="failed" :retry="refresh" data-suspension-error />
 </template>

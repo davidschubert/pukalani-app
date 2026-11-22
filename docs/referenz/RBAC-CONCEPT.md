@@ -109,6 +109,12 @@ Instanz-`moderator`, und der Instanz-`admin` hält als Wildcard ohnehin alle 39.
 | `admin` | **alle** (Wildcard) |
 | `moderator` | `dashboard.access`, `comments.moderate` |
 
+> Im Pool kommt das Instanz-Label nur über den Not-Zugang in eine Community.
+> Übersicht und Statistik einer Pool-Community (`/api/admin/stats`,
+> `/api/admin/analytics`) verlangen dort das Label `admin`: die Zahlen jeder
+> Community sieht von außen nur der Betreiber (BT1 e, Davids Entscheidung
+> 2026-11-21; `packages/admin/server/utils/overviewAccess.ts`).
+
 **Community-Rollen** (`COMMUNITY_ROLES` in `communityAuthz.ts`, je Community). Jede
 Stufe enthält die darunter — außer beim Moderator, der bewusst **kein** Autor ist:
 

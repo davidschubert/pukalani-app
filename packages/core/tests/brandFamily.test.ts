@@ -140,4 +140,20 @@ describe('Fußzeilen: jede der drei Marken nennt die zwei anderen (R9)', () => {
     expect(family.aria).toBeTruthy()
     for (const brand of BRAND_FAMILY) expect(family.roles[brand.key]).toBeTruthy()
   })
+
+  /**
+   * DAVIDS WORTLAUT (2026-11-21). Jede Site zeigt nur die zwei ANDEREN Marken;
+   * hier wird die volle Zeile aus Namen und Rollen zusammengesetzt und gegen
+   * den Satz gehalten, wie er ihn geschrieben hat (Englisch sinngleich).
+   */
+  it.each([
+    ['de', 'Auch von uns: Pukalani App – Community-Plattform · Pukalani Studio – UI/UX-Design Studio · Branding Supply – Digitaler Markenaufbau'],
+    ['en', 'Also from us: Pukalani App – community platform · Pukalani Studio – UI/UX design studio · Branding Supply – digital brand building'],
+  ])('Namen und Rollen ergeben auf %s genau den vereinbarten Satz', (locale, sentence) => {
+    const family = (JSON.parse(read(`packages/core/i18n/locales/${locale}.json`)) as {
+      ui: { brandFamily: { label: string, roles: Record<BrandFamilyKey, string> } }
+    }).ui.brandFamily
+    const line = `${family.label} ${BRAND_FAMILY.map(brand => `${brand.name} – ${family.roles[brand.key]}`).join(' · ')}`
+    expect(line).toBe(sentence)
+  })
 })

@@ -29,6 +29,9 @@ export const LIST_STATE_BACKLOG: Readonly<Record<string, number>> = {
   'apps/help/app/pages/index.vue': 1,
   'apps/platform/app/pages/index.vue': 1,
   'apps/portfolio/app/components/SiteFooter.vue': 1,
+  // Bewusst offen (LZ1 Schub A): der Abruf teilt den Schlüssel `chrome-nav-pages-<locale>` mit
+  // `useCommunityNav` (core), dessen Handler den Fehler dokumentiert verschluckt (keine CMS-Seiten
+  // = Normalfall). Ein Fehler-Zustand hier hätte nie etwas zu lesen und gehört in den Core-Handler.
   'packages/blueprint/app/components/DiscussionSidebarLinks.vue': 1,
   'packages/brand/app/components/BwDiscoverTeaser.vue': 1,
   'packages/brand/app/pages/brand-check/[id].vue': 1,
@@ -45,28 +48,9 @@ export const LIST_STATE_BACKLOG: Readonly<Record<string, number>> = {
   // Ausfall AUF (die harte Grenze ist die CSP, nicht diese Abfrage). Eine Meldung im iframe
   // auf fremden Seiten würde die Kommentare wegen einer Zusatzprüfung verdecken.
   'packages/comments/app/pages/embed.vue': 1,
-  'packages/core/app/components/auth/AccountSessionsCard.vue': 1,
-  'packages/core/app/components/auth/TwoFactorCard.vue': 1,
-  'packages/core/app/components/user/UserHandleForm.vue': 1,
-  'packages/core/app/components/user/UserNotificationSettings.vue': 1,
-  'packages/feedback/app/components/FeedbackButton.global.vue': 1,
   'packages/insights/app/pages/dashboard/insights/[id].vue': 1,
   'packages/insights/app/pages/dashboard/insights/radar.vue': 1,
   'packages/market/app/pages/brand/[profileId]/market.vue': 3,
-  'packages/messages/app/components/MessageComposeModal.vue': 1,
-  'packages/onboarding/app/components/CommunityGettingStartedNotice.global.vue': 1,
-  'packages/onboarding/app/components/CommunityProfileSignalNotice.global.vue': 1,
-  'packages/onboarding/app/components/CommunitySuspensionNotice.global.vue': 1,
-  'packages/onboarding/app/components/CommunityTrialNotice.global.vue': 1,
-  'packages/onboarding/app/pages/dashboard/community/index.vue': 1,
-  'packages/onboarding/app/pages/dashboard/members/index.vue': 1,
-  'packages/onboarding/app/pages/join.vue': 2,
-  'packages/onboarding/app/pages/removed.vue': 1,
-  'packages/onboarding/app/pages/start/community.vue': 1,
-  'packages/onboarding/app/pages/start/done.vue': 1,
-  'packages/posts/app/components/DiscussionFilters.vue': 1,
-  'packages/posts/app/components/DiscussionNewTopic.vue': 1,
-  'packages/posts/app/components/DiscussionSidebar.vue': 1,
   // Bleibt: der Feed zeigt den Fehler der ersten Seite schon (`loadFailed` + CoreLoadError);
   // der Zähler sieht den Abruf nur nicht, weil er in einem Ausdruck mit `? await` steht.
   'packages/posts/app/components/PostFeed.vue': 1,

@@ -32,7 +32,7 @@ const communityId = computed(() => String(route.query.site ?? ''))
  * Adresse und keinen Knopf. Der Server siegelt ohnehin nur für Communities,
  * in denen der Nutzer Mitglied ist (POST /api/onboarding/handoff).
  */
-const { data } = await useFetch<MyCommunitiesResponse>('/api/onboarding/communities', {
+const { data, error, refresh } = await useFetch<MyCommunitiesResponse>('/api/onboarding/communities', {
   default: () => ({ communities: [] as MyCommunityView[] }),
 })
 const entry = computed(() =>
@@ -102,7 +102,9 @@ useBrandTitle(() => t('onboarding.done.title'))
     <div class="space-y-4 rounded-xl border border-default p-5">
       <div class="space-y-1">
         <p class="text-sm text-muted">{{ t('onboarding.done.addressLabel') }}</p>
-        <p class="break-all font-medium">{{ host }}</p>
+        <!-- LZ1: gescheitert ⇒ ehrlicher Fehler statt leerer Adresse und fehlendem Knopf. -->
+        <CoreInlineLoadError v-if="error" :retry="refresh" data-done-load-error />
+        <p v-else class="break-all font-medium">{{ host }}</p>
       </div>
       <UButton
         v-if="host"

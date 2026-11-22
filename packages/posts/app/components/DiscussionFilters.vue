@@ -46,9 +46,21 @@ const activeCount = computed(() => activeTopicFilterCount(filters.value))
  * `?all=1`, damit ein Filter auf eine stillgelegte Kategorie aus einem alten
  * Link nicht ins Leere zeigt (ihre Bestands-Themen sind weiter sichtbar).
  */
-const { data: categoryData } = props.categoryFixed
-  ? { data: ref<CategoryListResponse | null>(null) }
-  : await useFetch<CategoryListResponse>('/api/posts/categories', { query: { all: '1' } })
+const { data: categoryData, error: categoryError, refresh: refreshCategories } = await useFetch<CategoryListResponse>('/api/posts/categories', {
+  query: { all: '1' },
+  // Auf einer Kategorie-Seite steht die Kategorie fest: kein Abruf, kein Kasten.
+  immediate: !props.categoryFixed,
+})
+
+/**
+ * LZ1: nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt statt einer
+ * Auswahl, die nur „Alle Kategorien" kennt, den Neuversuch. 403/404 (Produkt
+ * aus) sind hier ERWARTET.
+ */
+const categoriesFailed = computed(() => {
+  const status = (categoryError.value as { statusCode?: number } | null)?.statusCode
+  return !props.categoryFixed && !!categoryError.value && (!status || status >= 500)
+})
 
 const { categoryName } = useCategoryText()
 
@@ -168,6 +180,7 @@ function setDay(key: 'createdAfter' | 'createdBefore', value: string) {
           class="w-full"
           @update:model-value="value => filters = { ...filters, category: String(value) }"
         />
+        <CoreInlineLoadError v-if="categoriesFailed" :retry="refreshCategories" class="mt-1" data-discussions-filters-categories-error />
       </UFormField>
 
       <UFormField :label="t('posts.discussions.filters.after')">

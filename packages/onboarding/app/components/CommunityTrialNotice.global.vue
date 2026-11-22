@@ -39,10 +39,18 @@ const localePath = useLocalePath()
  * zeigen, und das ist kein Fehler. `default` fängt es ab, damit die Übersicht
  * keinen Fehler-Toast wegen einer Auskunft bekommt, die es dort gar nicht gibt.
  */
-const { data } = await useFetch<{ trialEndsAt: string | null }>('/api/community/billing/trial', {
+const { data, error, refresh } = await useFetch<{ trialEndsAt: string | null }>('/api/community/billing/trial', {
   lazy: true,
   server: false,
   default: () => ({ trialEndsAt: null }),
+})
+
+/**
+ * Nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt den Fehler-Zustand
+ * (LZ1). 401/403/404 sind hier ERWARTET (Gast, keine Rolle, kein Pool-Host).
+ */
+const failed = computed(() => {
+  return isFetchOutage(error.value)
 })
 
 const notice = computed(() => trialNotice(data.value?.trialEndsAt, Date.now()))
@@ -70,4 +78,5 @@ const notice = computed(() => trialNotice(data.value?.trialEndsAt, Date.now()))
     :data-trial-kind="notice.kind"
     :data-trial-days-left="notice.daysLeft"
   />
+  <CoreInlineLoadError v-else-if="failed" :retry="refresh" data-trial-error />
 </template>

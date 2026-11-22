@@ -17,7 +17,7 @@
 }
 
 .dark[data-theme='amethyst'] {
-  --ui-primary: var(--ui-color-primary-400);
+  --ui-primary: #a98dff;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -36,6 +36,10 @@
   --ui-color-primary-950: #0f0722;
 }
 
+.dark[data-theme='amethyst'][data-variant='soft'] {
+  --ui-primary: #a493e5;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='amethyst'][data-variant='muted'] {
@@ -52,6 +56,10 @@
   --ui-color-primary-950: #0e0a19;
 }
 
+.dark[data-theme='amethyst'][data-variant='muted'] {
+  --ui-primary: #a29ac9;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='amethyst'][data-variant='vivid'] {
@@ -66,6 +74,10 @@
   --ui-color-primary-800: #3e0085;
   --ui-color-primary-900: #2a005f;
   --ui-color-primary-950: #11002f;
+}
+
+.dark[data-theme='amethyst'][data-variant='vivid'] {
+  --ui-primary: #a88dff;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -98,6 +110,11 @@
   --ui-color-primary-800: #462983;
   --ui-color-primary-900: #2e165b;
   --ui-color-primary-950: #11012d;
+  --ui-primary: #714cc7;
+}
+
+.dark[data-theme='amethyst'][data-variant='bright'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -116,6 +133,10 @@
   --ui-color-primary-950: #180026;
 }
 
+.dark[data-theme='amethyst'][data-variant='warm'] {
+  --ui-primary: #cc7cff;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='amethyst'][data-variant='cool'] {
@@ -132,6 +153,10 @@
   --ui-color-primary-950: #070136;
 }
 
+.dark[data-theme='amethyst'][data-variant='cool'] {
+  --ui-primary: #8798ff;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='amethyst'][data-variant='dawn'] {
@@ -146,6 +171,11 @@
   --ui-color-primary-800: #00397c;
   --ui-color-primary-900: #002555;
   --ui-color-primary-950: #000c26;
+  --ui-primary: #0061c9;
+}
+
+.dark[data-theme='amethyst'][data-variant='dawn'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -164,6 +194,10 @@
   --ui-color-primary-950: #1d001c;
 }
 
+.dark[data-theme='amethyst'][data-variant='dusk'] {
+  --ui-primary: #eb6be6;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='amethyst'][data-variant='pastel'] {
@@ -178,4 +212,9 @@
   --ui-color-primary-800: #443a67;
   --ui-color-primary-900: #2b2345;
   --ui-color-primary-950: #0e091e;
+  --ui-primary: #695b98;
+}
+
+.dark[data-theme='amethyst'][data-variant='pastel'] {
+  --ui-primary: var(--ui-color-primary-400);
 }

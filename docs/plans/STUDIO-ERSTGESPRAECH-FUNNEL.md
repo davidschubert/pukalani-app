@@ -190,6 +190,13 @@ unbekannte portfolio-Tabellen ohnehin nur als nicht-fatale Warnung.
 
 ## 7 · W3-Textentwürfe — ZUR FREIGABE (Claude, 2026-09-03)
 
+> **Stand 2026-11-22:** gebaut und auf der Startseite (Anker `kennen-sie-das`,
+> `passt-das`, Hinweis an den Referenzen). Beim Bau auf die Anrede der
+> Studio-Site umgestellt („Sie" statt „du", Regel `.claude/rules/i18n-seo.md`),
+> Englisch ergänzt. Die gültige Fassung steht in `apps/portfolio/app/data/home.ts`
+> (`PROBLEMS`, `COMPARISON_ROWS`, `FIT`, `RESULTS_DISCLAIMER`); die Entwürfe
+> hier unten sind der Stand vom 2026-09-03. Davids Gegenlesen steht aus.
+
 Davids Gate für W3 ist das Gegenlesen der Schmerz-Texte. Hier der komplette
 Entwurf (deutsch; EN folgt nach der Freigabe, damit nur eine Fassung im
 Review liegt). Regeln: Wir-Stimme, nur Belegbares, Du-Ansprache wie auf der

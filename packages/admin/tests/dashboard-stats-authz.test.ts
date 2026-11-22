@@ -90,17 +90,29 @@ describe('Silo (comments-App): Verhalten unverändert', () => {
 })
 
 describe('Die Routen selbst: awaited Site-Gate statt label-only', () => {
+  // Seit BT1 e (2026-11-21) gehen beide Routen durch `requireOverviewAccess`
+  // (server/utils/overviewAccess.ts) — das Site-Gate steht dort, plus die
+  // Betreiber-Pflicht im Not-Zugang.
+  const helper = readFileSync(fileURLToPath(new URL('../server/utils/overviewAccess.ts', import.meta.url)), 'utf8')
+
+  it('overviewAccess.ts gatet mit await requireCommunityPermission(..., \'dashboard.access\')', () => {
+    expect(helper).toContain(`await requireCommunityPermission(event, 'dashboard.access')`)
+    // `requireCommunityPermission` ist bewusst async (communityAccess.ts): ein
+    // vergessenes `await` wäre ein nicht abgewartetes Promise — also gar
+    // keine Prüfung. JEDER Aufruf muss awaited sein.
+    const calls = [...helper.matchAll(/(\w+\s+)?requireCommunityPermission\(/g)]
+    expect(calls.length).toBeGreaterThan(0)
+    for (const call of calls) expect(call[1]?.trim()).toBe('await')
+  })
+
   for (const file of ['stats.get.ts', 'analytics.get.ts']) {
-    it(`${file} gatet mit await requireCommunityPermission(..., 'dashboard.access')`, () => {
+    it(`${file} gatet mit await requireOverviewAccess(event)`, () => {
       const source = routeSource(file)
-      expect(source).toContain(`await requireCommunityPermission(event, 'dashboard.access')`)
+      expect(source).toContain('await requireOverviewAccess(event)')
       // Das label-only `requirePermission` war der Befund — es darf nicht
       // zurückkommen.
       expect(source).not.toMatch(/(?<!Site)requirePermission\(/)
-      // `requireCommunityPermission` ist bewusst async (communityAccess.ts): ein
-      // vergessenes `await` wäre ein nicht abgewartetes Promise — also gar
-      // keine Prüfung. JEDER Aufruf muss awaited sein.
-      const calls = [...source.matchAll(/(\w+\s+)?requireCommunityPermission\(/g)]
+      const calls = [...source.matchAll(/(\w+\s+)?requireOverviewAccess\(/g)]
       expect(calls.length).toBeGreaterThan(0)
       for (const call of calls) expect(call[1]?.trim()).toBe('await')
     })

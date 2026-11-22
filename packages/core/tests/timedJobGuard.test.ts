@@ -37,6 +37,7 @@ const EXPECTED_JOB_NAMES = [
   'brand-waitlist-retention',
   'custom-domain-notice',
   'custom-domain-sweep',
+  'disabled-member-sweep',
   'email-digest',
   'entitlements-pull',
   'event-reminders',

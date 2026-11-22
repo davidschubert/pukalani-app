@@ -124,13 +124,18 @@ const primaryLocaleItems = PRIMARY_LOCALES.map(code => ({ value: code, label: co
  */
 const brandName = useTenantBrand()
 const requestFetch = useRequestFetch()
-const { data: profile } = await useAsyncData(
+const { data: profile, error: profileError, refresh: refreshProfile } = await useAsyncData(
   'community-profile',
   () => isTenantHost.value
     ? requestFetch<{ name: string, description: string, locale?: string, aiTraining?: boolean }>('/api/community/profile')
     : Promise.resolve(null),
   { watch: [isTenantHost] },
 )
+/**
+ * LZ1: scheitert das Laden, zeigt die Karte KEIN leeres Formular — ein „Speichern"
+ * würde Name und Beschreibung mit Leere überschreiben. Hier ersetzt jeder Fehler
+ * das Formular (die Seite ist ohnehin nur für die Besitzer-Rolle).
+ */
 watchEffect(() => {
   profileState.name = profile.value?.name ?? ''
   profileState.description = profile.value?.description ?? ''
@@ -516,7 +521,9 @@ async function deleteCommunity() {
     :description="t('dashboard.community.profile.description')"
     variant="subtle"
   >
+    <CoreInlineLoadError v-if="profileError" :retry="refreshProfile" data-community-profile-error />
     <UForm
+      v-else
       :schema="profileSchema"
       :state="profileState"
       class="flex flex-col gap-4"

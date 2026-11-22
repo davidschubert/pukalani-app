@@ -12,12 +12,18 @@
   --ui-color-primary-800: #464800;
   --ui-color-primary-900: #2c2e00;
   --ui-color-primary-950: #0e0f00;
-  --ui-primary: var(--ui-color-primary-600);
+  --ui-primary: #656800;
   --ui-radius: 0.375rem;
 }
 
 .dark[data-theme='meadow'] {
   --ui-primary: var(--ui-color-primary-400);
+}
+
+:root[data-theme='meadow']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #0e0f00;
+  --ui-primary-focus: #656800;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -34,6 +40,13 @@
   --ui-color-primary-800: #46480a;
   --ui-color-primary-900: #2c2e00;
   --ui-color-primary-950: #0e0f00;
+  --ui-primary: #656815;
+}
+
+:root[data-theme='meadow'][data-variant='soft']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #0e0f00;
+  --ui-primary-focus: #656815;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -50,6 +63,13 @@
   --ui-color-primary-800: #45472a;
   --ui-color-primary-900: #2b2d16;
   --ui-color-primary-950: #0e0e02;
+  --ui-primary: #64673f;
+}
+
+:root[data-theme='meadow'][data-variant='muted']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #0e0e02;
+  --ui-primary-focus: #64673f;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -66,6 +86,13 @@
   --ui-color-primary-800: #424400;
   --ui-color-primary-900: #2a2c00;
   --ui-color-primary-950: #0e0f00;
+  --ui-primary: #656900;
+}
+
+:root[data-theme='meadow'][data-variant='vivid']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #000000;
+  --ui-primary-focus: #656900;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -82,6 +109,23 @@
   --ui-color-primary-800: #3b3d00;
   --ui-color-primary-900: #272800;
   --ui-color-primary-950: #0e0f00;
+  --ui-primary: #656900;
+}
+
+.dark[data-theme='meadow'][data-variant='deep'] {
+  --ui-primary: #a0a534;
+}
+
+:root[data-theme='meadow'][data-variant='deep']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #ffffff;
+  --ui-primary-focus: #656900;
+}
+
+.dark[data-theme='meadow'][data-variant='deep'] :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-400);
+  --ui-text-inverted: var(--ui-color-neutral-900);
+  --ui-primary-focus: #a0a534;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -98,7 +142,13 @@
   --ui-color-primary-800: #4f5200;
   --ui-color-primary-900: #303200;
   --ui-color-primary-950: #0e0f00;
+  --ui-primary: #656900;
+}
+
+:root[data-theme='meadow'][data-variant='bright']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-700);
+  --ui-text-inverted: #ffffff;
+  --ui-primary-focus: #656900;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -115,6 +165,13 @@
   --ui-color-primary-800: #314f00;
   --ui-color-primary-900: #1e3200;
   --ui-color-primary-950: #071100;
+  --ui-primary: #486f00;
+}
+
+:root[data-theme='meadow'][data-variant='warm']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #071100;
+  --ui-primary-focus: #486f00;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -131,6 +188,13 @@
   --ui-color-primary-800: #534300;
   --ui-color-primary-900: #352a00;
   --ui-color-primary-950: #120d00;
+  --ui-primary: #786200;
+}
+
+:root[data-theme='meadow'][data-variant='cool']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #120d00;
+  --ui-primary-focus: #786200;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -147,6 +211,13 @@
   --ui-color-primary-800: #634100;
   --ui-color-primary-900: #3e2800;
   --ui-color-primary-950: #160b00;
+  --ui-primary: #895b00;
+}
+
+:root[data-theme='meadow'][data-variant='dawn']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #160b00;
+  --ui-primary-focus: #895b00;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -163,6 +234,13 @@
   --ui-color-primary-800: #004c1a;
   --ui-color-primary-900: #00320e;
   --ui-color-primary-950: #001203;
+  --ui-primary: #00742c;
+}
+
+:root[data-theme='meadow'][data-variant='dusk']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #000000;
+  --ui-primary-focus: #00742c;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -179,5 +257,11 @@
   --ui-color-primary-800: #505326;
   --ui-color-primary-900: #313210;
   --ui-color-primary-950: #0e0f00;
+  --ui-primary: #656833;
+}
+
+:root[data-theme='meadow'][data-variant='pastel']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-700);
+  --ui-text-inverted: #ffffff;
+  --ui-primary-focus: #656833;
 }

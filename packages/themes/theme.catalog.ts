@@ -69,20 +69,27 @@ function tones(base: string, count = 10): ThemeSpecVariant[] {
 }
 
 // ── Katalog: 26 Farbwelten ──────────────────────────────────────────────────
+//
+// `keepFill: true` (Bahn 7, 2026-11): die Hauptfarbe muss als Schrift 4,5 zu 1
+// erreichen. Gelb und Orange würden dafür braun — dort bleibt die FLÄCHE
+// (Knopf, Etikett) und bekommt dunkle Schrift; nur Links und Text in der
+// Hauptfarbe werden dunkler. Alle anderen Welten rücken als Ganzes ein Stück
+// dunkler (Grün bleibt Grün, Blau bleibt Blau). Messwerte und Abwägung je
+// Welt: Eintrag „Bahn 7" in docs/OPEN-ITEMS-COMPLETE.md.
 
 export const THEME_CATALOG: ThemeSpec[] = [
   // 21 chromatische Welten über den oklch-Hue-Kreis (Bestands-Basen exakt
   // beibehalten; Reihenfolge = Hue-Position, beginnend bei Rot)
   { id: 'crimson', name: 'Crimson', base: 'oklch(64.5% 0.246 16.439)', variants: tones('oklch(64.5% 0.246 16.439)') },
   { id: 'coral', name: 'Coral', base: 'oklch(66% 0.19 33)', variants: tones('oklch(66% 0.19 33)') },
-  { id: 'sunset', name: 'Sunset', base: '#f47e2a', variants: [
+  { id: 'sunset', name: 'Sunset', base: '#f47e2a', keepFill: true, variants: [
     { id: 'rose', base: '#e93562' },
     { id: 'violet', base: '#b640dd' },
     ...tones('#f47e2a', 8),
   ] },
-  { id: 'citrus', name: 'Citrus', base: 'oklch(76.9% 0.188 70.08)', variants: tones('oklch(76.9% 0.188 70.08)') },
-  { id: 'honey', name: 'Honey', base: 'oklch(75% 0.16 90)', variants: tones('oklch(75% 0.16 90)') },
-  { id: 'meadow', name: 'Meadow', base: 'oklch(72% 0.19 112)', variants: tones('oklch(72% 0.19 112)') },
+  { id: 'citrus', name: 'Citrus', base: 'oklch(76.9% 0.188 70.08)', keepFill: true, variants: tones('oklch(76.9% 0.188 70.08)') },
+  { id: 'honey', name: 'Honey', base: 'oklch(75% 0.16 90)', keepFill: true, variants: tones('oklch(75% 0.16 90)') },
+  { id: 'meadow', name: 'Meadow', base: 'oklch(72% 0.19 112)', keepFill: true, variants: tones('oklch(72% 0.19 112)') },
   { id: 'spring', name: 'Spring', base: 'oklch(70% 0.21 133)', variants: tones('oklch(70% 0.21 133)') },
   { id: 'forest', name: 'Forest', base: '#51cd85', variants: [
     { id: 'lime', base: '#84d24b' },

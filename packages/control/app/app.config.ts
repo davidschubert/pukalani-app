@@ -27,6 +27,14 @@ export default defineAppConfig({
        * es gäbe sie nie. Scharf (`apply`) schaltet nur eine App ausdrücklich.
        */
       customDomainSweep: 'dry-run',
+      /**
+       * ZWEITER SICHERUNGS-LAUF (SI1 b): `active`-Zeilen in stillgelegten
+       * Communities auf `removed` stellen. `off` | `dry-run` | `apply`
+       * (unbekannt = `off`). Vorgabe `dry-run`: live zählt er nur (Davids
+       * Ja 2026-11-21, „nur zählend"); `apply` erst mit Davids Ja zur
+       * gezählten Zahl, als Zeile in der app.config der App.
+       */
+      disabledMembershipSweep: 'dry-run',
       // Plan-Katalog der COMMUNITY (P4-Rename 2026-07-26, Davids Pricing-Entscheid:
       // Basic 0 € / Personal 29 € / Pro 149 €, jährlich −25 %; Enterprise =
       // Studio-Angebot, KEIN Self-Service-Plan) — bewusst Code statt Table

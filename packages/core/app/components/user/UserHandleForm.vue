@@ -47,7 +47,7 @@ const toast = useToast()
 // Der Antworttyp kommt aus `shared/types/handle.ts` und wird vom Handler
 // ebenfalls verlangt (TS2589-Umbau, 2026-08-14): eine hier lokal erfundene
 // Form wäre eine Behauptung, die niemand gegenprüft.
-const { data, refresh } = await useFetch<AccountHandleResponse>('/api/account/handle', {
+const { data, refresh, error } = await useFetch<AccountHandleResponse>('/api/account/handle', {
   lazy: true,
   server: false,
   default: () => ({ handle: null, changedAt: null, canChange: true, availableAt: null }),
@@ -132,6 +132,10 @@ async function save() {
         </template>
       </UInput>
     </UFormField>
+
+    <!-- LZ1: ohne diese Zeile stünde nach einem gescheiterten Abruf ein leeres
+         Feld, als hätte das Konto noch keinen Namen. -->
+    <CoreInlineLoadError v-if="error" :retry="refresh" data-handle-load-error />
 
     <!-- Die Sperrfrist als Satz, mit Datum — „geht nicht" allein beantwortet
          nicht, ab wann es wieder geht. -->
