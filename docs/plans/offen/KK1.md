@@ -22,10 +22,8 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
   (Termine) geht über die Route, die Oberfläche bietet es an einem schon
   ausgeblendeten Termin nicht an — sie kann den halben Zustand nicht erkennen.
   Die Kontingent-Zahlen im Katalog: gebaut und auf Production gefahren
-  (2026-11-22, COMPLETE „KK1 (c) — Kontingent-Zahlen"). Offen: Davids
-  Entscheidung zur Kommentar-Grenze von Pro im Katalog (1000/50.000, Rest der
-  Saat von control-014; die Vorgabe sagt 5000/250.000) — zu ändern in der
-  Konsole, Kasten „Pläne & Limits". Die
+  (2026-11-22, COMPLETE „KK1 (c) — Kontingent-Zahlen"), die Kommentar-Grenze
+  von Pro am selben Tag auf 5000/250.000 gehoben. Die
   drei Verwaltungs-Routen der Seiten haben noch keinen Rollen-Test (stehen im
   Bestand, BT1 b); ein solcher Test belegt dann auch den Hinweis der Liste
   und den Fehler beim unvollständigen Löschen.

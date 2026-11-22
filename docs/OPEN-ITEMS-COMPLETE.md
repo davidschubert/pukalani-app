@@ -79,13 +79,15 @@ ergänzt `pages`, `events`, `media`; vorher stand je Plan nur `comments`. Ein
 zweiter Lauf meldet für alle drei Pläne „alle Arten stehen schon im
 Katalog"; alle sieben Hosts mit Datenbank `ok`, `schema: ok`.
 
-**Befund nebenbei (offen, OPEN-ITEMS KK1).** Auf Production wie im lokalen
+**Befund nebenbei (erledigt am selben Tag).** Auf Production wie im lokalen
 Spiegel steht für `pro` bei Kommentaren 1000/50.000 — die Vorgabe sagt
 5000/250.000. Das ist die Saat von control-014 (damals hieß der mittlere Plan
 `pro`), die die Umbenennung mitgenommen hat; der Katalog gewinnt, also haben
 Pro-Communities heute die Kommentar-Grenze von Personal. control-042 hat das
-nicht angefasst (es überschreibt nie); ob die Zahl korrigiert wird,
-entscheidet David (Konsole, Kasten „Pläne & Limits").
+nicht angefasst (es überschreibt nie). Mit Davids Ja („Ja, heben") über die
+Konsole auf Production auf 5000/250.000 gesetzt; `GET /api/control/plans`
+liest danach für `pro` 5000/250.000, alle anderen Arten und Pläne
+unverändert.
 
 **Gelernt:** Der erste Wurf zog die Zahlen in eine eigene Datei, die
 `app.config.ts` per Wert-Import las. Dev-Server, Typecheck, Unit-Tests und
