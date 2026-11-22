@@ -1,5 +1,5 @@
 import { readRequestSession } from '../../utils/requestSession'
-import { isLiveTicketRequest, LIVE_CHECK_HEADER, LIVE_JWT_DURATION_S, liveRelayHooks } from '../../utils/liveRelay'
+import { isLiveTicketRequest, LIVE_CHECK_HEADER, LIVE_JWT_DURATION_S, LIVE_MINT_PER_MINUTE, liveRelayHooks } from '../../utils/liveRelay'
 import { logEvent } from '../../utils/logEvent'
 import { isAuthBackendOutage } from '../../../shared/authFailure'
 import { liveRelayReady } from '../../utils/siteCard'
@@ -33,6 +33,7 @@ import { siteCardCommunityOf } from '../../../shared/siteCard'
  * `sessionId`): endet sie, schließt Appwrite die Verbindung oben sofort.
  */
 const MIN_DURATION_S = 60
+
 
 /** Appwrite nicht erreichbar ⇒ 503 mit Log-Zeile; abgelehnt ⇒ 401 (AB1 d). */
 function appwriteRefused(step: string) {
@@ -78,6 +79,11 @@ export default defineEventHandler({
       if (session.claims.expiresAt <= Date.now()) throw createError({ status: 401, statusText: 'Unauthorized' })
       setHeader(event, 'cache-control', 'no-store')
       return { scope }
+    }
+    const { store, prefix } = useRateLimitStore(event)
+    const minted = await store.hit(`${prefix}live:mint:${user.$id}`, 60_000)
+    if (minted.count > LIVE_MINT_PER_MINUTE) {
+      throw createError({ status: 429, statusText: 'Too Many Requests' })
     }
     const now = Date.now()
     const duration = Math.min(LIVE_JWT_DURATION_S, Math.floor((session.claims.expiresAt - now) / 1000))

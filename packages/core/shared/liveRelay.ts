@@ -20,9 +20,9 @@
  *    ohne die Spalte, nur wenn sie für alle lesbar ist (`read("any")`, das
  *    sähe ein Gast direkt bei Appwrite auch). Eine Anwesenheit nur mit
  *    `metadata.tenantId` dieser Community. Vom Konto-Kanal nur die
- *    Ereignis-NAMEN (die Seite prüft daraufhin `/api/auth/me`), der Inhalt
- *    bleibt leer — Sitzungen und Einstellungen des Kontos verlassen den Server
- *    nicht.
+ *    Ereignis-ART ohne Kennungen (`users.*.sessions.*.delete`; die Seite
+ *    prüft daraufhin `/api/auth/me`), der Inhalt bleibt leer — Sitzungen
+ *    anderer Seiten und Einstellungen des Kontos verlassen den Server nicht.
  *  - Schreiben: nur die eigene Anwesenheit, mit genau den Rechten und der
  *    Community, die der Server für diese Seite rechnet, nur bekannten
  *    Feldern, Name und Bild vom Server.
@@ -147,6 +147,20 @@ export function livePayloadAllowed(kind: LiveChannelKind, payload: unknown, scop
   return hasReadAny(record.$permissions)
 }
 
+/**
+ * Ereignis-Name ohne Kennungen: jede Kennung (ungerade Stelle, nicht die
+ * letzte) wird `*` — `users.u1.sessions.s2.delete` ⇒ `users.*.sessions.*.delete`.
+ * Appwrite schickt diese Formen ohnehin mit; doppelte fallen weg.
+ */
+export function maskAccountEvents(events: readonly string[]): string[] {
+  const out = new Set<string>()
+  for (const event of events) {
+    const parts = event.split('.')
+    out.add(parts.map((part, i) => (i % 2 === 1 && i < parts.length - 1 ? '*' : part)).join('.'))
+  }
+  return [...out]
+}
+
 /** Ein Ereignis, wie es oben ankommt (`type: 'event'`, `data`). */
 export interface LiveEventData {
   channels: string[]
@@ -188,7 +202,7 @@ export function sanitizeLiveEvent(
     if (!livePayloadAllowed(kind, raw.payload, scope)) continue
     out.push({
       channels: channels.filter(c => liveChannelKind(c) === kind),
-      events,
+      events: kind === 'account' ? maskAccountEvents(events) : events,
       payload: kind === 'account' ? {} : raw.payload,
       ...(raw.timestamp !== undefined ? { timestamp: raw.timestamp } : {}),
       subscriptions: ids,

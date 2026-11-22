@@ -4,7 +4,7 @@ import { probeRoute, resetCommunityWorld, userIdOf, type RouteProbe } from './su
 import { appwriteFake } from './support/appwriteFake'
 import { coreKit } from './support/coreRouteKit'
 import { configureSiteCard, deriveSiteCardKey, sealSiteCard, setWebsocketBuiltForTests } from '../server/utils/siteCard'
-import { LIVE_CHECK_HEADER, LIVE_JWT_DURATION_S, liveTicketHeaderForTests } from '../server/utils/liveRelay'
+import { LIVE_CHECK_HEADER, LIVE_JWT_DURATION_S, LIVE_MINT_PER_MINUTE, liveTicketHeaderForTests } from '../server/utils/liveRelay'
 
 /**
  * `GET /api/live/realtime` — die Fahrkarte der Live-Verbindung unter einer
@@ -53,7 +53,7 @@ function sessionAlive() {
 
 const load = () => import('../server/api/live/realtime')
 
-function probe(cookie: string | undefined, over: Partial<RouteProbe> & { ticket?: boolean, check?: boolean } = {}) {
+function probe(cookie: string | undefined, over: Partial<RouteProbe> & { ticket?: boolean, check?: boolean, globalsExtra?: Record<string, unknown> } = {}) {
   const header = liveTicketHeaderForTests()
   const headers: Record<string, string> = { host: OWN_DOMAIN }
   if (over.ticket !== false) headers[header.name] = header.value
@@ -68,6 +68,7 @@ function probe(cookie: string | undefined, over: Partial<RouteProbe> & { ticket?
       ...kit.globals,
       // Die Route ist ein Objekt (HTTP + WebSocket); geprüft wird ihr HTTP-Gesicht.
       defineEventHandler: (definition: { handler: unknown }) => definition.handler,
+      ...over.globalsExtra,
     },
   })
 }
@@ -223,6 +224,19 @@ describe('GET /api/live/realtime — wer eine Fahrkarte bekommt', () => {
   ])('Nachprüfung: %s ⇒ %s', async (_name, over, status) => {
     writeMode()
     expect((await probe(card(), { ...over, check: true })).status).toBe(status)
+  })
+
+  it('Bremse je Konto: nach 30 Ausstellungen in der Minute ⇒ 429, die Nachprüfung bleibt frei (L1/L2)', async () => {
+    writeMode()
+    sessionAlive()
+    appwriteFake.reply('admin.users.createJWT', () => ({ jwt: 'probe-jwt' }))
+    let count = 0
+    const store = { hit: async () => ({ count: ++count, resetInMs: 60_000 }) }
+    const limited = { useRateLimitStore: () => ({ store, prefix: 'rl:' }) }
+    count = LIVE_MINT_PER_MINUTE - 1
+    expect((await probe(card(), { globalsExtra: limited })).status).toBe(200)
+    expect((await probe(card(), { globalsExtra: limited })).status).toBe(429)
+    expect((await probe(card(), { globalsExtra: limited, check: true })).status).toBe(200)
   })
 
   it('Nachprüfung ohne Prozess-Geheimnis ⇒ 404', async () => {

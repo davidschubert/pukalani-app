@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { isSessionDeleteEvent } from '../shared/realtimeAuth'
 import {
+  maskAccountEvents,
   filterPresenceUpsert,
   filterSubscribe,
   liveChannelKind,
@@ -111,11 +113,24 @@ describe('Ereignisse — fremde Community kommt nicht durch', () => {
     expect(sanitizeLiveEvent({ channels: ['presences'], events: ['x'], payload: { metadata: {} }, subscriptions: ['p'] }, presence, SCOPE)).toEqual([])
   })
 
-  it('Konto-Kanal: nur die Ereignis-Namen, kein Inhalt', () => {
+  it('Konto-Kanal: nur die Ereignis-Art ohne Kennungen, kein Inhalt (L3)', () => {
     const account = subs({ k: { kind: 'account', channels: ['account'] } })
-    const out = sanitizeLiveEvent({ channels: ['account'], events: ['users.u-1.sessions.s-2.create'], payload: { secret: 'geheim', provider: 'email' }, subscriptions: ['k'] }, account, SCOPE)
-    expect(out).toEqual([{ channels: ['account'], events: ['users.u-1.sessions.s-2.create'], payload: {}, subscriptions: ['k'] }])
+    const out = sanitizeLiveEvent({ channels: ['account'], events: ['users.u-1.sessions.s-2.create', 'users.*.sessions.*.create', 'users.u-1.sessions.*.create'], payload: { secret: 'geheim', provider: 'email' }, subscriptions: ['k'] }, account, SCOPE)
+    expect(out).toEqual([{ channels: ['account'], events: ['users.*.sessions.*.create'], payload: {}, subscriptions: ['k'] }])
     expect(JSON.stringify(out)).not.toContain('geheim')
+    expect(JSON.stringify(out)).not.toContain('s-2')
+  })
+
+  it.each([
+    ['users.u1.sessions.s2.delete', 'users.*.sessions.*.delete'],
+    ['users.u1.update.prefs', 'users.*.update.prefs'],
+    ['users.u1.update', 'users.*.update'],
+  ])('Maske %s ⇒ %s, die Abmelde-Erkennung greift weiter', (event, masked) => {
+    expect(maskAccountEvents([event])).toEqual([masked])
+  })
+
+  it('Abmelde-Erkennung des Browsers erkennt die maskierte Form', () => {
+    expect(isSessionDeleteEvent(maskAccountEvents(['users.u1.sessions.s2.delete']))).toBe(true)
   })
 
   it('kaputte Nachricht ⇒ nichts', () => {
@@ -392,6 +407,18 @@ describe('Dienst: eine Verbindung', () => {
     connection.fromDownstream(JSON.stringify({ type: 'presence', data: { presenceId: 'u-1', status: 'online', permissions: presencePermissions(true, 'c-a', 'u-1'), metadata: { tenantId: 't-a', userName: 'Fremd' } } }))
     expect(up.sent).toHaveLength(1)
     expect(JSON.parse(up.sent[0]!).data.metadata.userName).toBe('P')
+  })
+
+  it('Browser liest nicht mit (Sende-Puffer voll) ⇒ zu mit 1013, kein weiteres Senden (L4)', () => {
+    const { connection, peer, sent, up } = connect()
+    up.open()
+    up.emit({ type: 'connected', data: {} })
+    connection.fromDownstream(JSON.stringify({ type: 'subscribe', data: [{ subscriptionId: 's1', channels: [ROWS] }] }))
+    ;(peer as { websocket?: { bufferedAmount: number } }).websocket = { bufferedAmount: relay.LIVE_SEND_BUFFER_MAX + 1 }
+    const before = sent.length
+    up.emit({ type: 'event', data: { channels: [ROWS], events: ['e'], payload: { communityId: 't-a' }, subscriptions: ['s1'] } })
+    expect(sent.length).toBe(before)
+    expect(peer.closed?.code).toBe(relay.LIVE_CLOSE_SLOW)
   })
 
   it('zu große Nachricht von unten ⇒ verworfen', () => {

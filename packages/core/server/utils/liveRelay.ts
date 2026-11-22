@@ -61,9 +61,28 @@ export const LIVE_RECHECK_MS = 60_000
 export const LIVE_RESERVATION_MS = 15_000
 /** Wie lange oben höchstens bis `connected` vergehen darf (ms). */
 export const LIVE_UPSTREAM_CONNECT_MS = 15_000
-/** Verbindungen je Prozess / je Konto. */
+/**
+ * Verbindungen je Prozess / je Konto. Gezählt wird JE PROZESS — das trägt,
+ * solange pm2 die Platform mit `instances: 1` fährt (wie die Bremsen ohne
+ * Redis, `.claude/rules/appwrite.md`); mit mehr Instanzen gilt die Grenze je
+ * Instanz.
+ */
 export const LIVE_PROCESS_LIMIT = 2000
 export const LIVE_USER_LIMIT = 12
+/**
+ * BREMSE JE KONTO, nur für das AUSSTELLEN (L1/L2 aus dem Leitstand-Review):
+ * es kostet bei Appwrite `getSession` + `createJWT`. Bewusst nicht je
+ * Adresse — viele Menschen hinter einer Adresse (Firma, Schule, Mobilfunk)
+ * hielten sich sonst gegenseitig die Live-Verbindung zu — und nicht für die
+ * Nachprüfung, sonst machte ein voller Topf jede Nachprüfung zu „unbekannt",
+ * und ein entferntes Mitglied bliebe bis zum JWT-Ablauf statt einer Minute
+ * verbunden. 30 je Minute trägt 12 Verbindungen samt Neuverbinden.
+ */
+export const LIVE_MINT_PER_MINUTE = 30
+/** Ungesendetes je Browser-Verbindung, ab dem sie als zu langsam gilt (Bytes). */
+export const LIVE_SEND_BUFFER_MAX = 1024 * 1024
+/** Schließ-Code „zu langsam, später neu" (das SDK verbindet neu). */
+export const LIVE_CLOSE_SLOW = 1013
 /** Nachrichten nach oben, die vor `connected` warten dürfen. */
 const PENDING_LIMIT = 32
 
@@ -261,6 +280,8 @@ export interface LivePeer {
   send: (data: string) => unknown
   close: (code?: number, reason?: string) => void
   readonly context?: unknown
+  /** Der Socket darunter — gelesen wird nur `bufferedAmount`. */
+  readonly websocket?: { readonly bufferedAmount?: number }
 }
 
 type Downstream = LivePeer
@@ -417,6 +438,13 @@ export class LiveRelayConnection {
 
   private toDownstream(message: unknown): void {
     if (this.closed) return
+    // Liest der Browser nicht mit (langsame Leitung, eingefrorener Reiter),
+    // wüchse sonst der Puffer im Speicher des Servers ohne Grenze.
+    if ((this.peer.websocket?.bufferedAmount ?? 0) > LIVE_SEND_BUFFER_MAX) {
+      logEvent('warn', 'live_relay.slow_consumer', {})
+      this.shutdown(LIVE_CLOSE_SLOW, 'slow')
+      return
+    }
     try {
       this.peer.send(JSON.stringify(message))
     }
