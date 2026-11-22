@@ -908,7 +908,7 @@ usePortfolioSeo({
   /* Halt für die versteckte Beschriftung: ohne ihn hängt sie an der Seite
      statt an der Zelle und schiebt das Dokument auf 375 px breiter. */
   position: relative;
-  font-size: 1.05rem;
+  font-size: var(--text-base);
   font-weight: 700;
 }
 .comparison td.comparison__mark--yes {
