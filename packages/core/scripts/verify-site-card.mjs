@@ -8,7 +8,9 @@
  * brauchbarer `NUXT_SITE_CARD_KEY`). Sonst druckt es `○ übersprungen: <Grund>`
  * und prüft nichts — der Läufer zählt das nie als bestanden
  * (`skipReason` in `scripts/buehne/run.mjs`). Nachts startet `buehne.yml` die
- * Platform mit `write` und einem je Lauf zufälligen Schlüssel.
+ * Platform mit `write` und einem je Lauf zufälligen Schlüssel und setzt
+ * `EXPECT_SITE_CARD=write`: dann ist ein fehlender Modus ROT statt
+ * „übersprungen" — sonst bliebe ein still kaputter Nachtlauf grün.
  *
  * Geprüft, jeweils mit Gegenprobe:
  *   1. Anmelden schreibt eine Karte (Wert beginnt mit `c1.`); sie gilt auf
@@ -97,6 +99,10 @@ if (siteCard?.mode !== 'write' || siteCard?.cards !== true) {
     ? 'Platform antwortet nicht'
     : !siteCard ? 'Platform meldet kein Feld siteCard (Stand vor PK1 E1c)'
         : `Platform meldet siteCard.mode=${siteCard.mode}, cards=${siteCard.cards} — der Beweis braucht write mit Schlüssel`
+  if (process.env.EXPECT_SITE_CARD === 'write') {
+    console.log(`  ✗ der Lauf verlangt den Modus write (EXPECT_SITE_CARD=write): ${why}`)
+    process.exit(1)
+  }
   console.log(`○ übersprungen: ${why}`)
   process.exit(0)
 }

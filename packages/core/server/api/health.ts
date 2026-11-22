@@ -45,14 +45,22 @@ import { siteCardHealth } from '../utils/siteCard'
  *    Zwischenspeicher (ok 5 min, behind 30 s, unknown 10 s).
  *
  * SCHALTER DER EINTRITTSKARTE (PK1 E1c): `siteCard` sagt, wie die App den
- * Schalter `NUXT_SITE_CARD_MODE` gelesen hat — für die Prüfung nach dem
- * Umschalten (Runbook `docs/runbooks/PK1-EINSCHALTEN.md`) und für die Konsole,
- * die die Freigabe-Pflicht eigener Domains erst fallen lässt, wenn die
- * Platform bestätigt `write` meldet (K6). NUR drei Wörter, nie ein Schlüssel
- * und nie seine Kennung: `mode`, `cards` (ein brauchbarer Schlüssel ist da,
- * Karten können entstehen) und `previous` (ein voriger Schlüssel ist zum
- * Lesen gesetzt — gehört nach dem Tausch wieder weg; der Wächter warnt). Ein
- * Speicherzugriff, kein Zwischenspeicher nötig (`siteCardHealth`).
+ * Schalter `NUXT_SITE_CARD_MODE` gelesen hat — `mode`, `cards` (ein
+ * brauchbarer Schlüssel ist da, Karten können entstehen) und `previous` (ein
+ * voriger Schlüssel ist zum Lesen gesetzt). Ein Speicherzugriff, kein
+ * Zwischenspeicher nötig (`siteCardHealth`).
+ *
+ * WARUM ÖFFENTLICH (Gegenlesen E1c, Fund 5, entschieden: alle drei bleiben):
+ * es sind drei Betriebszustände, kein Geheimnis — kein Schlüssel, keine
+ * Schlüssel-Kennung, nichts über Personen. Wer sie liest, erfährt, ob die
+ * Anmeldung Karten schreibt; das sieht jeder ohnehin am eigenen Cookie
+ * (`c1.`). Gebraucht werden sie VON AUSSEN und ohne Geheimnis: vom
+ * Erreichbarkeits-Wächter (`scripts/ops/verify-health.mjs`, Warnung bei
+ * `previous`), von der Konsole für die Freigabe-Pflicht eigener Domains (K6,
+ * liest `mode`/`cards`) und von der Prüfung nach jedem Umschalten (Runbook
+ * `docs/runbooks/PK1-EINSCHALTEN.md`). Ein eigener, geschützter Weg nur für
+ * zwei Wahrheitswerte wäre mehr Angriffsfläche (ein weiteres Geheimnis) als
+ * die Werte selbst.
  */
 
 const CACHE_MS = 5_000
