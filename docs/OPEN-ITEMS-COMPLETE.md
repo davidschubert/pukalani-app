@@ -115,6 +115,51 @@ die ersten Fotos zeigten alle dieselbe Farbwelt.
 
 ---
 
+### LZ1 Bahn 8 — 42 Seiten zeigen einen Ausfall ehrlich; kleiner Baustein `CoreInlineLoadError` (Schübe A bis C) ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21: „Auch diese abarbeiten". Von den 56
+Dateien der Rest-Liste sind 42 umgestellt, in drei Pull Requests:
+**A** (Onboarding-Hinweise, Konto-Karten, Einladung, Diskussions-Hilfen),
+**B** (Dashboard-Kacheln, Diskussionen „Über", Kategorie- und Lektions-Seite,
+Kommentare, Einbetter- und Schriften-Liste, Betreiber-Seiten, Docs, SEO),
+**C** (Hilfe, Community-Startseite, Markt, Radar, Insights-Editor, Feed,
+Einbett-Fenster).
+
+**Wie.** Zwei kleine Core-Bausteine: `CoreInlineLoadError` (eine ruhige Zeile
+mit „Noch einmal versuchen" an Stelle eines Hinweises oder einer Kachel) und
+`isFetchOutage(error)` (kein Status oder 5xx = echter Ausfall; 401/403/404
+bleiben dort still, wo sie erwartet sind — auch die neue 403 der Übersicht
+für ein Konto mit nur dem Instanz-Label `moderator`, BT1 e). Listen über
+`listState()`/`CoreListState`; Seiten mit eigenem Fehlerweg antworten bei
+einem Ausfall 503 statt eines falschen 404 (Hilfe, Kategorie, Lektion,
+Docs). Die Zwei-Faktor-Karte sagt bei einem Ausfall nicht mehr „aus". Das
+Einbett-Fenster bleibt bei gescheiterter Einbetter-Prüfung bewusst offen (die
+CSP ist die Grenze) und trägt nur ein Merkmal `data-embed-check="failed"`.
+Der Zähler der Rest-Liste erkennt jetzt auch `x = bedingung ? await
+useFetch(…)` (PostFeed zeigte den Fehler schon).
+
+**Beweis.** Wächter `listStateBacklogGuard.test.ts` (mit neuem Test- und
+Gegenfall für den Zähler), `pnpm -r test`, Typecheck. Im Browser je Schub vier
+Seiten gegen die lokale Bühne (Abruf im Browser mit 500 gestellt, dann 404/403,
+dann „Noch einmal versuchen"): Community-Einstellungen, Übersicht mit Hinweisen,
+Sicherheit und Sitzungen, Einladung annehmen (A); Übersicht-Kacheln,
+Einbetter-Liste (Fehler, leer), Diskussionen „Über", Statistik-Einstellungen
+(B); Hilfe-Artikel und Hilfe-Start (503), Community-Startseite (Ausfall ⇒
+Fehlerzeile, 404 ⇒ Willkommens-Seite), Feed, Einbett-Fenster,
+Seitenleisten-Links (C). Keine Hydration-Meldung beim vollen Seitenaufbau.
+
+**Offen** (OPEN-ITEMS „LZ1"): 12 Dateien in `packages/brand` und der
+Fußbereich von `apps/portfolio` — Gebiet einer parallelen Bahn, nicht
+angefasst. Bleibt mit Grund: `DiscussionSidebarLinks.vue`.
+
+**Gelernt:** Ein Helfer, der nur `pnpm check` und den Wächter fährt, übersieht
+die übrigen Unit-Tests (`ssrTenantFetch`: roher `$fetch` in `useAsyncData`
+verliert im SSR den Mandanten) — je Schub `pnpm -r test` vor dem Push. Und:
+die Hilfs-Probe „Abruf im Browser stellen" trifft nur Abrufe, die NACH dem
+Stellen laufen; ein Zurückblättern bedient Nuxt aus dem Zwischenspeicher —
+dann den Abruf über `nuxtApp._asyncData[<key>].execute()` neu auslösen.
+---
+
 ### KK1 (c) — Plan-Route: Kontingent-Grenzen zusammenführen statt überschreiben; Konzept für den Katalog ✅ 2026-11-22
 
 **Was.** Davids Antwort vom 2026-11-21: „Ja, in den Katalog". Geschrieben

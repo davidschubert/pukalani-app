@@ -12,7 +12,8 @@
     },
     "search": {
       "button": "Suchen …",
-      "placeholder": "Hilfe durchsuchen …"
+      "placeholder": "Hilfe durchsuchen …",
+      "loadFailed": "Die Suche konnte nicht geladen werden."
     }
   }
 }

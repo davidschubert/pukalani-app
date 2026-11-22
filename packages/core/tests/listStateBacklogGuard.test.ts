@@ -45,6 +45,8 @@ describe('Rest-Liste Listen-Zustände (Q14)', () => {
     expect(openFetchCount('const { data, error } = await useFetch<X>(\'/api/x\')')).toBe(0)
     expect(openFetchCount('const res = useFetch<X>(\'/api/x\')\nif (res.error.value) {}')).toBe(0)
     expect(openFetchCount('// useFetch(\'/api/x\')')).toBe(0)
+    expect(openFetchCount('const own = a ? await useFetch<X>(\'/api/x\') : null\nown.error.value')).toBe(0)
+    expect(openFetchCount('const own = a ? await useFetch<X>(\'/api/x\') : null')).toBe(1)
     expect(Object.keys(actual).length).toBeGreaterThan(0)
   })
 })

@@ -8,7 +8,7 @@ const { t, locale } = useI18n()
 // des useAsyncData trägt sie deshalb mit: ohne ihn behielte ein Sprachwechsel
 // die zwischengespeicherte Navigation der alten Sprache, und der Leser
 // bekäme englische Artikel in einer deutschen Seitenleiste.
-const { data: navigation } = await useAsyncData(() => `docs-navigation-${locale.value}`, async () => {
+const { data: navigation, error: navigationError, refresh: refreshNavigation } = await useAsyncData(() => `docs-navigation-${locale.value}`, async () => {
   const [anleitung, entwickler] = await Promise.all([
     queryCollectionNavigation(docsCollection('anleitung', locale.value)),
     queryCollectionNavigation(docsCollection('entwickler', locale.value)),
@@ -34,7 +34,7 @@ watch(searchOpen, (isOpen) => {
   if (isOpen) searchWanted.value = true
 }, { immediate: true })
 
-const { data: searchFiles, status: searchStatus } = useLazyAsyncData(
+const { data: searchFiles, status: searchStatus, error: searchError, refresh: refreshSearch } = useLazyAsyncData(
   () => `docs-search-${locale.value}-${searchWanted.value ? 'wanted' : 'idle'}`,
   async () => {
     if (!searchWanted.value) return []
@@ -46,6 +46,26 @@ const { data: searchFiles, status: searchStatus } = useLazyAsyncData(
   },
   { server: false, watch: [locale, searchWanted] },
 )
+
+// AUSFALL SICHTBAR (LZ1): die Inhalte kommen aus der Content-Datenbank (im
+// Browser per Abruf). Scheitert die Navigation, stünde die Seitenleiste leer
+// und läse sich wie „es gibt keine Artikel" — stattdessen eine ruhige Zeile mit
+// „Noch einmal versuchen" über dem Inhalt. Nuxt Content wirft für „nichts
+// gefunden" nicht, jeder Fehler hier ist also ein Ausfall.
+const navigationFailed = computed(() => isFetchOutage(navigationError.value))
+
+// Die Suche hat keinen eigenen Fehler-Platz (UContentSearch zeigt nur Treffer):
+// ein Ausfall beim Laden der Such-Abschnitte meldet sich als Hinweis, sonst
+// bliebe die Suche still leer. Nur im Browser (der Abruf läuft `server: false`).
+const toast = useToast()
+watch(searchError, (error) => {
+  if (!error) return
+  toast.add({
+    color: 'warning',
+    title: t('docs.search.loadFailed'),
+    actions: [{ label: t('ui.listState.retry'), color: 'neutral', variant: 'outline', onClick: () => refreshSearch() }],
+  })
+})
 
 const searchNavigation = computed(() => [
   ...(navigation.value?.anleitung ?? []),
@@ -110,6 +130,9 @@ const uiLocale = useNuxtUiLocale()
     <DocsSubnav />
 
     <UMain>
+      <UContainer v-if="navigationFailed" class="pt-4">
+        <CoreInlineLoadError :retry="refreshNavigation" data-docs-navigation-error />
+      </UContainer>
       <NuxtLayout>
         <NuxtPage />
       </NuxtLayout>
