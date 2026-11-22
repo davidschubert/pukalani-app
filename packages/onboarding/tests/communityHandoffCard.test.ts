@@ -67,6 +67,8 @@ describe('POST /api/onboarding/handoff — Siegel trägt die Angaben der Karte',
       userId: userIdOf('member'),
       sessionId: 's-control',
       authAt: ORIGINAL_AUTH,
+      // Ablauf der Kontroll-Karte (PK1 Review B1): das Ziel gilt nicht länger.
+      expiresAt: expect.any(Number),
       nonce: expect.any(String),
     })
   })

@@ -164,6 +164,13 @@ describe('Siegel für den Host-Wechsel: neue und alte Fassung', () => {
     expect(openHandoffToken(token, key, HOST, NOW)).toBe('s')
   })
 
+  it('Review B1: der Ablauf der Quell-Karte reist mit; ein falscher Typ macht das Siegel ungültig', () => {
+    const token = sealHandoff({ secret: 's', userId: 'u-a', expiresAt: NOW + 9000 }, key, HOST, NOW)
+    expect(openHandoff(token, key, HOST, NOW)).toEqual({ secret: 's', userId: 'u-a', expiresAt: NOW + 9000 })
+    // Ein nicht-endlicher Wert wird gar nicht erst eingesiegelt.
+    expect(openHandoff(sealHandoff({ secret: 's', expiresAt: Number.NaN }, key, HOST, NOW), key, HOST, NOW)).toEqual({ secret: 's' })
+  })
+
   it('alte Fassung (nur Geheimnis) öffnet sich weiter, ohne Zusatzfelder', () => {
     const token = sealHandoffToken('s', key, HOST, NOW)
     expect(openHandoff(token, key, HOST, NOW)).toEqual({ secret: 's' })

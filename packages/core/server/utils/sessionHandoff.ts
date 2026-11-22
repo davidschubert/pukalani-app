@@ -55,7 +55,13 @@ export function requestHandoffGrant(event: H3Event, options: { leavesHost: boole
   }
   const session = readRequestSession(event)
   if (!session) return null
-  if (settings.mode !== 'write') return { secret: session.secret }
+  // Auch in `read` (dem Rückweg aus `write`) reist der Ablauf einer KARTE
+  // mit, sonst schriebe das Ziel eine Kopie bis zum späteren Appwrite-Ablauf
+  // einer Seiten-Sitzung (Review B1). In `off` gibt es keine Karte — das
+  // Siegel bleibt dort Byte für Byte wie vor E1b.
+  if (settings.mode !== 'write') {
+    return session.format === 'card' ? { secret: session.secret, expiresAt: session.claims.expiresAt } : { secret: session.secret }
+  }
   const nonce = randomBytes(16).toString('base64url')
   if (session.format === 'card') {
     return {
@@ -63,6 +69,7 @@ export function requestHandoffGrant(event: H3Event, options: { leavesHost: boole
       userId: session.claims.userId,
       sessionId: session.claims.sessionId,
       authAt: session.claims.authAt,
+      expiresAt: session.claims.expiresAt,
       nonce,
     }
   }
@@ -153,11 +160,15 @@ export async function accountNeedsSecondFactor(admin: AdminClient, userId: strin
 export async function establishSiteSession(event: H3Event, grant: HandoffGrant, source: Models.Session): Promise<void> {
   const authAt = handoffAuthAt(grant, source)
   const copy: SessionCookieCard = { sessionId: source.$id, userId: source.userId, authAt, own: false }
+  // Kein Ziel gilt länger als die Quell-KARTE (Review B1): Appwrite meldet
+  // für eine beim Host-Wechsel angelegte Sitzung ihren eigenen, späteren
+  // Ablauf — ohne diese Grenze verlängerte jeder Wechsel die Anmeldung.
+  const sourceLimit = earliestExpire(source.expire, grant.expiresAt)
   const settings = siteCardSettings()
   // `off`/`read`, und `write` ohne Schlüssel (dort entsteht ohnehin keine
   // Karte): Kopie wie vor E1b.
   if (settings.mode !== 'write' || settings.keys.length === 0) {
-    setSessionCookie(event, grant.secret, source.expire, { card: copy })
+    setSessionCookie(event, grant.secret, sourceLimit, { card: copy })
     return
   }
 
@@ -169,7 +180,7 @@ export async function establishSiteSession(event: H3Event, grant: HandoffGrant, 
     logEvent('warn', 'auth.site_session_copy_fallback', { reason: 'admin_client_unavailable', status: (error as { status?: unknown })?.status ?? null })
   }
   if (!admin || await accountNeedsSecondFactor(admin, source.userId)) {
-    setSessionCookie(event, grant.secret, source.expire, { card: copy })
+    setSessionCookie(event, grant.secret, sourceLimit, { card: copy })
     return
   }
 
@@ -179,7 +190,7 @@ export async function establishSiteSession(event: H3Event, grant: HandoffGrant, 
   // als frische Anmeldung.
   const sourceExpires = Date.parse(source.expire)
   if (!grant.nonce || !normalizeHost(getHeader(event, 'host')) || !Number.isFinite(sourceExpires)) {
-    setSessionCookie(event, grant.secret, source.expire, { card: copy })
+    setSessionCookie(event, grant.secret, sourceLimit, { card: copy })
     return
   }
 
@@ -187,7 +198,26 @@ export async function establishSiteSession(event: H3Event, grant: HandoffGrant, 
     .catch(softFail('core:utils/sessionHandoff:createSession', null))
   if (!created?.secret || !created.$id || created.userId !== source.userId) {
     if (created) logEvent('warn', 'auth.site_session_copy_fallback', { reason: 'session_incomplete' })
-    setSessionCookie(event, grant.secret, source.expire, { card: copy })
+    setSessionCookie(event, grant.secret, sourceLimit, { card: copy })
+    return
+  }
+
+  // Wettlauf mit „überall abmelden"/Passwortwechsel (Review B7): fiel die
+  // Quelle weg, während die neue Sitzung entstand, darf die neue nicht
+  // stehenbleiben. Darum NACH dem Anlegen nachsehen, ob die Quelle noch
+  // lebt. Weg ⇒ neue Sitzung löschen, 401. Lesefehler ⇒ neue Sitzung
+  // löschen, Kopie (die lebt nur so lange wie die Quelle selbst).
+  const sourceAlive = await admin.users.listSessions({ userId: source.userId, total: false })
+    .then(list => list.sessions.some(session => session.$id === source.$id))
+    .catch(softFail('core:utils/sessionHandoff:listSessions', null))
+  if (sourceAlive !== true) {
+    await admin.users.deleteSession({ userId: source.userId, sessionId: created.$id })
+      .catch((error: unknown) => {
+        const status = (error as { code?: unknown, status?: unknown } | null)?.code ?? (error as { status?: unknown } | null)?.status
+        if (status !== 404) logEvent('warn', 'auth.site_session_cleanup_failed', { status: typeof status === 'number' ? status : null })
+      })
+    if (sourceAlive === false) throw createError({ status: 401, statusText: 'Unauthorized' })
+    setSessionCookie(event, grant.secret, sourceLimit, { card: copy })
     return
   }
 
@@ -216,10 +246,21 @@ export async function establishSiteSession(event: H3Event, grant: HandoffGrant, 
   }
 
   // Die neue Sitzung gilt nicht länger als die Quelle: Ablauf der Karte =
-  // der frühere von beiden.
-  const createdExpires = Date.parse(created.expire)
-  const expire = Number.isFinite(createdExpires) && createdExpires <= sourceExpires ? created.expire : source.expire
+  // der früheste aus neuer Sitzung, Quell-Sitzung und Quell-Karte.
+  const expire = earliestExpire(sourceLimit, created.expire)
   setSessionCookie(event, created.secret, expire, {
     card: { sessionId: created.$id, userId: source.userId, authAt, own: true },
   })
+}
+
+/**
+ * Der früheste von zwei Abläufen als ISO-Zeit. `first` ist Pflicht (Appwrite-
+ * Ablauf), `second` darf fehlen (ms oder ISO); ein ungültiger Wert zählt nicht.
+ */
+export function earliestExpire(first: string, second: string | number | undefined): string {
+  const a = Date.parse(first)
+  const b = typeof second === 'number' ? second : typeof second === 'string' ? Date.parse(second) : Number.NaN
+  if (!Number.isFinite(b)) return first
+  if (!Number.isFinite(a) || b < a) return new Date(b).toISOString()
+  return first
 }

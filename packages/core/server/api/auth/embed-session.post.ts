@@ -2,7 +2,7 @@ import { Account, Client } from 'node-appwrite'
 import { z } from 'zod'
 import { deriveHandoffKey, handoffAudience, openHandoff } from '../../utils/embedHandoff'
 import { setSessionCookie } from '../../lib/appwrite'
-import { claimHandoffOnce, handoffAuthAt, handoffMatchesSession } from '../../utils/sessionHandoff'
+import { claimHandoffOnce, earliestExpire, handoffAuthAt, handoffMatchesSession } from '../../utils/sessionHandoff'
 import { softFail } from '../../utils/softFail'
 
 const bodySchema = z.object({ token: z.string().min(1).max(2048) }).strict()
@@ -48,7 +48,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 401, statusText: 'Session no longer valid' })
   }
 
-  setSessionCookie(event, grant.secret, session.expire, {
+  // Nicht länger als die Karte der Quelle (Review B1).
+  setSessionCookie(event, grant.secret, earliestExpire(session.expire, grant.expiresAt), {
     partitioned: true,
     card: { sessionId: session.$id, userId: session.userId, authAt: handoffAuthAt(grant, session), own: false },
   })

@@ -63,6 +63,33 @@ function sessionCookieReads(source: string): string[] {
   return hits
 }
 
+/**
+ * ROHES COOKIE (Review B5): wer die ganze Cookie-Kopfzeile liest, kommt am
+ * Lesepunkt vorbei an das Sitzungs-Cookie — `parseCookies`, die Kopfzeile
+ * `cookie` über h3, `headers.cookie` / `headers.get('cookie')` und das
+ * Cookie am WebSocket (`peer.request`). Erlaubt nur mit Grund in
+ * `RAW_COOKIE_ALLOWED`.
+ */
+function rawCookieReads(source: string): string[] {
+  const text = code(source)
+  const patterns = [
+    /\bparseCookies\s*\(/g,
+    /\b(?:getRequestHeader|getHeader)\s*\(\s*[^,()]+\s*,\s*['"`]cookie['"`]/gi,
+    /\bheaders\s*\.\s*cookie\b/gi,
+    /\bheaders\s*\[\s*['"`]cookie['"`]\s*\]/gi,
+    /\bheaders\s*\.\s*get\s*\(\s*['"`]cookie['"`]/gi,
+    /\bget(?:Request)?Headers\s*\([^)]*\)\s*\.\s*cookie\b/gi,
+    /\bget(?:Request)?Headers\s*\([^)]*\)\s*\[\s*['"`]cookie['"`]/gi,
+    /\{\s*(?:[\w$]+\s*,\s*)*cookie\b[^}]*\}\s*=\s*[\w$.]*headers\b/gi,
+  ]
+  return patterns.flatMap(pattern => [...text.matchAll(pattern)].map(match => match[0]))
+}
+
+/** Datei → Grund. Jede Zeile hier ist ein bewusster Rohzugriff OHNE Geheimnis. */
+const RAW_COOKIE_ALLOWED: Record<string, string> = {
+  'packages/core/server/utils/pageCache.ts': 'fragt nur, OB Cookies mitkommen (Cache-Entscheidung) — liest keinen Wert',
+}
+
 const FILES = serverFiles()
 
 describe('Sitzungs-Cookie: nur der eine Lesepunkt', () => {
@@ -77,6 +104,41 @@ describe('Sitzungs-Cookie: nur der eine Lesepunkt', () => {
       .filter(file => file !== READ_POINT)
       .flatMap(file => sessionCookieReads(readFileSync(join(ROOT, file), 'utf8')).map(hit => `${file}: ${hit}`))
     expect(offenders).toEqual([])
+  })
+
+  it('kein rohes Lesen der Cookie-Kopfzeile außerhalb des Lesepunkts (Ausnahmen nur mit Grund)', () => {
+    const offenders = FILES
+      .filter(file => file !== READ_POINT && !(file in RAW_COOKIE_ALLOWED))
+      .flatMap(file => rawCookieReads(readFileSync(join(ROOT, file), 'utf8')).map(hit => `${file}: ${hit}`))
+    expect(offenders).toEqual([])
+  })
+
+  it('jede Ausnahme für rohes Lesen gibt es noch und liest wirklich roh (sonst raus aus der Liste)', () => {
+    for (const file of Object.keys(RAW_COOKIE_ALLOWED)) {
+      expect(FILES).toContain(file)
+      expect(rawCookieReads(readFileSync(join(ROOT, file), 'utf8')).length).toBeGreaterThan(0)
+    }
+  })
+
+  it.each([
+    ['parseCookies', 'const all = parseCookies(event)\nconst s = all[sessionCookieName(event)]'],
+    ['Kopfzeile über h3', "const raw = getRequestHeader(event, 'cookie')"],
+    ['getHeader groß geschrieben', "const raw = getHeader(event, 'Cookie')"],
+    ['Node-Kopfzeilen', 'const raw = event.node.req.headers.cookie'],
+    ['Kopfzeilen mit Klammer', "const raw = req.headers['cookie']"],
+    ['WebSocket / Fetch-Headers', "const raw = peer.request.headers.get('cookie')"],
+    ['alle Kopfzeilen über h3', 'const raw = getRequestHeaders(event).cookie'],
+    ['Destrukturierung', 'const { host, cookie } = event.node.req.headers'],
+  ])('Gegenprobe roh erkannt: %s', (_label, line) => {
+    expect(rawCookieReads(line).length).toBeGreaterThan(0)
+  })
+
+  it.each([
+    ['andere Kopfzeile', "getRequestHeader(event, 'host')"],
+    ['Cookie setzen', "setCookie(event, 'x', 'y')"],
+    ['nur im Kommentar', '// parseCookies(event)'],
+  ])('Gegenprobe roh nicht gemeldet: %s', (_label, line) => {
+    expect(rawCookieReads(line)).toEqual([])
   })
 
   it('der Lesepunkt selbst liest das Cookie (der Wächter erkennt die echte Stelle)', () => {

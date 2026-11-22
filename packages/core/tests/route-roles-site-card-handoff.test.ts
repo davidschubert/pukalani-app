@@ -86,6 +86,12 @@ function plainAccount(over: Record<string, unknown> = {}) {
 
 function newSessionWorks() {
   appwriteFake.reply('admin.users.createSession', args => ({ $id: 's-new', userId: args.userId, secret: 'neues-geheimnis', expire: NEW_EXPIRE }))
+  sourceStillListed()
+}
+
+/** Nachprüfung nach dem Anlegen (Review B7): die Quelle steht noch in der Liste. */
+function sourceStillListed() {
+  appwriteFake.reply('admin.users.listSessions', () => ({ total: 2, sessions: [{ $id: 's-source' }, { $id: 's-new' }] }))
 }
 
 const seal = (grant: HandoffGrant, host = OWN_HOST, now = Date.now()) => sealHandoff(grant, deriveHandoffKey(SERVER_KEY), host, now)
@@ -207,6 +213,74 @@ describe('GET /api/auth/site-session — eigene Sitzung je Seite', () => {
     appwriteFake.reply('admin.users.createSession', args => ({ $id: 's-new', userId: args.userId, secret: 'neues-geheimnis', expire: '2026-11-30T00:00:00.000Z' }))
     await run(seal(fullGrant()))
     expect(cookieWrites[0]!.expire).toBe('2026-11-30T00:00:00.000Z')
+  })
+
+  it('Review B1: die Kette über Host-Wechsel endet beim Ablauf der ERSTEN Karte (Gegenprobe ohne Feld: Ablauf der Quell-Sitzung)', async () => {
+    writeMode()
+    sourceSessionIsAlive()
+    plainAccount()
+    newSessionWorks()
+    // Die Quell-Karte endet vor Quell-Sitzung (2026-12-01) und neuer Sitzung (2027).
+    const cardEnd = Date.parse('2026-11-25T00:00:00.000Z')
+    await run(seal(fullGrant({ expiresAt: cardEnd })))
+    expect(cookieWrites[0]!.secret).toBe('neues-geheimnis')
+    expect(cookieWrites[0]!.expire).toBe(new Date(cardEnd).toISOString())
+
+    cookieWrites.length = 0
+    await run(seal(fullGrant()))
+    expect(cookieWrites[0]!.expire).toBe(SOURCE_EXPIRE)
+  })
+
+  it('Review B1: auch die Kopie (Zwei-Faktor) endet beim Ablauf der Quell-Karte; ein späteres Feld verlängert nichts', async () => {
+    writeMode()
+    sourceSessionIsAlive()
+    plainAccount({ mfa: true, emailVerification: true })
+    const cardEnd = Date.parse('2026-11-25T00:00:00.000Z')
+    await run(seal(fullGrant({ expiresAt: cardEnd })))
+    expect(cookieWrites[0]!.secret).toBe(SOURCE_SECRET)
+    expect(cookieWrites[0]!.expire).toBe(new Date(cardEnd).toISOString())
+
+    cookieWrites.length = 0
+    await run(seal(fullGrant({ expiresAt: Date.parse('2030-01-01T00:00:00.000Z') })))
+    expect(cookieWrites[0]!.expire).toBe(SOURCE_EXPIRE)
+  })
+
+  it('Review B7: Quelle fiel weg, während die neue Sitzung entstand ⇒ neue Sitzung gelöscht, 401, kein Cookie', async () => {
+    writeMode()
+    sourceSessionIsAlive()
+    plainAccount()
+    newSessionWorks()
+    appwriteFake.reply('admin.users.listSessions', () => ({ total: 1, sessions: [{ $id: 's-new' }] }))
+    expect((await run(seal(fullGrant()))).status).toBe(401)
+    expect(appwriteFake.argsOf('admin.users.deleteSession')).toEqual([{ userId: USER, sessionId: 's-new' }])
+    expect(cookieWrites).toEqual([])
+  })
+
+  it('Review B7: Nachprüfung nicht lesbar ⇒ neue Sitzung gelöscht, Kopie der Quelle (Gegenprobe: Quelle gelistet ⇒ neue Sitzung bleibt)', async () => {
+    writeMode()
+    sourceSessionIsAlive()
+    plainAccount()
+    newSessionWorks()
+    appwriteFake.reply('admin.users.listSessions', () => {
+      throw Object.assign(new Error('boom'), { code: 500 })
+    })
+    const warns = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const lines = vi.spyOn(console, 'log').mockImplementation(() => {})
+    expect((await run(seal(fullGrant()))).status).toBe(200)
+    warns.mockRestore()
+    lines.mockRestore()
+    expect(appwriteFake.argsOf('admin.users.deleteSession')).toEqual([{ userId: USER, sessionId: 's-new' }])
+    expect(cookieWrites[0]!.secret).toBe(SOURCE_SECRET)
+    expect(cookieWrites[0]!.card?.own).toBe(false)
+
+    cookieWrites.length = 0
+    appwriteFake.reset()
+    sourceSessionIsAlive()
+    plainAccount()
+    newSessionWorks()
+    await run(seal(fullGrant()))
+    expect(appwriteFake.argsOf('admin.users.deleteSession')).toEqual([])
+    expect(cookieWrites[0]!.secret).toBe('neues-geheimnis')
   })
 
   it('write, Zwei-Faktor (verifizierte E-Mail): Kopie in der Karte, keine neue Sitzung', async () => {
@@ -405,6 +479,17 @@ describe('POST /api/auth/embed-session — dieselbe Sitzung in einer Karte (Kopi
     }])
   })
 
+  it('Review B1: die eingebettete Kopie endet beim Ablauf der Quell-Karte (Gegenprobe ohne Feld: Ablauf der Sitzung)', async () => {
+    writeMode()
+    sourceSessionIsAlive()
+    const cardEnd = Date.parse('2026-11-25T00:00:00.000Z')
+    await probeRoute(load, { who: 'guest', body: { token: seal(fullGrant({ expiresAt: cardEnd })) }, globals: embedGlobals() })
+    expect(cookieWrites[0]!.expire).toBe(new Date(cardEnd).toISOString())
+    cookieWrites.length = 0
+    await probeRoute(load, { who: 'guest', body: { token: seal(fullGrant()) }, globals: embedGlobals() })
+    expect(cookieWrites[0]!.expire).toBe(SOURCE_EXPIRE)
+  })
+
   it('dasselbe Siegel ein zweites Mal: 401, nur ein Cookie', async () => {
     writeMode()
     sourceSessionIsAlive()
@@ -431,13 +516,25 @@ describe('POST /api/auth/embed-handoff — Siegel mit Konto, Sitzung und Anmelde
     writeMode()
     const result = await probeRoute(load, { who: 'member', globals: embedGlobals({ cookie: existingCard() }), tenantFields: { pukalaniHost: OWN_HOST } })
     expect(result.status).toBe(200)
-    expect(open((result.result as { token: string }).token)).toEqual({ secret: 'alte-seiten-sitzung', userId: USER, sessionId: 's-old', authAt: ORIGINAL_AUTH, nonce: expect.any(String) })
+    expect(open((result.result as { token: string }).token)).toEqual({ secret: 'alte-seiten-sitzung', userId: USER, sessionId: 's-old', authAt: ORIGINAL_AUTH, expiresAt: expect.any(Number), nonce: expect.any(String) })
   })
 
   it('write mit Klartext (Pukalani-Adresse): Siegel trägt nur Geheimnis und Konto', async () => {
     writeMode()
     const result = await probeRoute(load, { who: 'member', globals: embedGlobals({ cookie: 'klartext-geheimnis' }), tenantFields: { pukalaniHost: OWN_HOST } })
     expect(open((result.result as { token: string }).token)).toEqual({ secret: 'klartext-geheimnis', userId: USER, nonce: expect.any(String) })
+  })
+
+  it('Review B1: read mit Karte — Siegel trägt Geheimnis und Ablauf der Karte, sonst nichts (Rückweg aus write)', async () => {
+    configureSiteCard({ mode: 'read', key: rawCardKey.toString('base64') })
+    const result = await probeRoute(load, { who: 'member', globals: embedGlobals({ cookie: existingCard() }), tenantFields: { pukalaniHost: OWN_HOST } })
+    expect(open((result.result as { token: string }).token)).toEqual({ secret: 'alte-seiten-sitzung', expiresAt: expect.any(Number) })
+  })
+
+  it('read mit Klartext: Siegel wie vor E1b, nur das Geheimnis', async () => {
+    configureSiteCard({ mode: 'read', key: rawCardKey.toString('base64') })
+    const result = await probeRoute(load, { who: 'member', globals: embedGlobals({ cookie: 'klartext-geheimnis' }) })
+    expect(open((result.result as { token: string }).token)).toEqual({ secret: 'klartext-geheimnis' })
   })
 
   it('off: Siegel wie vor E1b, nur das Geheimnis', async () => {
