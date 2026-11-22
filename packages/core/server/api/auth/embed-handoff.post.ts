@@ -1,5 +1,5 @@
-import { deriveHandoffKey, handoffAudience, sealHandoffToken } from '../../utils/embedHandoff'
-import { requestSessionSecret } from '../../utils/requestSession'
+import { deriveHandoffKey, handoffAudience, sealHandoff } from '../../utils/embedHandoff'
+import { requestHandoffGrant } from '../../utils/sessionHandoff'
 
 /**
  * E2 Embed-Login, Schritt 1 (läuft im POPUP, Top-Level = first-party Cookie):
@@ -22,8 +22,8 @@ export default defineEventHandler(async (event) => {
   if (!event.context.user) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
-  const secret = requestSessionSecret(event)
-  if (!secret) {
+  const grant = requestHandoffGrant(event, { leavesHost: false })
+  if (!grant) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
@@ -33,5 +33,5 @@ export default defineEventHandler(async (event) => {
   }
 
   const config = useRuntimeConfig(event)
-  return { token: sealHandoffToken(secret, deriveHandoffKey(config.appwriteKey), audience) }
+  return { token: sealHandoff(grant, deriveHandoffKey(config.appwriteKey), audience) }
 })

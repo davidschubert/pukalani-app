@@ -24,8 +24,8 @@ import { parseSiteCardMode, SITE_CARD_PREFIX, type SiteCardClaims, type SiteCard
  *  - `off`   — nichts ändert sich, der Lesepunkt liefert den Cookie-Wert;
  *  - `read`  — Karten werden geöffnet, Klartext gilt weiter;
  *  - `write` — wie `read`, auf einer eigenen Domain gilt NUR die Karte.
- * Geschrieben wird in E1a weiter Klartext; das Schreiben der Karte kommt
- * später.
+ * Geschrieben wird die Karte nur bei `write` (E1b, `sessionCookieValue` in
+ * `core/server/utils/requestSession.ts`); bei `off`/`read` bleibt es Klartext.
  *
  * SCHLÜSSEL: `NUXT_SITE_CARD_KEY` (32 Byte, base64, `openssl rand -base64 32`);
  * `NUXT_SITE_CARD_PREVIOUS_KEY` nur zum LESEN während eines geplanten
@@ -166,6 +166,7 @@ export function sealSiteCard(claims: SiteCardClaims, options: { key: Buffer, coo
     c: claims.communityId,
     exp: claims.expiresAt,
     at: claims.authAt,
+    ...(claims.own === true ? { o: 1 } : {}),
   })
   const iv = randomBytes(IV_BYTES)
   const cipher = createCipheriv('aes-256-gcm', options.key, iv)
@@ -185,7 +186,7 @@ export interface OpenSiteCardOptions {
   cookieName: string
 }
 
-type Payload = { s?: unknown, sid?: unknown, uid?: unknown, h?: unknown, c?: unknown, exp?: unknown, at?: unknown }
+type Payload = { s?: unknown, sid?: unknown, uid?: unknown, h?: unknown, c?: unknown, exp?: unknown, at?: unknown, o?: unknown }
 
 /**
  * Karte öffnen. `null` bei: falschem Präfix, unbekanntem Schlüssel,
@@ -224,7 +225,7 @@ export function openSiteCard(value: string, options: OpenSiteCardOptions): SiteC
   }
 
   if (!payload || typeof payload !== 'object') return null
-  const { s, sid, uid, h, c, exp, at } = payload
+  const { s, sid, uid, h, c, exp, at, o } = payload
   if (typeof s !== 'string' || !s) return null
   if (typeof sid !== 'string' || typeof uid !== 'string') return null
   if (typeof h !== 'string' || typeof c !== 'string') return null
@@ -233,5 +234,7 @@ export function openSiteCard(value: string, options: OpenSiteCardOptions): SiteC
   if (c !== options.communityId) return null
   if (exp <= options.now) return null
 
-  return { secret: s, sessionId: sid, userId: uid, host: h, communityId: c, expiresAt: exp, authAt: at }
+  // `own` nur, wenn ausdrücklich gesetzt: eine Karte ohne Merkmal gilt als
+  // Kopie und wird nie von hier aus gelöscht.
+  return { secret: s, sessionId: sid, userId: uid, host: h, communityId: c, expiresAt: exp, authAt: at, ...(o === 1 ? { own: true } : {}) }
 }
