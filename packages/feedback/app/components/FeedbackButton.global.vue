@@ -42,7 +42,7 @@ const AREA_ICON: Record<FeedbackArea, string> = {
 // Der Katalog wird erst geholt, wenn er gebraucht wird — der Knopf hängt auf
 // JEDER Seite, und ein Abruf pro Seitenaufruf für ein Popup, das die meisten
 // nie öffnen, wäre reine Last.
-const { data: catalog, execute: loadCatalog, status: catalogStatus } = await useFetch<{ products: FeedbackProductOption[] }>(
+const { data: catalog, execute: loadCatalog, status: catalogStatus, error: catalogError, refresh: refreshCatalog } = await useFetch<{ products: FeedbackProductOption[] }>(
   '/api/feedback/products',
   { immediate: false, lazy: true, server: false },
 )
@@ -186,6 +186,12 @@ async function submit() {
               :placeholder="t('feedback.form.productPlaceholder')"
               class="w-full"
               data-testid="feedback-product"
+            />
+            <!-- LZ1: die Produkt-Liste ist öffentlich — jeder Fehler ist ein Ausfall. -->
+            <CoreInlineLoadError
+              v-if="area === 'product' && catalogError"
+              :retry="refreshCatalog"
+              data-testid="feedback-product-error"
             />
 
             <UTextarea

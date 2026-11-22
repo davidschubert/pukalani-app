@@ -70,7 +70,7 @@ const token = computed(() => {
  * die Route setzt eine Sitzung voraus, und ohne Anmeldung gibt es keine
  * „eigene Adresse", nach der man suchen könnte.
  */
-const { data: mine } = await useFetch<{ invites: { id: string, role: string, expiresAt: string }[], siteName: string }>(
+const { data: mine, error: mineError, refresh: refreshMine } = await useFetch<{ invites: { id: string, role: string, expiresAt: string }[], siteName: string }>(
   '/api/community/invites/mine',
   { default: () => ({ invites: [], siteName: '' }), immediate: auth.isLoggedIn },
 )
@@ -88,7 +88,7 @@ const { data: mine } = await useFetch<{ invites: { id: string, role: string, exp
  * Seite ihren Ladezustand (`pruefeEinladung`), kein Urteil: der Status ist beim
  * SSR und beim Hydrieren gleich `idle`, also kein Hydration-Unterschied.
  */
-const { data: einladung, status: einladungStatus } = await useFetch<{ ok: boolean, email: string, role: string }>(
+const { data: einladung, status: einladungStatus, error: einladungError, refresh: refreshEinladung } = await useFetch<{ ok: boolean, email: string, role: string }>(
   '/api/community/invites/preview',
   {
     method: 'POST',
@@ -99,6 +99,24 @@ const { data: einladung, status: einladungStatus } = await useFetch<{ ok: boolea
     default: () => ({ ok: false, email: '', role: '' }),
   },
 )
+
+/**
+ * LZ1: nur ein echter AUSFALL (kein Status = Netz, oder 5xx) zeigt den
+ * Fehler-Zustand statt „keine Einladung". 401/404 sind hier ERWARTET (kein
+ * Konto, ungültiger Token) und bleiben die ehrliche Antwort „keine Einladung".
+ */
+function isOutage(error: unknown): boolean {
+  if (!error) return false
+  const status = (error as { statusCode?: number }).statusCode
+  return !status || status >= 500
+}
+const loadFailed = computed(() => isOutage(mineError.value) || isOutage(einladungError.value))
+async function retryLoad(): Promise<void> {
+  await Promise.all([
+    isOutage(mineError.value) ? refreshMine() : undefined,
+    isOutage(einladungError.value) ? refreshEinladung() : undefined,
+  ])
+}
 
 /** Mit Token und noch ohne Antwort: noch nichts entschieden — Ladezustand statt „ungültig". */
 const pruefeEinladung = computed(() =>
@@ -242,6 +260,8 @@ async function accept() {
           {{ t('join.accept') }}
         </UButton>
       </div>
+
+      <CoreInlineLoadError v-else-if="loadFailed" :retry="retryLoad" data-join-load-error />
 
       <AuthEmailVerifyRequired v-else-if="ownEmailUnverified" :title="t('join.verifyFirst')" />
 

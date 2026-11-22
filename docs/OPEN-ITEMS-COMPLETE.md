@@ -136,6 +136,49 @@ Wortlaut nie festgehalten.
 
 ---
 
+### SI1 (b) — der zweite Sicherungs-Lauf: `active`-Zeilen in stillgelegten Communities, live nur zählend ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21 auf die Frage aus N14: „Ja, nur
+zählend". Der Label-Abgleich der Platform-App nimmt einer `active`-Zeile in
+einer stillgelegten Community das Label, darf die Zeile aber nicht umstellen
+(er liest das Control Plane nur). Jetzt gibt es dafür einen Lauf in der
+Betreiber-App, die dort schreiben darf.
+
+**Wie.** Zeit-Lauf `disabled-member-sweep` (`defineTimedJob`, stündlich, im
+Plugin der Testphasen-Läufe), Kern
+`packages/control/server/utils/disabledMembershipSweep.ts`, Schalter pur in
+`packages/control/shared/disabledMembershipSweep.ts`:
+`pukalani.control.disabledMembershipSweep` = `off` | `dry-run` | `apply`,
+unbekannt = `off`, **Layer-Vorgabe `dry-run`, keine App schaltet `apply`**.
+`dry-run` liest zwei Listen und schreibt die Zeile
+`community_members.disabled_sweep_dry_run` (`warn`, sobald etwas zu tun wäre).
+`apply` liest vor jedem Schreiben Zeile UND Community frisch und stellt nur
+um, wenn die Zeile noch `active` und die Community noch `disabled` ist
+(`status: 'removed'`, `removedAt` — dieselbe Semantik wie das Stilllegen);
+das Label nimmt danach der erste Lauf über seinen normalen Weg. Neue Kennung
+in `ops/timed-jobs.conf` und im Wächter `timedJobGuard.test.ts`. Runbook:
+`docs/runbooks/LABEL-ABGLEICH.md`, „Der zweite Lauf".
+
+**Beweis.** `packages/control/tests/disabledMembershipSweep.test.ts` (Renn-
+Ablage): `dry-run` schreibt nichts und zählt nur stillgelegte Communities;
+`apply` stellt genau diese Zeilen um, lässt eine wieder geöffnete Community
+und eine schon umgestellte Zeile stehen, ein Fehlschlag hält die anderen nicht
+auf; Schalter fail-closed. Gegenprobe (frisches Lesen weg, `dry-run`
+schreibend) ⇒ genau zwei Fälle rot. Lokal gegen den Spiegel: erster Takt
+`disabledCommunities: 5, affectedCommunities: 3, activeRows: 3` — die drei
+Zeilen, die N14 im lokalen Spiegel gefunden hatte; nichts geändert.
+
+**Offen zum Scharfschalten** (steht in OPEN-ITEMS „SI1"): Zahl auf
+Production im Log lesen, Davids Ja dazu, Zeile `apply` in
+`apps/control/app/app.config.ts`.
+
+**Gelernt:** Ein Dev-Server, der nach einer Datei-Änderung neu lädt, meldet
+den Lauf neu an, aber der erste Takt kommt erst nach einem sauberen Neustart
+— für den lokalen Beweis eines Zeit-Laufs den Server neu starten, nicht auf
+das Neuladen warten.
+
+---
+
 ### BT1 (e) — Übersicht und Statistik einer Pool-Community: über den Not-Zugang nur der Betreiber ✅ 2026-11-22
 
 **Was.** Davids Antwort vom 2026-11-21 auf die offene Frage aus N14: „Nur ich

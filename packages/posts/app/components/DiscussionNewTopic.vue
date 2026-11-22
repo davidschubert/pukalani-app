@@ -47,9 +47,18 @@ const { isLoggedIn } = useCurrentUser()
  * weil die Seite auch stillgelegte Kategorien auflösen können muss — hier wird
  * anschließend auf die aktiven eingegrenzt.
  */
-const { data } = await useFetch<CategoryListResponse>('/api/posts/categories', {
+const { data, error, refresh } = await useFetch<CategoryListResponse>('/api/posts/categories', {
   key: CATEGORY_LIST_KEY,
   query: { all: '1' },
+})
+
+/**
+ * LZ1: scheitern die Kategorien (kein Status = Netz, oder 5xx), verschwand der
+ * Knopf still — jetzt steht der Neuversuch an seiner Stelle. 403/404 (Produkt
+ * aus) sind ERWARTET und lassen es beim Ausblenden; Gäste sehen den Knopf nie.
+ */
+const loadFailed = computed(() => {
+  return isFetchOutage(error.value)
 })
 
 const activeCategories = computed(() => (data.value?.rows ?? [])
@@ -110,4 +119,5 @@ function onCreated(_post: unknown, scheduled: boolean) {
       />
     </template>
   </UModal>
+  <CoreInlineLoadError v-else-if="isLoggedIn && loadFailed" :retry="refresh" data-discussions-new-topic-error />
 </template>
