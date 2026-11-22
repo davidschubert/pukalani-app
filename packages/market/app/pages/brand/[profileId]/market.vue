@@ -168,6 +168,21 @@ const findings = await useAsyncData<BrandFindingsResponse | null>(
   { watch: [profileId], default: () => null },
 )
 
+/**
+ * Ehrliche Fehler-Zustände (LZ1): `shell` (Profil) und `overview` sind die
+ * Seite selbst — scheitert eines, zeigt sie den Ladefehler mit „Noch einmal
+ * versuchen". Bericht und Befunde sind Zusatz-Auskünfte: ein echter Ausfall
+ * (kein Status oder 5xx) sagt eine ruhige Zeile statt „noch kein Bericht"
+ * beziehungsweise einer leeren Leiste; ein erwartetes 401/403/404 bleibt still.
+ */
+const pageFailed = computed(() => Boolean(shell.error.value || overview.error.value))
+const reportFailed = computed(() => isFetchOutage(reportState.error.value))
+const findingsFailed = computed(() => isFetchOutage(findings.error.value))
+
+async function retryPage(): Promise<void> {
+  await Promise.all([shell.refresh(), overview.refresh(), reportState.refresh(), findings.refresh()])
+}
+
 const marketFindings = computed(
   () => (findings.data.value?.findings ?? []).filter(finding => finding.kind === 'market'),
 )
@@ -911,7 +926,18 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
           </p>
         </div>
 
-        <p v-if="overview.error.value" class="bw-pending">{{ t('market.error.load') }}</p>
+        <CoreInlineLoadError
+          v-if="findingsFailed && !pageFailed"
+          :retry="findings.refresh"
+          data-market-findings-error
+        />
+
+        <CoreInlineLoadError
+          v-if="pageFailed"
+          :text="t('market.error.load')"
+          :retry="retryPage"
+          data-market-error
+        />
 
         <!-- (a) GESPERRT — freundlich, mit dem Weg dorthin. Kein 404. -->
         <section v-else-if="!unlocked" class="rounded-2xl px-4 py-4" style="background: var(--bw-surface)">
@@ -1102,6 +1128,8 @@ useBrandTitle(() => `${t('market.page.title')} — ${brandTitle.value}`)
             :steps="shownSteps"
             :phase="runPhase"
           />
+
+          <CoreInlineLoadError v-if="reportFailed" :retry="reportState.refresh" data-market-report-error />
 
           <!-- (d) DER BERICHT -->
           <template v-if="report">

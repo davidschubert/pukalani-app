@@ -16,13 +16,19 @@ const navigation = inject(docsNavigationKey, fallback)
 const section = computed(() => resolveDocsSection(route.path))
 const collection = computed(() => docsCollection(section.value, locale.value))
 
-const { data: page } = await useAsyncData(route.path, () =>
+const { data: page, error: pageError } = await useAsyncData(route.path, () =>
   queryCollection(collection.value).path(route.path).first())
 if (!page.value) {
+  // AUSFALL ≠ „GIBT ES NICHT" (LZ1): `.first()` liefert für eine unbekannte
+  // Seite `null` OHNE Fehler. Ein gesetzter Fehler heißt: die Abfrage selbst ist
+  // gescheitert (Datenbank, Netz) — das ist ein 503, kein falsches 404.
+  if (pageError.value && isFetchOutage(pageError.value)) {
+    throw createError({ status: 503, statusText: 'Service Unavailable', fatal: true })
+  }
   throw createError({ status: 404, statusText: 'Page not found', fatal: true })
 }
 
-const { data: surround } = await useAsyncData(`${route.path}-surround`, () =>
+const { data: surround, error: surroundError, refresh: refreshSurround } = await useAsyncData(`${route.path}-surround`, () =>
   queryCollectionItemSurroundings(collection.value, route.path, { fields: ['description'] }))
 
 // Titel + Social-Tags im Hausmuster „<Seite> · <Brand>" (useBrandTitle, Core —
@@ -62,7 +68,10 @@ const headline = computed(() => findPageHeadline(
 
       <USeparator v-if="surround?.length" />
 
-      <UContentSurround :surround="surround" />
+      <!-- Die Nachbar-Artikel sind eine Zusatz-Auskunft: ein Ausfall sagt es
+           in einer Zeile, der Artikel selbst bleibt lesbar. -->
+      <CoreInlineLoadError v-if="isFetchOutage(surroundError)" :retry="refreshSurround" data-docs-surround-error />
+      <UContentSurround v-else :surround="surround" />
     </UPageBody>
 
     <template

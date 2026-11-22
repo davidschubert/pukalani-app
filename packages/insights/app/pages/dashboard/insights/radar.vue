@@ -60,10 +60,22 @@ useBrandTitle(() => t('insights.radar.title'))
 
 const readerLocale = computed(() => (locale.value === 'de' ? 'de' : 'en') as 'de' | 'en')
 
-const { data, refresh, status } = await useFetch<InsightsRadarResponse>('/api/insights/radar', {
+const { data, error, refresh, status } = await useFetch<InsightsRadarResponse>('/api/insights/radar', {
   lazy: true,
   server: false,
 })
+
+/**
+ * Ein gescheiterter Abruf ist KEIN „keine Videos" und kein „Schlüssel fehlt"
+ * (LZ1): ohne Antwort wüsste die Karte weder Schlüssel noch Kontingent.
+ * Nur der Fehler-Zweig wird hier gezeichnet — lädt die Seite, zeigt sie wie
+ * bisher Karte und Tabelle mit ihren eigenen Lade-Zeichen.
+ */
+const radarFailed = computed(() => listState({
+  status: status.value,
+  error: error.value,
+  empty: !data.value,
+}) === 'error')
 
 const videos = computed<InsightsRadarVideoItem[]>(() => data.value?.videos ?? [])
 /** Ohne Antwort gibt es keinen Stichtag — der heutige Tag ist die ehrlichste Angabe. */
@@ -273,8 +285,10 @@ async function runNow(): Promise<void> {
     </template>
 
     <template #body>
+      <CoreListState v-if="radarFailed" state="error" :retry="refresh" class="mt-6" data-radar-error />
+
       <UAlert
-        v-if="data && !configured"
+        v-else-if="data && !configured"
         icon="i-ph-key"
         color="warning"
         variant="subtle"
@@ -291,7 +305,7 @@ async function runNow(): Promise<void> {
         (innerText), gerendert war ein Strich; der Knopf war da und nicht
         anklickbar. Kein Fehler in Konsole, Lint oder Typecheck.
       -->
-      <UCard class="mt-6 shrink-0">
+      <UCard v-if="!radarFailed" class="mt-6 shrink-0">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <dl class="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <div class="flex items-baseline gap-2">
@@ -346,7 +360,7 @@ async function runNow(): Promise<void> {
         </div>
       </UCard>
 
-      <div class="bw-root mt-6">
+      <div v-if="!radarFailed" class="bw-root mt-6">
         <InRadar
           :videos="videos"
           :locale="readerLocale"

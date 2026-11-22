@@ -81,7 +81,7 @@ const own = props.firstPage === undefined ? await useFetch<PostListResponse>('/a
 const firstPage = computed(() => (own ? own.data.value : props.firstPage) ?? null)
 const pending = computed(() => own?.pending.value ?? false)
 // Fehler der ersten Seite: ein Fehlschlag heißt nicht „noch keine Beiträge" (FE-004, LZ1)
-const loadFailed = computed(() => (own ? own.status.value === 'error' : props.failed === true))
+const loadFailed = computed(() => (own ? !!own.error.value : props.failed === true))
 const retryFirst = () => (own ? own.refresh() : props.retry?.())
 function applyFirstPage(value: PostListResponse | null) {
   if (!value) return

@@ -10,9 +10,14 @@ definePageMeta({ layout: false })
 const localePath = useLocalePath()
 const { locale } = useI18n()
 
-const { data: page } = await useAsyncData(() => `docs-landing-${locale.value}`, () =>
+const { data: page, error } = await useAsyncData(() => `docs-landing-${locale.value}`, () =>
   queryCollection(docsLandingCollection(locale.value)).path(localePath('/')).first(), { watch: [locale] })
 if (!page.value) {
+  // Ausfall der Abfrage ⇒ 503, nicht das falsche 404 (LZ1; `.first()` ohne
+  // Treffer liefert `null` ohne Fehler).
+  if (isFetchOutage(error.value)) {
+    throw createError({ status: 503, statusText: 'Service Unavailable', fatal: true })
+  }
   throw createError({ status: 404, statusText: 'Page not found', fatal: true })
 }
 
