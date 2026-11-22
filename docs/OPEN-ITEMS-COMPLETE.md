@@ -122,6 +122,27 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1 E1b-1 — Karte schreiben, eigene Sitzung je Seite beim Host-Wechsel (Schalter aus) ✅ 2026-11-22
+
+**Was.** Im Modus `write` schreibt jede Anmeldung eine Karte statt Klartext;
+der Host-Wechsel (`site-session`) legt am Ziel eine EIGENE Appwrite-Sitzung an
+(`users.createSession`, Admin-Client) und räumt die vorige eigene Sitzung des
+Kontos auf diesem Host weg. Zwei-Faktor-Konten und jeder Rückfall bekommen eine
+Kopie in einer Karte (Davids Entscheidung (a)). Aus dem Gegenlesen: ein Siegel
+entsteht nie auf einer eigenen Domain, ist nur einmal einlösbar, und die Karte
+einer neuen Sitzung gilt nie länger als die Quelle; das Live-Token hängt an der
+Sitzung der Anfrage. Bühne im Modus `write` gegen die lokale Appwrite: Karte nur
+auf ihrem Host, neue Sitzung beim Wechsel, alte weggeräumt (Zahl gleich), Abmelden
+auf A lässt den Kontroll-Host angemeldet, nichts übrig. Mit `off`/`read`
+bit-gleich wie vorher.
+
+**Gelernt:** `users.createSession` (Server) läuft in Appwrite 2.7.4 weder durch
+die Zähl-Bremse von `account.createSession` noch durch die Sitzungs-Obergrenze
+(die greift nur in der Gruppe `session` der Konto-Routen) — wer so Sitzungen
+anlegt, räumt selbst auf. Und acht Bühnen-Beweise benutzen EINEN Cookie auf
+mehreren Hosts; im Modus `write` sind sie darum rot, ohne dass das Produkt
+falsch ist — sie werden in E1c auf „Anmelden je Host" umgestellt.
+
 ### PK1 E1a — Umschlag und ein Lesepunkt für das Sitzungs-Cookie (Schalter aus) ✅ 2026-11-22
 
 **Was.** Die Karte (versiegelter Umschlag, AES-256-GCM, gebunden an Host,

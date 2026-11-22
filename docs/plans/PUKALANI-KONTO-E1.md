@@ -1,10 +1,10 @@
 # Pukalani-Konto, Etappe 1 — die Eintrittskarte je Seite
 
-> **Plan-Status (2026-11-22):** teils gebaut — offen: E1b, E1c, E1d, Einschalten (E1a gebaut, Schalter aus) ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
+> **Plan-Status (2026-11-22):** teils gebaut — offen: E1b-2, E1c, E1d, Einschalten (E1a und E1b-1 gebaut, Schalter aus) ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
 
 **Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-22 · Status: Davids
 Entscheidungen liegen vor (§ 12, § 13.3, § 13.4), der Beweis E0 ist gelaufen
-(§ 13); gebaut: E1a (Umschlag und Lesepunkt, Schalter aus); offen: E1b, E1c, E1d.** Nichts ist auf
+(§ 13); gebaut: E1a (Umschlag und Lesepunkt) und E1b-1 (Karte schreiben, eigene Sitzung beim Host-Wechsel), Schalter aus; offen: E1b-2 (Sperrliste unter Kundendomains), E1c, E1d.** Nichts ist auf
 Production eingeschaltet, keine Migration.
 
 Dieses Dokument vertieft **eine** Etappe des Gesamtkonzepts
