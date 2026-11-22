@@ -84,7 +84,7 @@ test.describe('Fußzeile', () => {
 
     // BEWUSST NICHT GEPRÜFT: ob dort ein Impressums-LINK steht. Die Fußzeile
     // zeigt die veröffentlichten Rechtsseiten aus dem pages-CMS (mit festem
-    // Rückfall nur, wenn die Abfrage AUSFÄLLT — `null` ≠ `[]`, siehe
+    // Rückfall nur, wenn die Abfrage AUSFÄLLT — `error` ≠ `[]`, siehe
     // SiteFooter.vue). Auf einer Instanz, auf der noch nichts veröffentlicht
     // ist, steht dort korrekterweise nichts; ein Test darauf wäre nicht die
     // Zusage der App, sondern der Datenstand der Maschine, auf der er läuft.

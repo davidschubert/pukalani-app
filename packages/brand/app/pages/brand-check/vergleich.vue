@@ -64,18 +64,25 @@ const idB = computed(() => queryValue(route.query.b))
 
 // ── Die beiden Checks ──────────────────────────────────────────────────────
 
-/** Ein 404 ist ein ZUSTAND, kein Fehler — derselbe Umgang wie auf der Ergebnisseite. */
+/**
+ * Ein 404 ist ein ZUSTAND, kein Fehler — derselbe Umgang wie auf der
+ * Ergebnisseite. Ein AUSFALL (`isFetchOutage`: kein Status oder 5xx) ist kein
+ * „gibt es nicht" (LZ1, 2026-11-22): er bleibt im `error` des Abrufs, und die
+ * Seite zeigt eine Fehler-Zeile mit „Noch einmal versuchen" statt der
+ * Leermeldung.
+ */
 async function loadCheck(id: string): Promise<BrandCheckResult | null> {
   if (!id) return null
   try {
     return await request<BrandCheckResult>(`/api/brand/check/${encodeURIComponent(id)}`)
   }
-  catch {
+  catch (error) {
+    if (isFetchOutage(error)) throw error
     return null
   }
 }
 
-const { data: pair, status: loadStatus } = await useAsyncData(
+const { data: pair, status: loadStatus, error: loadError, refresh: refreshPair } = await useAsyncData(
   'brand-check-compare',
   async () => {
     const [a, b] = await Promise.all([loadCheck(idA.value), loadCheck(idB.value)])
@@ -87,9 +94,12 @@ const { data: pair, status: loadStatus } = await useAsyncData(
 const checkA = computed<BrandCheckResult | null>(() => pair.value?.a ?? null)
 const checkB = computed<BrandCheckResult | null>(() => pair.value?.b ?? null)
 
+/** Der Abruf ist ausgefallen (s. `loadCheck`) — dann gilt keine Leermeldung. */
+const loadFailed = computed(() => isFetchOutage(loadError.value))
+
 /** Angefragt, aber nicht da — nur dann ist die Leermeldung die Wahrheit. */
-const missingA = computed(() => !!idA.value && !checkA.value && loadStatus.value !== 'pending')
-const missingB = computed(() => !!idB.value && !checkB.value && loadStatus.value !== 'pending')
+const missingA = computed(() => !!idA.value && !checkA.value && loadStatus.value !== 'pending' && !loadFailed.value)
+const missingB = computed(() => !!idB.value && !checkB.value && loadStatus.value !== 'pending' && !loadFailed.value)
 const anyMissing = computed(() => missingA.value || missingB.value)
 
 useSeoMeta({
@@ -260,8 +270,13 @@ function categoryCount(check: BrandCheckResult | null): number {
         <p class="mx-auto mt-5 max-w-2xl text-base leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('brand.checkCompare.lead') }}</p>
       </header>
 
+      <!-- Ausfall: eine Fehler-Zeile, kein „gibt es nicht" (s. `loadCheck`) -->
+      <div v-if="loadFailed" class="bw-card mt-10 p-8" data-compare-error>
+        <CoreInlineLoadError :retry="refreshPair" />
+      </div>
+
       <!-- Ein angefragter Check, den es nicht gibt: sagen, nicht verschweigen -->
-      <div v-if="anyMissing" class="bw-card mt-10 p-8 text-center" data-compare-missing>
+      <div v-else-if="anyMissing" class="bw-card mt-10 p-8 text-center" data-compare-missing>
         <span class="mx-auto grid size-12 place-items-center rounded-full" style="background: var(--bw-surface-hi)">
           <UIcon name="i-ph-link-break" class="size-5" style="color: var(--bw-muted)" />
         </span>

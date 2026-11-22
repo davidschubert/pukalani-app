@@ -107,16 +107,26 @@ if (shell.data.value && !shell.data.value.found) {
  * Dialogs: „diese Marke steht öffentlich" ist eine Aussage über das ganze
  * Dokument und darf nicht erst nach einem Klick erscheinen.
  *
- * FAIL-SOFT (`.catch(() => null)`): ist die Route nicht da (Deploy vor D1) oder
- * antwortet sie nicht, zeigt der Kopf einfach keine Pille. Ein Zustand, den man
- * nicht lesen kann, darf die Leseansicht nicht kosten.
+ * FAIL-SOFT: ist die Route nicht da (Deploy vor D1, 4xx), zeigt der Kopf
+ * einfach keine Pille. Ein Zustand, den man nicht lesen kann, darf die
+ * Leseansicht nicht kosten.
+ *
+ * EIN AUSFALL IST ABER KEIN „NICHT VERÖFFENTLICHT" (LZ1, 2026-11-22): der
+ * Fehler bleibt im `error` des Abrufs, und bei einem echten Ausfall
+ * (`isFetchOutage`) steht an Stelle der Pille eine ruhige Zeile mit „Noch
+ * einmal versuchen" — sonst sähe eine öffentliche Marke im Ausfall aus wie
+ * eine, die nie eingereicht wurde.
  */
 const publicationRequest = await useAsyncData<BrandPublicationResponse | null>(
   () => `brand-publication-${profileId.value}`,
-  () => request<BrandPublicationResponse>(`/api/brand/profiles/${profileId.value}/publication`)
-    .catch(() => null),
+  () => request<BrandPublicationResponse>(`/api/brand/profiles/${profileId.value}/publication`),
   { watch: [profileId], default: () => null },
 )
+
+const publicationFailed = computed(() => isFetchOutage(publicationRequest.error.value))
+
+/** Das Profil ist ausgefallen (LZ1) — dasselbe Muster wie `document.vue`. */
+const shellFailed = computed(() => isFetchOutage(shell.error.value))
 
 const view = computed(() => doc.data.value)
 const title = computed(() => store.profile?.title || view.value?.title || '')
@@ -929,7 +939,10 @@ useBrandTitle(() => (title.value || t('brand.foundation.title')))
                Dokuments, weil er über das GANZE Dokument etwas aussagt.
                `pendingUpdate` ist der Fall „öffentlich, und ein neuer Stand
                wartet": beides ist wahr, also steht auch beides da. -->
-          <div v-if="publication.status === 'pending' && !publication.pendingUpdate" class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div v-if="publicationFailed" class="mt-4" data-publication-error>
+            <CoreInlineLoadError :retry="publicationRequest.refresh" />
+          </div>
+          <div v-else-if="publication.status === 'pending' && !publication.pendingUpdate" class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span class="bw-state bw-state--draft">{{ t('brand.publication.state.pending') }}</span>
             <p class="bw-label" style="color: var(--bw-muted)">
               {{ t('brand.publication.state.pendingAddress', { address: publication.path }) }}
@@ -1008,6 +1021,8 @@ useBrandTitle(() => (title.value || t('brand.foundation.title')))
             <p class="bw-pending mt-2">{{ t('brand.publication.state.hiddenHint') }}</p>
           </div>
         </div>
+
+        <CoreInlineLoadError v-if="shellFailed && !doc.error.value" :retry="shell.refresh" data-brand-shell-error />
 
         <p v-if="doc.error.value" class="bw-pending">{{ t('brand.foundation.loadFailed') }}</p>
         <p v-else-if="!chapters.length" class="bw-pending">{{ t('brand.foundation.empty') }}</p>

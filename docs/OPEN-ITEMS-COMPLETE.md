@@ -30,6 +30,56 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### LZ1 — die letzten 13 Dateien zeigen einen Ausfall ehrlich; nur noch eine bestätigte Ausnahme (Bahn 12) ✅ 2026-11-22
+
+**Was.** Die Entscheidung vom 2026-11-22 lautete „Bahn 9 stellt die 13 um";
+Bahn 9 wurde archiviert, Bahn 12 hat sie am selben Tag übernommen und
+erledigt. Umgestellt sind die 12 Dateien in `packages/brand` und der
+Fußbereich von `apps/portfolio`. Die Rest-Liste
+`packages/core/tests/support/listStateBacklog.ts` nennt nur noch
+`DiscussionSidebarLinks.vue` (Grund an der Stelle, im Browser bestätigt), und
+der Wächter `listStateBacklogGuard.test.ts` hält fest, dass es bei dieser
+einen Ausnahme bleibt. Der Plan LZ1 ist damit gelöscht.
+
+**Wie.** Dasselbe Muster wie Bahn 8. Abrufe, die jeden Fehler zu „gibt es
+nicht" machten (Brand-Check-Ergebnis und -Vergleich, Score-Seite, Einladung,
+Brand Kit), werfen einen echten Ausfall (`isFetchOutage`: kein Status oder
+5xx) weiter; 404/403 bleiben Zustände. Das Brand-Check-Ergebnis antwortet
+beim Ausfall 503, das Kit macht aus einem Ausfall keine 404-Seite mehr.
+Einzelstücke zeigen `CoreLoadError`, Kacheln und Hinweise
+`CoreInlineLoadError` mit „Noch einmal versuchen" (Discover-Teaser,
+Veröffentlichungs-Zustand, To-dos, Kit-Vorschauen, Profil der Leiste auf
+Design, Dokument, Foundation, Kit und Werkstatt). Die Brandings-Übersicht
+zeichnet ihre vier Zustände über `listState()` (Karten bleiben, kein
+Datengrid); fallen nur die Scores aus, steht eine Zeile über den Karten statt
+„noch kein Score" darunter (neuer Schlüssel `brand.myScores.card.loadFailed`).
+Die Werkstatt: `loadSessionMessages` wirft einen Ausfall jetzt weiter, sonst
+eröffnete George eine Session, deren Verlauf nur nicht zu lesen war. Die
+Fußzeile des Portfolios liest `error`; ihr Fehler-Zustand bleibt der feste
+Rückfall auf Impressum und Datenschutz (Merkmal
+`data-footer-legal-fallback`), ohne Knopf und ohne neuen Text.
+
+**Beweis.** Wächter grün; `pnpm --filter @pukalani/brand test` (mit dem
+Rauch-Test der Werkstatt) und `pnpm --filter @pukalani/core test`;
+Typecheck `branding` und `portfolio`; `pnpm check`. Der Quelltext-Test des
+Brand-Check-Ergebnisses prüft jetzt auch den 503-Zweig. Im Browser geprüft (lokal, Dev-Server
+aus dem Worktree, Abruf im Browser mit einer gestellten 500 gesperrt, dann
+wieder frei): Fußzeile des Studios (normal die Seiten aus dem CMS, gesperrt
+der Rückfall mit `data-footer-legal-fallback`), Discover-Teaser der
+branding-Startseite (normal Kacheln, gesperrt Fehlerzeile mit „Noch einmal
+versuchen", leer kein Abschnitt), Einladungsseite (normal „ungültig" für einen
+erfundenen Code, gesperrt die Fehlerzeile statt „ungültig") und
+Brand-Check-Ergebnis (unbekannte Kennung 404 „gibt es nicht", gesperrt die
+Fehlerkarte). Keine Hydration-Warnung. Nicht gesehen: ein echtes
+Check-Ergebnis (lokal keine Kennung ohne Anmeldung) und die 503 beim
+vollen Seitenaufbau (die Sperre greift nur im Browser).
+
+**Gelernt:** Ein Quelltext-Test, der „nur dieser Status" festschreibt
+(`brandCheckResultStatus.test.ts`), wird beim ehrlichen Ausfall-Zweig rot —
+ihn erweitern statt den Zweig zu verbiegen.
+
+---
+
 ### Review nach der Umsetzung: Befunde B1 bis B4 und B6 behoben ✅ 2026-11-22
 
 **Was.** Ein unabhängiges Review der umgesetzten Pakete (Leitstand, 2026-11-22)
@@ -1553,7 +1603,8 @@ etwa „Du besitzt keine Community“.
   eine Variable namens `confirm` bleibt erlaubt.
 - **Rest-Liste LZ1:** `packages/core/tests/support/listStateBacklog.ts`
   (110 Dateien, 136 Abrufe ohne Fehler-Zweig) mit Wächter
-  `listStateBacklogGuard.test.ts`; Einzelheiten `docs/plans/offen/LZ1.md`.
+  `listStateBacklogGuard.test.ts`; Einzelheiten standen im Plan LZ1 (gelöscht
+  am 2026-11-22, Abschluss: Eintrag „LZ1 — die letzten 13 Dateien“).
 - **Tests:** `listState.test.ts` (vier Zustände, Ansage-Bereiche,
   Neuversuch ohne Doppelklick) und `confirmDialog.test.ts` laden die echten
   Komponenten mit dem Vue-Compiler ohne neues Paket

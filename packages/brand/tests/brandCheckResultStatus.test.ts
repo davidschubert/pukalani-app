@@ -8,7 +8,8 @@
  *
  * Geprüft am Quelltext (die Seite läuft hier nicht): der Status wird gesetzt,
  * und NUR im Zweig einer 404 der Route — ein 503 (Datenbank weg) wird nicht zu
- * „gibt es nicht". Was dieser Test NICHT beweist: die Antwort am laufenden
+ * „gibt es nicht", sondern antwortet seit LZ1 (2026-11-22) selbst 503 mit
+ * Fehler-Zustand und „Noch einmal versuchen". Was dieser Test NICHT beweist: die Antwort am laufenden
  * Server (Abruf `/brand-check/gibt-es-nicht` ⇒ 404 mit Leerseite).
  */
 import { readFileSync } from 'node:fs'
@@ -30,11 +31,16 @@ describe('brand-check/[id]: Status bei unbekannter Kennung', () => {
     expect(script).toMatch(/if \(status === 404 && requestEvent\) setResponseStatus\(requestEvent, 404\)/)
   })
 
-  it('GEGENPROBE: kein anderer Status wird gesetzt, und kein createError macht daraus die Fehlerseite', () => {
+  it('GEGENPROBE: nur 404 und (beim Ausfall) 503, und kein createError macht daraus die Fehlerseite', () => {
     const calls = [...script.matchAll(/setResponseStatus\(requestEvent, (\d+)\)/g)].map(match => match[1])
     expect(calls.length).toBeGreaterThan(0)
-    expect(new Set(calls)).toEqual(new Set(['404']))
+    expect(new Set(calls)).toEqual(new Set(['404', '503']))
     expect(script).not.toMatch(/createError\(|showError\(/)
+  })
+
+  it('ein Ausfall ist kein „gibt es nicht": 503 nur im Zweig isFetchOutage, mit Fehler-Zustand (LZ1)', () => {
+    expect(script).toMatch(/if \(isFetchOutage\(error\)\) \{\s*if \(requestEvent\) setResponseStatus\(requestEvent, 503\)\s*throw error/)
+    expect(page).toContain('data-check-error')
   })
 
   it('die ruhige Leerseite bleibt der Zustand für „gibt es nicht"', () => {

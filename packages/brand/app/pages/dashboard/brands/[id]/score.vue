@@ -58,34 +58,50 @@ const toast = useToast()
 
 const profileId = computed(() => String(route.params.id ?? ''))
 
-/** Eine fremde oder fehlende Brand antwortet 404 — hier ein Zustand, kein Fehler. */
-const { data: detail, status: detailStatus } = await useAsyncData<BrandProfileDetailResponse | null>(
+/**
+ * Eine fremde oder fehlende Brand antwortet 404 — hier ein Zustand, kein Fehler.
+ *
+ * EIN AUSFALL IST KEIN ZUSTAND (LZ1, 2026-11-22): kein Status oder 5xx
+ * (`isFetchOutage`) wirft jeder der drei Abrufe weiter, statt `null` zu
+ * liefern. Sonst sagte die Seite bei einer Störung „Brand nicht gefunden",
+ * „noch kein Check" oder ließ die To-dos still weg. Der Fehler steht dann im
+ * `error` des Abrufs, und die Seite zeigt „Noch einmal versuchen".
+ */
+function nullUnlessOutage(error: unknown): null {
+  if (isFetchOutage(error)) throw error
+  return null
+}
+
+const { data: detail, status: detailStatus, error: detailError, refresh: refreshDetail } = await useAsyncData<BrandProfileDetailResponse | null>(
   'brand-score-profile',
   async () => {
     if (!profileId.value) return null
     try {
       return await request<BrandProfileDetailResponse>(`/api/brand/profiles/${encodeURIComponent(profileId.value)}`)
     }
-    catch {
-      return null
+    catch (error) {
+      return nullUnlessOutage(error)
     }
   },
   { watch: [profileId] },
 )
 
-const { data: history, refresh: refreshHistory } = await useAsyncData<BrandCheckHistoryResponse | null>(
+const { data: history, error: historyError, refresh: refreshHistory } = await useAsyncData<BrandCheckHistoryResponse | null>(
   'brand-score-history',
   async () => {
     if (!profileId.value) return null
     try {
       return await request<BrandCheckHistoryResponse>(`/api/brand/profiles/${encodeURIComponent(profileId.value)}/checks`)
     }
-    catch {
-      return null
+    catch (error) {
+      return nullUnlessOutage(error)
     }
   },
   { watch: [profileId] },
 )
+
+const detailFailed = computed(() => isFetchOutage(detailError.value))
+const historyFailed = computed(() => isFetchOutage(historyError.value))
 
 const brandTitle = computed(() => detail.value?.profile.title ?? '')
 const websiteUrl = computed(() => detail.value?.profile.startCard.websiteUrl ?? '')
@@ -103,19 +119,21 @@ const diff = computed(() => history.value?.diff ?? null)
  */
 const todoSourceId = computed(() => (latestWebsite.value ?? latestDocument.value)?.id ?? '')
 
-const { data: todoCheck, refresh: refreshTodoCheck } = await useAsyncData<BrandCheckResult | null>(
+const { data: todoCheck, error: todoError, refresh: refreshTodoCheck } = await useAsyncData<BrandCheckResult | null>(
   'brand-score-todos',
   async () => {
     if (!todoSourceId.value) return null
     try {
       return await request<BrandCheckResult>(`/api/brand/check/${encodeURIComponent(todoSourceId.value)}`)
     }
-    catch {
-      return null
+    catch (error) {
+      return nullUnlessOutage(error)
     }
   },
   { watch: [todoSourceId] },
 )
+
+const todoFailed = computed(() => isFetchOutage(todoError.value))
 
 const todos = computed(() => (todoCheck.value ? pickBrandCheckTodos(todoCheck.value) : []))
 
@@ -448,6 +466,10 @@ useBrandTitle(() => t('brand.myScores.title'))
         <p class="mt-4 text-sm" style="color: var(--bw-ink-soft)">{{ t('brand.myScores.loading') }}</p>
       </div>
 
+      <div v-else-if="detailFailed" class="bw-card p-10" data-score-load-error>
+        <CoreLoadError :retry="refreshDetail" />
+      </div>
+
       <div v-else-if="!detail" class="bw-card p-10 text-center" data-score-missing>
         <p class="font-medium">{{ t('brand.myScores.missingTitle') }}</p>
         <p class="mx-auto mt-2 max-w-md text-sm leading-relaxed" style="color: var(--bw-muted)">{{ t('brand.myScores.missingText') }}</p>
@@ -464,6 +486,10 @@ useBrandTitle(() => t('brand.myScores.title'))
         >
           {{ t(`brand.myScores.errors.${errorKey}`) }}
         </p>
+
+        <!-- Der Verlauf ist ausgefallen (LZ1): sonst stünde unten „noch kein
+             Check", obwohl es vielleicht welche gibt. -->
+        <CoreInlineLoadError v-if="historyFailed" class="mb-6" :retry="refreshHistory" data-score-history-error />
 
         <!-- 1 · Die zwei Zahlen -->
         <div class="grid gap-6 lg:grid-cols-2">
@@ -640,14 +666,21 @@ useBrandTitle(() => t('brand.myScores.title'))
           </ol>
         </section>
 
+        <!-- Die To-dos sind ausgefallen (LZ1): sagen statt still weglassen. -->
+        <section v-else-if="todoFailed" class="bw-card mt-6 p-8" data-score-todos-error>
+          <h2 class="text-xl font-semibold tracking-tight">{{ t('brand.myScores.todos.title') }}</h2>
+          <CoreInlineLoadError class="mt-4" :retry="refreshTodoCheck" />
+        </section>
+
         <!-- 4 · Verlauf -->
         <section class="bw-card mt-6 p-8" data-score-history>
           <h2 class="text-xl font-semibold tracking-tight">{{ t('brand.myScores.history.title') }}</h2>
           <p class="bw-label mt-2 leading-relaxed" style="color: var(--bw-muted)">{{ t('brand.myScores.history.lead') }}</p>
 
-          <p v-if="!items.length" class="mt-6 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('brand.myScores.history.empty') }}</p>
+          <!-- Ausfall: die Zeile steht oben (data-score-history-error), hier keine Leermeldung. -->
+          <p v-if="!items.length && !historyFailed" class="mt-6 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('brand.myScores.history.empty') }}</p>
 
-          <UTable v-else :data="items" :columns="historyColumns" class="mt-4">
+          <UTable v-else-if="items.length" :data="items" :columns="historyColumns" class="mt-4">
             <template #createdAt-cell="{ row }">
               <span class="whitespace-nowrap">{{ formatDate(row.original.createdAt) }}</span>
             </template>
