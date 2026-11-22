@@ -1,12 +1,11 @@
 # Pukalani-Konto, Etappe 1 — die Eintrittskarte je Seite
 
-> **Plan-Status (2026-11-22):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
+> **Plan-Status (2026-11-22):** teils gebaut — offen: E1b, E1c, E1d, Einschalten (E1a gebaut, Schalter aus) ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
 
 **Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-22 · Status: Davids
-Entscheidungen K1–K6 liegen vor (§ 12), der Beweis E0 ist gelaufen (§ 13);
-wartet auf Davids Wahl des Wegs zu K4 und zu Zwei-Faktor-Konten (§ 13.4).**
-Nichts hiervon ist umgesetzt — keine Code-Änderung, keine Migration, nichts an
-Production.
+Entscheidungen liegen vor (§ 12, § 13.3, § 13.4), der Beweis E0 ist gelaufen
+(§ 13); gebaut: E1a (Umschlag und Lesepunkt, Schalter aus); offen: E1b, E1c, E1d.** Nichts ist auf
+Production eingeschaltet, keine Migration.
 
 Dieses Dokument vertieft **eine** Etappe des Gesamtkonzepts
 [PUKALANI-KONTO.md](PUKALANI-KONTO.md). Dort sind der Weg (a) und Davids zehn
@@ -181,7 +180,7 @@ Session.
 | 2 | **Eigener Schlüssel für den Umschlag** als Env-Wert (Name im Bau festgelegt, z. B. `NUXT_SITE_CARD_KEY`), je App, die den Umschlag nutzt — alternativ abgeleitet vom Server-Schlüssel (Entscheidung 3). | `.env` der Apps auf Production und in der CI | **Klick** (Env auf Production) |
 | 3 | **Sitzungs-Obergrenze** im Projekt `account` prüfen und ggf. anheben (Appwrite: Standard 10, höchstens 100). Mit einer Sitzung je Seite reichen 10 bei Menschen mit vielen Communities nicht; Appwrite löscht dann die älteste — der Mensch fliegt woanders raus. Zahl aus E0. | Appwrite-Konsole, Projekt `account` | **Klick** (Projekt-Einstellung) |
 | 4 | **Einmal alle abmelden** — passiert von selbst, wenn das neue Format scharf geschaltet wird; zusätzlich die alten, kopierten Sitzungen beenden, damit kein altes Geheimnis weiter gilt (Lauf über alle Konten, `users.deleteSessions`). | Production, Projekt `account` | **Klick** (Daten auf Production) |
-| 5 | **Schalter für das Schreib-Format** (Rückweg, § 8) als Wert in `app.config.ts` — kein Env, kein Server. | Code | nein |
+| 5 | **Schalter** `NUXT_SITE_CARD_MODE` (`off` · `read` · `write`, Core-Default `off`; Rückweg § 8) — ein Env-Wert, damit er sich ohne Ausliefern zurücknehmen lässt (Neustart genügt; gebaut in E1a). | `.env` der Apps | **Klick** (Env auf Production) |
 | 6 | **nginx, TLS, DNS:** nichts. | — | nein |
 | 7 | **Übergangsregel aufheben** (Freigabe-Pflicht für eigene Domains) — eine Code-Änderung, aber mit Wirkung auf Kundschaft. | Code + EIGENE-DOMAIN.md | **Klick** (Entscheidung 6) |
 
@@ -224,11 +223,11 @@ Ausgerollt wird in **zwei** Schritten, damit der Rückweg ein Schalter ist:
 1. **Lesen beider Formate** (ohne sichtbare Wirkung): Der Lesepunkt versteht
    Umschlag **und** Klartext. Ausnahme: Auf einer Kundendomain gilt nur der
    Umschlag. Geschrieben wird weiter Klartext.
-2. **Schreiben im Umschlag** über den Schalter in `app.config.ts`. Ab hier
+2. **Schreiben im Umschlag** über den Schalter (`NUXT_SITE_CARD_MODE=write`). Ab hier
    bekommt jede neue Anmeldung eine Karte; alte Klartext-Cookies laufen beim
    nächsten Anmelden aus. Dann der einmalige Abmelde-Lauf (§ 6, Punkt 4).
 
-**Rückweg nach Schritt 2:** Schalter zurück, ausliefern. Der Lesepunkt versteht
+**Rückweg nach Schritt 2:** Schalter zurück auf `read`, App neu starten. Der Lesepunkt versteht
 die Karten weiter — niemand fliegt raus. **Rückweg nach dem Abmelde-Lauf:**
 wie oben; abgemeldet ist abgemeldet, das lässt sich nicht zurückholen und ist
 auch nicht nötig. **Ganz zurück** (Code zurücksetzen): Karten sind dann
@@ -404,7 +403,7 @@ als die Karte**: nur lesen, nur diese Community, nur so lange wie die Karte.
 | Aufwand | S | M (Lese-Konten anlegen und aus Listen und Export heraushalten; Takt für Persönliches) | L (WebSocket in Nitro, Kanal-Liste, Neuverbinden, Last-Test); nginx schon bereit |
 | Hält das Ziel der Etappe? | **nein** | ja | ja |
 
-**Empfehlung: Weg 3.** Er ist der einzige, der Davids „auch dort live lassen"
+**Davids Wahl (2026-11-22): Weg 3.** Empfehlung war Weg 3. Er ist der einzige, der Davids „auch dort live lassen"
 **ganz** erfüllt — mit Konto-Kanal, persönlichen Meldungen und sofortigem
 Widerruf — und das Ziel der Etappe hält. Er wird ein eigener Schritt **E1d**
 nach E1c, ebenfalls hinter dem Schalter; bis er steht, bleibt die
@@ -416,6 +415,8 @@ ist die kleinste Abweichung vom Ziel, schließt SEC-022 aber nicht.
 
 Eine eigene Sitzung je Seite ist für Zwei-Faktor-Konten nicht ohne erneuten
 Code möglich (§ 13.2 Punkt 1). Zwei Wege:
+
+**Davids Wahl (2026-11-22): (a).**
 
 - **(a) Kopie im Umschlag (Empfehlung):** Zwei-Faktor-Konten bekommen beim
   Host-Wechsel wie heute eine Kopie ihrer Sitzung — aber im Umschlag, an Host
