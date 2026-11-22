@@ -275,8 +275,14 @@ jobs:
           ready() {
             curl -s -m 5 "http://localhost:$1/api/health" | tr -d ' \n' | grep -q '"ok":true.*"state":"ok"'
           }
+          # Nachts verlangt die Bereit-Prüfung zusätzlich die Karte im Modus
+          # write mit Schlüssel — sonst liefen die Beweise still im alten Modus.
+          card_ready() {
+            [ "$LAUF" != 'nacht' ] && return 0
+            curl -s -m 5 "http://localhost:$PLATFORM_PORT/api/health" | tr -d ' \n' | grep -q '"siteCard":{"mode":"write","cards":true'
+          }
           for i in $(seq 1 240); do
-            if ready "$CONTROL_PORT" && ready "$PLATFORM_PORT"; then
+            if ready "$CONTROL_PORT" && ready "$PLATFORM_PORT" && card_ready; then
               echo "Beide Server bereit nach ${i}s."
               exit 0
             fi
@@ -392,6 +398,10 @@ jobs:
       # `--einzel-port` und kein `--branding-port`: die Beweise dieser zwei
       # Server stehen ohnehin nur auf `nacht`.
       - name: Beweise auf der Bühne (Einteilung aus scripts/buehne/beweise.mjs)
+        # Nachts MUSS die Karte im Modus write laufen: verify-site-card ist
+        # dann rot statt „übersprungen", wenn sie es nicht tut (PK1 E1c).
+        env:
+          EXPECT_SITE_CARD: ${{ env.LAUF == 'nacht' && 'write' || '' }}
         run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT" ${EINZEL_READY:+--einzel-port "$EINZEL_PORT"} ${BRANDING_READY:+--branding-port "$BRANDING_PORT"}
 
       # Acht Test-Dateien prüfen die Trennung der Communities gegen eine

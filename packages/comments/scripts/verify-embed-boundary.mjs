@@ -256,7 +256,18 @@ try {
   check('…und B hat seinen Einbetter unverändert',
     stillThere.json?.sites?.[0]?.label === 'B-Blog', JSON.stringify(stillThere.json))
 
-  // Owner A meldet sich auf B an (eigene Anmeldung dort) — seine Rolle reist nicht mit.
+  // Dieselbe SITZUNG von A auf B: mit `off`/`read` gilt sie dort (die Rolle
+  // reist trotzdem nicht ⇒ 403); im Modus `write` ist sie eine Karte von A
+  // und auf B wertlos ⇒ 401 (PK1 E1c). Der Modus aus /api/health.
+  const siteCardMode = (await call(a.host, '/api/health')).json?.siteCard?.mode ?? 'off'
+  const sameSessionOnB = await call(b.host, '/api/admin/embed-sites', { cookie: cookieA })
+  if (siteCardMode === 'write') {
+    check('Modus write: die Karte von A auf Host B → 401', sameSessionOnB.status === 401, `Status ${sameSessionOnB.status}`)
+  }
+  else {
+    check('dieselbe Sitzung von A auf Host B → 403 (die Rolle reist nicht)', sameSessionOnB.status === 403, `Status ${sameSessionOnB.status}`)
+  }
+  // Owner A meldet sich auf B an (eigene Anmeldung dort) — seine Rolle reist auch so nicht mit.
   const roleTravels = await call(b.host, '/api/admin/embed-sites', { cookie: await cookieOn(b.host, ownerA) })
   check('die Owner-Rolle reist NICHT zur anderen Community → 403', roleTravels.status === 403, `Status ${roleTravels.status}`)
 

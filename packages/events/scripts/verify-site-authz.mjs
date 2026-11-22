@@ -234,7 +234,18 @@ try {
     check('Datentür hat communityId von A gestempelt', raw?.communityId === tenantA.tenantId, `communityId=${raw?.communityId}`)
 
     console.log('\n2. Dieselbe Person auf der NACHBAR-Community')
-    // Eigene Anmeldung auf B — die Rolle von A reist nicht mit.
+    // Dieselbe SITZUNG von A auf B: mit `off`/`read` gilt sie dort (Klartext,
+    // die Rolle reist trotzdem nicht ⇒ 403); im Modus `write` ist sie eine
+    // Karte von A und auf B wertlos ⇒ 401 (PK1 E1c). Der Modus aus /api/health.
+    const siteCardMode = (await call(HOST_A, '/api/health')).json?.siteCard?.mode ?? 'off'
+    const sameSessionOnB = await call(HOST_B, '/api/events/manage', { cookie: ownerCookie })
+    if (siteCardMode === 'write') {
+      check('Modus write: die Karte von A auf kunde-b → 401', sameSessionOnB.status === 401, `Status ${sameSessionOnB.status}`)
+    }
+    else {
+      check('dieselbe Sitzung von A auf kunde-b → 403 (die Rolle reist nicht)', sameSessionOnB.status === 403, `Status ${sameSessionOnB.status}`)
+    }
+    // Eigene Anmeldung auf B — die Rolle von A reist auch so nicht mit.
     const ownerCookieB = await login(HOST_B, owner)
     const bManage = await call(HOST_B, '/api/events/manage', { cookie: ownerCookieB })
     check('GET /api/events/manage auf kunde-b → 403', bManage.status === 403, `Status ${bManage.status}`)
