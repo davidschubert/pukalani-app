@@ -30,6 +30,27 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q24 Nachtrag — Fußzeile „Auch von uns" mit Davids Wortlaut (Bahn 7, Paket 2) ✅ 2026-11-22
+
+**Was.** Die Zeile, mit der die drei Sites aufeinander zeigen, trägt jetzt
+Davids Namen und Rollen (2026-11-21): „Auch von uns: Pukalani App –
+Community-Plattform · Pukalani Studio – UI/UX-Design Studio · Branding Supply –
+Digitaler Markenaufbau". Jede Site zeigt wie bisher nur die zwei ANDEREN.
+Englisch sinngleich: „Also from us: Pukalani App – community platform ·
+Pukalani Studio – UI/UX design studio · Branding Supply – digital brand
+building". Geändert: Name in `packages/core/shared/brandFamily.ts`
+(`Pukalani` → `Pukalani App`), Rollen in `ui.brandFamily.roles` (de + en).
+Die drei Fußzeilen selbst sind unverändert (gemeinsamer Baustein).
+
+**Beweis.** `packages/core/tests/brandFamily.test.ts` setzt die volle Zeile
+aus Namen und Rollen zusammen und hält sie gegen den Satz, je Sprache.
+
+**Gelernt:** Ein Satz, den David wörtlich vorgibt, gehört als Satz in den
+Test — die Bausteine einzeln zu prüfen („Rolle ist gesetzt") hätte den
+Wortlaut nie festgehalten.
+
+---
+
 ### KK1 (c) — Plan-Route: Kontingent-Grenzen zusammenführen statt überschreiben; Konzept für den Katalog ✅ 2026-11-22
 
 **Was.** Davids Antwort vom 2026-11-21: „Ja, in den Katalog". Geschrieben
@@ -116,6 +137,31 @@ die Befehle im Runbook — wer eine Datei umbenennt, sucht mit `git grep` auch
 in `docs/runbooks/` nach dem alten Namen.
 
 ---
+### W3 — Studio-Startseite: Problem-Spiegel, Vergleich, „Passen wir zusammen?" (Bahn 9, Paket 2) ✅ 2026-11-22
+
+**Was.** Auf der Startseite von pukalani.studio (`apps/portfolio/app/pages/index.vue`)
+drei Teile nach `docs/plans/STUDIO-ERSTGESPRAECH-FUNNEL.md` § 7: der
+Problem-Spiegel „Kommt Ihnen das bekannt vor?" (sechs Karten, Anker
+`kennen-sie-das`) VOR den Leistungen; dahinter „Passen wir zusammen?" (Anker
+`passt-das`) mit der Vergleichstabelle Studio / Agentur / Freelancer /
+Baukasten (Zeichen mit versteckter Beschriftung für Vorleseprogramme, Legende)
+und den Listen „Passend für uns" / „Nicht passend", darunter ein Knopf zum
+Erstgespräch (Messpunkt `studio_cta_erstgespraech`, `source: fit`); an den
+Referenzen der Hinweis „Beispiele, keine Garantie". Die feste Zeile unter den
+Knöpfen (`CTA_NOTE`) beginnt jetzt mit „Kostenlos und unverbindlich · Anfrage in
+ca. 3 Minuten". Texte in `app/data/home.ts`, beide Sprachen; die Abfolge
+hell/dunkel der Abschnitte ist neu verteilt (Leistungen jetzt ohne Fläche).
+E2E-Fall in `apps/portfolio/e2e/smoke.spec.ts` prüft die Reihenfolge.
+
+Die Entwürfe von 2026-09-03 sprachen „du"; die Studio-Site spricht „Sie" —
+beim Bau umgestellt. Davids Gegenlesen der Texte steht aus (OPEN-ITEMS „W2–W4").
+
+**Gelernt:** Eine visuell versteckte Beschriftung (`position: absolute`) in einer
+Tabelle, die in einem eigenen Scroll-Rahmen (`overflow-x: auto`) liegt, hängt
+sich ohne `position: relative` an der Zelle an die SEITE statt an den Rahmen —
+auf 375 px wurde das Dokument dadurch 131 px breiter, ohne dass irgendein
+sichtbares Element überstand. Messen mit
+`document.documentElement.scrollWidth - innerWidth`, nicht mit dem Auge.
 
 ### WS1-Lauf — die Werkstatt-Seite in fünf weiteren Teilen (Bahn 6, Paket 1; ARC-001) ✅ 2026-11-21
 
