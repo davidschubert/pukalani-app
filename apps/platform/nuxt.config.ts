@@ -18,6 +18,21 @@ export default defineNuxtConfig({
     port: 3006,
   },
 
+  /**
+   * PK1 E1d: die Live-Verbindung unter eigenen Domains läuft über diesen
+   * Server (`/api/live/realtime`, core). Nur diese App hat eigene Domains,
+   * darum nur hier WebSocket. Was sich am Build ändert: Nitro hängt einen
+   * `upgrade`-Empfänger an den Server (crossws, kommt mit Nitro); das Plugin
+   * `core/server/plugins/live-relay.ts` lässt nur den einen Pfad durch, jeder
+   * andere bekommt 404 wie vorher. Wirksam erst mit `NUXT_SITE_CARD_MODE=write`
+   * — mit `off`/`read` antwortet die Route wie eine unbekannte.
+   */
+  nitro: {
+    experimental: {
+      websocket: true,
+    },
+  },
+
   vite: {
     server: {
       /**

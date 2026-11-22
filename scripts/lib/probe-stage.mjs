@@ -305,6 +305,137 @@ export function removeProbeConsent({ tablesDB, databaseId, userId }) {
 }
 
 /**
+ * WEBSOCKET AN EINEN HOST DER BÜHNE (PK1 E1d) — ohne Paket, über
+ * `node:http` (`Host`, `Cookie`, `Origin` lassen sich so frei setzen; der
+ * eingebaute `WebSocket` kann das nicht). Nur Text-Rahmen, Ping/Close; für
+ * Beweise, nicht für Last.
+ *
+ * Ergebnis: `{ status }` bei Ablehnung (kein 101), sonst zusätzlich
+ * `send(obj)`, `next(predicate, timeoutMs)` (nächste passende Nachricht oder
+ * `null`), `messages` (alles Empfangene), `closed` (Promise mit `{ code }`)
+ * und `close()`.
+ */
+export function openProbeSocket({ port, address = '::1', host, path, cookie, origin, headers = {} }) {
+  return new Promise((resolve, reject) => {
+    const req = request({
+      host: address,
+      port,
+      path,
+      headers: {
+        host,
+        connection: 'Upgrade',
+        upgrade: 'websocket',
+        'sec-websocket-version': '13',
+        'sec-websocket-key': randomBytes(16).toString('base64'),
+        ...(cookie ? { cookie } : {}),
+        ...(origin ? { origin } : {}),
+        ...headers,
+      },
+    })
+    req.on('response', (res) => {
+      res.resume()
+      resolve({ status: res.statusCode ?? 0 })
+    })
+    req.on('error', reject)
+    req.on('upgrade', (res, socket) => {
+      const messages = []
+      const waiters = []
+      let buffer = Buffer.alloc(0)
+      let closeCode = null
+      let resolveClosed
+      const closed = new Promise(r => { resolveClosed = r })
+      const frame = (opcode, payload) => {
+        const mask = randomBytes(4)
+        const len = payload.length
+        const head = len < 126 ? Buffer.from([0x80 | opcode, 0x80 | len])
+          : len < 65536 ? Buffer.from([0x80 | opcode, 0x80 | 126, len >> 8, len & 255])
+            : Buffer.concat([Buffer.from([0x80 | opcode, 0x80 | 127]), (() => { const b = Buffer.alloc(8); b.writeBigUInt64BE(BigInt(len)); return b })()])
+        const body = Buffer.from(payload.map((byte, i) => byte ^ mask[i % 4]))
+        if (!socket.destroyed) socket.write(Buffer.concat([head, mask, body]))
+      }
+      const deliver = (message) => {
+        messages.push(message)
+        for (const waiter of [...waiters]) {
+          if (waiter.predicate(message)) {
+            waiters.splice(waiters.indexOf(waiter), 1)
+            clearTimeout(waiter.timer)
+            waiter.resolve(message)
+          }
+        }
+      }
+      const finish = (code) => {
+        if (closeCode !== null) return
+        closeCode = code
+        for (const waiter of waiters.splice(0)) {
+          clearTimeout(waiter.timer)
+          waiter.resolve(null)
+        }
+        resolveClosed({ code })
+      }
+      socket.on('data', (chunk) => {
+        buffer = Buffer.concat([buffer, chunk])
+        while (buffer.length >= 2) {
+          const opcode = buffer[0] & 0x0F
+          let len = buffer[1] & 0x7F
+          let offset = 2
+          if (len === 126) {
+            if (buffer.length < 4) return
+            len = buffer.readUInt16BE(2)
+            offset = 4
+          }
+          else if (len === 127) {
+            if (buffer.length < 10) return
+            len = Number(buffer.readBigUInt64BE(2))
+            offset = 10
+          }
+          if (buffer.length < offset + len) return
+          const payload = buffer.subarray(offset, offset + len)
+          buffer = buffer.subarray(offset + len)
+          if (opcode === 1) {
+            let parsed
+            try { parsed = JSON.parse(payload.toString('utf8')) }
+            catch { parsed = { raw: payload.toString('utf8') } }
+            deliver(parsed)
+          }
+          else if (opcode === 8) {
+            finish(payload.length >= 2 ? payload.readUInt16BE(0) : 1005)
+            socket.end()
+          }
+          else if (opcode === 9) {
+            frame(10, payload)
+          }
+        }
+      })
+      socket.on('close', () => finish(1006))
+      socket.on('error', () => finish(1006))
+      resolve({
+        status: res.statusCode ?? 101,
+        messages,
+        closed,
+        send: message => frame(1, Buffer.from(JSON.stringify(message))),
+        next: (predicate, timeoutMs = 10_000) => new Promise((resolveNext) => {
+          const found = messages.find(predicate)
+          if (found) return resolveNext(found)
+          if (closeCode !== null) return resolveNext(null)
+          const waiter = { predicate, resolve: resolveNext, timer: setTimeout(() => {
+            waiters.splice(waiters.indexOf(waiter), 1)
+            resolveNext(null)
+          }, timeoutMs) }
+          waiters.push(waiter)
+        }),
+        close: () => {
+          const code = Buffer.alloc(2)
+          code.writeUInt16BE(1000)
+          frame(8, code)
+          setTimeout(() => socket.destroy(), 200)
+        },
+      })
+    })
+    req.end()
+  })
+}
+
+/**
  * Wartet, bis der Host aufgelöst wird (`/api/themes` antwortet 200) — keine
  * feste Wartezeit. Der Resolver merkt sich auch „unbekannt" 30 s.
  *
