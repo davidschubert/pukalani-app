@@ -30,6 +30,66 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KK1 (c) — Kontingent-Zahlen in den Katalog: eine Vorgabe-Datei, Daten-Migration control-042, Konsole je Art (Production-Schritt offen) ✅ 2026-11-22
+
+**Was.** Davids Antworten vom 2026-11-22 zum Plan
+`docs/plans/KONTINGENT-KATALOG.md`: 6a „Jetzt bauen", 6b die Vorgabe „bleibt
+in der Platform-App", 6c „heutige Werte übernehmen", Schreiben auf Production
+nur mit eigenem Ja. Gebaut:
+
+- Die Zahlen je Plan und Art zogen unverändert aus
+  `apps/platform/app/app.config.ts` in `apps/platform/shared/quotaPlans.ts`
+  (`PLATFORM_QUOTA_PLANS`). Die app.config liest genau diese Datei (der
+  Rückfall der Bremse), die Migration auch — es gibt die Zahlen im Code
+  einmal.
+- Migration control-042 (nur Daten, `schema.latest` 042, Probe bleibt 040 ⇒
+  `/api/health` bleibt ohne sie `schema: ok`): trägt je Plan die Vorgabe
+  dort in `community_plans` ein, wo eine Art FEHLT
+  (`fillMissingPlanLimits`, `packages/control/shared/types/tenantRecord.ts`);
+  vorhandene Arten bleiben, eine Abweichung druckt sie nur.
+- Konsole, Kasten „Pläne & Limits": je Plan eine Zeile je Art (Kommentare,
+  Seiten, Termine, Mediathek und jede weitere aus dem Katalog), Merkmal
+  „Katalog" oder „Vorgabe aus der Konfiguration", „Eigene Zahlen" und „Auf
+  Vorgabe zurück" (`null`); gespeichert werden nur die geänderten Arten
+  (`packages/control/app/utils/planLimitsForm.ts`). Vorher zeigte der Kasten
+  eine fehlende Kommentar-Zahl als 0, und Speichern schrieb 0 = unbegrenzt.
+- Bremse, Speicher-Anzeige der Community und Konsole lesen weiter EINE Kette:
+  Katalog, sonst Vorgabe (`tenantLimitsFor`). Ein Owner erreicht die Plan-Route
+  nicht (`sites.manage`, nur der Betreiber; Rollen-Test
+  `route-roles-operator-tenants.test.ts`, und er hat im Projekt der Konsole
+  gar kein Konto).
+
+**Beweis.** `apps/platform/tests/quotaPlans.test.ts`: Zahlen gleich dem Stand
+vor dem Umzug (Tabelle abgeschrieben), app.config liest die Datei, ohne
+Katalog rechnet die echte `tenantLimitsFor` mit den heutigen Zahlen, nach
+control-042 (über den echten `mapTenantRowToContext`) für jeden Plan und jede
+Art mit denselben; Gegenproben: Katalog-Zahl gewinnt, Füllen überschreibt
+nie, Silo ohne Kontingent, eine geänderte Zahl in der Datei macht den Test
+rot. `packages/control/tests/planLimitsForm.test.ts` (Vorgabe ist `null`,
+nicht 0; nur Änderungen; `null` nur für Katalog-Arten). Lokal: control-042
+gefahren (zweiter Lauf: nichts zu tun), Bühne `up`/`smoke` grün, Klick in der
+Konsole (Seiten bei Pro zurück auf Vorgabe ⇒ nur `pages` fiel aus der Zeile;
+eigene Zahl 40/250 ⇒ die Speicher-Anzeige der Community zeigte nach 20 s
+250). Danach lokaler Katalog auf den Stand vor control-042 zurückgesetzt.
+
+**Befund nebenbei.** Im lokalen Katalog (Spiegel von Production) steht für
+`pro` bei Kommentaren 1000/50.000 — die Vorgabe sagt 5000/250.000. Das ist
+die Saat von control-014 (damals hieß der mittlere Plan `pro`), die die
+Umbenennung mitgenommen hat; der Katalog gewinnt. Steht es auf Production
+genauso (dort NICHT gelesen), haben Pro-Communities heute die
+Personal-Kommentar-Grenze. control-042 ändert daran nichts (es
+überschreibt nie); ob die Zahl korrigiert wird, entscheidet David.
+
+**Offen (OPEN-ITEMS KK1):** control-042 auf Production, nur mit Davids Ja.
+
+**Gelernt:** Eine Liste von Zahlen, die ein Test als TEXT aus einer Datei
+liest (`packages/pages/tests/page-save-quota.test.ts`), zieht beim Umzug
+nicht mit — vor dem Verschieben nach dem alten Pfad greppen; und ein
+Formular, das eine fehlende Zahl als 0 zeigt, schreibt beim Speichern
+„unbegrenzt".
+
+---
+
 ### FL1 — Rauch-Test der Werkstatt unter Last rot („Design-Studio") ✅ 2026-11-22
 
 **Was.** Der Lauf „Test" zum Merge-Commit `29ce5c14` (PR 543, nur
