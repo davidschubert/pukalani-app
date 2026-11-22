@@ -39,7 +39,10 @@ const disableMode = ref<'totp' | 'recovery'>('totp')
 // und haengte das Rendern der Seite an einen Appwrite-Aufruf. Die Vorlagen
 // unten vertragen `status === null` (der Zustand heisst dann „aus"), und der
 // Nachtrag kommt still an.
-const { data: status, refresh } = useFetch<MfaStatusResponse>('/api/auth/mfa/status')
+const { data: status, refresh, error: statusError } = useFetch<MfaStatusResponse>('/api/auth/mfa/status')
+// LZ1: scheitert die Auskunft, sagt die Karte NICHT „aus" (und bietet „Einrichten"
+// an), sondern zeigt den Fehler mit Neuversuch — bei einer Sicherheits-Einstellung
+// wäre das falsche „aus" eine gefährliche Auskunft.
 const enabled = computed(() => status.value?.enabled === true)
 
 function reset() {
@@ -143,8 +146,10 @@ async function copyCodes() {
     <div class="flex w-full max-w-sm flex-col gap-4">
       <UAlert v-if="errorMessage" role="alert" color="error" variant="subtle" :title="errorMessage" data-two-factor-error />
 
+      <CoreInlineLoadError v-if="step === 'idle' && statusError" :retry="refresh" data-two-factor-load-error />
+
       <!-- Zustand: aus oder an -->
-      <template v-if="step === 'idle'">
+      <template v-else-if="step === 'idle'">
         <UBadge
           :color="enabled ? 'success' : 'neutral'"
           variant="subtle"
