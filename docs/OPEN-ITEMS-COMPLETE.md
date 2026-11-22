@@ -30,6 +30,27 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Q24 Nachtrag — Fußzeile „Auch von uns" mit Davids Wortlaut (Bahn 7, Paket 2) ✅ 2026-11-22
+
+**Was.** Die Zeile, mit der die drei Sites aufeinander zeigen, trägt jetzt
+Davids Namen und Rollen (2026-11-21): „Auch von uns: Pukalani App –
+Community-Plattform · Pukalani Studio – UI/UX-Design Studio · Branding Supply –
+Digitaler Markenaufbau". Jede Site zeigt wie bisher nur die zwei ANDEREN.
+Englisch sinngleich: „Also from us: Pukalani App – community platform ·
+Pukalani Studio – UI/UX design studio · Branding Supply – digital brand
+building". Geändert: Name in `packages/core/shared/brandFamily.ts`
+(`Pukalani` → `Pukalani App`), Rollen in `ui.brandFamily.roles` (de + en).
+Die drei Fußzeilen selbst sind unverändert (gemeinsamer Baustein).
+
+**Beweis.** `packages/core/tests/brandFamily.test.ts` setzt die volle Zeile
+aus Namen und Rollen zusammen und hält sie gegen den Satz, je Sprache.
+
+**Gelernt:** Ein Satz, den David wörtlich vorgibt, gehört als Satz in den
+Test — die Bausteine einzeln zu prüfen („Rolle ist gesetzt") hätte den
+Wortlaut nie festgehalten.
+
+---
+
 ### BT1 (e) — Übersicht und Statistik einer Pool-Community: über den Not-Zugang nur der Betreiber ✅ 2026-11-22
 
 **Was.** Davids Antwort vom 2026-11-21 auf die offene Frage aus N14: „Nur ich
