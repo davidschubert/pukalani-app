@@ -102,6 +102,14 @@ fallen durch, Custom Themes über alle Farbtöne),
 `apps/help/tests/helpContrast.test.ts`. Fotos vorher/nachher im
 Notiz-Ordner der Sessiongruppe (`bahn7-fotos`).
 
+**Live (nur lesend, 2026-11-22).** Build `c12cc3dd`, `ok`. demo. (honey,
+Variante dawn): Startseite und Diskussionen, hell und dunkel, 8 bzw. 35 Stellen
+in Haupt-, Gelb- und Blau-Farbe, keine unter 4,5 zu 1. account./Anmeldung:
+Knopf forest 5,9 (vorher 3,2), honey 5,5 mit dunkler Schrift (vorher 3,5),
+ocean 6,0; dunkel 6,6 bis 9,9. Fußzeile siehe Q24-Nachtrag.
+Nachtrag PR #532: die erste Auslieferung zeigte in der Demo im DUNKELN die
+helle Schriftfarbe (2,75 zu 1) — siehe zweite Gelernt-Zeile.
+
 **Nicht geprüft.** Dashboard im Browser (rechnerisch, dieselben Bausteine);
 Hover-Zustand der Knöpfe; `secondary` (kaum benutzt) und die Marketing-Site.
 
@@ -112,6 +120,12 @@ Komponenten-Umbau über einen Block, der GENAU die Flächen-Klassen
 neu setzt; der helle Block braucht `:not(.dark)`, weil `:root[data-theme]`
 auch im Dunkeln gilt. Und: in zsh ist `"$t:light"` der Modifier `:l` —
 die ersten Fotos zeigten alle dieselbe Farbwelt.
+
+**Gelernt:** `:root[data-theme][data-variant]` ist spezifischer als
+`.dark[data-theme]` — ein Varianten-Block, der `--ui-primary` hell setzt,
+braucht IMMER sein dunkles Gegenstück, auch wenn der dunkle Wert gleich
+bleibt. Lokal fiel es nicht auf, weil nur die Grundfarben im Browser liefen;
+die Demo-Community hat eine Variante. Wächter in `primaryContrast.test.ts`.
 
 ---
 
