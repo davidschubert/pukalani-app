@@ -989,6 +989,20 @@ export const SECTIONS = {
       en: 'Our clients are mid-sized companies looking for an experienced design partner without agency overhead — and agencies that need extra senior capacity for a specific job. Many of them come to us through referrals from former colleagues.',
     },
   },
+  problems: {
+    title: { de: 'Kommt Ihnen das bekannt vor?', en: 'Does this sound familiar?' },
+    lead: {
+      de: 'Sechs Situationen, mit denen Projekte bei uns häufig beginnen – und was dahintersteckt.',
+      en: 'Six situations many of our projects start with — and what lies behind them.',
+    },
+  },
+  fit: {
+    title: { de: 'Passen wir zusammen?', en: 'Are we a good fit?' },
+    lead: {
+      de: 'Jede dieser Lösungen hat ihren Platz. Die Tabelle zeigt, wo wir stehen – und wo andere genauso gut sind. Darunter steht, für wen wir die Richtigen sind und für wen nicht.',
+      en: 'Each of these options has its place. The table shows where we stand — and where others are just as good. Below it: who we are the right partner for, and who we are not.',
+    },
+  },
   services: {
     title: {
       de: 'Leistungen & Preise: von der Idee bis zur fertigen Website',
@@ -1087,6 +1101,167 @@ export const SECTIONS = {
     },
   },
 } satisfies Record<string, SectionHeading>
+
+/**
+ * W3 (Studio-Funnel, `docs/plans/STUDIO-ERSTGESPRAECH-FUNNEL.md` § 7): der
+ * Problem-Spiegel steht VOR den Leistungen, Vergleich und Selbst-Selektion
+ * dahinter, der Hinweis zu den Ergebnissen an den Referenzen. Die Texte sind
+ * ein ENTWURF in der Studio-Stimme („wir", Anrede „Sie"); David liest sie
+ * gegen. Regel „nur Belegbares": keine Zahl, keine Bewertung, kein Strohmann —
+ * die Tabelle muss auch aus Sicht einer Agentur fair lesbar sein.
+ */
+export interface ProblemCard {
+  /** Der Satz, wie Kundschaft ihn sagt — mit Anführungszeichen der Sprache. */
+  quote: Localized
+  text: Localized
+}
+
+export const PROBLEMS: ProblemCard[] = [
+  {
+    quote: { de: '„Die Website sieht gut aus – bringt aber keine Anfragen.“', en: '“The website looks good — but it brings in no enquiries.”' },
+    text: {
+      de: 'Design ohne Strategie ist Dekoration. Es fehlt der Weg vom Besucher zur Anfrage.',
+      en: 'Design without strategy is decoration. What is missing is the path from visitor to enquiry.',
+    },
+  },
+  {
+    quote: { de: '„Agenturen sprengen das Budget, Freelancer decken nur die Hälfte ab.“', en: '“Agencies blow the budget, freelancers only cover half of it.”' },
+    text: {
+      de: 'Für Strategie, Design und Code brauchen Sie sonst drei Verträge – und koordinieren sie selbst.',
+      en: 'Otherwise you need three contracts for strategy, design and code — and you coordinate them yourself.',
+    },
+  },
+  {
+    quote: { de: '„Der Relaunch verschleppt sich seit Monaten.“', en: '“The relaunch has been dragging on for months.”' },
+    text: {
+      de: 'Niemand treibt ihn, jeder wartet auf jeden – und die alte Seite verkauft derweil unter Wert.',
+      en: 'Nobody drives it, everyone waits for everyone else — and meanwhile the old site sells below its value.',
+    },
+  },
+  {
+    quote: { de: '„Jede kleine Änderung braucht ein Ticket und drei Wochen.“', en: '“Every small change needs a ticket and three weeks.”' },
+    text: {
+      de: 'Kurze Wege gibt es nur, wenn die Person, die entscheidet, auch baut.',
+      en: 'Short paths only exist when the person who decides also builds.',
+    },
+  },
+  {
+    quote: { de: '„Der Baukasten war schnell – jetzt bremst er bei allem, was zählt.“', en: '“The site builder was quick — now it slows down everything that matters.”' },
+    text: {
+      de: 'Sobald es speziell wird (Tempo, SEO, Anbindungen), zahlen Sie den Startvorteil doppelt zurück.',
+      en: 'As soon as things get specific (speed, SEO, integrations), you pay back the head start twice over.',
+    },
+  },
+  {
+    quote: { de: '„Viele Ansprechpartner, keiner verantwortlich fürs Ergebnis.“', en: '“Lots of contacts, nobody responsible for the result.”' },
+    text: {
+      de: 'Zwischen Projektleitung, Design und Entwicklung versickert genau das, was Sie eigentlich kaufen wollten.',
+      en: 'Between project management, design and development, exactly what you wanted to buy trickles away.',
+    },
+  },
+]
+
+/** ✓ trifft zu · ○ teils, je nach Anbieter · ✕ trifft nicht zu · — entfällt */
+export type ComparisonMark = 'yes' | 'partly' | 'no' | 'none'
+
+export const COMPARISON_MARK_LABELS: Record<ComparisonMark, Localized> = {
+  yes: { de: 'trifft zu', en: 'applies' },
+  partly: { de: 'teils, je nach Anbieter', en: 'partly, depends on the provider' },
+  no: { de: 'trifft nicht zu', en: 'does not apply' },
+  none: { de: 'entfällt', en: 'not applicable' },
+}
+
+export const COMPARISON = {
+  caption: {
+    de: 'Vergleich: Pukalani Studio, klassische Agentur, Einzel-Freelancer und Baukasten-Tool',
+    en: 'Comparison: Pukalani Studio, traditional agency, solo freelancer and website builder',
+  } satisfies Localized,
+  columns: {
+    criterion: { de: 'Kriterium', en: 'Criterion' },
+    studio: { de: 'Pukalani Studio', en: 'Pukalani Studio' },
+    agency: { de: 'Klassische Agentur', en: 'Traditional agency' },
+    freelancer: { de: 'Einzel-Freelancer', en: 'Solo freelancer' },
+    builder: { de: 'Baukasten-Tool', en: 'Website builder' },
+  } satisfies Record<string, Localized>,
+  legend: {
+    de: '✓ trifft zu · ○ teils, je nach Anbieter · ✕ trifft nicht zu · — entfällt',
+    en: '✓ applies · ○ partly, depends on the provider · ✕ does not apply · — not applicable',
+  } satisfies Localized,
+}
+
+export interface ComparisonRow {
+  criterion: Localized
+  studio: ComparisonMark
+  agency: ComparisonMark
+  freelancer: ComparisonMark
+  builder: ComparisonMark
+}
+
+export const COMPARISON_ROWS: ComparisonRow[] = [
+  {
+    criterion: { de: 'Strategie, Design und Code aus einer Hand', en: 'Strategy, design and code from a single source' },
+    studio: 'yes', agency: 'yes', freelancer: 'partly', builder: 'no',
+  },
+  {
+    criterion: { de: 'Sie sprechen direkt mit denen, die bauen', en: 'You talk directly to the people who build' },
+    studio: 'yes', agency: 'no', freelancer: 'yes', builder: 'none',
+  },
+  {
+    criterion: { de: 'Fester Preis vor Projektstart', en: 'Fixed price before the project starts' },
+    studio: 'yes', agency: 'partly', freelancer: 'partly', builder: 'yes',
+  },
+  {
+    criterion: { de: 'Senior-Niveau ohne Agentur-Überbau', en: 'Senior level without agency overhead' },
+    studio: 'yes', agency: 'no', freelancer: 'partly', builder: 'no',
+  },
+  {
+    criterion: { de: 'Trägt auch Spezielles (Tempo, SEO, Anbindungen)', en: 'Handles the specific too (speed, SEO, integrations)' },
+    studio: 'yes', agency: 'yes', freelancer: 'partly', builder: 'no',
+  },
+  {
+    criterion: { de: 'Bleibt nach dem Launch ansprechbar', en: 'Stays available after launch' },
+    studio: 'yes', agency: 'partly', freelancer: 'partly', builder: 'no',
+  },
+]
+
+export const FIT = {
+  goodTitle: { de: 'Passend für uns', en: 'A good fit' } satisfies Localized,
+  good: {
+    de: [
+      'Sie haben ein echtes Angebot und wollen, dass es online so gut dasteht, wie es ist.',
+      'Sie wollen einen Partner für Strategie, Design und Code – nicht drei Gewerke koordinieren.',
+      'Sie können Feedback und Inhalte beisteuern; wir treiben den Rest.',
+      'Qualität ist Ihnen einen fairen, vorher festen Preis wert.',
+    ],
+    en: [
+      'You have a real offer and want it to look as good online as it is.',
+      'You want one partner for strategy, design and code — not three trades to coordinate.',
+      'You can contribute feedback and content; we drive the rest.',
+      'Quality is worth a fair price to you, fixed in advance.',
+    ],
+  } satisfies Localized<string[]>,
+  badTitle: { de: 'Nicht passend', en: 'Not a good fit' } satisfies Localized,
+  bad: {
+    de: [
+      '„Nur schnell ein Logo“ oder Design zum Stundensatz-Schnäppchen.',
+      'Fertige Layouts 1:1 abtippen, ohne Spielraum für Gestaltung und Strategie.',
+      'Deadline übermorgen für ein Projekt, das Substanz braucht.',
+      'Ranking-Wunder über Nacht – seriös verspricht das niemand.',
+    ],
+    en: [
+      '“Just a quick logo” or design at a bargain hourly rate.',
+      'Copying finished layouts 1:1, with no room for design or strategy.',
+      'A deadline the day after tomorrow for a project that needs substance.',
+      'Overnight ranking miracles — nobody serious promises that.',
+    ],
+  } satisfies Localized<string[]>,
+}
+
+/** Hinweis an den Ergebnissen der Referenzen (W3, § 7.4). */
+export const RESULTS_DISCLAIMER: Localized = {
+  de: 'Alle gezeigten Ergebnisse stammen aus echten Projekten. Sie sind Beispiele, keine Garantie – jedes Vorhaben startet mit eigenen Voraussetzungen, und genau darüber sprechen wir im Erstgespräch.',
+  en: 'All results shown come from real projects. They are examples, not a guarantee — every project starts from its own conditions, and that is exactly what we talk about in the intro call.',
+}
 
 export const SERVICES_NOTE: Localized = {
   de: 'Alle Preise netto, als Festpreis nach Value-Based Pricing – Sie zahlen für Ergebnisse, nicht für Stunden. Zusätzlich buchbar: Design-Sprint-Moderation, WCAG-Audits sowie KI-Workshops für Teams.',

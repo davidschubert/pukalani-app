@@ -41,8 +41,8 @@ export const CONTACT: ContactData = {
 
 /** Fester Text des CTA-Bandes vor der Fußzeile (Antwort- und Angebotsfristen). */
 export const CTA_NOTE: Localized = {
-  de: 'Antwort innerhalb von 24 Stunden · Festpreis-Angebot innerhalb von 48 Stunden nach dem Gespräch',
-  en: 'Reply within 24 hours · fixed-price quote within 48 hours of the call',
+  de: 'Kostenlos und unverbindlich · Anfrage in ca. 3 Minuten · Antwort innerhalb von 24 Stunden · Festpreis-Angebot innerhalb von 48 Stunden nach dem Gespräch',
+  en: 'Free and without obligation · request takes about 3 minutes · reply within 24 hours · fixed-price quote within 48 hours of the call',
 }
 
 /** Beschriftung der beiden Kontakt-Knöpfe — überall dieselbe Zusage. */
