@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import type { AdminAnalytics } from '../../../shared/types/admin'
 import { softFail } from '../../../../core/server/utils/softFail'
+import { requireOverviewAccess } from '../../utils/overviewAccess'
 
 const ALLOWED_DAYS = [7, 30, 90]
 const PAGE = 100
@@ -47,7 +48,8 @@ async function collectCreatedAt(
  * → Balken und Legende können nicht auseinanderlaufen (früher: 200er-Sample für
  * die Buckets vs. autoritative Count-Query für die Totals).
  *
- * AUTORISIERUNG (C1): `await requireCommunityPermission(event, 'dashboard.access')` —
+ * AUTORISIERUNG (C1, seit BT1 e über `requireOverviewAccess`: im Pool-Not-Zugang
+ * nur der Betreiber): `await requireCommunityPermission(event, 'dashboard.access')` —
  * dieselbe Wahl und dieselbe Begründung wie bei `/api/admin/stats`: das Chart
  * gehört zur Dashboard-Startseite, die jede der fünf Site-Rollen erreicht, und
  * es zeigt die Aktivitätskurve der EIGENEN Community — aggregiert über
@@ -67,7 +69,7 @@ async function collectCreatedAt(
  *    keine Zahl als eine fremde (`usersInRange: null`, Balken bleiben leer).
  */
 export default defineEventHandler(async (event): Promise<AdminAnalytics> => {
-  await requireCommunityPermission(event, 'dashboard.access')
+  await requireOverviewAccess(event)
 
   const db = tenantDb(event, { as: 'operator' })
   const admin = createAdminClient(event)
