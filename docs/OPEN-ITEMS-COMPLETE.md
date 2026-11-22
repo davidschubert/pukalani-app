@@ -48,7 +48,7 @@ fand sechs Befunde; B5 hatte sich erledigt (der Live-Build hatte aufgeholt).
   ersten App ab.
 - **B2 — Kopfzeile von pukalani.studio bei 375 px.** Auf Deutsch endete „EN"
   bei 388 px. Unter 420 px rücken Marke, „Erstgespräch" und DE/EN enger
-  zusammen (Abstände, Laufweite); gemessen bei 360 und 375 px, neuer Fall in
+  zusammen (Abstände, Laufweite, Marke eine Stufe kleiner — eine feste Größe fing der Schriftgrößen-Wächter); gemessen bei 360 und 375 px, neuer Fall in
   `apps/portfolio/e2e/smoke.spec.ts`.
 - **B3/B4 — Tests für das Räumen der Merker.**
   `packages/admin/tests/memoForgetting.test.ts`: Sperren, Sitzungen beenden

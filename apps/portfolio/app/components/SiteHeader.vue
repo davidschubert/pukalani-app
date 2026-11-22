@@ -175,14 +175,14 @@ const links = computed(() => [
     gap: 0.5rem;
   }
   .header__brand {
-    font-size: 0.95rem;
+    font-size: var(--text-base);
   }
   .header__nav {
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
   .header__link,
   .header__lang {
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
   }
   .header__lang {
     gap: 0.25rem;
