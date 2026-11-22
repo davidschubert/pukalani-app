@@ -279,3 +279,29 @@ describe('Stilllegen und Annehmen', () => {
     expect(inviteRow('inv-on')?.status).toBe('accepted')
   })
 })
+
+describe('Annahme auf der eigenen Domain: nur Einladungen in die Community des Hosts (PK1 E1b-2)', () => {
+  it('expectedCommunityId einer ANDEREN Community ⇒ 403 invite_other_community, nichts geschrieben', async () => {
+    seedCommunity('cB')
+    seedInvite('inv-a', 'cA', 'guest@example.org')
+    identity = { userId: 'u-guest', projectId: 'account', email: 'guest@example.org', emailVerified: true, name: 'Guest' }
+    body = { jwt: 'jwt', inviteId: 'inv-a', expectedCommunityId: 'cB' }
+
+    await expect(accept(event)).rejects.toMatchObject({ status: 403, data: { code: 'invite_other_community' } })
+    expect(inviteRow('inv-a')?.status).toBe('pending')
+    const memberships = [...table('community_members').values()].filter(row => row.runtimeUserId === 'u-guest')
+    expect(memberships).toHaveLength(0)
+  })
+
+  it('Gegenprobe: passende expectedCommunityId und ohne Angabe wird angenommen', async () => {
+    seedInvite('inv-match', 'cA', 'guest@example.org')
+    seedInvite('inv-plain', 'cA', 'other@example.org')
+    identity = { userId: 'u-guest', projectId: 'account', email: 'guest@example.org', emailVerified: true, name: 'Guest' }
+    body = { jwt: 'jwt', inviteId: 'inv-match', expectedCommunityId: 'cA' }
+    await expect(accept(event)).resolves.toMatchObject({ ok: true, communityId: 'cA' })
+
+    identity = { userId: 'u-other', projectId: 'account', email: 'other@example.org', emailVerified: true, name: 'Other' }
+    body = { jwt: 'jwt', inviteId: 'inv-plain' }
+    await expect(accept(event)).resolves.toMatchObject({ ok: true, communityId: 'cA' })
+  })
+})

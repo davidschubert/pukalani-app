@@ -14,7 +14,9 @@ export function requirePermission(event: H3Event, capability: Capability) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
-  if (!hasCapability(user.labels, capability)) {
+  // PK1 E1b-2: auf der eigenen Domain einer Community im Modus `write` tragen
+  // Betreiber-Labels keine Rechte (dieselbe Regel wie in `decideCommunityAccess`).
+  if (event.context.customDomainScope === true || !hasCapability(user.labels, capability)) {
     throw createError({ status: 403, statusText: 'Forbidden' })
   }
 

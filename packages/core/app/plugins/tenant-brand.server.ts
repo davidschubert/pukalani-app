@@ -86,6 +86,9 @@
  *     Hinweisseite) und das Realtime-Gate (kein Socket, kein Token, keine
  *     Anwesenheit). Kein fremdes Datum: es sagt nur der betroffenen Person
  *     etwas über sie selbst, Gäste und alle anderen bekommen false.
+ *   - `customDomainScope` → useCustomDomainScope() (PK1 E1b-2): eigene Domain
+ *     im Modus `write` — dort nur Mitmachen, Konto und Verwalten im
+ *     Kundenbereich. Leser: UserMenu, LoginForm, Realtime-Gate.
  * NICHT gespiegelt (kein Client-Leser): projectId, limits, mode.
  * Neues Feld hier hinein nur MIT nachgewiesenem Client-Leser.
  */
@@ -169,4 +172,11 @@ export default defineNuxtPlugin(() => {
   // bei der Rolle: ein früher laufender Leser kann den Key schon angelegt haben.
   const communityRemoved = useCommunityRemoved()
   communityRemoved.value = event?.context.communityRemoved === true
+  // Eigene Domain im Modus `write` (PK1 E1b-2): EIN Boolean aus
+  // `01.custom-domain-scope.ts`. Leser: UserMenu und LoginForm (Hinweis auf den
+  // Kundenbereich statt Links ins Leere) und das Realtime-Gate (kein Token für
+  // die Live-Verbindung, die Route antwortet dort 404). Kein fremdes Datum:
+  // es sagt nur, unter welcher Adresse die Seite gerade läuft.
+  const customDomainScope = useCustomDomainScope()
+  customDomainScope.value = event?.context.customDomainScope === true
 })

@@ -1,5 +1,5 @@
 import type { Client, Realtime } from 'appwrite'
-import { realtimeAllowed } from '../../shared/realtimeGate'
+import { realtimeAllowed, realtimeTokenWanted } from '../../shared/realtimeGate'
 import { isJwtCookieConflict, isRealtimeAccessEnded } from '../../shared/realtimeAuth'
 import { nextReconnectFailures, reconnectDelayMs } from '../../shared/realtimeReconnect'
 
@@ -241,6 +241,12 @@ function hasSession(): boolean {
   return useAuthStore().isLoggedIn
 }
 
+/** Eigene Domain im Modus `write`? (SSR-Spiegel, `useCustomDomainScope`). */
+function onCustomDomainScope(): boolean {
+  if (!tryUseNuxtApp()) return false
+  return useCustomDomainScope().value
+}
+
 /** Refresh-Timer anhalten (Logout/Gast) — sonst 401-te er alle 12 min weiter. */
 function stopJwtRefresh() {
   if (jwtTimer === undefined) return
@@ -331,7 +337,9 @@ export function ensureRealtimeJwt(): Promise<void> {
   if (!realtimeEnabled()) return Promise.resolve()
   // Synchron anstoßen, solange der Nuxt-Kontext noch steht (Config-Lesen).
   void ensureRealtimeClients()
-  if (!hasSession()) {
+  // Eigene Domain im Modus `write` (PK1 E1b-2): kein Token, kein Refresh-Timer
+  // — die Route antwortet dort 404, der Socket bleibt Gast.
+  if (!realtimeTokenWanted(hasSession(), onCustomDomainScope())) {
     stopJwtRefresh()
     return Promise.resolve()
   }

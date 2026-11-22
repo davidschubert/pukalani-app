@@ -35,7 +35,13 @@ export default defineEventHandler(async (event) => {
   const result = await callControlPlane<{ ok: boolean, communityId: string, host: string, role: string, invitedBy: string }>(
     event,
     '/api/control/community/members/accept',
-    { jwt, ...(body.token ? { token: body.token } : { inviteId: body.inviteId }) },
+    {
+      jwt,
+      ...(body.token ? { token: body.token } : { inviteId: body.inviteId }),
+      // PK1 E1b-2: auf der eigenen Domain im Modus `write` nur Einladungen in
+      // DIESE Community — das Control Plane lehnt andere ab, bevor es schreibt.
+      ...(event.context.customDomainScope === true ? { expectedCommunityId: tenant.communityId } : {}),
+    },
   )
 
   /**

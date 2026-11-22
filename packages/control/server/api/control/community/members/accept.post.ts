@@ -36,6 +36,13 @@ const bodySchema = z.object({
    * anderen Adresse.
    */
   inviteId: z.string().min(1).max(36).optional(),
+  /**
+   * Die Community des Hosts, auf dem angenommen wird (PK1 E1b-2). Die
+   * Runtime schickt sie auf der eigenen Domain einer Community im Modus
+   * `write` mit: dort darf nur eine Einladung in GENAU diese Community
+   * angenommen werden. Fehlt sie, gilt das Verhalten von vorher.
+   */
+  expectedCommunityId: z.string().min(1).max(36).optional(),
 }).strict().refine(body => Boolean(body.token) !== Boolean(body.inviteId), {
   message: 'Either token or inviteId',
 })
@@ -67,6 +74,9 @@ export default defineEventHandler(async (event) => {
   const expired = invite ? Date.parse(invite.expiresAt) < Date.now() : true
   if (!invite || invite.status !== 'pending' || expired) {
     throw createError({ status: 400, statusText: 'Invalid or expired invitation' })
+  }
+  if (body.expectedCommunityId && invite.communityId !== body.expectedCommunityId) {
+    throw createError({ status: 403, statusText: 'Invitation belongs to a different community', data: { code: 'invite_other_community' } })
   }
   if (invite.email.trim().toLowerCase() !== (identity.email ?? '').trim().toLowerCase()) {
     throw createError({ status: 403, statusText: 'Invitation was issued for a different email address' })

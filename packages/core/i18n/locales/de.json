@@ -224,6 +224,11 @@
       "decline": "Ablehnen"
     },
     "adminArea": "Dashboard",
+    "customDomain": {
+      "manage": "Verwalten im Kundenbereich",
+      "account": "Konto und Sicherheit",
+      "accountHint": "Einstellungen, Geräte, Export und Löschen findest du im Kundenbereich."
+    },
     "showMore": "Mehr erfahren",
     "showLess": "Weniger anzeigen",
     "more": "Mehr",

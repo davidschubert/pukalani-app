@@ -82,17 +82,19 @@ export default defineEventHandler(async (event) => {
   if (!isAuthor) {
     const tenantScoped = !!event.context.tenant
     const role = tenantScoped ? await resolveCommunityRole(event) : null
+    // PK1 E1b-2: eigene Domain im Modus `write` — nur Rechte von Redakteur und Moderator.
+    const customDomainScope = event.context.customDomainScope === true
     const labels = user.labels ?? []
     const trustLevel = await resolveTrustLevel(event)
     // PURE Frage statt `requireCommunityPermission`, aus demselben Grund wie in
     // der Zustands-Route: der Wächter WIRFT, und hier gibt es zwei Rechte, von
     // denen eines reichen kann. Ein try/catch um ihn würde zudem den
     // Break-Glass-Vermerk verschlucken oder Log-Rauschen erzeugen.
-    actor.canCurate = decideCommunityAccess({ capability: 'posts.curate', labels, tenantScoped, role, trustLevel }).allowed
-    actor.canRevise = decideCommunityAccess({ capability: 'posts.revise', labels, tenantScoped, role, trustLevel }).allowed
+    actor.canCurate = decideCommunityAccess({ capability: 'posts.curate', labels, tenantScoped, role, customDomainScope, trustLevel }).allowed
+    actor.canRevise = decideCommunityAccess({ capability: 'posts.revise', labels, tenantScoped, role, customDomainScope, trustLevel }).allowed
     // Ist er STAB? Daran hängt nur der `actor` an der Schreib-Tür (s. unten) —
     // nicht, ob er darf.
-    staff = decideCommunityAccess({ capability: 'posts.moderate', labels, tenantScoped, role }).allowed
+    staff = decideCommunityAccess({ capability: 'posts.moderate', labels, tenantScoped, role, customDomainScope }).allowed
   }
 
   // 403 vor 409, unverändert: ein Unbefugter erfährt nicht, in welchem Zustand

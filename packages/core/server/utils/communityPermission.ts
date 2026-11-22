@@ -234,6 +234,9 @@ export async function requireCommunityPermission(
     tenantScoped,
     role,
     trustLevel,
+    // PK1 E1b-2: eigene Domain im Modus `write` — nur Rechte von Redakteur
+    // und Moderator (`CUSTOM_DOMAIN_CAPABILITIES`).
+    customDomainScope: event.context.customDomainScope === true,
   })
 
   if (!decision.allowed) {

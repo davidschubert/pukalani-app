@@ -56,6 +56,8 @@ export default defineEventHandler(async (event) => {
    */
   const tenantScoped = !!event.context.tenant
   const role = tenantScoped ? await resolveCommunityRole(event) : null
+  // PK1 E1b-2: eigene Domain im Modus `write` — nur Rechte von Redakteur und Moderator.
+  const customDomainScope = event.context.customDomainScope === true
   const labels = user.labels ?? []
   const trustLevel = await resolveTrustLevel(event)
 
@@ -64,6 +66,7 @@ export default defineEventHandler(async (event) => {
     labels,
     tenantScoped,
     role,
+    customDomainScope,
     trustLevel,
   }).allowed
   const isStaff = decideCommunityAccess({
@@ -71,6 +74,7 @@ export default defineEventHandler(async (event) => {
     labels,
     tenantScoped,
     role,
+    customDomainScope,
     // Die Stufe bewusst NICHT mitgegeben: `posts.moderate` folgt aus keiner
     // Stufe, und die Zeile soll das auch dann noch sagen, wenn sich die Matrix
     // einmal ändert.

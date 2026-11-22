@@ -423,3 +423,27 @@ describeRoleGateToEffect(
     return { globals: {}, reached: () => reconcile.runs > before }
   },
 )
+
+describe('accept auf der eigenen Domain (PK1 E1b-2): die Community des Hosts reist mit', () => {
+  it('mit customDomainScope: expectedCommunityId = Community des Hosts', async () => {
+    const seam = controlSeam(acceptReply(COMMUNITY_ID))
+    const run = await probeRoute(() => import('../server/api/community/members/accept.post'), {
+      who: 'stranger',
+      body: { inviteId: 'inv-1' },
+      context: { customDomainScope: true },
+      globals: { ...seam.globals, ...ACCEPT_GLOBALS, grantCommunityLabel: async () => {} },
+    })
+    expect(run.status).toBe(200)
+    expect(seam.calls[0]).toEqual({ path: '/api/control/community/members/accept', body: { jwt: PROBE_JWT, inviteId: 'inv-1', expectedCommunityId: COMMUNITY_ID } })
+  })
+
+  it('Gegenprobe ohne Merkmal: der Ruf bleibt wie bisher', async () => {
+    const seam = controlSeam(acceptReply(COMMUNITY_ID))
+    await probeRoute(() => import('../server/api/community/members/accept.post'), {
+      who: 'stranger',
+      body: { token: 'a'.repeat(64) },
+      globals: { ...seam.globals, ...ACCEPT_GLOBALS, grantCommunityLabel: async () => {} },
+    })
+    expect(seam.calls[0]).toEqual({ path: '/api/control/community/members/accept', body: { jwt: PROBE_JWT, token: 'a'.repeat(64) } })
+  })
+})

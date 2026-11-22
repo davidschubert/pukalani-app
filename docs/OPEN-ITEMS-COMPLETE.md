@@ -196,6 +196,28 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1 E1b-2 — unter einer eigenen Domain: mitmachen ja, verwalten nein (Schalter aus) ✅ 2026-11-22
+
+**Was.** Im Modus `write` auf einer eigenen Domain einer Pool-Community
+(`01.custom-domain-scope.ts`, Regeln `core/shared/customDomainScope.ts`):
+`/api/**` nur über eine Erlaubnisliste (Präfixe der Produkt-Layer, ohne
+`/api/admin/**`, plus Mitmach-Routen des Core mit Grund je Eintrag), alles
+andere 404; Wächter über alle Routen. Owner/Admin behalten dort die Rechte von
+Redakteur ∪ Moderator (EINE Regel in `communityAuthz.ts` für Wache und
+Browser), Betreiber-Labels tragen dort keine Rechte. Verwaltungs-Seiten bleiben
+auf der Pukalani-Adresse, Kundenbereichs-Seiten führen zum Kundenbereich; kein
+Live-Token auf der eigenen Domain (bis E1d). Bühne mit gestellter eigener Domain
+im Modus `write`: Karte nur auf der Domain, Mitmachen geht, Kontoweites und
+Verwaltendes 404, Dashboard-Umleitung in beide Richtungen, Domain abgeschaltet ⇒
+Karte wertlos.
+
+**Gelernt:** Eine Erlaubnisliste nach API-Präfix reicht nicht: Produkte haben
+ihre Verwaltungs-Routen unter demselben Präfix. Die Grenze „verwalten nein"
+gehört an die Rechte (eine Regel für Server und Browser), die Liste nur vor das
+Kontoweite. Und der Not-Zugang der Betreiber muss dieselbe Grenze kennen.
+Vites Dev-Server sperrt fremde Hosts (`server.allowedHosts`) — eine gestellte
+eigene Domain auf der Bühne endet darum auf `.localhost`.
+
 ### PK1 E1b-1 — Karte schreiben, eigene Sitzung je Seite beim Host-Wechsel (Schalter aus) ✅ 2026-11-22
 
 **Was.** Im Modus `write` schreibt jede Anmeldung eine Karte statt Klartext;

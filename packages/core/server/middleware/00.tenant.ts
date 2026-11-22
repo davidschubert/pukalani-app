@@ -15,6 +15,7 @@
  * Muss alphabetisch VOR auth.ts laufen (00.-Prefix): die Client-Factories
  * (Naht 2) lesen den Tenant bereits beim Session-Lookup.
  */
+import type { H3Event } from 'h3'
 // shared/*.ts wird im server-Verzeichnis NICHT auto-importiert (nur
 // shared/utils + shared/types) — deshalb explizit.
 import { isControlHost } from '../../shared/controlCenter'
@@ -26,6 +27,9 @@ import {
   isErrorPageRenderPass,
 } from '../../shared/unknownHost'
 import { canonicalRedirectStatus, canonicalRedirectTarget } from '../../shared/canonicalHost'
+import { accountAreaUrl, isAccountAreaPagePath, isManagementPagePath, staysOnPukalaniAddress } from '../../shared/customDomainScope'
+import { isCustomDomainHost } from '../../shared/siteCard'
+import { siteCardSettings } from '../utils/siteCard'
 
 /** Die Fehlerzeile „Trennung ohne Resolver" steht EINMAL je Prozess im Log. */
 let resolverMissingReported = false
@@ -58,7 +62,10 @@ export default defineEventHandler(async (event) => {
   //   und kennt keinen Mandanten (dieselbe Begründung wie für den
   //   Kontroll-Host, `controlApiPrefixes`).
   const path = event.path.split('?')[0] ?? ''
-  if (path === '/api/health' || path.startsWith('/_i18n/') || path.startsWith('/api/_nuxt_icon/')) return
+  if (path === '/api/health' || path.startsWith('/_i18n/') || path.startsWith('/api/_nuxt_icon/')) {
+    markHostUnproven(event)
+    return
+  }
 
   const resolver = getTenantResolver()
   /**
@@ -83,7 +90,10 @@ export default defineEventHandler(async (event) => {
    * Notfall-Template vor dem Besucher.
    */
   if (!resolver) {
-    if (isErrorPageRenderPass(path)) return
+    if (isErrorPageRenderPass(path)) {
+      markHostUnproven(event)
+      return
+    }
     if (!resolverMissingReported) {
       resolverMissingReported = true
       // Die NAMEN der fehlenden Variablen nennt das Plugin der App beim Start
@@ -124,7 +134,10 @@ export default defineEventHandler(async (event) => {
     // Community-Branding — genau richtig, die Adresse gehört ja zu keiner.
     // Kein Loch: /__nuxt_error beantwortet Nuxts Renderer nur intern
     // (shared/unknownHost.ts), und es rendert ausschließlich die Fehlerseite.
-    if (isErrorPageRenderPass(path)) return
+    if (isErrorPageRenderPass(path)) {
+      markHostUnproven(event)
+      return
+    }
 
     throw createError({
       status: 404,
@@ -172,7 +185,34 @@ export default defineEventHandler(async (event) => {
    *     Umleitung, die auf `/` wirft, macht aus jedem geteilten Deep-Link eine
    *     Startseite.
    */
+  /**
+   * VERWALTEN NUR UNTER DER PUKALANI-ADRESSE (PK1 E1b-2, nur Modus `write`).
+   * Auf einer eigenen Domain führt eine Verwaltungs-Seite (`/dashboard/**`)
+   * per 302 auf dieselbe Adresse unter der Pukalani-Adresse — ohne Siegel und
+   * ohne Sitzung: dort meldet man sich an oder kommt aus dem Kundenbereich.
+   * Umgekehrt bleiben auf der Pukalani-Adresse die Verwaltungs-Seiten, die
+   * Anmelde-Seiten davor und alle Anfragen dieser Seiten stehen, statt auf die
+   * eigene Domain umgeleitet zu werden (Regeln: shared/customDomainScope.ts).
+   */
+  const scoped = siteCardSettings().mode === 'write'
+  if (scoped && tenant.pukalaniHost && isCustomDomainHost(host, tenant) && isManagementPagePath(event.path)) {
+    setResponseHeader(event, 'Cache-Control', 'no-store')
+    return await sendRedirect(event, `https://${tenant.pukalaniHost.trim().toLowerCase()}${event.path}`, canonicalRedirectStatus(event.method, 'temporary'))
+  }
+  // Konto-Seiten (Profil, Einstellungen, Meine Communities) gehören in den
+  // Kundenbereich — dorthin, ebenfalls ohne Siegel. Ohne Kontroll-Host bleibt
+  // es beim 404 der Seite.
+  if (scoped && isCustomDomainHost(host, tenant) && isAccountAreaPagePath(event.path)) {
+    // Lokal (`*.localhost`) trägt der Link den Port dieser Anfrage.
+    const accountArea = accountAreaUrl(controlHosts(event), (getHeader(event, 'host') ?? '').split(':')[1] ?? '')
+    if (accountArea) {
+      setResponseHeader(event, 'Cache-Control', 'no-store')
+      return await sendRedirect(event, `${accountArea}${event.path}`, canonicalRedirectStatus(event.method, 'temporary'))
+    }
+  }
+
   const target = canonicalRedirectTarget(host, tenant.canonicalHost, event.path)
+  if (target && scoped && !isCustomDomainHost(host, tenant) && staysOnPukalaniAddress(event.path)) return
   if (target) {
     setResponseHeader(event, 'Cache-Control', 'no-store')
     // (4) Eine ABGESCHALTETE eigene Domain (control-040) leitet nur
@@ -180,3 +220,14 @@ export default defineEventHandler(async (event) => {
     return await sendRedirect(event, target, canonicalRedirectStatus(event.method, tenant.canonicalRedirect === 'temporary' ? 'temporary' : 'permanent'))
   }
 })
+
+/**
+ * PK1 E1b-2 (Gegenlesen E1a, Fund 3): diese Anfrage kommt ohne Mandanten-
+ * Auflösung durch (Betriebsprüfung, i18n, Symbole, Fehlerseiten-Durchgang) —
+ * ob ihr Host uns gehört, ist hier nicht belegt. Im Modus `write` gilt auf ihr
+ * darum kein Klartext-Cookie als Sitzung (`core/server/utils/requestSession.ts`);
+ * keiner dieser Pfade braucht eine Anmeldung.
+ */
+function markHostUnproven(event: H3Event): void {
+  event.context.hostUnproven = true
+}

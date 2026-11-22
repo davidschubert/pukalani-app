@@ -69,6 +69,11 @@ export interface CommunityWorld {
   tenantFields?: Record<string, unknown>
   /** Weitere Felder am Konto (z. B. `prefs`, `email`). Beim Gast wirkungslos. */
   userFields?: Record<string, unknown>
+  /**
+   * Weitere Felder im Kontext der Anfrage, wie eine Middleware davor sie
+   * setzt (z. B. `customDomainScope` aus `01.custom-domain-scope.ts`).
+   */
+  context?: Record<string, unknown>
 }
 
 export const COMMUNITY_ID = 'c-a'
@@ -156,7 +161,7 @@ export function wireCommunityWorld(world: CommunityWorld): WiredWorld {
         labels: labelsOf(world.who),
         ...world.userFields,
       }
-  const context: Record<string, unknown> = { user, tenant }
+  const context: Record<string, unknown> = { ...world.context, user, tenant }
   if (mode === 'control') context.controlCenter = true
   const event = { context, path: '/api/test', method: 'POST' } as unknown as H3Event
 

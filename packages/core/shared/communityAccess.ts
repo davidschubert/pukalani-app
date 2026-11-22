@@ -63,6 +63,19 @@ export interface CommunityAccessInput {
    * stellt, bekommt hier Stufe 0 — also exakt das Verhalten von vorher.
    */
   trustLevel?: number | null
+  /**
+   * Eigene Domain im Modus `write` (PK1 E1b-2, `event.context.customDomainScope`):
+   * die Rolle zählt dort nur mit den Rechten von Redakteur und Moderator
+   * (`CUSTOM_DOMAIN_CAPABILITIES`), und Betreiber-Labels tragen dort keine
+   * Rechte. Fehlt es, gilt das Verhalten von vorher. Der Wächter
+   * (`packages/core/tests/customDomainScope.test.ts`) prüft nur, dass jeder
+   * TEXTLICHE Aufruf von `decideCommunityAccess` und
+   * `communityRoleHasCapability` unter den `server`-Ordnern der Pakete und
+   * Apps das Feld nennt (Ausnahmen mit Grund; der control-Layer
+   * läuft auf eigenem Server und ist ausgenommen) — ob der übergebene Wert
+   * stimmt, sieht er nicht.
+   */
+  customDomainScope?: boolean
 }
 
 /**
@@ -157,7 +170,11 @@ export function isCommunityMember(input: CommunityMembershipInput): boolean {
 }
 
 export function decideCommunityAccess(input: CommunityAccessInput): CommunityAccessDecision {
-  const operator = hasCapability(input.labels, input.capability)
+  // PK1 E1b-2: auf der eigenen Domain im Modus `write` tragen Betreiber-Labels
+  // KEINE Rechte — Betreiber arbeiten über die Pukalani-Adresse und die
+  // Konsole. Ist der Betreiber zugleich Mitglied, gelten dort die begrenzten
+  // Rechte seiner Community-Rolle.
+  const operator = input.customDomainScope !== true && hasCapability(input.labels, input.capability)
   const trustLevel = normalizeTrustLevel(input.trustLevel)
   const trusted = trustLevelHasCapability(trustLevel, input.capability)
 
@@ -171,7 +188,7 @@ export function decideCommunityAccess(input: CommunityAccessInput): CommunityAcc
     return trusted ? { allowed: true, via: 'trust', trustLevel } : { allowed: false, reason: 'forbidden' }
   }
 
-  if (input.role && communityRoleHasCapability(input.role, input.capability)) {
+  if (input.role && communityRoleHasCapability(input.role, input.capability, input.customDomainScope === true)) {
     return { allowed: true, via: 'role', role: input.role }
   }
 
