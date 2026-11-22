@@ -29,6 +29,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 import { assertTarget, isLocalEndpoint } from '../../../scripts/lib/target.mjs'
+import { createHostLogins } from '../../../scripts/lib/probe-stage.mjs'
 
 const SILO = process.argv.includes('--silo')
 const PORT = Number(SILO ? process.env.COMMENTS_PORT || 3144 : process.env.PLATFORM_PORT || 3143)
@@ -112,12 +113,12 @@ async function createUser(tag, labels = []) {
   return { userId: user.$id, email, password }
 }
 
-async function login(host, account) {
-  const res = await call(host, '/api/auth/login', { method: 'POST', body: { email: account.email, password: account.password } })
-  const cookie = res.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
-  if (!cookie) throw new Error(`Login auf ${host} fehlgeschlagen (${res.status}): ${res.text.slice(0, 160)}`)
-  return cookie
-}
+/**
+ * Anmelden JE HOST (PK1 E1c): im Modus `write` gilt das Cookie nur auf dem
+ * Host, der es gesetzt hat — wie im Browser. Wer auf zwei Hosts handelt,
+ * meldet sich auf beiden an.
+ */
+const login = createHostLogins(call)
 
 async function waitFor(label, fn, timeoutMs = 60_000) {
   const until = Date.now() + timeoutMs
@@ -233,15 +234,17 @@ try {
     check('Datentür hat communityId von A gestempelt', raw?.communityId === tenantA.tenantId, `communityId=${raw?.communityId}`)
 
     console.log('\n2. Dieselbe Person auf der NACHBAR-Community')
-    const bManage = await call(HOST_B, '/api/events/manage', { cookie: ownerCookie })
+    // Eigene Anmeldung auf B — die Rolle von A reist nicht mit.
+    const ownerCookieB = await login(HOST_B, owner)
+    const bManage = await call(HOST_B, '/api/events/manage', { cookie: ownerCookieB })
     check('GET /api/events/manage auf kunde-b → 403', bManage.status === 403, `Status ${bManage.status}`)
     const bCreate = await call(HOST_B, '/api/events', {
-      method: 'POST', cookie: ownerCookie,
+      method: 'POST', cookie: ownerCookieB,
       body: { title: 'Übergriff', description: 'x', startAt: startAt(), status: 'draft' },
     })
     check('POST /api/events auf kunde-b → 403', bCreate.status === 403, `Status ${bCreate.status}`)
     if (bCreate.json?.$id) cleanup.events.push(bCreate.json.$id)
-    const bPatch = await call(HOST_B, `/api/events/${a.id}`, { method: 'PATCH', cookie: ownerCookie, body: { title: 'Übernahme' } })
+    const bPatch = await call(HOST_B, `/api/events/${a.id}`, { method: 'PATCH', cookie: ownerCookieB, body: { title: 'Übernahme' } })
     check('PATCH des A-Events von kunde-b aus → 403 (Autorisierung vor der Tür)', bPatch.status === 403, `Status ${bPatch.status}`)
 
     console.log('\n3. Fremder und Gast')
@@ -266,7 +269,7 @@ try {
     check('POST auf kunde-a → 201', opA.create.status === 201, `Status ${opA.create.status}`)
     check('PATCH auf kunde-a → 200', opA.patch?.status === 200, `Status ${opA.patch?.status}`)
     check('DELETE auf kunde-a → 200', opA.cancel?.status === 200, `Status ${opA.cancel?.status}`)
-    const opB = await call(HOST_B, '/api/events/manage', { cookie: opCookie })
+    const opB = await call(HOST_B, '/api/events/manage', { cookie: await login(HOST_B, operator) })
     check('manage auf kunde-b → 200 (Support-Zugang bleibt)', opB.status === 200, `Status ${opB.status}`)
     console.log('  ℹ Break-Glass-Protokoll: im Dev-Server-Log muss "community.operator_access" mit capability=events.manage stehen')
   }

@@ -33,8 +33,8 @@ import {
   appwriteRest,
   createCleanup,
   createProbeAccount,
+  createHostLogins,
   createProbeCommunity,
-  login as loginOn,
   runStamp,
   waitForHost as waitForHostOn,
   waitForPage,
@@ -120,9 +120,12 @@ async function createPoolUser(tag) {
   return account
 }
 
-function login(account) {
-  return loginOn(call, CONTROL_HOST, account)
-}
+/**
+ * Anmelden JE HOST (PK1 E1c): im Modus `write` gilt das Cookie nur auf dem
+ * Host, der es gesetzt hat — wie im Browser. Die Anlage läuft auf dem
+ * Kontroll-Host, alles Weitere auf den Hosts der Communities.
+ */
+const cookieOn = createHostLogins(call)
 
 
 /** Der Host-Resolver cacht negativ (30 s) — nach der Anlage kurz nachfassen. */
@@ -148,16 +151,16 @@ try {
   const ownerA = await createPoolUser('owner-a')
   const ownerB = await createPoolUser('owner-b')
   const stranger = await createPoolUser('stranger')
-  const cookieA = await login(ownerA)
-  const cookieB = await login(ownerB)
-  const cookieStranger = await login(stranger)
-
-  const a = await createCommunity(cookieA, 'a')
-  const b = await createCommunity(cookieB, 'b')
+  const a = await createCommunity(await cookieOn(CONTROL_HOST, ownerA), 'a')
+  const b = await createCommunity(await cookieOn(CONTROL_HOST, ownerB), 'b')
   check('Community A angelegt', !!a.communityId, a.host)
   check('Community B angelegt', !!b.communityId, b.host)
   check('Host A antwortet', await waitForHost(a.host))
   check('Host B antwortet', await waitForHost(b.host))
+  // Jede Person meldet sich auf dem Host an, auf dem sie handelt.
+  const cookieA = await cookieOn(a.host, ownerA)
+  const cookieB = await cookieOn(b.host, ownerB)
+  const cookieStranger = await cookieOn(a.host, stranger)
 
   // ──────────────────────────────────────────────────────────────────────────
   console.log('\n2. Das Produkt ist im Pool überhaupt an (der Schalter, der fehlte)')
@@ -200,7 +203,7 @@ try {
       communityId: a.communityId, projectId: poolProject, userId: account.userId, role, status: 'active', email: account.email,
     })
     cleanup.track('member', row.$id)
-    staff[role] = { ...account, cookie: await login(account) }
+    staff[role] = { ...account, cookie: await cookieOn(a.host, account) }
   }
   for (const role of ['admin', 'moderator', 'editor', 'viewer']) {
     const res = await call(a.host, '/api/admin/embed-sites', { cookie: staff[role].cookie })
@@ -253,7 +256,8 @@ try {
   check('…und B hat seinen Einbetter unverändert',
     stillThere.json?.sites?.[0]?.label === 'B-Blog', JSON.stringify(stillThere.json))
 
-  const roleTravels = await call(b.host, '/api/admin/embed-sites', { cookie: cookieA })
+  // Owner A meldet sich auf B an (eigene Anmeldung dort) — seine Rolle reist nicht mit.
+  const roleTravels = await call(b.host, '/api/admin/embed-sites', { cookie: await cookieOn(b.host, ownerA) })
   check('die Owner-Rolle reist NICHT zur anderen Community → 403', roleTravels.status === 403, `Status ${roleTravels.status}`)
 
   // ──────────────────────────────────────────────────────────────────────────

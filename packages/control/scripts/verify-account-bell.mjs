@@ -42,7 +42,7 @@ import { request as httpRequest } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve as resolvePath } from 'node:path'
 import { Client, ID, Permission, Query, Role, TablesDB, Users } from 'node-appwrite'
-import { appwriteRest, findColumns, PERSON_COLUMNS, sweepRows, waitForPage } from '../../../scripts/lib/probe-stage.mjs'
+import { appwriteRest, createHostLogins, findColumns, login as loginOn, PERSON_COLUMNS, sweepRows, waitForPage } from '../../../scripts/lib/probe-stage.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = resolvePath(HERE, '../../..')
@@ -125,11 +125,16 @@ function call(port, host, path, { method = 'GET', body, cookie } = {}) {
 const callControl = (path, options) => call(CONTROL_PORT, `localhost:${CONTROL_PORT}`, path, options)
 const callPlatform = (host, path, options) => call(PLATFORM_PORT, host, path, options)
 
-/** Anmelden und das Session-Cookie zurückgeben (leer = fehlgeschlagen). */
-async function login(caller, account) {
-  const res = await caller('/api/auth/login', { method: 'POST', body: { email: account.email, password: account.password } })
-  return res.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0] ?? ''
+/** Anmelden auf dem Control Plane; das Session-Cookie zurückgeben (leer = fehlgeschlagen). */
+function loginControl(account) {
+  return loginOn((host, path, options) => call(CONTROL_PORT, host, path, options), `localhost:${CONTROL_PORT}`, account).catch(() => '')
 }
+
+/**
+ * Anmelden JE HOST der Platform-App (PK1 E1c): im Modus `write` gilt das
+ * Cookie nur auf dem Host, der es gesetzt hat — wie im Browser.
+ */
+const platformCookieOn = createHostLogins(callPlatform)
 
 /** Eine Notification anlegen, GENAU wie notify() es tut (Empfänger-Permissions,
  *  Ablage-Merkmal in der Spalte `communityId` — bis system-025/026 hieß sie
@@ -243,8 +248,8 @@ try {
   const anonymous = await callControl('/api/notifications')
   check('ohne Anmeldung: 401', anonymous.status === 401, `Status ${anonymous.status}`)
 
-  operator.cookie = await login(callControl, operator)
-  stranger.cookie = await login(callControl, stranger)
+  operator.cookie = await loginControl(operator)
+  stranger.cookie = await loginControl(stranger)
   check('Betreiber und Fremder sind angemeldet', !!operator.cookie && !!stranger.cookie)
 
   const own = await bellTitles(callControl, operator.cookie)
@@ -315,19 +320,20 @@ try {
     cleanup.poolRows.push((await seedNotification(poolDb, member.id, { type: 'billing', title: accountTitle, communityId: ACCOUNT })).$id)
   }
 
-  // EINE Anmeldung, ZWEI Hosts — dieselbe Person, zwei Welten. Das Cookie
-  // reisen wir selbst herum (node:http), Browser-Domain-Regeln sind hier
-  // nicht die Frage.
+  // EIN Konto, ZWEI Hosts — dieselbe Person, zwei Welten. Sie meldet sich
+  // auf jedem Host an, wie im Browser (im Modus `write` gilt eine Karte nur
+  // auf ihrem Host, PK1 E1c).
   const onTenant = (path, options) => callPlatform(TENANT_HOST, path, options)
   const onAccountArea = (path, options) => callPlatform(CONTROL_HOST, path, options)
-  member.cookie = await login(onTenant, member)
-  check('Pool-Mitglied ist angemeldet', !!member.cookie)
+  member.cookie = await platformCookieOn(TENANT_HOST, member)
+  const memberAccountCookie = await platformCookieOn(CONTROL_HOST, member)
+  check('Pool-Mitglied ist angemeldet (Community und Kundenbereich)', !!member.cookie && !!memberAccountCookie)
 
   const community = await bellTitles(onTenant, member.cookie)
   check('Community-Glocke zeigt die Community-Meldung', community.titles.includes(communityTitle), JSON.stringify(community.titles))
   check('Community-Glocke zeigt die KONTO-Meldung NICHT', !community.titles.includes(accountTitle), JSON.stringify(community.titles))
 
-  const accountArea = await bellTitles(onAccountArea, member.cookie)
+  const accountArea = await bellTitles(onAccountArea, memberAccountCookie)
   check('Kundenbereich zeigt die Konto-Meldung', accountArea.titles.includes(accountTitle), JSON.stringify(accountArea.titles))
   check('Kundenbereich zeigt die COMMUNITY-Meldung NICHT', !accountArea.titles.includes(communityTitle), JSON.stringify(accountArea.titles))
 }
