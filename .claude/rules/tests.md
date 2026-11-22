@@ -60,7 +60,10 @@ paths:
   `packages/brand/vitest.config.ts`), nie in `unit`. Abrufe über
   `registerEndpoint`, KI-Routen zählen mit und müssen 0 bleiben; Erwartungen
   aus der Sprachdatei ROH gelesen (ein JSON-`import` liefert kompilierte
-  Nachrichten).
+  Nachrichten). Einen Zustand, den die Seite nur als Ende eines Abrufs kennt
+  (z. B. 409-Dialog), über die gestellte Antwort herbeiführen, nie von Hand
+  in den Store setzen — sonst schreibt ein laufender Abruf unter Last
+  dazwischen (FL1).
 - `themes-visual` zielt auf die deterministische `/visual`-Seite — NIE
   Live-Daten screenshotten.
 - CI `e2e.yml` fährt eine echte Wegwerf-Appwrite (`ci/appwrite` +
