@@ -60,6 +60,29 @@ ist zu; Community-Moderator (Rolle) und Betreiber 200/200/200.
 **Gelernt:** Eine Wache, die HINTER der Core-Wache ablehnt, sieht der
 Prüfstand als „Wache passiert" — der Test braucht dafür eine eigene,
 ausdrückliche Liste statt eines aufgeweichten `denied`.
+### SU1 (a) — Hauptsprache der Demo-Community: bleibt englisch; Runbooks nennen die Migrations-Env `admin.env` ✅ 2026-11-22
+
+**Was.** (a) Davids Antwort vom 2026-11-21: „Sie bleibt englisch". Die
+Demo-Community wurde vor dem 2026-11-21 angelegt und hat keine Hauptsprache
+gespeichert; es gilt die Adresse ohne Sprach-Vorsatz, und das ist für eine
+englische Community richtig. Kein Klick nötig, `docs/plans/offen/SU1.md` ist
+gelöscht; die Klick-Probe 11 in KR1 läuft künftig an einer Wegwerf-Community.
+
+Dazu im selben Aufräumen (Bahn 8, Paket 1): die Migrations-Env der Konsole
+heißt laut David `admin.env`, `control.env` ist die alte Variante. Angeglichen
+nur, wo ein Skript im Repo denselben Namen liest
+(`scripts/ops/verify-schema-parity.mjs`, `scripts/ops/verify-site-env.mjs`):
+`docs/runbooks/DEPLOYMENT.md` Teil B (Silo-Verzeichnis, drei Wellen-Befehle,
+der Satz zu `--control-env`), `docs/runbooks/APPWRITE-KEYS.md` (Kopf-Hinweis
+und „Nachmessen") und der Aufruf im Kopf von `scripts/ops/probe-key-scopes.mjs`.
+Bewusst NICHT geändert: die Mess-Tabelle in `APPWRITE-KEYS.md` (steht unter
+„Namen von damals", ist Geschichte) und die Schlüssel-Dateien `control-*.key`
+(kein Skript im Repo liest sie; unter `~/.appwrite-secrets/` wurde nicht
+nachgesehen).
+
+**Gelernt:** Ein Umzug benennt die Datei, die die Wächter lesen, aber nicht
+die Befehle im Runbook — wer eine Datei umbenennt, sucht mit `git grep` auch
+in `docs/runbooks/` nach dem alten Namen.
 
 ---
 
