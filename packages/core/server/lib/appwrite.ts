@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import { trustedClientIp } from '../utils/clientIp'
 import { createAppwriteHealth } from '../utils/appwriteHealth'
 import { forgetRequestSession } from '../utils/sessionAccount'
+import { forgetRequestSessionCache, requestSessionSecret } from '../utils/requestSession'
 
 /**
  * Projekt des Requests (Horizont-3 Naht 2): der Tenant-Context der Middleware
@@ -67,6 +68,7 @@ export function clearSessionCookie(event: H3Event) {
   // (Q12) — das Cookie der ANFRAGE trägt sie noch, darum vor dem Löschen.
   forgetRequestSession(event)
   deleteCookie(event, sessionCookieName(event), { path: '/' })
+  forgetRequestSessionCache(event)
 }
 
 /**
@@ -161,8 +163,9 @@ export function createSessionClient(event: H3Event, secret?: string) {
   // gibt: der Login setzt sein Cookie auf die ANTWORT, `getCookie` liest aber
   // die Anfrage — ohne diesen Weg könnte die Login-Route ihre eigene frische
   // Session nicht befragen („braucht die noch einen zweiten Faktor?", U15
-  // Teil 4). Sonst gilt unverändert: Cookie, und pro Request neu.
-  const session = secret ?? getCookie(event, sessionCookieName(event))
+  // Teil 4). Sonst gilt unverändert: Cookie (über den EINEN Lesepunkt, PK1
+  // E1a — er versteht Klartext und Karte), und pro Request neu.
+  const session = secret ?? requestSessionSecret(event)
   if (session) client.setSession(session)
 
   forwardClientContext(client, event)

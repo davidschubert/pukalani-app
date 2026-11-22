@@ -1,4 +1,5 @@
-import { createSessionClient, sessionCookieName } from '../lib/appwrite'
+import { createSessionClient } from '../lib/appwrite'
+import { requestSessionSecret } from '../utils/requestSession'
 import { lookupSessionAccount, needsFreshAccount } from '../utils/sessionAccount'
 
 /**
@@ -12,8 +13,10 @@ import { lookupSessionAccount, needsFreshAccount } from '../utils/sessionAccount
  * `/api/auth/me` fragen immer frisch.
  */
 export default defineEventHandler(async (event) => {
-  // Ohne Cookie kein Appwrite-Roundtrip (läuft für jeden Request)
-  const secret = getCookie(event, sessionCookieName(event))
+  // Ohne Cookie kein Appwrite-Roundtrip (läuft für jeden Request). Gelesen
+  // über den EINEN Lesepunkt (PK1 E1a): der Merker-Schlüssel hängt am INNEREN
+  // Geheimnis, gleich ob das Cookie Klartext oder eine Karte trägt.
+  const secret = requestSessionSecret(event)
   if (!secret) return
 
   try {

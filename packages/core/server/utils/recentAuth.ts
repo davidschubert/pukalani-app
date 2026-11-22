@@ -2,6 +2,9 @@ import type { H3Event } from 'h3'
 import { createSessionClient } from '../lib/appwrite'
 import { isRecentAuth, RECENT_AUTH_MAX_AGE_MS, REAUTH_REQUIRED_REASON } from '../../shared/recentAuth'
 import { softFail } from './softFail'
+import { readRequestSession } from './requestSession'
+import { siteCardActive } from './siteCard'
+import { olderAuthTime } from '../../shared/siteCard'
 
 /**
  * Verlangt eine FRISCHE Anmeldung (Regel und Begründung: shared/recentAuth.ts).
@@ -22,11 +25,21 @@ import { softFail } from './softFail'
  * Das Alter kommt von Appwrite (`$createdAt` der aktuellen Session), nicht
  * aus einem Cookie oder Body — der Aufrufer kann es also nicht behaupten.
  * Ist die Session nicht lesbar, gilt sie als NICHT frisch (fail-closed).
+ *
+ * MIT EINTRITTSKARTE (PK1 E1a): trägt die Anfrage eine Karte, zählt der
+ * ÄLTERE von `authAt` der Karte (Zeitpunkt der ursprünglichen Anmeldung) und
+ * `$createdAt` der Sitzung — eine beim Host-Wechsel neu angelegte Sitzung
+ * macht damit nichts „frisch". Nur strenger als ohne Karte. Ohne Karten-Modus
+ * (`off`) wird der Lesepunkt hier gar nicht gefragt.
  */
 export async function requireRecentAuth(event: H3Event, maxAgeMs: number = RECENT_AUTH_MAX_AGE_MS): Promise<void> {
   const { account } = createSessionClient(event)
   const session = await account.getSession({ sessionId: 'current' }).catch(softFail('core:utils/recentAuth:getSession', null, { quiet: [401] }))
-  if (!isRecentAuth(session?.$createdAt, Date.now(), maxAgeMs)) {
+  const request = siteCardActive() ? readRequestSession(event) : null
+  const authAt = request?.format === 'card'
+    ? olderAuthTime(session?.$createdAt, request.claims.authAt)
+    : session?.$createdAt
+  if (!isRecentAuth(authAt, Date.now(), maxAgeMs)) {
     throw createError({
       status: 403,
       statusText: 'Recent sign-in required',

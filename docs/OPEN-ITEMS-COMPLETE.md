@@ -122,6 +122,28 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1 E1a — Umschlag und ein Lesepunkt für das Sitzungs-Cookie (Schalter aus) ✅ 2026-11-22
+
+**Was.** Die Karte (versiegelter Umschlag, AES-256-GCM, gebunden an Host,
+Community, Ablauf, ursprüngliche Anmeldung) und EIN Lesepunkt
+(`readRequestSession`, `core/server/utils/requestSession.ts`), über den alle
+Lesestellen des Sitzungs-Cookies gehen; Wächter
+`packages/core/tests/sessionCookieReadGuard.test.ts`. Schalter
+`NUXT_SITE_CARD_MODE` (`off` · `read` · `write`), Core-Default `off`, Rückweg
+ohne Ausliefern; Schlüssel `NUXT_SITE_CARD_KEY` über HKDF abgeleitet, optional
+ein voriger Schlüssel zum Lesen. `requireRecentAuth` nimmt mit Karte den
+älteren Zeitpunkt. Geschrieben wird weiter Klartext. Bühne mit `read` und
+Wegwerf-Schlüssel: Karte gilt nur auf ihrem Host und für ihre Community,
+abgelaufen/verändert/fremder Schlüssel ⇒ abgemeldet, Abmelden mit Karte
+beendet die Sitzung; 34 vorhandene Bühnen-Beweise grün.
+
+**Gelernt:** Ein abgebrochener Bühnen-Beweis stellt seine Annahmen nicht
+zurück (der Zeitgrenzen-Abbruch überspringt das `finally`) — der nächste Lauf
+auf derselben Bühne ist dann rot, ohne dass der Code schuld ist. Nach einer
+Zeitgrenze die Bühne neu bauen, bevor man ein Rot deutet. Und: ein Schutz-
+Modus darf bei fehlendem Schlüssel nicht still auf „aus" fallen (`write`
+ohne Schlüssel lehnt Klartext auf eigenen Domains weiter ab).
+
 ### PK1 E0 — Beweis und Messung für die Eintrittskarte je Seite ✅ 2026-11-22
 
 **Was.** Erster Schritt der Etappe E1 ([Konzept § 13](plans/PUKALANI-KONTO-E1.md)),

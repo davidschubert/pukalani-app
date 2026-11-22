@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
 import { createSessionAccountMemo } from '../../shared/sessionAccountMemo'
 import { sessionCookieName } from '../lib/appwrite'
+import { requestSessionSecret } from './requestSession'
 
 /**
  * Server-Anbindung des Anmelde-Merkers (Q12, B3) — die Regeln stehen in
@@ -78,7 +79,9 @@ export function lookupSessionAccount(
 
 /** Genau die Sitzung dieser Anfrage vergessen (Cookie wird gelöscht). */
 export function forgetRequestSession(event: H3Event): void {
-  const secret = getCookie(event, sessionCookieName(event))
+  // Derselbe Lesepunkt wie `02.auth.ts` — sonst räumte eine Karte einen
+  // anderen Schlüssel als den, unter dem das Konto gemerkt wurde.
+  const secret = requestSessionSecret(event)
   if (secret) memo.forgetKey(sessionMemoKey(event, secret))
 }
 
