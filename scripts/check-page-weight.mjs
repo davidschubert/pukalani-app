@@ -7,9 +7,10 @@
  * Apps ohne Eintrag dort werden übersprungen.
  *
  * Aufruf: `pnpm check:page-weight --app <name>` (mehrfach möglich); ohne
- * `--app` alle Apps der Liste, deren Build da ist. Im Ausliefern läuft er
- * nach jedem `pnpm --filter <app> build` — ein zu schwerer Stand wird
- * nicht ausgeliefert.
+ * `--app` alle Apps der Liste, deren Build da ist. Hart (Exit 1) prüft ihn
+ * `.github/workflows/page-weight.yml` im Pull Request und auf `main`; im
+ * Ausliefern läuft er nach jedem Build nur noch als Warnung (Review-Befund
+ * B1: eine zu schwere App hielt sonst das Ausliefern aller Apps auf).
  */
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'

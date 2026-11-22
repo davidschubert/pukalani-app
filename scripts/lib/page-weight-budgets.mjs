@@ -8,8 +8,8 @@
  *
  * `roots` sind Schlüssel aus dem Client-Manifest: die Startseite und ihr
  * Layout (`definePageMeta({ layout })`; ohne Layout nur die Seite).
- * Geprüft wird nach jedem Build im Ausliefern (`.github/workflows/deploy.yml`)
- * und lokal mit `pnpm check:page-weight --app <name>` nach `pnpm --filter
+ * Geprüft wird im Pull Request und auf `main` (`.github/workflows/page-weight.yml`,
+ * hart), im Ausliefern nur als Warnung, und lokal mit `pnpm check:page-weight --app <name>` nach `pnpm --filter
  * <name> build`.
  *
  * branding und platform seit PERF-006 Paket 2 (Bahn 5, 2026-11-21): vorher
@@ -18,11 +18,17 @@
  * 305 bzw. 313 KB, Grenze wieder plus rund 5 %. Reißt eine der zwei Grenzen,
  * zuerst `BwSiteNav` (fester Import?) bzw. `apps/platform/app/pages/index.vue`
  * ansehen.
+ *
+ * Seit 2026-11-22 (Review-Befund B1): Puffer rund 10 % über dem Messwert des
+ * Ausliefern-Laufs von #533 (marketing 281, help 287, portfolio 250, branding
+ * 307, platform 315 KB) — 5 % ließen portfolio nur 3 % Luft. Hart geprüft
+ * wird im Pull Request (`.github/workflows/page-weight.yml`); das Ausliefern
+ * warnt nur und hält keine App mehr auf.
  */
 export const PAGE_WEIGHT_BUDGETS = {
-  marketing: { roots: ['pages/index.vue', 'layouts/site.vue'], maxScriptGzipKB: 295 },
-  help: { roots: ['pages/index.vue'], maxScriptGzipKB: 300 },
-  portfolio: { roots: ['pages/index.vue', 'layouts/site.vue'], maxScriptGzipKB: 258 },
-  branding: { roots: ['pages/index.vue', 'layouts/default.vue'], maxScriptGzipKB: 320 },
-  platform: { roots: ['pages/index.vue', '../../../packages/blueprint/app/layouts/default.vue'], maxScriptGzipKB: 329 },
+  marketing: { roots: ['pages/index.vue', 'layouts/site.vue'], maxScriptGzipKB: 309 },
+  help: { roots: ['pages/index.vue'], maxScriptGzipKB: 316 },
+  portfolio: { roots: ['pages/index.vue', 'layouts/site.vue'], maxScriptGzipKB: 275 },
+  branding: { roots: ['pages/index.vue', 'layouts/default.vue'], maxScriptGzipKB: 338 },
+  platform: { roots: ['pages/index.vue', '../../../packages/blueprint/app/layouts/default.vue'], maxScriptGzipKB: 347 },
 }
