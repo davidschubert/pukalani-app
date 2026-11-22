@@ -1,4 +1,5 @@
 import { createAdminClient, createSessionClient, setSessionCookie } from '../../lib/appwrite'
+import { freshSignInCard } from '../../utils/requestSession'
 import { loginSchema } from '../../../schemas/auth'
 import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage } from '../../../shared/authFailure'
 import { secondFactorPending } from '../../../shared/mfa'
@@ -42,7 +43,7 @@ export default defineEventHandler(async (event): Promise<LoginResponse> => {
   // keinen Träger. Gefährlich ist sie nicht: solange der zweite Faktor fehlt,
   // beantwortet Appwrite JEDEN Konto-Aufruf mit 401, `event.context.user`
   // bleibt leer und der Nutzer ist überall ausgeloggt.
-  setSessionCookie(event, session.secret, session.expire)
+  setSessionCookie(event, session.secret, session.expire, { card: freshSignInCard(session) })
 
   // Ob ein zweiter Faktor nötig ist, sagt APPWRITE — nicht wir (Begründung
   // an der Weiche selbst, shared/mfa.ts). Die Frage kostet einen Aufruf:

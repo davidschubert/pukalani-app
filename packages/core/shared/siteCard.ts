@@ -15,8 +15,8 @@ import type { TenantContext } from './types/tenant'
  * (`NUXT_SITE_CARD_MODE`):
  *  - `off`   — der Lesepunkt liest das Cookie genau wie vor E1;
  *  - `read`  — Karten werden geöffnet, Klartext gilt weiter;
- *  - `write` — wie `read`, dazu gilt auf einer eigenen Domain NUR die Karte.
- *    (Das Schreiben der Karte selbst kommt in einer späteren Etappe.)
+ *  - `write` — wie `read`, dazu gilt auf einer eigenen Domain NUR die Karte,
+ *    und jede neue Anmeldung bekommt eine Karte (E1b).
  */
 export const SITE_CARD_MODES = ['off', 'read', 'write'] as const
 export type SiteCardMode = (typeof SITE_CARD_MODES)[number]
@@ -62,6 +62,14 @@ export interface SiteCardClaims {
   expiresAt: number
   /** Zeitpunkt der URSPRÜNGLICHEN Anmeldung (bleibt beim Host-Wechsel gleich). */
   authAt: number
+  /**
+   * `true`: die Sitzung gehört NUR dieser Seite (eigene Anmeldung hier oder
+   * beim Host-Wechsel neu angelegt) — sie darf beim nächsten Host-Wechsel auf
+   * diese Seite ersetzt und gelöscht werden. Fehlt das Feld, ist die Sitzung
+   * eine KOPIE (Zwei-Faktor, Rückfall, Einbettung, Karten von vor E1b) und
+   * wird nie von hier aus gelöscht.
+   */
+  own?: boolean
 }
 
 /**

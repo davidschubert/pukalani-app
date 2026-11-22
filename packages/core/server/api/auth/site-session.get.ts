@@ -1,7 +1,7 @@
 import { Account, Client } from 'node-appwrite'
 import { z } from 'zod'
-import { deriveHandoffKey, handoffAudience, openHandoffToken } from '../../utils/embedHandoff'
-import { setSessionCookie } from '../../lib/appwrite'
+import { deriveHandoffKey, handoffAudience, openHandoff } from '../../utils/embedHandoff'
+import { claimHandoffOnce, establishSiteSession, handoffMatchesSession } from '../../utils/sessionHandoff'
 import { safeRedirectTarget } from '../../../shared/redirectTarget'
 import { softFail } from '../../utils/softFail'
 
@@ -32,6 +32,11 @@ import { softFail } from '../../utils/softFail'
  * bewegen — das Siegel landete beim Angreifer und war auf JEDEM unserer Hosts
  * einlösbar. Details: server/utils/embedHandoff.ts.
  *
+ * EIGENE SITZUNG JE SEITE (PK1 E1b): im Modus `write` des Kartenschalters
+ * bekommt dieser Host eine eigene Appwrite-Sitzung in einer Karte statt einer
+ * Kopie (Ausnahmen und Aufräumen: `server/utils/sessionHandoff.ts`); bei
+ * `off`/`read` bleibt es die Kopie wie vorher.
+ *
  * Gate: nur in Multi-Tenant-Deployments (pukalani.tenancy.enabled) — Single-Tenant-
  * Apps brauchen keinen Host-Wechsel und bekommen die Route nicht.
  */
@@ -59,20 +64,23 @@ export default defineEventHandler(async (event) => {
   // Zielgruppe = DIESER Host. Ein Siegel für einen anderen Host öffnet hier
   // nicht — dieselbe Antwort wie bei einem manipulierten Token, damit ein
   // Angreifer nicht erfährt, ob er nur den falschen Host erwischt hat.
-  const secret = openHandoffToken(query.token, deriveHandoffKey(config.appwriteKey), handoffAudience(getHeader(event, 'host')))
-  if (!secret) {
+  const grant = openHandoff(query.token, deriveHandoffKey(config.appwriteKey), handoffAudience(getHeader(event, 'host')))
+  // Ein Siegel mit Kennung (Modus `write`) gilt nur EINMAL — ein zweites
+  // Einlösen sieht aus wie ein abgelaufenes Siegel.
+  if (!grant || (grant.nonce !== undefined && !claimHandoffOnce(grant.nonce))) {
     throw createError({ status: 401, statusText: 'Invalid or expired handoff token' })
   }
 
   const client = new Client()
     .setEndpoint(config.public.appwriteEndpoint)
     .setProject(config.public.appwriteProjectId)
-    .setSession(secret)
+    .setSession(grant.secret)
   const session = await new Account(client).getSession({ sessionId: 'current' }).catch(softFail('core:api/auth/site-session.get:getSession', null, { quiet: [401] }))
-  if (!session) {
+  // Ein Siegel mit Konto/Sitzung (E1b) muss zur geprüften Sitzung passen.
+  if (!session || !handoffMatchesSession(grant, session)) {
     throw createError({ status: 401, statusText: 'Session no longer valid' })
   }
 
-  setSessionCookie(event, secret, session.expire)
+  await establishSiteSession(event, grant, session)
   return sendRedirect(event, query.to ?? '/', 302)
 })

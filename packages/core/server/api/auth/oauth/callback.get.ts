@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import { createAdminClient, setSessionCookie } from '../../../lib/appwrite'
+import { freshSignInCard } from '../../../utils/requestSession'
 import { safeRedirectTarget } from '../../../../shared/redirectTarget'
 import {
   OAUTH_REDIRECT_COOKIE,
@@ -106,7 +107,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  setSessionCookie(event, session.secret, session.expire)
+  setSessionCookie(event, session.secret, session.expire, { card: freshSignInCard(session) })
   await logAuthEvent(event, 'user.login', { userId: session.userId, method: 'oauth' })
 
   if (isNewAccount) {

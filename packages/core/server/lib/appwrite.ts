@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { trustedClientIp } from '../utils/clientIp'
 import { createAppwriteHealth } from '../utils/appwriteHealth'
 import { forgetRequestSession } from '../utils/sessionAccount'
-import { forgetRequestSessionCache, requestSessionSecret } from '../utils/requestSession'
+import { forgetRequestSessionCache, requestSessionSecret, sessionCookieValue, type SessionCookieCard } from '../utils/requestSession'
 
 /**
  * Projekt des Requests (Horizont-3 Naht 2): der Tenant-Context der Middleware
@@ -36,10 +36,15 @@ export function sessionCookieName(event: H3Event): string {
  * csrf-origin-Middleware). Partitioned verlangt Secure — der Modus ist
  * daher nur unter HTTPS wirksam (Dev-http: Browser verwirft es, der
  * Cross-Site-Beweis läuft auf echten Domains).
+ *
+ * KARTE (PK1 E1b): `options.card` sagt, zu welcher Sitzung und welchem Konto
+ * das Geheimnis gehört und wann die ursprüngliche Anmeldung war. Im Modus
+ * `write` wird daraus die Eintrittskarte dieses Hosts; bei `off`/`read`
+ * steht im Cookie genau das Geheimnis wie vor E1 (`sessionCookieValue`).
  */
-export function setSessionCookie(event: H3Event, secret: string, expire: string, options?: { partitioned?: boolean }) {
-  const partitioned = options?.partitioned === true
-  setCookie(event, sessionCookieName(event), secret, {
+export function setSessionCookie(event: H3Event, secret: string, expire: string, options: { partitioned?: boolean, card: SessionCookieCard }) {
+  const partitioned = options.partitioned === true
+  setCookie(event, sessionCookieName(event), sessionCookieValue(event, secret, expire, options.card), {
     expires: new Date(expire),
     path: '/',
     httpOnly: true,

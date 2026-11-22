@@ -1,5 +1,6 @@
 import { Query } from 'node-appwrite'
 import { createAdminClient, createSessionClient, setSessionCookie } from '../../../lib/appwrite'
+import { freshSignInCard } from '../../../utils/requestSession'
 import { otpVerifySchema } from '../../../../schemas/auth'
 import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage } from '../../../../shared/authFailure'
 import { secondFactorPending } from '../../../../shared/mfa'
@@ -48,7 +49,7 @@ export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
     // (Begründung in login.post.ts): die halbe Session ist der Träger, mit dem
     // /api/auth/mfa/challenge die Challenge löst, und für jeden Konto-Aufruf
     // wertlos, solange der Faktor fehlt.
-    setSessionCookie(event, session.secret, session.expire)
+    setSessionCookie(event, session.secret, session.expire, { card: freshSignInCard(session) })
 
     /**
      * ZWEITER FAKTOR (Befund 2026-10-24, prod): ein Konto mit `mfa=1` und
