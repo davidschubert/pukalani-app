@@ -25,7 +25,7 @@ const localePath = useLocalePath()
 
 const slug = computed(() => String(route.params.category ?? ''))
 
-const { data } = await useFetch<CategoryListResponse>('/api/posts/categories', {
+const { data, error } = await useFetch<CategoryListResponse>('/api/posts/categories', {
   key: CATEGORY_LIST_KEY,
   query: { all: '1' },
 })
@@ -37,8 +37,12 @@ const { categoryName, categoryDescription } = useCategoryText()
 const title = computed(() => (category.value ? categoryName(category.value) : ''))
 const description = computed(() => (category.value ? categoryDescription(category.value) : ''))
 
+// Ein gescheiterter Abruf der Liste ist KEIN „unbekannte Kategorie": 404 wäre
+// eine falsche Auskunft. Dann geht der Fehler in den Fehlerweg der Seite (503).
 if (!category.value) {
-  throw createError({ status: 404, statusText: 'Category not found' })
+  throw error.value
+    ? createError({ status: 503, statusText: 'Categories unavailable' })
+    : createError({ status: 404, statusText: 'Category not found' })
 }
 
 useBrandTitle(() => title.value || t('posts.discussions.title'), {

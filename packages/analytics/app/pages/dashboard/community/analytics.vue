@@ -68,9 +68,16 @@ const state = reactive({ plausibleScriptId: '' })
  * `server: false`, weil die Seite hinter der Anmeldung liegt und nichts davon
  * ins SSR-HTML muss.
  */
-const { data, refresh } = await useFetch<AnalyticsConfigResponse>('/api/analytics/config', {
+const { data, error: configError, refresh } = await useFetch<AnalyticsConfigResponse>('/api/analytics/config', {
   lazy: true,
   server: false,
+})
+// Nur ein ECHTER Ausfall (Status ab 500 oder kein Status = Netz): sonst stünde
+// der Schalter auf „aus" und das Formular leer, als wäre nichts eingestellt —
+// und ein Speichern würde die echte Einstellung überschreiben.
+const configFailed = computed(() => {
+  if (!configError.value) return false
+  return isFetchOutage(configError.value)
 })
 watch(data, (value) => { state.plausibleScriptId = value?.ownScriptId ?? '' }, { immediate: true })
 
@@ -249,6 +256,8 @@ function formatDay(date: string): string {
         data-analytics-plan-hint
       />
 
+      <CoreInlineLoadError v-if="configFailed" :retry="refresh" data-analytics-config-error />
+
       <!-- POOL: ein Schalter, mehr nicht. -->
       <UPageCard
         v-if="sharedConfigured"
@@ -265,7 +274,7 @@ function formatDay(date: string): string {
           </div>
           <USwitch
             :model-value="enabled"
-            :disabled="!planOk || saving"
+            :disabled="!planOk || saving || configFailed"
             :aria-label="t('analytics.admin.measureLabel')"
             data-analytics-toggle
             @update:model-value="(value: boolean) => toggleMeasuring(value)"
@@ -317,7 +326,7 @@ function formatDay(date: string): string {
             <UInput
               v-model="state.plausibleScriptId"
               class="w-full font-mono"
-              :disabled="!planOk"
+              :disabled="!planOk || configFailed"
               :placeholder="t('analytics.admin.scriptIdPlaceholder')"
               data-analytics-script-id
             />

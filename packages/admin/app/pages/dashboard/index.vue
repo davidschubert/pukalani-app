@@ -116,7 +116,21 @@ const notices = computed(() =>
 //
 // EINE Route für alle Zahlen (Performance): die Übersicht ist die
 // meistbesuchte Seite des Dashboards, ein Fetch je Kachel wären sieben.
-const { data: stats, refresh: refreshStats } = await useFetch<AdminStatsResponse>('/api/admin/stats')
+const { data: stats, error: statsError, refresh: refreshStats } = await useFetch<AdminStatsResponse>('/api/admin/stats')
+
+/**
+ * FEHLER-ZUSTÄNDE DER KACHELN (LZ1): nur ein ECHTER Ausfall (Status ab 500 oder
+ * kein Status = Netz) zeigt je Kachel/Block den kleinen Fehler-Zustand. Eine
+ * ERWARTETE Ablehnung (401, 403 — z. B. weist `/api/admin/stats` und
+ * `/api/admin/analytics` im Pool ein Konto mit nur dem Instanz-Label
+ * `moderator` ab — oder 404) bleibt still: dann gibt es für diese Person
+ * einfach keine Zahl, und das ist keine Störung.
+ */
+function isOutage(err: unknown): boolean {
+  if (!err) return false
+  return isFetchOutage(err)
+}
+const statsFailed = computed(() => isOutage(statsError.value))
 
 // Dieselbe Filter-Trias wie die Reiter des Community-Hubs (F51) und die
 // Sidebar-Module — Ort × Capability × Produkt-Gates. Der SERVER rechnet sie
@@ -182,11 +196,12 @@ const cardGridClass = computed(() => {
  */
 const chartHere = place === 'single-tenant'
 const days = ref(30)
-const { data: analytics, refresh: refreshAnalytics } = await useFetch<AdminAnalytics>('/api/admin/analytics', {
+const { data: analytics, error: analyticsError, refresh: refreshAnalytics } = await useFetch<AdminAnalytics>('/api/admin/analytics', {
   query: computed(() => ({ days: days.value })),
   immediate: chartHere,
   server: chartHere,
 })
+const analyticsFailed = computed(() => chartHere && isOutage(analyticsError.value))
 
 /**
  * Ein Mitglied ohne Team-Rolle sieht keine Kachel, keinen Verlauf, nichts zu
@@ -197,6 +212,8 @@ const { data: analytics, refresh: refreshAnalytics } = await useFetch<AdminAnaly
 const memberOnly = computed(() =>
   !cards.value.length
   && !(chartHere && analytics.value)
+  && !statsFailed.value
+  && !analyticsFailed.value
   && !canModerateComments.value
   && !canReadAudit.value
   && !canManageStorage.value
@@ -210,11 +227,12 @@ const memberOnly = computed(() =>
 // und 30-s-Poll hängen alle an derselben Bedingung.
 const presenceHere = place !== 'control'
 interface OnlineUser { userId: string, userName: string, avatarUrl: string }
-const { data: presence, refresh: refreshPresence } = await useFetch<{ count: number, users: OnlineUser[] }>('/api/presence/count', {
+const { data: presence, error: presenceError, refresh: refreshPresence } = await useFetch<{ count: number, users: OnlineUser[] }>('/api/presence/count', {
   query: { scope: 'global' },
   immediate: presenceHere,
   server: presenceHere,
 })
+const presenceFailed = computed(() => presenceHere && isOutage(presenceError.value))
 const onlineCount = computed(() => presence.value?.count ?? 0)
 const onlineUsers = computed(() => presence.value?.users ?? [])
 // Live-Anwesenheit über die Presences API (Channel.presences()) — treibt den
@@ -224,9 +242,10 @@ const { present } = usePresence()
 // --- Widgets (client-seitig, blockiert SSR nicht) -----------------------------
 // `immediate` folgt der Capability: ohne sie bleibt die Anfrage aus, statt
 // vorhersehbar in ein 403 zu laufen (das Widget rendert ohnehin nicht).
-const { data: reported, refresh: refreshReported } = useFetch<ReportedCommentsSummary>('/api/admin/comments', {
+const { data: reported, error: reportedError, refresh: refreshReported } = useFetch<ReportedCommentsSummary>('/api/admin/comments', {
   query: { status: 'reported', page: 1 }, lazy: true, server: false, immediate: canModerateComments.value,
 })
+const reportedFailed = computed(() => canModerateComments.value && isOutage(reportedError.value))
 const reportedList = computed(() => (reported.value?.comments ?? []).slice(0, 5))
 // `immediate` liest die Bedingung nur EINMAL. Wird das Produkt in derselben
 // Sitzung wieder eingeschaltet (oder erst dann sichtbar), lädt das Widget hier
@@ -235,14 +254,16 @@ watch(canModerateComments, (on, was) => {
   if (on && !was) void refreshReported()
 })
 
-const { data: audit, refresh: refreshAudit } = useFetch<AuditLogListResponse>('/api/admin/audit', {
+const { data: audit, error: auditError, refresh: refreshAudit } = useFetch<AuditLogListResponse>('/api/admin/audit', {
   query: { page: 1 }, lazy: true, server: false, immediate: canReadAudit.value,
 })
+const auditFailed = computed(() => canReadAudit.value && isOutage(auditError.value))
 const auditList = computed(() => (audit.value?.entries ?? []).slice(0, 6))
 
-const { data: storage } = useFetch<StorageOverview>('/api/admin/storage', {
+const { data: storage, error: storageError, refresh: refreshStorage } = useFetch<StorageOverview>('/api/admin/storage', {
   lazy: true, server: false, immediate: canManageStorage.value,
 })
+const storageFailed = computed(() => canManageStorage.value && isOutage(storageError.value))
 
 function actionText(entry: AuditLogEntry): string {
   const key = `admin.audit.action.${entry.action}`
@@ -361,7 +382,8 @@ onScopeDispose(() => {
 
         <!-- Online — nicht auf dem Kontroll-Host (s. presenceHere) -->
         <UCard v-if="presenceHere" data-online-card>
-          <div class="flex flex-wrap items-center justify-between gap-4">
+          <CoreInlineLoadError v-if="presenceFailed" :retry="refreshPresence" />
+          <div v-else class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-2">
               <span class="relative flex size-2.5">
                 <span class="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
@@ -379,7 +401,8 @@ onScopeDispose(() => {
 
         <!-- Kennzahlen (Registry — jede Kachel gehört dem Layer, der sie
              angemeldet hat; die Zahlen kommen gebündelt aus EINER Route) -->
-        <div class="grid gap-4" :class="cardGridClass" data-stat-cards>
+        <CoreInlineLoadError v-if="statsFailed" :retry="refreshStats" data-stat-cards-error />
+        <div v-else class="grid gap-4" :class="cardGridClass" data-stat-cards>
           <UCard v-for="card in cards" :key="card.id" :data-stat="card.id">
             <!-- Eine Kachel OHNE `to` ist reine Anzeige — ein Link ins Nichts
                  wäre schlechter als kein Link. -->
@@ -416,7 +439,8 @@ onScopeDispose(() => {
         />
 
         <!-- Chart — nur wo seine Nutzer-Achse die Site meint (s. `chartHere`) -->
-        <UCard v-if="chartHere && analytics">
+        <CoreInlineLoadError v-if="analyticsFailed" :retry="refreshAnalytics" data-analytics-error />
+        <UCard v-else-if="chartHere && analytics">
           <template #header>
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 class="font-semibold">{{ t('admin.analytics.title') }}</h2>
@@ -460,8 +484,9 @@ onScopeDispose(() => {
             <!-- Dieselbe Bauform wie die Schwester-Karte daneben (S5). BEWUSST
                  OHNE Aktion: nichts zu moderieren ist eine gute Nachricht,
                  kein Auftrag — „Alle ansehen" steht oben in der Kopfzeile. -->
+            <CoreInlineLoadError v-if="reportedFailed" :retry="refreshReported" />
             <CoreEmptyState
-              v-if="!reportedList.length"
+              v-else-if="!reportedList.length"
               icon="i-ph-shield-check"
               :title="t('admin.overview.allClear')"
               :description="t('admin.overview.allClearHint')"
@@ -493,8 +518,9 @@ onScopeDispose(() => {
             <!-- S5: der nackte Gedankenstrich war weder übersetzt noch als
                  leerer Zustand erkennbar. CoreEmptyState OHNE Aktion: hier gibt
                  es nichts anzulegen, das Protokoll füllt sich von selbst. -->
+            <CoreInlineLoadError v-if="auditFailed" :retry="refreshAudit" />
             <CoreEmptyState
-              v-if="!auditList.length"
+              v-else-if="!auditList.length"
               icon="i-ph-clock-counter-clockwise"
               :title="t('admin.overview.activityEmpty')"
               :description="t('admin.overview.activityEmptyHint')"
@@ -510,7 +536,10 @@ onScopeDispose(() => {
         </div>
 
         <!-- Speicher (storage.manage) -->
-        <UCard v-if="canManageStorage && storage?.available">
+        <UCard v-if="storageFailed">
+          <CoreInlineLoadError :retry="refreshStorage" />
+        </UCard>
+        <UCard v-else-if="canManageStorage && storage?.available">
           <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm">
             <h2 class="font-semibold">{{ t('admin.overview.storage') }}</h2>
             <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-muted">

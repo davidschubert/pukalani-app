@@ -13,10 +13,14 @@ const toast = useToast()
 const route = useRoute()
 const localePath = useLocalePath()
 
-const [{ data: lesson, error }, { data: course, error: courseError, refresh: refreshCourse }] = await Promise.all([
-  useFetch<LessonRow & { courseSlug: string }>(`/api/lessons/${route.params.id}`),
-  useFetch<CourseDetailResponse>(`/api/courses/${route.params.slug}`),
-])
+// Zwei Abrufe parallel; die Ergebnisse stehen einzeln da, damit `.error` lesbar ist.
+const lessonFetch = useFetch<LessonRow & { courseSlug: string }>(`/api/lessons/${route.params.id}`)
+const courseFetch = useFetch<CourseDetailResponse>(`/api/courses/${route.params.slug}`)
+await Promise.all([lessonFetch, courseFetch])
+const { data: lesson } = lessonFetch
+const { data: course, refresh: refreshCourse } = courseFetch
+const error = lessonFetch.error
+const courseError = courseFetch.error
 /**
  * Kein Mitglied dieser Community (SEC-029): die Kurs-Vorschau ist öffentlich,
  * der Inhalt nicht. Statt einer Fehlerseite ein klarer Satz und der Weg
@@ -27,7 +31,13 @@ const notMember = computed(() => {
   return err?.statusCode === 403 && err.data?.reason === COURSE_NOT_A_MEMBER_CODE
 })
 if (!notMember.value && (error.value || courseError.value || !lesson.value || !course.value)) {
-  throw createError({ status: 404, statusText: 'Lesson not found' })
+  // Ein Ausfall (Status ab 500 oder kein Status = Netz) ist KEIN „nicht
+  // gefunden": 404 wäre eine falsche Auskunft, also 503 in den Fehlerweg.
+  const failure = (error.value ?? courseError.value) as { statusCode?: number } | null | undefined
+  const outage = !!failure && (failure.statusCode === undefined || failure.statusCode >= 500)
+  throw outage
+    ? createError({ status: 503, statusText: 'Lesson unavailable' })
+    : createError({ status: 404, statusText: 'Lesson not found' })
 }
 
 // Der Titel gehört hierher und nicht in die Seite: die Lektion kennt nur diese

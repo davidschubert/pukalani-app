@@ -89,9 +89,16 @@ const notice = computed(() => {
 })
 
 // SSR-Load — Pinia-State hydratisiert in den Client
-await useAsyncData(`comments:${props.targetType}:${props.targetId}`, async () => {
+const { error: loadError, refresh: refreshComments } = await useAsyncData(`comments:${props.targetType}:${props.targetId}`, async () => {
   await store.fetchComments(props.targetId, props.targetType, props.targetUrl ?? route.path)
   return true
+})
+// Nur ein ECHTER Ausfall (Status ab 500 oder kein Status = Netz) zeigt den
+// kleinen Fehler-Zustand statt „noch keine Kommentare"; eine erwartete
+// Ablehnung (4xx) bleibt wie bisher still. 429 fängt der Store selbst ab.
+const loadFailed = computed(() => {
+  if (!loadError.value) return false
+  return isFetchOutage(loadError.value)
 })
 
 const sortOptions = computed(() => [
@@ -276,7 +283,9 @@ function presenceLabel(u: PresenceUser): string {
       </UButton>
     </div>
 
-    <p v-if="store.threaded.length === 0 && !store.loading" class="text-sm text-muted">
+    <CoreInlineLoadError v-if="loadFailed && store.threaded.length === 0" :retry="refreshComments" />
+
+    <p v-else-if="store.threaded.length === 0 && !store.loading" class="text-sm text-muted">
       {{ t('comments.empty') }}
     </p>
 

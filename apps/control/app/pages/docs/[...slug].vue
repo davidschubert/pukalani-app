@@ -29,19 +29,25 @@ const contentPath = computed(() => {
   return parts.length ? `/docs/${parts.join('/')}` : '/docs'
 })
 
-const { data: navigation } = await useAsyncData(
+const { data: navigation, error: navError, refresh: refreshNav } = await useAsyncData(
   'internal-docs-navigation',
   () => queryCollectionNavigation('internalDocs'),
 )
 
-const { data: page } = await useAsyncData(
+const { data: page, error: pageError } = await useAsyncData(
   () => `internal-docs:${contentPath.value}`,
   () => queryCollection('internalDocs').path(contentPath.value).first(),
   { watch: [contentPath] },
 )
 
+// Eine gescheiterte Abfrage der Inhalte ist KEIN „Seite gibt es nicht": 404
+// wäre eine falsche Auskunft. Eine Abfrage an die Inhalte hat keinen HTTP-
+// Status — jeder Fehler hier ist ein echter Ausfall (503), „nicht gefunden"
+// ist ein leeres Ergebnis ohne Fehler.
 if (!page.value) {
-  throw createError({ status: 404, statusText: 'Not found', fatal: true })
+  throw pageError.value
+    ? createError({ status: 503, statusText: 'Docs unavailable', fatal: true })
+    : createError({ status: 404, statusText: 'Not found', fatal: true })
 }
 
 useHead({ title: () => page.value?.title || t('control.docs.title') })
@@ -88,7 +94,9 @@ const navItems = computed<ContentNavigationItem[]>(() => {
     <template #body>
       <div class="flex items-start gap-8">
         <aside class="sticky top-0 hidden w-60 shrink-0 lg:block">
+          <CoreInlineLoadError v-if="navError" :retry="refreshNav" />
           <UContentNavigation
+            v-else
             highlight
             :navigation="navItems"
             :default-open="true"
@@ -106,7 +114,9 @@ const navItems = computed<ContentNavigationItem[]>(() => {
               :label="t('control.docs.nav')"
             />
             <template #content>
+              <CoreInlineLoadError v-if="navError" class="mt-3" :retry="refreshNav" />
               <UContentNavigation
+                v-else
                 highlight
                 class="mt-3"
                 :navigation="navItems"

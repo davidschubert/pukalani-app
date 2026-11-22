@@ -18,8 +18,12 @@ const fonts = useCustomFontsState()
 
 useBrandTitle(() => t('themes.fonts.title'))
 
-await useAsyncData('pukalani-fonts-admin', async () => {
-  await refreshCustomFonts()
+// Eigener Abruf statt `refreshCustomFonts()` (das schluckt Fehler bewusst,
+// „best effort" fürs App-Start-Plugin): diese Seite ZEIGT die Liste, und ein
+// gescheiterter Abruf darf nicht wie „noch keine Schriften" aussehen.
+const { status, error, refresh } = await useAsyncData('pukalani-fonts-admin', async () => {
+  const data = await $fetch<{ fonts: CustomFontDto[] }>('/api/fonts')
+  fonts.value = data.fonts
   return true
 })
 
@@ -27,6 +31,7 @@ await useAsyncData('pukalani-fonts-admin', async () => {
 // die Vorschau unten nutzt die Familien direkt, kein lokales CSS nötig.
 const sortedFonts = computed(() => [...fonts.value].sort((a, b) => a.order - b.order))
 const busy = ref(false)
+const fontsState = computed(() => listState({ status: status.value, error: error.value, empty: !sortedFonts.value.length }))
 
 // Wie in der Mediathek: Tabelle, aber die Vorschau-Spalte trägt den
 // visuellen Charakter — hier ist die Vorschau der Satz IN der echten Schrift.
@@ -218,48 +223,48 @@ function weightLabel(weight: number): string {
       <div class="mx-auto flex w-full max-w-4xl min-w-0 flex-col gap-3">
         <UAlert icon="i-ph-info" color="neutral" variant="subtle" :description="t('themes.fonts.hint')" />
 
-        <UTable :data="sortedFonts" :columns="columns" data-fonts-table>
-          <template #name-cell="{ row }">
-            <span class="font-medium">{{ row.original.name }}</span>
-          </template>
-          <template #preview-cell="{ row }">
-            <p class="truncate text-2xl" :style="{ fontFamily: `'${row.original.name}', sans-serif` }">
-              {{ t('themes.fonts.previewText') }}
-            </p>
-          </template>
-          <template #weights-cell="{ row }">
-            <div class="flex flex-wrap gap-1">
-              <UBadge
-                v-for="file in row.original.files"
-                :key="file.fileId"
-                color="neutral" variant="subtle" size="sm"
-              >
-                {{ file.variable ? t('themes.fonts.variableBadge') : file.weight }}
-              </UBadge>
-            </div>
-          </template>
-          <template #actions-cell="{ row }">
-            <div class="flex justify-end">
-              <UDropdownMenu :items="fontMenu(row.original)" :content="{ align: 'end' }">
-                <UButton
-                  icon="i-ph-dots-three-vertical" size="xs" color="neutral" variant="ghost"
-                  :aria-label="t('themes.customize.cardActions')"
-                />
-              </UDropdownMenu>
-            </div>
-          </template>
-
-          <template #empty>
-            <CoreEmptyState
-              icon="i-ph-text-aa"
-              :title="t('themes.fonts.emptyTitle')"
-              :description="t('themes.fonts.empty')"
-              :action-label="t('themes.fonts.add')"
-              action-icon="i-ph-plus"
-              @action="openCreate"
-            />
-          </template>
-        </UTable>
+        <CoreListState
+          :state="fontsState"
+          :retry="refresh"
+          empty-icon="i-ph-text-aa"
+          :empty-title="t('themes.fonts.emptyTitle')"
+          :empty-description="t('themes.fonts.empty')"
+          :empty-action-label="t('themes.fonts.add')"
+          empty-action-icon="i-ph-plus"
+          @empty-action="openCreate"
+        >
+          <UTable :data="sortedFonts" :columns="columns" :loading="isFetchLoading(status)" data-fonts-table>
+            <template #name-cell="{ row }">
+              <span class="font-medium">{{ row.original.name }}</span>
+            </template>
+            <template #preview-cell="{ row }">
+              <p class="truncate text-2xl" :style="{ fontFamily: `'${row.original.name}', sans-serif` }">
+                {{ t('themes.fonts.previewText') }}
+              </p>
+            </template>
+            <template #weights-cell="{ row }">
+              <div class="flex flex-wrap gap-1">
+                <UBadge
+                  v-for="file in row.original.files"
+                  :key="file.fileId"
+                  color="neutral" variant="subtle" size="sm"
+                >
+                  {{ file.variable ? t('themes.fonts.variableBadge') : file.weight }}
+                </UBadge>
+              </div>
+            </template>
+            <template #actions-cell="{ row }">
+              <div class="flex justify-end">
+                <UDropdownMenu :items="fontMenu(row.original)" :content="{ align: 'end' }">
+                  <UButton
+                    icon="i-ph-dots-three-vertical" size="xs" color="neutral" variant="ghost"
+                    :aria-label="t('themes.customize.cardActions')"
+                  />
+                </UDropdownMenu>
+              </div>
+            </template>
+          </UTable>
+        </CoreListState>
       </div>
 
       <!-- Editor-Modal: Name + WOFF2 je Gewicht ODER eine Variable-Font-Datei -->
