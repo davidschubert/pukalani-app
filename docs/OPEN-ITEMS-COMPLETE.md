@@ -30,6 +30,34 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### MV1 — Bibliothek des Marktvergleichs neu gerechnet (Auffrischung vor dem 90-Tage-Stichtag) ✅ 2026-11-22
+
+**Was.** Die vier Einträge (`the-barn`, `apple`, `nike`, `anthropic`, alle vom
+2026-09-06) werden um den 2026-12-05 überfällig; dazu `meta` als neuer
+Versuch. Davids Ja am 2026-11-22 zum bezahlten Lauf (Schätzung ≈ 0,12 $).
+Machbarkeit (`--check`, kostenlos): 5 von 5 erlaubt, Bericht
+`packages/market/shared/library/feasibility.2026-11-22.json`. Echter Lauf
+lokal gegen den branding-Server aus dem Worktree: Entwürfe für `nike` (5
+Felder) und `anthropic` (8); `apple` und `the-barn` „kein Text", `meta` kein
+belegtes Feld. Entwürfe bleiben nach Regel außerhalb des Repos; die
+Handprüfung steht als Block G in KR1, offen in OPEN-ITEMS „MV1".
+
+**Zwei Fehler im Werkzeug behoben** (`market-library-compute.mjs`): es nahm
+den Migrations-Schlüssel vor dem Laufzeit-Schlüssel (401 `users.write` beim
+Wegwerf-Konto) und hielt keine AGB-Zustimmung fest (403
+`consent_required`) — jetzt Laufzeit-Schlüssel zuerst und
+`confirmProbeConsent`/`removeProbeConsent` wie die brand-Skripte. Beide
+Abbrüche kamen vor jedem bezahlten Aufruf.
+
+**Gelernt:** Ein Werkzeug, das monatelang nicht lief, ist hinter neue Regeln
+zurückgefallen (Laufzeit-Schlüssel, Zustimmungs-Tür) — vor einem bezahlten
+Lauf erst einmal ohne Geld bis zum ersten Schreibvorgang fahren. Und „kein
+Marktprofil" kann „kein KI-Schlüssel" heißen: der erste vollständige Lauf
+endete mit `503 AI not configured` im Server-Protokoll, das Werkzeug selbst
+meldete nur den Riegel. Die Annahme, die lokale Datenbank als Spiegel trage
+den Production-Schlüssel, stimmte nicht; gelaufen ist es mit dem lokalen
+Entwicklungs-Schlüssel.
+
 ### LZ1 — die letzten 13 Dateien zeigen einen Ausfall ehrlich; nur noch eine bestätigte Ausnahme (Bahn 12) ✅ 2026-11-22
 
 **Was.** Die Entscheidung vom 2026-11-22 lautete „Bahn 9 stellt die 13 um";
