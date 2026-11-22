@@ -106,7 +106,6 @@ verlangt sie. Offene Punkte stehen trotzdem nur in [OPEN-ITEMS.md](OPEN-ITEMS.md
 | [plans/PUKALANI-KONTO-E1.md](plans/PUKALANI-KONTO-E1.md) | Pukalani-Konto, Etappe 1 (Eintrittskarte je Seite, mit dem Beweis E0): Konzept 2026-11-22, nichts gebaut; wartet auf sechs Entscheidungen
 | [plans/ACCOUNT-HORIZONT.md](plans/ACCOUNT-HORIZONT.md) | Account-Horizont (AH-1 … AH-7): teils gebaut; die Fortsetzung ist das Pukalani-Konto |
 | [plans/WIEDERHERSTELLUNG.md](plans/WIEDERHERSTELLUNG.md) | Gelöschtes zurückholen (WH1): nicht gebaut, wartet auf die Freigabe des Prototyps |
-| [plans/KONTINGENT-KATALOG.md](plans/KONTINGENT-KATALOG.md) | Kontingent-Zahlen im Katalog des Control Plane (KK1 c): Plan-Route führt zusammen (gebaut 2026-11-22); offen Oberfläche und Zahlen in der Datenbank, wartet auf Davids Freigabe |
 | [plans/SEMANTISCHE-SUCHE.md](plans/SEMANTISCHE-SUCHE.md) | Semantische Suche (VDB1): neue Prüfung 2026-11-22, drei Varianten und Empfehlung, nichts gebaut |
 | [plans/KI-TEXTMODELL-WECHSEL.md](plans/KI-TEXTMODELL-WECHSEL.md) | Günstigeres Textmodell (KM1): Probe vom 2026-11-22, Rechnung und Reihenfolge, nichts gewechselt |
 | [plans/BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) | Brand Book & Kit (Produkt 03, BK1): K0 bis K6 gebaut; offen K7, K8 und Davids Blicke |
@@ -147,7 +146,7 @@ Marken-Werkstatt wie [Brand-Wizard Phase 1](archiv/BRAND-WIZARD-PHASE-1.md),
 [Brand Design](archiv/BRAND-DESIGN.md) und
 [Discover Brands](archiv/DISCOVER-BRANDS.md), den
 [Infra-Plan für branding.supply](archiv/BRANDING-SUPPLY-INFRA.md), dazu
-[AI-Runner](archiv/AI-RUNNER.md), [Analytics v2](archiv/ANALYTICS-V2.md) und die
+[AI-Runner](archiv/AI-RUNNER.md), [Kontingent-Katalog](archiv/KONTINGENT-KATALOG.md), [Analytics v2](archiv/ANALYTICS-V2.md) und die
 [Dashboard-Informationsarchitektur](archiv/DASHBOARD-IA.md), …). Die Karte zählt
 sie nicht einzeln auf — ins Archiv kommt man über einen Verweis, nicht über
 eine Liste.

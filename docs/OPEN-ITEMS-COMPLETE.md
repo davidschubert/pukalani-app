@@ -30,10 +30,10 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
-### KK1 (c) — Kontingent-Zahlen in den Katalog: Daten-Migration control-042 aus der app.config, Konsole je Art (Production-Schritt offen) ✅ 2026-11-22
+### KK1 (c) — Kontingent-Zahlen in den Katalog: Daten-Migration control-042 aus der app.config, Konsole je Art, auf Production gefahren ✅ 2026-11-22
 
 **Was.** Davids Antworten vom 2026-11-22 zum Plan
-`docs/plans/KONTINGENT-KATALOG.md`: 6a „Jetzt bauen", 6b die Vorgabe „bleibt
+`docs/archiv/KONTINGENT-KATALOG.md`: 6a „Jetzt bauen", 6b die Vorgabe „bleibt
 in der Platform-App", 6c „heutige Werte übernehmen", Schreiben auf Production
 nur mit eigenem Ja. Gebaut:
 
@@ -72,15 +72,22 @@ Konsole (Seiten bei Pro zurück auf Vorgabe ⇒ nur `pages` fiel aus der Zeile;
 eigene Zahl 40/250 ⇒ die Speicher-Anzeige der Community zeigte nach 20 s
 250). Danach lokaler Katalog auf den Stand vor control-042 zurückgesetzt.
 
-**Befund nebenbei.** Im lokalen Katalog (Spiegel von Production) steht für
-`pro` bei Kommentaren 1000/50.000 — die Vorgabe sagt 5000/250.000. Das ist
-die Saat von control-014 (damals hieß der mittlere Plan `pro`), die die
-Umbenennung mitgenommen hat; der Katalog gewinnt. Steht es auf Production
-genauso (dort NICHT gelesen), haben Pro-Communities heute die
-Personal-Kommentar-Grenze. control-042 ändert daran nichts (es
-überschreibt nie); ob die Zahl korrigiert wird, entscheidet David.
+**Production (Davids Ja vom 2026-11-22, „Ja, fahren").** PR 549 live
+(`26a700a1`), danach `pnpm migrate --app control --env … --only control-042`
+erst mit `--dry-run`, dann `--prod`: basic ergänzt `pages`, personal und pro
+ergänzt `pages`, `events`, `media`; vorher stand je Plan nur `comments`. Ein
+zweiter Lauf meldet für alle drei Pläne „alle Arten stehen schon im
+Katalog"; alle sieben Hosts mit Datenbank `ok`, `schema: ok`.
 
-**Offen (OPEN-ITEMS KK1):** control-042 auf Production, nur mit Davids Ja.
+**Befund nebenbei (erledigt am selben Tag).** Auf Production wie im lokalen
+Spiegel steht für `pro` bei Kommentaren 1000/50.000 — die Vorgabe sagt
+5000/250.000. Das ist die Saat von control-014 (damals hieß der mittlere Plan
+`pro`), die die Umbenennung mitgenommen hat; der Katalog gewinnt, also haben
+Pro-Communities heute die Kommentar-Grenze von Personal. control-042 hat das
+nicht angefasst (es überschreibt nie). Mit Davids Ja („Ja, heben") über die
+Konsole auf Production auf 5000/250.000 gesetzt; `GET /api/control/plans`
+liest danach für `pro` 5000/250.000, alle anderen Arten und Pläne
+unverändert.
 
 **Gelernt:** Der erste Wurf zog die Zahlen in eine eigene Datei, die
 `app.config.ts` per Wert-Import las. Dev-Server, Typecheck, Unit-Tests und
@@ -311,6 +318,47 @@ ist fail-closed: alles außer 200, 429 und 5xx. Und eine Bremse vor einer
 Sicherheits-Nachprüfung macht die Prüfung selbst abschaltbar: wer den Topf
 füllt, verwandelt „gilt nicht mehr" in „unbekannt" — Nachprüfungen gehören
 nie in einen Topf, den der Geprüfte füllen kann.
+
+### PK1 Review vor Schritt B — Ketten-Ablauf, Wettlauf, Lese-Wächter, Runbook (Anmeldung, Schalter-Stand `read`) ✅ 2026-11-22
+
+Ein unabhängiges Review der Schritte E1a bis E1c (und von E1d) vor dem
+Umstellen auf `write` fand nichts Schweres, aber vier mittlere Punkte (B1–B4)
+und drei kleine. Behoben bzw. entschieden:
+
+- **B1 Ablauf über Ketten:** Das Siegel für den Host-Wechsel trägt jetzt den
+  Ablauf der Quell-KARTE (`ex`). Das Ziel kürzt seine Karte — eigene Sitzung
+  wie Kopie — auf das Minimum aus Quell-Karte, Quell-Sitzung und neuer
+  Sitzung (`earliestExpire`, `sessionHandoff.ts`); ebenso die eingebettete
+  Kopie (`embed-session`) und — beim Rückweg auf `read` — das Siegel einer
+  Karte (Gegenlesen dieses Schritts). Vorher konnte jeder
+  weitere Wechsel die Anmeldung verlängern, weil Appwrite für eine neu
+  angelegte Sitzung ihren eigenen, späteren Ablauf meldet.
+- **B7 Wettlauf:** Nach `users.createSession` prüft der Wechsel, ob die Quelle
+  noch lebt (`users.listSessions`). Weg ⇒ neue Sitzung gelöscht, 401;
+  nicht lesbar ⇒ neue Sitzung gelöscht, Kopie.
+- **B5 Lese-Wächter:** `sessionCookieReadGuard.test.ts` meldet jetzt auch das
+  rohe Lesen der Cookie-Kopfzeile (`parseCookies`, `headers.cookie`,
+  `headers.get('cookie')`, h3-Kopfzeile); einzige Ausnahme mit Grund ist
+  `pageCache.ts`.
+- **B2 Sitzungs-Obergrenze:** Runbook berichtigt — gekürzt wird nach jeder
+  echten Anmeldung über ALLE Sitzungen des Kontos; Wert vorher ablesen.
+- **B4:** Platform geht erst auf `write`, wenn E1d live ist (Runbook).
+- **B3:** Nachrichten und „Meine Beiträge" unter eigener Domain nur über die
+  Pukalani-Adresse — bewusst hingenommen, offen unter PK1-EIN.
+- Runbook: Beobachten im Moment des Umstellens (`cards: true`, drei
+  Log-Zeilen bei 0, Sitzungszahl nach einer Stunde) und
+  Passwortwechsel-Schalter ablesen.
+- Befunde zu E1d (L1–L4) gingen an die E1d-Session.
+
+Gegenproben: Grenze im Ziel entfernt ⇒ 2 Tests rot; Nachprüfung entfernt ⇒ 2
+Tests rot; jede erfundene Roh-Lesezeile ⇒ erkannt.
+
+**Gelernt:** Wer einen Ablauf „vom Vorgänger erbt", muss ihn vom VORGÄNGER
+nehmen, den der Mensch wirklich hatte (seine Karte), nicht von dem, was der
+Server über dessen Sitzung meldet — bei neu angelegten Sitzungen sind das
+zwei verschiedene Zeiten, und eine Kette addiert die Differenz. Und ein
+Wächter gegen „am Lesepunkt vorbei" muss nach dem ROHEN Zugang suchen, nicht
+nur nach dem einen bekannten Aufruf.
 
 ---
 

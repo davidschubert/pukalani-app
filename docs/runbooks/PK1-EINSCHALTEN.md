@@ -51,12 +51,21 @@ war — ein verlorener Schlüssel meldet alle mit Karte ab (kein Datenverlust).
 ## 2. Vorher prüfen (nur lesend, Appwrite-Konsole)
 
 - [ ] **Sitzungs-Obergrenze** im Projekt `account`: Auth → Security →
-  Sessions limit. `0` heißt in Appwrite 2.7.4 „ohne Grenze" ⇒ nichts tun.
-  Steht dort eine Zahl (Standard neuer Projekte: 10), wird sie vor `write` auf
-  **50** gesetzt (Davids K5, ein eigener Klick mit eigenem Ja). Die Grenze
-  trimmt nur echte Anmeldungen (`account.createSession`); die Sitzungen aus dem
-  Host-Wechsel (`users.createSession`) zählt sie nicht — die räumt der Code
-  selbst weg (§ 13 im Plan, OPEN-ITEMS-COMPLETE „PK1 E1b-1").
+  Sessions limit — den Wert ins Protokoll schreiben. `0` heißt in Appwrite
+  2.7.4 „ohne Grenze" ⇒ nichts tun. Steht dort eine Zahl (Standard neuer
+  Projekte: 10), wird sie vor `write` auf **50** gesetzt (Davids K5, ein
+  eigener Klick mit eigenem Ja). So wirkt die Grenze: ein Host-Wechsel
+  (`users.createSession`) löst das Kürzen NICHT aus, aber jede **echte**
+  Anmeldung zählt ALLE Sitzungen des Kontos — auch die je Seite — und beendet
+  still die ältesten über der Grenze. Der Code räumt beim Wechsel nur die
+  vorige eigene Sitzung DESSELBEN Hosts weg; eine verwaiste Seiten-Sitzung
+  (Cookie gelöscht, anderes Gerät) lebt bis zu ihrem Ablauf und zählt mit.
+  Bei 50 ist das selten; bei 10 träfe es Menschen mit vielen Seiten und
+  Geräten. Ein Aufräumen verwaister Seiten-Sitzungen steht offen (PK1-EIN).
+- [ ] **Sitzungen bei Passwortwechsel beenden** (Projekt `account`, Auth →
+  Security): nur ablesen und ins Protokoll. Der eigene Passwortwechsel im
+  Konto beendet die übrigen Sitzungen schon selbst; für das Zurücksetzen über
+  die Mail hängt es an diesem Schalter.
 - [ ] **Laufzeit-Schlüssel** der Platform (Projekt `account`, der Schlüssel
   aus `NUXT_APPWRITE_KEY`): trägt `users.write` und `sessions.write`. Fehlt
   eins, fällt der Host-Wechsel still auf die Kopie zurück (Log
@@ -82,9 +91,24 @@ Nach JEDEM Schritt dieselbe Prüfung:
   `previous: false`. Landing und Hilfe haben einen eigenen Health ohne
   `siteCard` — dort nichts erwarten.
 - [ ] Kein offenes Issue `produktions-alarm`, kein neues `buehne-alarm`.
-- [ ] Log-Zeilen zählen (pm2-Log der App): `site_card.config_invalid` muss
-  **0** sein; `auth.site_session_*` (Host-Wechsel) und
-  `auth.site_session_copy_fallback` (Rückfall auf die Kopie) nur zur Kenntnis.
+- [ ] Log-Zeilen zählen (pm2-Log der App): `site_card.config_invalid`,
+  `site_card.write_without_key` und `site_card.write_skipped` müssen **0**
+  sein. Zur Kenntnis, mit Blick auf die Ursache:
+  `auth.site_session_copy_fallback` (Rückfall auf die Kopie — viele Zeilen
+  OHNE Zwei-Faktor-Konten dahinter heißen: dem Laufzeit-Schlüssel fehlt
+  `users.write` oder `sessions.write`) und `auth.site_session_cleanup_failed`
+  (eine alte Seiten-Sitzung blieb stehen).
+
+**Im Moment des Umstellens auf `write`** (je App, in den ersten Minuten):
+
+- [ ] `/api/health` zeigt `write` UND `cards: true`. Steht dort
+  `cards: false`, fehlt der Schlüssel oder er ist ungültig: dann kann sich auf
+  einer eigenen Domain niemand anmelden ⇒ diese App **sofort zurück auf
+  `read`** (§ 4) und den Schlüssel prüfen.
+- [ ] Die drei Log-Zeilen oben bleiben bei 0.
+- [ ] Nach etwa einer Stunde: in der Konsole bei einem eigenen Testkonto mit
+  einigen Seitenwechseln die Zahl der Sitzungen ansehen — sie darf mit jedem
+  Wechsel nicht weiter wachsen (je Seite eine).
 
 ### Schritt A — `read` auf allen vier Apps
 
@@ -96,6 +120,18 @@ Niemand merkt etwas: Karten werden gelesen, aber noch nicht geschrieben.
   wie vorher; in `account.pukalani.app` eine Community öffnen.
 
 ### Schritt B — `write`, Ziel-Apps vor Quellen, Konsole zuletzt
+
+**Platform erst, wenn E1d live ist** (PR 548 zusammengeführt, `/api/health`
+der Platform meldet den Live-Dienst): vorher hätte ein Mitglied unter einer
+eigenen Domain im Modus `write` keine angemeldete Live-Verbindung, Neues
+käme dort erst beim Neuladen (Davids K4 verlangt „auch dort live"). portfolio
+und branding haben keine eigenen Community-Domains und dürfen früher.
+
+**Bewusst hingenommen bis zu einem Mitglieder-Bereich außerhalb des
+Dashboards:** unter einer eigenen Domain führen auch „Nachrichten" und „Meine
+Beiträge" (beide unter `/dashboard`) zur Pukalani-Adresse der Community, wo
+sich das Mitglied einmal neu anmeldet. Heute betrifft das nur die eine eigene
+Domain des Betreibers; offen als Punkt unter PK1-EIN.
 
 1. - [ ] **platform** auf `write`, neu laden, prüfen (`.siteCard.mode:
    write`, `cards: true` und — seit E1d — `liveRelay: true`; fehlt

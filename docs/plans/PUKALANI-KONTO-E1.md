@@ -360,7 +360,10 @@ schon durch, mit `proxy_read_timeout 60s`.
    Geräte ⇒ 24. **Zahl für K5: 50** (doppelter Abstand). Der Wert auf
    Production ist unbekannt (ohne Production-Schlüssel nicht lesbar): steht er
    dort auf `0`, ist nichts zu tun; steht er auf 10, wird er vor dem
-   Einschalten auf 50 gesetzt (Klick, eigenes Ja).
+   Einschalten auf 50 gesetzt (Klick, eigenes Ja). Nachtrag (Review vor
+   Schritt B): gekürzt wird nur nach einer ECHTEN Anmeldung, gezählt werden
+   dann aber ALLE Sitzungen des Kontos, auch die je Seite — verwaiste
+   Seiten-Sitzungen zählen bis zu ihrem Ablauf mit (offen unter PK1-EIN).
 3. **Kosten je Anfrage:** Host und Community liegen im Umschlag und werden mit
    dem schon aufgelösten Mandanten verglichen — kein Aufruf mehr. Der
    Anmelde-Merker bleibt bei einem Appwrite-Aufruf je Sitzung.
