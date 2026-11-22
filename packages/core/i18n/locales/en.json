@@ -209,7 +209,8 @@
       "loading": "Loading …",
       "errorTitle": "Could not be loaded",
       "errorText": "The data could not be fetched just now. Try again; if it still fails, reload the page.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "inlineError": "Could not load just now."
     },
     "empty": {
       "noResultsTitle": "No results",
