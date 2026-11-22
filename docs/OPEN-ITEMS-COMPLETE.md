@@ -77,7 +77,10 @@ bleiben K8 und Davids Wort zur Copy (KR1 Block F).
 einen FESTEN Stand — mit „jetzt" trüge jede Datei täglich einen anderen Namen,
 und `public, max-age` träfe nie. Und `curl -I` ist kein Beweis für eine
 `.get.ts`-Route: HEAD trifft sie nicht und liefert eine JSON-404 mit eigenem
-Inhaltstyp — geprüft wird mit GET und `-D -`.
+Inhaltstyp — geprüft wird mit GET und `-D -`. Und vor dem Push ALLE
+Wächter-Tests fahren (`pnpm -r test`), nicht nur die des Pakets: der
+SEC-021-Wächter in `packages/core` zählt jede neue `:href`-Bindung, auch in
+`packages/brand` — die CI war deshalb im ersten Lauf rot.
 
 ### SU1 (a) — Hauptsprache der Demo-Community: bleibt englisch; Runbooks nennen die Migrations-Env `admin.env` ✅ 2026-11-22
 
