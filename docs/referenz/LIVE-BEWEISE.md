@@ -239,7 +239,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-85 Beweis-Skripte im Repo: 6 E2E-Lauf, 34 Bühne (jeder Lauf), 34 Bühne (nachts), 11 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+86 Beweis-Skripte im Repo: 6 E2E-Lauf, 34 Bühne (jeder Lauf), 35 Bühne (nachts), 11 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -273,6 +273,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/core/scripts/verify-rate-limits.mjs` | Beweis für die Drossel-Grenzen des Sicherheits-Pakets vom 2026-08-02. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-server-only-writes.mjs` | „Der Server schreibt" — LIVE-Beweis an der Datenbank (SEC-002, GA1 P13). | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-session-ip.mjs` | Beweis: serverseitig erzeugte Appwrite-Sessions tragen die CLIENT-IP (x-forwarded-for aus forwardClientContext), nicht die Server-IP. | von Hand: Braucht die Standort-Datei und eine geänderte Proxy-Einstellung der Datenbank. |
+| `packages/core/scripts/verify-site-card.mjs` | BEWEIS: DIE EINTRITTSKARTE JE SEITE IM MODUS `write` (PK1 E1c; Plan `docs/plans/PUKALANI-KONTO-E1.md`, § 9 „Auf der Bühne"). | Bühne (nachts) |
 | `packages/core/scripts/verify-timezone.mjs` | Beweis für die Konto-Zeitzone (U15 Teil 5). | Bühne (nachts), Einzel-Instanz |
 | `packages/core/scripts/verify-ugc-translation.mjs` | Beweis: KI-Übersetzung für User-Content (Davids Entscheidungen 2026-08-17 — Beiträge + Kommentare · Knopf statt Automatik · Inhalts-Produkt als Gate · nur Eingeloggte, gedrosselt · EIN Übersetzungs-Cache je Zeile, posts… | von Hand: Braucht einen echten KI-Aufruf bei einem fremden Anbieter, der Geld kostet. |
 | `packages/courses/scripts/verify-manage-entrypoints.mjs` | F58-Beweis: Die Kurs-Verwaltung ist AUS DEM PRODUKT HERAUS erreichbar. | Bühne (nachts), Einzel-Instanz |

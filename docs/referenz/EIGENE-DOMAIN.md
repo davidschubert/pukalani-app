@@ -73,6 +73,25 @@ Regel, `customDomainEntitlement(row, now)` in
    `pro` und hätte das Merkmal sonst verschenkt.
 3. Keine Freigabe des Betreibers (`customDomainApproved !== true`) ⇒
    `approval_required` — Übergang bis zum Vorhaben „Pukalani-Konto".
+   **Entfällt** (PK1 E1c, Davids Entscheidung K6), sobald die Eintrittskarte
+   je Seite bestätigt live ist: `customDomainEntitlement(row, now,
+   { approvalWaived })`, und `approvalWaived` kommt NUR aus
+   `customDomainApprovalWaived()`
+   (`packages/control/server/utils/customDomainApprovalWaiver.ts`). Die
+   Konsole prüft die Pflicht, die Karten gelten aber in der Platform — darum
+   zwei Bedingungen: der eigene Schalter der Konsole steht auf `write` mit
+   brauchbarem Schlüssel UND `/api/health` der Platform meldet
+   `siteCard.mode: write`, `cards: true` (nur lesend, Adresse
+   `NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL`, Vorgabe der Platform-Host).
+   Keine Antwort, kein Feld, anderer Modus ⇒ die Pflicht bleibt (fail-closed;
+   „ja" 60 s, „nein" 30 s zwischengespeichert, ein Wechsel schreibt
+   `community.custom_domain_approval_waiver`). Dieselbe Ausnahme nimmt der
+   Fristen-Lauf (einmal je Lauf gefragt). Die Testphasen-Sperre bleibt immer.
+   Der Freigabe-Schalter der Betreiber-Tabelle bleibt danach stehen, wirkt
+   aber nur noch beim Entziehen (sofort abschalten); der Owner kann eine so
+   abgeschaltete Domain wieder einschalten — wer eine Community wirklich
+   aufhalten will, sperrt sie (`abuse`). Reihenfolge des Einschaltens:
+   [PK1-EINSCHALTEN.md](../runbooks/PK1-EINSCHALTEN.md).
 
 Die Tür (`communityDomainGate.ts`) antwortet `403` mit `plan_required`,
 `trial_not_included` bzw. `approval_required`; `state` und `remove` laufen ohne

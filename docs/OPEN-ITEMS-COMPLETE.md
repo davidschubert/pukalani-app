@@ -196,6 +196,33 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1 E1c — Bühne im Modus write, Schalter in /api/health, Freigabe-Pflicht am Schalter, Runbook (Schalter aus) ✅ 2026-11-22
+
+**Was.** Neun Bühnen-Beweise, die EIN Cookie auf mehreren Hosts benutzten,
+melden sich jetzt je Host an (`createHostLogins`/`createHostSessions` in
+`scripts/lib/probe-stage.mjs`); `verify-control-exit` geht den echten Weg
+(Siegel → Einlösen) und nagelt je Schalter „Replay erlaubt" bzw. „einmal
+einlösbar" fest. `/api/health` meldet `siteCard: { mode, cards, previous }`
+(nie ein Schlüssel); der Erreichbarkeits-Wächter warnt (nicht rot) bei einem
+stehen gebliebenen vorigen Schlüssel. Neuer Beweis
+`packages/core/scripts/verify-site-card.mjs` (nachts; ohne `write` „○
+übersprungen", der Läufer zählt das nie als bestanden — `skipReason`).
+`buehne.yml` startet die Platform NACHTS mit `write` und einem je Lauf
+erzeugten Schlüssel, Pull Requests bleiben `off`. K6: die Freigabe-Pflicht
+eigener Domains entfällt nur, wenn die Konsole selbst `write` mit Schlüssel
+hat UND `/api/health` der Platform `write` mit Karten bestätigt
+(`customDomainApprovalWaiver.ts`, fail-closed, auch im Fristen-Lauf); die
+Testphase bleibt gesperrt. Runbook `docs/runbooks/PK1-EINSCHALTEN.md`.
+Lokal: alle neun Skripte und der neue Beweis grün mit `write`, dieselben mit
+`off` grün und der neue „übersprungen".
+
+**Gelernt:** Ein Feld in `/api/health` darf das Wort `key` nicht tragen — der
+Wächter-Test „verrät nicht, welche Einstellung fehlt" prüft genau darauf; das
+Feld heißt darum `previous`. Und die Liste „acht Skripte" aus E1b-1 war
+unvollständig: `onboarding/verify-site-authz` läuft nur nachts und fiel darum
+erst auf, als die Nacht auf `write` umgestellt wurde — wer einen Schalter in
+der Nacht scharf stellt, fährt vorher die Nacht-Einteilung mit ihm.
+
 ### PK1 E1b-2 — unter einer eigenen Domain: mitmachen ja, verwalten nein (Schalter aus) ✅ 2026-11-22
 
 **Was.** Im Modus `write` auf einer eigenen Domain einer Pool-Community

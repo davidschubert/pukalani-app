@@ -187,6 +187,10 @@ paths:
   Ports, Ids aus der Umgebung (`pnpm buehne env`), Betreiber-Konten über den
   Laufzeit-Schlüssel (der Migrations-Schlüssel darf lokal keine Konten
   anlegen).
+- EIN KONTO AUF MEHREREN HOSTS (PK1 E1c): je Host anmelden
+  (`createHostLogins`/`createHostSessions` aus `scripts/lib/probe-stage.mjs`)
+  — im Modus `write` gilt eine Karte nur auf ihrem Host. Ein ganz nicht
+  prüfbares Skript druckt `○ übersprungen: <Grund>` ohne ✔/✗ (`skipReason`).
 - EIN ROTER BEWEIS IST EIN VERALTETES SKRIPT ODER EIN FEHLER IM PRODUKT — die
   Prüfung wird nie gestrichen, weil sie rot ist. Regel geändert ⇒ Prüfung
   anpassen und die Regel nennen; Produkt falsch ⇒ Skript auf `hand` mit
