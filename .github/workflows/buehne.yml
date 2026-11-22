@@ -249,18 +249,40 @@ jobs:
       # Control-Variablen lehnte er jede Anfrage ab, SEC-025). Nitro bündelt
       # die API-Routen beim Start; Seiten kompiliert der Server erst beim
       # ersten Zugriff, deshalb prüfen die Beweise hier Routen, keine Seiten.
+      #
+      # EINTRITTSKARTE (PK1 E1c): NACHTS läuft der Platform-Server im Modus
+      # `write` mit einem je Lauf zufällig erzeugten Schlüssel — kein
+      # Geheimnis im Repo, keins in den Secrets, verfällt mit dem Lauf. So
+      # laufen die Beweise nachts so, wie Production nach dem Einschalten
+      # läuft (Anmelden je Host, `verify-site-card`). Pull Requests und `main`
+      # bleiben `off` wie Production heute. Runbook:
+      # docs/runbooks/PK1-EINSCHALTEN.md.
       - name: Betreiber-App und Platform-Server starten
         run: |
           (cd apps/control && nohup pnpm exec nuxi dev --port "$CONTROL_PORT" > "$RUNNER_TEMP/control.log" 2>&1 &)
-          (cd apps/platform && nohup pnpm exec nuxi dev --port "$PLATFORM_PORT" > "$RUNNER_TEMP/platform.log" 2>&1 &)
+          if [ "$LAUF" = 'nacht' ]; then
+            SITE_CARD_KEY="$(openssl rand -base64 32)"
+            echo "::add-mask::$SITE_CARD_KEY"
+            (cd apps/platform && NUXT_SITE_CARD_MODE=write NUXT_SITE_CARD_KEY="$SITE_CARD_KEY" nohup pnpm exec nuxi dev --port "$PLATFORM_PORT" > "$RUNNER_TEMP/platform.log" 2>&1 &)
+            unset SITE_CARD_KEY
+            echo 'Platform-Server im Modus write (Eintrittskarte, Schlüssel je Lauf).'
+          else
+            (cd apps/platform && nohup pnpm exec nuxi dev --port "$PLATFORM_PORT" > "$RUNNER_TEMP/platform.log" 2>&1 &)
+          fi
           # Der Entwicklungs-Server gibt JSON eingerückt aus ("ok": true) —
           # deshalb der Vergleich ohne Leerzeichen. Verlangt wird je Server
           # `ok` UND der Datenbank-Stand `ok` (alle Migrationen sind da).
           ready() {
             curl -s -m 5 "http://localhost:$1/api/health" | tr -d ' \n' | grep -q '"ok":true.*"state":"ok"'
           }
+          # Nachts verlangt die Bereit-Prüfung zusätzlich die Karte im Modus
+          # write mit Schlüssel — sonst liefen die Beweise still im alten Modus.
+          card_ready() {
+            [ "$LAUF" != 'nacht' ] && return 0
+            curl -s -m 5 "http://localhost:$PLATFORM_PORT/api/health" | tr -d ' \n' | grep -q '"siteCard":{"mode":"write","cards":true'
+          }
           for i in $(seq 1 240); do
-            if ready "$CONTROL_PORT" && ready "$PLATFORM_PORT"; then
+            if ready "$CONTROL_PORT" && ready "$PLATFORM_PORT" && card_ready; then
               echo "Beide Server bereit nach ${i}s."
               exit 0
             fi
@@ -376,6 +398,10 @@ jobs:
       # `--einzel-port` und kein `--branding-port`: die Beweise dieser zwei
       # Server stehen ohnehin nur auf `nacht`.
       - name: Beweise auf der Bühne (Einteilung aus scripts/buehne/beweise.mjs)
+        # Nachts MUSS die Karte im Modus write laufen: verify-site-card ist
+        # dann rot statt „übersprungen", wenn sie es nicht tut (PK1 E1c).
+        env:
+          EXPECT_SITE_CARD: ${{ env.LAUF == 'nacht' && 'write' || '' }}
         run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT" ${EINZEL_READY:+--einzel-port "$EINZEL_PORT"} ${BRANDING_READY:+--branding-port "$BRANDING_PORT"}
 
       # Acht Test-Dateien prüfen die Trennung der Communities gegen eine

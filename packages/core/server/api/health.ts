@@ -2,6 +2,7 @@ import { createAdminClient } from '../lib/appwrite'
 import { tenancyWithoutResolver } from '../utils/tenantResolver'
 import { TENANT_RESOLVER_MISSING_CODE } from '../../shared/unknownHost'
 import { resolveSchemaState } from '../utils/schemaState'
+import { siteCardHealth } from '../utils/siteCard'
 
 /**
  * Health-Check gegen die Appwrite-Instanz via AdminClient (Scope: health.read).
@@ -42,7 +43,26 @@ import { resolveSchemaState } from '../utils/schemaState'
  *  - Beide Prüfungen laufen parallel; jede Probe hat ihre eigene Frist von
  *    4 s, die Schema-Prüfung wirft nie und hat ihren eigenen
  *    Zwischenspeicher (ok 5 min, behind 30 s, unknown 10 s).
+ *
+ * SCHALTER DER EINTRITTSKARTE (PK1 E1c): `siteCard` sagt, wie die App den
+ * Schalter `NUXT_SITE_CARD_MODE` gelesen hat — `mode`, `cards` (ein
+ * brauchbarer Schlüssel ist da, Karten können entstehen) und `previous` (ein
+ * voriger Schlüssel ist zum Lesen gesetzt). Ein Speicherzugriff, kein
+ * Zwischenspeicher nötig (`siteCardHealth`).
+ *
+ * WARUM ÖFFENTLICH (Gegenlesen E1c, Fund 5, entschieden: alle drei bleiben):
+ * es sind drei Betriebszustände, kein Geheimnis — kein Schlüssel, keine
+ * Schlüssel-Kennung, nichts über Personen. Wer sie liest, erfährt, ob die
+ * Anmeldung Karten schreibt; das sieht jeder ohnehin am eigenen Cookie
+ * (`c1.`). Gebraucht werden sie VON AUSSEN und ohne Geheimnis: vom
+ * Erreichbarkeits-Wächter (`scripts/ops/verify-health.mjs`, Warnung bei
+ * `previous`), von der Konsole für die Freigabe-Pflicht eigener Domains (K6,
+ * liest `mode`/`cards`) und von der Prüfung nach jedem Umschalten (Runbook
+ * `docs/runbooks/PK1-EINSCHALTEN.md`). Ein eigener, geschützter Weg nur für
+ * zwei Wahrheitswerte wäre mehr Angriffsfläche (ein weiteres Geheimnis) als
+ * die Werte selbst.
  */
+
 const CACHE_MS = 5_000
 
 /**
@@ -93,12 +113,12 @@ export default defineEventHandler(async (event) => {
   const tenancyEnabled = (useAppConfig() as { pukalani?: { tenancy?: { enabled?: boolean } } })
     .pukalani?.tenancy?.enabled
   if (tenancyWithoutResolver(tenancyEnabled)) {
-    return { ok: false, build, reason: TENANT_RESOLVER_MISSING_CODE }
+    return { ok: false, build, reason: TENANT_RESOLVER_MISSING_CODE, siteCard: siteCardHealth() }
   }
 
   // Parallel: die Schema-Prüfung lehnt nie ab und verlängert die Antwort
   // höchstens bis zur Frist der langsamsten Probe.
   const [ok, schema] = await Promise.all([appwriteHealthy(event), resolveSchemaState(event)])
 
-  return { ok, build, schema }
+  return { ok, build, schema, siteCard: siteCardHealth() }
 })

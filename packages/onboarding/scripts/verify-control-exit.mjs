@@ -95,15 +95,32 @@ try {
   const account = await createProbeAccount(pool, { tag: 'exit', stamp, name: 'Exit-Beweis' })
   cleanup.track('account', account.userId)
   const { email } = account
-  const cookie = await login(http.call, CONTROL_HOST, account)
+  const controlCookie = await login(http.call, CONTROL_HOST, account)
 
   const site = await createProbeCommunity({
-    call: http.call, controlHost: CONTROL_HOST, cookie, control, databaseId, cleanup,
+    call: http.call, controlHost: CONTROL_HOST, cookie: controlCookie, control, databaseId, cleanup,
     slug: `exit-${stamp}`, name: 'Exit-Beweis',
     bodyOverrides: { category: 'other', description: 'Beweislauf Control-Exit.', vibe: 'calm' },
   })
   if (!await waitForHost(http.call, site.host)) throw new Error('Site wurde nicht erreichbar')
   console.log(`  Community steht: ${site.host}`)
+
+  // Auf die Community kommt das Konto über den ECHTEN Weg (PK1 E1c): Siegel
+  // im Kundenbereich, Einlösen auf dem Host der Community — so wie der Knopf
+  // „Öffnen". Im Modus `write` gilt ein Cookie nur auf seinem Host; dasselbe
+  // Cookie auf zwei Hosts zu schicken, tut kein Browser.
+  const sealSite = await call(CONTROL_HOST, '/api/onboarding/handoff', { method: 'POST', cookie: controlCookie, body: { communityId: site.communityId } })
+  if (sealSite.status !== 200 || !sealSite.json?.token) throw new Error(`Siegel für die Community fehlgeschlagen (${sealSite.status})`)
+  const enter = await call(site.host, `/api/auth/site-session?token=${encodeURIComponent(sealSite.json.token)}&to=%2F`)
+  const cookie = enter.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
+  if (!cookie) throw new Error(`Einlösen auf ${site.host} fehlgeschlagen (${enter.status})`)
+
+  // Welcher Modus gilt? Im Modus `write` trägt jedes Siegel eine Kennung und
+  // ist nur EINMAL einlösbar (PK1 E1b-1); sonst gilt die alte Entscheidung
+  // „Replay binnen 60 s" (Abschnitt 5). Gelesen aus `/api/health`.
+  const health = await call(CONTROL_HOST, '/api/health')
+  const siteCardMode = health.json?.siteCard?.mode ?? 'off'
+  console.log(`  Schalter der Karte: ${siteCardMode}`)
 
   // ── 1. Die Verweigerungen ─────────────────────────────────────────────────
   console.log('\n1. Verweigerungen')
@@ -113,7 +130,7 @@ try {
   const badTarget = await call(site.host, '/api/community/control-handoff', { method: 'POST', cookie, body: { target: 'elsewhere' } })
   check('unbekanntes Ziel → 400', badTarget.status === 400, `Status ${badTarget.status}`)
 
-  const onControl = await call(CONTROL_HOST, '/api/community/control-handoff', { method: 'POST', cookie, body: { target: 'manage' } })
+  const onControl = await call(CONTROL_HOST, '/api/community/control-handoff', { method: 'POST', cookie: controlCookie, body: { target: 'manage' } })
   check('auf dem Kontroll-Host → 404 (Präfix-Tor)', onControl.status === 404, `Status ${onControl.status}`)
 
   // ── 2. „Communities verwalten" — Siegel + Einlösung im Kundenbereich ──────
@@ -164,13 +181,19 @@ try {
   const openRedirect = await call(WIZARD_HOST, `/api/auth/site-session?token=${encodeURIComponent(raw)}&to=${encodeURIComponent('//evil.example')}`)
   check('Weiterleitungsziel //evil.example → 400', openRedirect.status === 400, `Status ${openRedirect.status}`)
 
-  // Replay INNERHALB der 60 s ist BEWUSST akzeptiert (embedHandoff.ts, Kopf):
-  // das Secret wird ohnehin gegen Appwrite geprüft, und die Bindung an den
-  // einen Host bleibt. Diese Prüfung NAGELT die Entscheidung fest — kippt sie
-  // eines Tages auf Einmal-Token, soll dieser Beweis es melden, nicht ein
-  // verwirrter Kunde mit zwei Tabs.
+  // Replay INNERHALB der 60 s: mit `off`/`read` BEWUSST akzeptiert
+  // (embedHandoff.ts, Kopf): das Secret wird ohnehin gegen Appwrite geprüft,
+  // und die Bindung an den einen Host bleibt. Im Modus `write` trägt das
+  // Siegel eine Kennung und gilt nur EINMAL (PK1 E1b-1, `claimHandoffOnce` in
+  // core/server/utils/sessionHandoff.ts) — beide Entscheidungen sind hier
+  // festgenagelt, je nach Schalter.
   const replay = await call(WIZARD_HOST, `/api/auth/site-session?token=${encodeURIComponent(raw)}&to=%2Fstart`)
-  check('Replay binnen 60 s → 302 (dokumentierte Entscheidung)', replay.status === 302, `Status ${replay.status}`)
+  if (siteCardMode === 'write') {
+    check('Modus write: zweites Einlösen desselben Siegels → 401 (einmal einlösbar)', replay.status === 401, `Status ${replay.status}`)
+  }
+  else {
+    check('Replay binnen 60 s → 302 (dokumentierte Entscheidung)', replay.status === 302, `Status ${replay.status}`)
+  }
 
   // Drossel (Selbst-Review 2026-08-09): der Siegel-Aussteller teilt den Bucket
   // `onboarding:communities` (10/min und IP). Die bisherigen Aufrufe dieses

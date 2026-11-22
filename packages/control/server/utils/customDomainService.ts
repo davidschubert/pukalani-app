@@ -43,6 +43,7 @@ import {
 import { normalizeTenantPlan, type TenantPlan, type TenantRow } from '../../shared/types/tenantRecord'
 import { checkDomainDns, domainAnswersOverHttps } from './customDomainDns'
 import { customDomainTakenByOther } from './customDomainOwnership'
+import { customDomainApprovalWaived } from './customDomainApprovalWaiver'
 import { ensurePloiTenants, isDryRunFlag, ploiConfig, requestPloiTenantCertificate } from './ploi'
 
 export interface CustomDomainSettings {
@@ -123,8 +124,11 @@ export interface CustomDomainState {
   }
 }
 
-export function customDomainStateFor(event: H3Event, row: TenantRow): CustomDomainState {
+export async function customDomainStateFor(event: H3Event, row: TenantRow): Promise<CustomDomainState> {
   const settings = customDomainSettings(event)
+  // Dieselbe Regel wie die Tür der Domain-Routen (PK1 K6): die Seite zeigt
+  // „Freigabe nötig" nur, solange die Pflicht wirklich gilt.
+  const approvalWaived = await customDomainApprovalWaived()
   const domain = row.customDomain || ''
   const forms = domain ? customDomainForms(domain) : []
   const plan = normalizeTenantPlan(row.plan)
@@ -140,7 +144,7 @@ export function customDomainStateFor(event: H3Event, row: TenantRow): CustomDoma
     plan,
     planAllows: plan === 'pro',
     entitlement: (() => {
-      const result = customDomainEntitlement(row, Date.now())
+      const result = customDomainEntitlement(row, Date.now(), { approvalWaived })
       return result.allowed ? { allowed: true } : { allowed: false, reason: result.reason }
     })(),
     approved: row.customDomainApproved === true,

@@ -190,6 +190,57 @@ export async function login(call, host, account) {
 }
 
 /**
+ * ANMELDEN JE HOST (PK1 E1c). Im Modus `NUXT_SITE_CARD_MODE=write` ist das
+ * Sitzungs-Cookie eine Eintrittskarte, die nur auf IHREM Host gilt — wie im
+ * Browser, der ein host-only-Cookie nie an einen anderen Host schickt. Ein
+ * Skript, das auf mehreren Hosts handelt, meldet sich darum auf JEDEM an;
+ * derselbe Wert auf einem zweiten Host wäre ein Fehler im Skript, kein Befund.
+ * Mit `off`/`read` geht es genauso (eine Sitzung mehr je Host, das Konto wird
+ * ohnehin weggeräumt).
+ *
+ * Zurück kommt `cookieOn(host, account)`: meldet einmal je (Host, Konto) an
+ * und merkt sich das Cookie.
+ *
+ * @param {HttpCall} call
+ * @returns {(host: string, account: { email: string, password: string }) => Promise<string>}
+ */
+export function createHostLogins(call) {
+  /** @type {Map<string, string>} */
+  const cookies = new Map()
+  return async function cookieOn(host, account) {
+    const key = `${host}\n${account.email}`
+    const known = cookies.get(key)
+    if (known) return known
+    const cookie = await login(call, host, account)
+    cookies.set(key, cookie)
+    return cookie
+  }
+}
+
+/**
+ * Für Skripte, die EIN Konto auf vielen Hosts handeln lassen: statt eines
+ * Cookies reicht das Skript einen AUSWEIS des Kontos herum (`badge(account)`);
+ * erst der Aufruf macht daraus das Cookie DES Hosts, an den er geht
+ * (`cookieFor(host, cookie)` meldet dort einmal an). Ein gewöhnlicher
+ * Cookie-Text geht unverändert durch. So bleibt jede Prüfung des Skripts
+ * stehen, und keine schickt eine Karte an einen fremden Host (PK1 E1c).
+ *
+ * @param {HttpCall} call
+ */
+export function createHostSessions(call) {
+  const cookieOn = createHostLogins(call)
+  /** @param {{ email: string, password: string }} account */
+  const badge = account => Object.freeze({ badgeOf: account })
+  /**
+   * @param {string} host
+   * @param {string | { badgeOf: { email: string, password: string } } | undefined} cookie
+   * @returns {Promise<string | undefined>}
+   */
+  const cookieFor = async (host, cookie) => cookie && typeof cookie === 'object' ? cookieOn(host, cookie.badgeOf) : cookie
+  return { cookieOn, badge, cookieFor }
+}
+
+/**
  * Die Zustimmung eines Probe-Kontos festhalten (SEC-008, seit 2026-11-16) —
  * über die ECHTE Route `POST /api/auth/consent` (Weg `prompt`), so wie der
  * Browser nach der Nachfrage. Eine App mit AGB-Pflicht lehnt sonst jede

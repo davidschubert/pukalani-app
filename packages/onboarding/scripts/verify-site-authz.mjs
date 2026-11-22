@@ -43,6 +43,7 @@ import { Client, ID, Presences, Query, TablesDB, Users } from 'node-appwrite'
 import {
   appwriteRest,
   createCleanup,
+  createHostSessions,
   createProbeAccount,
   generatePassword,
   probeSiteBody,
@@ -104,7 +105,7 @@ function check(label, ok, detail = '') {
 const RUN_IP = `203.0.113.${1 + Math.floor(Math.random() * 250)}`
 
 /** node:http, weil fetch den Host-Header verwirft; ::1, weil Nitro dort hört. */
-function call(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
+function rawCall(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
   return new Promise((resolve, reject) => {
     const payload = body ? JSON.stringify(body) : null
     const req = request({
@@ -140,16 +141,21 @@ async function createPoolUser(tag) {
   return account
 }
 
-/** Anmelden auf dem Kontroll-Host → Session-Cookie. */
+/**
+ * ANMELDEN JE HOST (PK1 E1c): das Skript reicht je Konto einen Ausweis herum;
+ * jeder Aufruf meldet das Konto auf SEINEM Host an (einmal je Host) — im
+ * Modus `write` gilt eine Karte nur dort, wie im Browser. Ein Cookie-Text
+ * (etwa aus dem Handoff in Abschnitt 5) geht unverändert durch.
+ */
+const sessions = createHostSessions(rawCall)
+async function call(host, path, options = {}) {
+  return rawCall(host, path, { ...options, cookie: await sessions.cookieFor(host, options.cookie) })
+}
+
+/** Anmelden auf dem Kontroll-Host; zurück kommt der Ausweis des Kontos (s. o.). */
 async function login(account) {
-  const res = await call(CONTROL_HOST, '/api/auth/login', {
-    method: 'POST',
-    body: { email: account.email, password: account.password },
-  })
-  if (res.status !== 200) throw new Error(`Login fehlgeschlagen (${res.status}): ${res.text.slice(0, 160)}`)
-  const raw = res.setCookie.find(c => c.startsWith('a_session_'))
-  if (!raw) throw new Error('Kein Session-Cookie erhalten')
-  return raw.split(';')[0]
+  await sessions.cookieOn(CONTROL_HOST, account)
+  return sessions.badge(account)
 }
 
 async function issueCode() {

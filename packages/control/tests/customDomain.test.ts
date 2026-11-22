@@ -30,6 +30,8 @@ import {
   normalizeCustomDomain,
   resolveCustomDomainStatus,
   validateCustomDomain,
+  healthConfirmsApprovalWaiver,
+  platformHealthUrlAllowed,
 } from '../shared/customDomain'
 import { isDryRunFlag } from '../server/utils/ploi'
 
@@ -502,5 +504,64 @@ describe('Fristen', () => {
     expect(customDomainClaimExpiresAt({ customDomain: 'kunde.de', customDomainStatus: 'pending_dns', customDomainClaimedAt: claimed }))
       .toBe(new Date(NOW + 14 * DAY).toISOString())
     expect(customDomainClaimExpiresAt({ customDomain: 'kunde.de', customDomainStatus: 'active', customDomainClaimedAt: claimed })).toBeNull()
+  })
+})
+
+/**
+ * PK1 K6: die Freigabe-Pflicht entfällt NUR mit bestätigter Ausnahme
+ * (`approvalWaived`); Plan und Testphase bleiben.
+ */
+describe('customDomainEntitlement — Freigabe-Pflicht entfällt (PK1 K6)', () => {
+  const NOW = Date.parse('2026-11-16T12:00:00.000Z')
+  const FUTURE = '2026-11-30T12:00:00.000Z'
+  it('ohne Ausnahme bleibt die Pflicht (Gegenprobe)', () => {
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: false }, NOW)).toEqual({ allowed: false, reason: 'approval_required' })
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: false }, NOW, { approvalWaived: false })).toEqual({ allowed: false, reason: 'approval_required' })
+  })
+  it('mit Ausnahme braucht eine bezahlte Pro-Community keine Freigabe', () => {
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: false }, NOW, { approvalWaived: true })).toEqual({ allowed: true })
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: null }, NOW, { approvalWaived: true })).toEqual({ allowed: true })
+  })
+  it('Testphase und Plan bleiben gesperrt', () => {
+    expect(customDomainEntitlement({ plan: 'pro', trialEndsAt: FUTURE, billingStatus: '', customDomainApproved: true }, NOW, { approvalWaived: true })).toEqual({ allowed: false, reason: 'trial' })
+    expect(customDomainEntitlement({ plan: 'basic', customDomainApproved: true }, NOW, { approvalWaived: true })).toEqual({ allowed: false, reason: 'plan_required' })
+  })
+})
+
+describe('healthConfirmsApprovalWaiver (PK1 K6)', () => {
+  it.each([
+    // Erst mit E1d meldet die Platform `liveRelay` — nur dann entfällt die Pflicht.
+    [{ ok: true, siteCard: { mode: 'write', cards: true, previous: false, liveRelay: true } }, true],
+    [{ ok: false, siteCard: { mode: 'write', cards: true, liveRelay: true } }, true],
+    // Der heutige Stand (E1c): write mit Karten, aber ohne Live-Weiterleitung ⇒ Pflicht bleibt.
+    [{ ok: true, siteCard: { mode: 'write', cards: true, previous: false } }, false],
+    [{ ok: true, siteCard: { mode: 'write', cards: true, liveRelay: false } }, false],
+    [{ ok: true, siteCard: { mode: 'write', cards: false, liveRelay: true } }, false],
+    [{ ok: true, siteCard: { mode: 'read', cards: true, liveRelay: true } }, false],
+    [{ ok: true, siteCard: { mode: 'off', cards: false } }, false],
+    [{ ok: true, siteCard: { mode: 'write', cards: 'true', liveRelay: true } }, false],
+    [{ ok: true }, false],
+    [{ ok: true, siteCard: null }, false],
+    [null, false],
+    ['write', false],
+  ])('%j ⇒ %s', (body, expected) => {
+    expect(healthConfirmsApprovalWaiver(body)).toBe(expected)
+  })
+})
+
+describe('platformHealthUrlAllowed (PK1 K6)', () => {
+  it.each([
+    ['https://platform.pukalani.app/api/health', true],
+    ['http://localhost:3250/api/health', true],
+    ['http://127.0.0.1:3250/api/health', true],
+    ['http://app.localhost:3250/api/health', true],
+    ['', false],
+    ['http://platform.pukalani.app/api/health', false],
+    ['http://localhost.example.com/api/health', false],
+    ['ftp://platform.pukalani.app/api/health', false],
+    ['https://user:pw@platform.pukalani.app/api/health', false],
+    ['kein-url', false],
+  ])('%s ⇒ %s', (url, expected) => {
+    expect(platformHealthUrlAllowed(url)).toBe(expected)
   })
 })

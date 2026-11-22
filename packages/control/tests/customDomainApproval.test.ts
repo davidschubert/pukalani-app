@@ -77,6 +77,13 @@ vi.mock('../server/utils/ploi', async (importOriginal) => {
 const logs: { level: string, name: string, detail: Record<string, unknown> }[] = []
 const audits: Record<string, unknown>[] = []
 
+/** PK1 K6: ob die Freigabe-Pflicht entfällt — die echte Regel testet customDomainApprovalWaiver.test.ts. */
+const waiver = vi.hoisted(() => ({ waived: false }))
+vi.mock('../server/utils/customDomainApprovalWaiver', () => ({
+  customDomainApprovalWaived: async () => waiver.waived,
+  resetCustomDomainApprovalWaiver: () => {},
+}))
+
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('useAppConfig', () => ({ pukalani: { control: { defaultPoolProject: 'account' } } }))
 vi.stubGlobal('useRuntimeConfig', () => ({
@@ -200,6 +207,7 @@ beforeEach(() => {
   ploiCalls.length = 0
   logs.length = 0
   audits.length = 0
+  waiver.waived = false
 })
 
 describe('die Tür: Plan, Testphase, Freigabe (SEC-022)', () => {
@@ -248,6 +256,33 @@ describe('die Tür: Plan, Testphase, Freigabe (SEC-022)', () => {
     expect(row('c1').customDomainGraceEndsAt).toBeNull()
     expect(row('c1').customDomainPausedAt).toBeNull()
     expect(Date.parse(String(state.claimExpiresAt))).toBe(claimedAt + 14 * DAY)
+  })
+})
+
+describe('die Tür, wenn die Eintrittskarte bestätigt live ist (PK1 K6)', () => {
+  it('bezahltes Pro ohne Freigabe: eintragen geht, state nennt keinen Grund', async () => {
+    waiver.waived = true
+    community('c1', { customDomainApproved: false })
+    const state = await claim('c1')
+    expect(state.status).toBe('pending_dns')
+    expect(state.entitlement).toEqual({ allowed: true })
+    expect(state.approved).toBe(false)
+  })
+
+  it('die Testphase bleibt gesperrt — auch mit Freigabe und Ausnahme', async () => {
+    waiver.waived = true
+    community('c1', { trialEndsAt: FUTURE(), billingStatus: '', customDomain: 'www.kunde.de', customDomainStatus: 'pending_platform', customDomainToken: 'a'.repeat(32) })
+    for (const handler of [setRoute, verifyRoute, activateRoute]) {
+      const { error } = await call(handler, 'c1', handler === setRoute ? { domain: 'www.kunde.de' } : {})
+      expect(error?.status).toBe(403)
+      expect(error?.data?.code).toBe('trial_not_included')
+    }
+  })
+
+  it('ohne Ausnahme bleibt die Pflicht (Gegenprobe)', async () => {
+    community('c1', { customDomainApproved: false })
+    const { error } = await call(setRoute, 'c1', { domain: 'www.kunde.de' })
+    expect(error?.data?.code).toBe('approval_required')
   })
 })
 

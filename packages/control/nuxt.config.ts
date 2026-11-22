@@ -108,6 +108,17 @@ export default defineNuxtConfig({
      *  frisch angelegte Zone minutenlang für nicht existent, und der Kunde
      *  legt seinen Record dreimal an. */
     customDomainDnsServers: '',
+    /**
+     * Wo die Konsole nachfragt, ob die Platform Eintrittskarten schreibt
+     * (PK1 E1c, K6): erst wenn beide auf `write` stehen UND die Platform die
+     * Live-Weiterleitung aus E1d meldet, entfällt die Freigabe-Pflicht für
+     * eigene Domains (`customDomainApprovalWaiver.ts`). Öffentliche Adresse,
+     * nur lesend; nur `https:` oder ein lokaler Host. VORGABE LEER ⇒ die
+     * Pflicht bleibt — gesetzt wird sie erst im Runbook
+     * `docs/runbooks/PK1-EINSCHALTEN.md` (Schritt B 3).
+     * Env: NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL.
+     */
+    customDomainPlatformHealthUrl: '',
     public: {
       // Laufzeit-Override des Pool-Projekts (Muster wie getEffectiveAiConfig:
       // app.config = Build-Default, Env = Umgebung). NÖTIG, weil das Pool-

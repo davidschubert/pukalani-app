@@ -147,6 +147,24 @@ export function countMarks(lines) {
 }
 
 /**
+ * GANZES SKRIPT NICHT PRÜFBAR (PK1 E1c): ein Skript, dessen Voraussetzung auf
+ * dieser Bühne fehlt (etwa `verify-site-card` ohne den Modus `write`), druckt
+ * eine Zeile `○ übersprungen: <Grund>`, prüft NICHTS und endet mit Exit 0. Der
+ * Läufer meldet es dann als übersprungen — nie als bestanden. Mit auch nur
+ * einer ✔/✗-Zeile zählt das Skript wie jedes andere.
+ *
+ * @param {string[]} lines
+ * @returns {string | null} der Grund, oder `null`
+ */
+export function skipReason(lines) {
+  const { pass, fail } = countMarks(lines)
+  if (pass + fail > 0) return null
+  const line = lines.map(entry => entry.trimStart()).find(entry => /^○ übersprungen\b/.test(entry))
+  if (!line) return null
+  return line.replace(/^○ übersprungen:?\s*/, '').trim() || 'ohne Grund'
+}
+
+/**
  * Tabellen, die beim Nachzählen nicht zählen — je Eintrag ein Grund.
  * `system_runs`: Sperr-Zeilen der Zeit-Läufe des Servers; sie entstehen und
  * fallen im Takt, unabhängig vom Skript.
@@ -453,6 +471,13 @@ export async function runCommand({ root, opts, state, stageEnv }) {
     if (inActions) console.log('::endgroup::')
     const { pass, fail } = countMarks(run.lines)
     const passed = !run.timedOut && run.code === 0
+    const skippedBy = passed && leftovers.length === 0 && stage.drift.length === 0 ? skipReason(run.lines) : null
+    if (skippedBy) {
+      const result = `übersprungen (${skippedBy})`
+      results.push({ skript: entry.skript, ok: true, skipped: true, result, pass: 0, fail: 0, seconds: run.seconds })
+      console.log(`↷ ${shortName(entry.skript)}: ${result}`)
+      continue
+    }
     const ok = passed && leftovers.length === 0 && stage.drift.length === 0
     const result = run.timedOut
       ? `Zeitgrenze (${timeoutS} s)`

@@ -37,9 +37,9 @@ import {
   createCleanup,
   createHttpCaller,
   createProbeAccount,
+  createHostSessions,
   createProbeCommunity,
   generatePassword,
-  login as loginOn,
   runStamp,
   waitForHost as waitForHostOn,
 } from '../../../scripts/lib/probe-stage.mjs'
@@ -68,7 +68,14 @@ const script = 'verify-profile-signal'
 const control = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
 const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
 const controlUsers = new Users(new Client().setEndpoint(endpoint).setProject(controlProject).setKey(controlUsersKey))
-const { call } = createHttpCaller({ port: PORT })
+const { call: rawCall } = createHttpCaller({ port: PORT })
+/**
+ * ANMELDEN JE HOST (PK1 E1c): das Skript reicht je Konto einen Ausweis herum;
+ * jeder Aufruf meldet das Konto auf SEINEM Host an (einmal je Host) — im
+ * Modus `write` gilt eine Karte nur dort, wie im Browser.
+ */
+const sessions = createHostSessions(rawCall)
+const call = async (host, path, options = {}) => rawCall(host, path, { ...options, cookie: await sessions.cookieFor(host, options.cookie) })
 const cleanup = createCleanup({ pool, control, controlDatabaseId: databaseId })
 const runId = runStamp()
 /** Betreiber-Konten im Projekt des Control Plane — die räumt dieses Skript selbst. */
@@ -107,7 +114,11 @@ async function createPoolUser(tag) {
   return account
 }
 
-const login = account => loginOn(call, CONTROL_HOST, account)
+/** Anmelden auf dem Kontroll-Host; zurück kommt der Ausweis des Kontos (s. o.). */
+const login = async (account) => {
+  await sessions.cookieOn(CONTROL_HOST, account)
+  return sessions.badge(account)
+}
 const waitForHost = host => waitForHostOn(call, host)
 
 /** Community anlegen — bewusst OHNE purpose/memberRange/goal (U12-Wizard). */

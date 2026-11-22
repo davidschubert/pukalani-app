@@ -19,7 +19,9 @@
  *     Mitgliedschaft endet sie in 403.
  *  4. **Berechtigung** — `customDomainEntitlement()` (control-040, SEC-022):
  *     Plan Pro (Davids Entscheidung 1), KEINE laufende Testphase ohne Abo
- *     und die FREIGABE des Betreibers je Community. Geprüft wird hier und
+ *     und die FREIGABE des Betreibers je Community (entfällt, sobald die
+ *     Eintrittskarte bestätigt live ist — PK1 K6, `customDomainApprovalWaived`).
+ *     Geprüft wird hier und
  *     nicht nur in der Runtime-Route: die Platform-App gatet über ihre
  *     `app.config`, das Control Plane über die ZEILE. Wer nur der
  *     UI-Sichtbarkeit vertraut, verkauft ein Pro-Merkmal an jeden, der die
@@ -38,6 +40,7 @@ import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/t
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 import { customDomainEntitlement, type CustomDomainDenial } from '../../shared/customDomain'
 import { verifyRuntimeIdentity, type RuntimeIdentity } from './onboardingService'
+import { customDomainApprovalWaived } from './customDomainApprovalWaiver'
 import { softFail } from '../../../core/server/utils/softFail'
 
 /**
@@ -112,7 +115,7 @@ export async function requireCommunityDomainOwner(
    *    einer Herabstufung eine Falle.
    */
   if (options.requireEntitlement !== false) {
-    const entitlement = customDomainEntitlement(row, Date.now())
+    const entitlement = customDomainEntitlement(row, Date.now(), { approvalWaived: await customDomainApprovalWaived() })
     if (!entitlement.allowed) {
       logEvent('warn', 'community.custom_domain_plan_denied', {
         communityId: row.$id,

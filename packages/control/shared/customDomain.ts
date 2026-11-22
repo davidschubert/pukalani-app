@@ -185,17 +185,66 @@ export interface CustomDomainEntitlementInput {
  *     (`billingStatus === 'active'`) zählt als bezahlt.
  *  3. Keine Freigabe des Betreibers (`customDomainApproved !== true`) ⇒
  *     `approval_required` — Übergang bis zum Vorhaben „Pukalani-Konto": wir
- *     schalten jede Community einzeln frei.
+ *     schalten jede Community einzeln frei. ENTFÄLLT mit
+ *     `approvalWaived: true` (PK1 E1c, Davids Entscheidung K6: die Pflicht
+ *     fällt, wenn die Eintrittskarte live ist). Wann das gilt, entscheidet
+ *     NUR `customDomainApprovalWaived()`
+ *     (`control/server/utils/customDomainApprovalWaiver.ts`): eigener Schalter
+ *     auf `write` mit Schlüssel UND die Platform bestätigt dasselbe — im
+ *     Zweifel bleibt die Pflicht. Die Testphasen-Sperre (2.) bleibt immer.
  *
  * Ein vom Betreiber gesetzter Pro-Plan ohne Testphasen-Datum ist bezahlt im
  * Sinne dieser Regel (der Betreiber hat entschieden), braucht aber ebenso die
  * Freigabe.
  */
-export function customDomainEntitlement(row: CustomDomainEntitlementInput, now: number): CustomDomainEntitlement {
+export function customDomainEntitlement(
+  row: CustomDomainEntitlementInput,
+  now: number,
+  options: { approvalWaived?: boolean } = {},
+): CustomDomainEntitlement {
   if (!customDomainAllowedForPlan(row.plan)) return { allowed: false, reason: 'plan_required' }
   if (isTrialActive(row.trialEndsAt, now) && row.billingStatus !== 'active') return { allowed: false, reason: 'trial' }
-  if (row.customDomainApproved !== true) return { allowed: false, reason: 'approval_required' }
+  if (options.approvalWaived !== true && row.customDomainApproved !== true) return { allowed: false, reason: 'approval_required' }
   return { allowed: true }
+}
+
+/**
+ * PURE (PK1 E1c, K6): erlaubt diese Antwort von `/api/health` der Platform,
+ * die Freigabe-Pflicht fallen zu lassen? Nur mit `siteCard.mode === 'write'`,
+ * `cards === true` UND `liveRelay === true`. Das letzte Merkmal meldet die
+ * Platform erst mit E1d (Live-Verbindung unter eigenen Domains über unseren
+ * Server, Davids K4) — bis dahin bleibt die Pflicht (Gegenlesen E1c, Fund 1).
+ * Alles andere — kein JSON, fehlendes Feld, anderer Modus, kein Schlüssel —
+ * ist „nein".
+ */
+export function healthConfirmsApprovalWaiver(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false
+  const siteCard = (body as { siteCard?: unknown }).siteCard
+  if (!siteCard || typeof siteCard !== 'object') return false
+  const { mode, cards, liveRelay } = siteCard as { mode?: unknown, cards?: unknown, liveRelay?: unknown }
+  return mode === 'write' && cards === true && liveRelay === true
+}
+
+/**
+ * PURE (PK1 K6): darf die Konsole diese Adresse nach dem Schalter der
+ * Platform fragen? Nur `https:` — oder `http:` auf einem lokalen Host
+ * (`localhost`, `127.0.0.1`, `[::1]`, `*.localhost`) für Entwicklung und
+ * Bühne. Leer oder anders ⇒ nein (die Pflicht bleibt).
+ */
+export function platformHealthUrlAllowed(raw: string): boolean {
+  if (!raw) return false
+  let url: URL
+  try {
+    url = new URL(raw)
+  }
+  catch {
+    return false
+  }
+  if (url.username || url.password) return false
+  if (url.protocol === 'https:') return true
+  if (url.protocol !== 'http:') return false
+  const host = url.hostname.toLowerCase()
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host.endsWith('.localhost')
 }
 
 /** Antwort der Betreiber-Route `POST /api/control/tenants/[id]/custom-domain`

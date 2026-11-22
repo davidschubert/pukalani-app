@@ -137,6 +137,22 @@ export function siteCardSettings(): SiteCardSettings {
   return current
 }
 
+/**
+ * Was `/api/health` über den Schalter sagt (PK1 E1c) — drei Wörter, nie ein
+ * Schlüssel und nie seine Kennung. `cards`: ein brauchbarer Schlüssel ist da
+ * (im Modus `write` entstehen Karten). `previous`: ein voriger Schlüssel ist
+ * zum Lesen gesetzt — nach einem Tausch soll er wieder weg.
+ */
+export interface SiteCardHealth {
+  mode: SiteCardMode
+  cards: boolean
+  previous: boolean
+}
+
+export function siteCardHealth(): SiteCardHealth {
+  return { mode: current.mode, cards: current.keys.length > 0, previous: current.keys.length > 1 }
+}
+
 /** Kann es in diesem Prozess überhaupt Karten geben? */
 export function siteCardActive(): boolean {
   return current.mode !== 'off'
