@@ -1,6 +1,6 @@
 # Runbook: Eintrittskarte je Seite einschalten (PK1, Etappe E1)
 
-Stand 2026-11-22 (E1c). Gebaut sind E1a, E1b-1, E1b-2 und E1c; der Schalter
+Stand 2026-11-22 (E1d). Gebaut sind E1a, E1b-1, E1b-2, E1c und E1d; der Schalter
 steht auf Production überall auf `off`. Dieses Runbook beschreibt, wie er auf
 `read` und dann auf `write` kommt, wie man jeden Schritt prüft und wie man
 zurückgeht. Was die Karte ist und warum: [PUKALANI-KONTO-E1.md](../plans/PUKALANI-KONTO-E1.md)
@@ -98,24 +98,34 @@ Niemand merkt etwas: Karten werden gelesen, aber noch nicht geschrieben.
 ### Schritt B — `write`, Ziel-Apps vor Quellen, Konsole zuletzt
 
 1. - [ ] **platform** auf `write`, neu laden, prüfen (`.siteCard.mode:
-   write`). Klick-Probe:
+   write`, `cards: true` und — seit E1d — `liveRelay: true`; fehlt
+   `liveRelay`, läuft ein Build ohne WebSocket: zurück, nicht weiter).
+   Klick-Probe:
    - auf `demo.pukalani.app` anmelden; in den Entwickler-Werkzeugen
      (Anwendung → Cookies) beginnt der Wert von `a_session_account` mit `c1.`;
    - eine zweite Community öffnen (über `account.pukalani.app` → „Öffnen");
    - auf der ersten abmelden ⇒ die zweite bleibt angemeldet;
    - auf der Community mit eigener Domain: Konto-Seiten führen zum
-     Kundenbereich, das Dashboard öffnet sich unter der Pukalani-Adresse.
+     Kundenbereich, das Dashboard öffnet sich unter der Pukalani-Adresse;
+   - dort angemeldet, Entwickler-Werkzeuge → Netzwerk → „WS": die
+     Live-Verbindung geht an `wss://<eigene Domain>/api/live/realtime`
+     (nicht an `api.pukalani.app`), Status 101, in der Adresse steht KEIN
+     `jwt=`; ein neuer Kommentar in einem zweiten Fenster erscheint ohne
+     Neuladen; in der Geräte-Liste (Kundenbereich) diese Sitzung beenden ⇒ die
+     Seite meldet „abgemeldet" sofort (E1d, Plan § 13.3 Weg 3).
 2. - [ ] **portfolio** und **branding** auf `write` (je eine Seite, kein
    Host-Wechsel): anmelden, Cookie beginnt mit `c1.`, abmelden.
 3. - [ ] **control (Konsole) zuletzt** auf `write` (Schlüssel + Modus wie
    oben). Die Karte der Konsole selbst gilt damit sofort; die
-   **Freigabe-Pflicht für eigene Domains bleibt trotzdem** — sie entfällt
-   erst NACH E1d (Davids K4: Live-Verbindung auch unter eigenen Domains;
-   Plan § 13.3 Weg 3). Die Konsole lässt sie nur fallen, wenn die Platform
-   über `/api/health` `write`, `cards: true` UND `liveRelay: true` meldet —
-   `liveRelay` gibt es erst mit E1d (`customDomainApprovalWaiver.ts`,
-   fail-closed).
-4. - [ ] **Erst nach E1d, mit eigenem Ja:** auf der Konsole die Zeile
+   **Freigabe-Pflicht für eigene Domains bleibt trotzdem**, bis Schritt 4
+   (Davids K4: Live-Verbindung auch unter eigenen Domains; Plan § 13.3
+   Weg 3). Die Konsole lässt sie nur fallen, wenn die Platform über
+   `/api/health` `write`, `cards: true` UND `liveRelay: true` meldet
+   (`customDomainApprovalWaiver.ts`, fail-closed). `liveRelay` meldet die
+   Platform seit E1d nur, wenn der Dienst wirklich bereit ist: Modus `write`,
+   Schlüssel UND WebSocket im Build (`apps/platform/nuxt.config.ts`).
+4. - [ ] **Erst nach Schritt 1 mit `liveRelay: true` und bestandener
+   Live-Klick-Probe, mit eigenem Ja:** auf der Konsole die Zeile
    `NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL=https://platform.pukalani.app/api/health`
    in die `.env` (Vorgabe leer ⇒ Pflicht bleibt; nur `https:` wird
    angenommen), neu laden. Prüfen: die Log-Zeile
@@ -152,7 +162,7 @@ wegfallen. Je App zwei Stufen, beide ohne Ausliefern:
    ohne Lesepunkt ist eine Karte nur Text). Kein Datenverlust.
 
 **Freigabe-Pflicht nach dem Rückweg der Konsole** (nur nötig, wenn sie
-vorher aufgehoben war, also nach E1d): Die Pflicht gilt nach höchstens einer
+vorher aufgehoben war, also nach Schritt B 4): Die Pflicht gilt nach höchstens einer
 Minute wieder — aber nur für NEUE Eintragungen, Prüfungen und das
 Wieder-Einschalten. Domains, die in der Zwischenzeit OHNE Freigabe aktiv
 geworden sind, bleiben aktiv; erst der stündliche Fristen-Lauf startet für
@@ -196,10 +206,18 @@ sie die 14-Tage-Frist. Darum gleich danach, nur lesend:
 
 ## 7. Offene Grenzen
 
-- **Live-Verbindung unter einer eigenen Domain** kommt erst mit E1d (Weg 3,
-  Plan § 13.3): bis dahin läuft der Socket dort als Gast, persönliche
-  Meldungen und die Anwesenheit kommen über den 20-s-Takt. Darum bleibt bis
-  E1d auch die Freigabe-Pflicht für eigene Domains (Schritt B 3/4).
+- **Live-Verbindung unter einer eigenen Domain** (E1d, Weg 3) läuft über
+  die Platform selbst: je offenem Browser-Fenster eine Verbindung zu uns und
+  eine von uns zu Appwrite (Grenzen je Prozess 2000, je Konto 12, in
+  `core/server/utils/liveRelay.ts`). Ein abgeschaltetes Domain-Recht oder ein
+  entferntes Mitglied fällt aus einer OFFENEN Verbindung erst beim nächsten
+  Neuverbinden heraus (spätestens nach 10 Minuten, JWT-Laufzeit); ein
+  Widerruf der Sitzung schließt sofort. Ein Neustart der Platform trennt alle
+  Live-Verbindungen; die Browser verbinden selbst neu.
+- Fällt der Dienst aus (`liveRelay: false` trotz `write`): die Seiten laufen
+  weiter, der Socket unter eigenen Domains bleibt Gast (öffentliche Inhalte
+  live, Persönliches im 20-s-Takt) — und die Konsole hebt die Freigabe-Pflicht
+  nicht auf.
 - Die Bühne braucht `NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL` nicht: dort
   läuft die Konsole im Modus `off`, die Pflicht bleibt also; die Regel
   selbst prüfen die Unit-Tests (`packages/control/tests/customDomainApprovalWaiver.test.ts`).

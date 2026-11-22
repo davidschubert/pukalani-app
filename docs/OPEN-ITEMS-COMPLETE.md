@@ -196,6 +196,41 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1 E1d — Live-Verbindung unter eigenen Domains über unseren Server (Schalter aus) ✅ 2026-11-22
+
+**Was.** Davids K4 („auch dort live lassen") als Weg 3 aus Plan § 13.3:
+angemeldet auf der eigenen Domain einer Pool-Community (Modus `write`) setzt
+der Browser den Realtime-Endpunkt des Web-SDK auf `wss://<Host>/api/live` und
+hält kein Token. Die Route `/api/live/realtime` (core) ist WebSocket und
+HTTP zugleich: beim Aufbau prüft der Dienst Herkunft = Host, fragt sich dann
+selbst per `localFetch` nach einer Fahrkarte (Prozess-Geheimnis in einer
+Kopfzeile, sonst 404), damit die ganze Middleware-Kette läuft, und öffnet
+oben eine Appwrite-Verbindung mit einem an die Sitzung der Karte gebundenen
+JWT (10 min). Durch kommen nur Zeilen mit eigener `communityId` oder
+`read("any")`, Anwesenheit mit eigener `tenantId` und vom Konto-Kanal die
+Ereignis-Namen ohne Inhalt; die eigene Anwesenheit nur mit genau den
+Server-Rechten. Widerruf schließt sofort (401 durchgereicht), Ping oben alle
+20 s, Neuverbinden 30 s vor JWT-Ablauf, Grenzen je Prozess/Konto/Verbindung.
+WebSocket nur in `apps/platform`; ein globaler `upgrade`-Hook lässt nur den
+einen Pfad durch (sonst nähme crossws jeden Pfad als stillen Socket an).
+`/api/health` meldet `siteCard.liveRelay` nur mit `write`, Schlüssel und
+WebSocket im Build — daran hängt K6. Bühne (`verify-site-card`, neuer
+Abschnitt 4b, 50/50 mit `write`), mit `off` antwortet die Route wie eine
+unbekannte (404, auch als WebSocket).
+
+**Gelernt:** `users.createJWT` mit `sessionId` stellt in Appwrite 2.7.4 auch
+für eine GELÖSCHTE Sitzung ein JWT aus (gemessen) — erst Appwrite-Realtime
+lehnt es ab. Wer an einer Sitzung etwas ausgibt, fragt sie vorher selbst
+(`getSession('current')`), sonst nimmt der Dienst nach einem Widerruf noch
+neue Verbindungen an; der Bühnen-Beweis fand es, die Unit-Tests nicht. Und
+`nitro.experimental.websocket` ist kein „Pfad an": crossws nimmt danach JEDEN
+Pfad als WebSocket an, wenn kein globaler `upgrade`-Hook ablehnt. Ein Beweis
+über die Naht braucht beide Server aus dem Worktree — die Platform suchte den
+Kontroll-Server auf Port 3004, und der Host-Wechsel war rot, ohne dass am
+Code etwas falsch war.
+
+---
+
 ### PK1 E1c — Bühne im Modus write, Schalter in /api/health, Freigabe-Pflicht am Schalter, Runbook (Schalter aus) ✅ 2026-11-22
 
 **Was.** Neun Bühnen-Beweise, die EIN Cookie auf mehreren Hosts benutzten,

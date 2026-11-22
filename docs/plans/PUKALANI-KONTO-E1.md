@@ -1,10 +1,10 @@
 # Pukalani-Konto, Etappe 1 — die Eintrittskarte je Seite
 
-> **Plan-Status (2026-11-22):** teils gebaut — offen: E1d, Einschalten (E1a, E1b-1, E1b-2, E1c gebaut, Schalter aus) ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
+> **Plan-Status (2026-11-22):** teils gebaut — offen: Einschalten (E1a, E1b-1, E1b-2, E1c, E1d gebaut, Schalter aus) ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
 
 **Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-22 · Status: Davids
 Entscheidungen liegen vor (§ 12, § 13.3, § 13.4), der Beweis E0 ist gelaufen
-(§ 13); gebaut: E1a (Umschlag und Lesepunkt), E1b-1 (Karte schreiben, eigene Sitzung beim Host-Wechsel), E1b-2 (unter Kundendomains nur Mitmachen) und E1c (Bühne nachts im Modus write, `/api/health` meldet den Schalter, Freigabe-Pflicht an Schalter und E1d gekoppelt, Runbook [PK1-EINSCHALTEN](../runbooks/PK1-EINSCHALTEN.md)), Schalter aus; offen: E1d, Einschalten.** Nichts ist auf
+(§ 13); gebaut: E1a (Umschlag und Lesepunkt), E1b-1 (Karte schreiben, eigene Sitzung beim Host-Wechsel), E1b-2 (unter Kundendomains nur Mitmachen) und E1c (Bühne nachts im Modus write, `/api/health` meldet den Schalter, Freigabe-Pflicht an Schalter und E1d gekoppelt, Runbook [PK1-EINSCHALTEN](../runbooks/PK1-EINSCHALTEN.md)) und E1d (Live-Verbindung unter eigenen Domains über unseren Server, § 13.3), Schalter aus; offen: Einschalten.** Nichts ist auf
 Production eingeschaltet, keine Migration.
 
 Dieses Dokument vertieft **eine** Etappe des Gesamtkonzepts
@@ -410,6 +410,30 @@ nach E1c, ebenfalls hinter dem Schalter; bis er steht, bleibt die
 Freigabe-Pflicht für Kundendomains (K6 hängt am selben Schalter). Weg 2 ist
 die günstigere Rückfall-Lösung, wenn der Dienst in E1d nicht trägt. Weg 1
 ist die kleinste Abweichung vom Ziel, schließt SEC-022 aber nicht.
+
+**Gebaut (E1d, 2026-11-22, Schalter aus).** Route `/api/live/realtime`
+(`core/server/api/live/realtime.ts`), Dienst `core/server/utils/liveRelay.ts`,
+Regeln `core/shared/liveRelay.ts`; WebSocket nur in `apps/platform`
+(`nitro.experimental.websocket`, ohne neues Paket — crossws kommt mit Nitro;
+ein globaler `upgrade`-Hook lässt nur diesen Pfad durch). Der Browser setzt
+den Realtime-Endpunkt des Web-SDK auf `wss://<Host>/api/live` und hält kein
+Token. Beim Aufbau prüft der Server Herkunft = Host und fragt sich SELBST
+nach einer Fahrkarte (`localFetch` mit einem Prozess-Geheimnis), damit die
+ganze Middleware-Kette läuft; die Fahrkarte verlangt eine Karte dieses
+Hosts, eine Sitzung, die bei Appwrite JETZT lebt (`getSession('current')` —
+`users.createJWT` stellt auch für eine gelöschte Sitzung ein JWT aus,
+gemessen), und gibt ein an diese Sitzung gebundenes JWT (10 min). Durch
+kommen Zeilen mit eigener `communityId` oder `read("any")`, Anwesenheit mit
+eigener `tenantId`, vom Konto-Kanal nur die Ereignis-Namen; die eigene
+Anwesenheit nur mit genau den Server-Rechten. Widerruf ⇒ Appwrite meldet 401
+und schließt, wir reichen es durch und schließen. Ping nach oben alle 20 s,
+das SDK pingt uns alle 20 s (unter 60 s nginx). 30 s vor JWT-Ablauf schließt
+der Server unten mit `4000`, das SDK verbindet neu und holt eine frische
+Fahrkarte. Grenzen: 2000 Verbindungen je Prozess, 12 je Konto, 64 Abos je
+Verbindung. `/api/health` meldet `siteCard.liveRelay` nur mit `write`,
+Schlüssel und WebSocket im Build. Beweis: Bühne
+(`packages/core/scripts/verify-site-card.mjs`, Abschnitt 4b) und
+`packages/core/tests/{liveRelay,route-roles-live-relay}.test.ts`.
 
 ### 13.4 Offene Entscheidung: Konten mit Zwei-Faktor
 
