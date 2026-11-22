@@ -6,11 +6,13 @@
  * ruhig aufeinander: jede Site nennt die ZWEI anderen, mit Namen und zwei,
  * drei Wörtern Rolle (Schlüssel `ui.brandFamily.*`), normale Links ohne
  * `nofollow`. Gerendert wird das von `CoreBrandFamily`; hier steht nur, was
- * ohne Vue prüfbar ist.
+ * ohne Vue prüfbar ist. Namen und Rollen: Davids Wortlaut vom 2026-11-21
+ * („Auch von uns: Pukalani App – Community-Plattform · Pukalani Studio –
+ * UI/UX-Design Studio · Branding Supply – Digitaler Markenaufbau").
  */
 
 export const BRAND_FAMILY = [
-  { key: 'pukalani', name: 'Pukalani', origin: 'https://pukalani.app' },
+  { key: 'pukalani', name: 'Pukalani App', origin: 'https://pukalani.app' },
   { key: 'studio', name: 'Pukalani Studio', origin: 'https://pukalani.studio' },
   { key: 'branding', name: 'Branding Supply', origin: 'https://branding.supply' },
 ] as const
