@@ -1,5 +1,7 @@
 import { readRequestSession } from '../../utils/requestSession'
-import { isLiveTicketRequest, LIVE_JWT_DURATION_S, liveRelayHooks } from '../../utils/liveRelay'
+import { isLiveTicketRequest, LIVE_CHECK_HEADER, LIVE_JWT_DURATION_S, liveRelayHooks } from '../../utils/liveRelay'
+import { logEvent } from '../../utils/logEvent'
+import { isAuthBackendOutage } from '../../../shared/authFailure'
 import { liveRelayReady } from '../../utils/siteCard'
 import { siteCardCommunityOf } from '../../../shared/siteCard'
 
@@ -32,6 +34,17 @@ import { siteCardCommunityOf } from '../../../shared/siteCard'
  */
 const MIN_DURATION_S = 60
 
+/** Appwrite nicht erreichbar ⇒ 503 mit Log-Zeile; abgelehnt ⇒ 401 (AB1 d). */
+function appwriteRefused(step: string) {
+  return (error: unknown): never => {
+    if (isAuthBackendOutage(error)) {
+      logEvent('error', 'live_relay.appwrite_unavailable', { step })
+      throw createError({ status: 503, statusText: 'Service Unavailable' })
+    }
+    throw createError({ status: 401, statusText: 'Unauthorized' })
+  }
+}
+
 /**
  * Dieselbe Antwort wie für einen Pfad, den es nicht gibt (Nuxts früher 404,
  * `early-404.js`): mit Schalter aus soll die Route nicht zu erkennen sein.
@@ -57,6 +70,15 @@ export default defineEventHandler({
     if (!communityId || !tenant.tenantId || session.claims.communityId !== communityId) {
       throw createError({ status: 401, statusText: 'Unauthorized' })
     }
+    const scope = { userId: user.$id, communityId, tenantId: tenant.tenantId }
+    // NACHPRÜFUNG einer offenen Verbindung (Kopfzeile vom Dienst selbst):
+    // dieselbe Kette bis hier, kein JWT, keine Sitzungs-Frage — eine beendete
+    // Sitzung schließt Appwrite oben ohnehin sofort.
+    if (getHeader(event, LIVE_CHECK_HEADER) === '1') {
+      if (session.claims.expiresAt <= Date.now()) throw createError({ status: 401, statusText: 'Unauthorized' })
+      setHeader(event, 'cache-control', 'no-store')
+      return { scope }
+    }
     const now = Date.now()
     const duration = Math.min(LIVE_JWT_DURATION_S, Math.floor((session.claims.expiresAt - now) / 1000))
     if (duration < MIN_DURATION_S) {
@@ -68,16 +90,18 @@ export default defineEventHandler({
     // der Bühne, ein JWT für eine gelöschte Sitzung entstand). Ohne diese
     // Frage nähme der Dienst nach einem Widerruf noch eine neue Verbindung an.
     const current = await createSessionClient(event).account.getSession({ sessionId: 'current' })
-      .catch(() => { throw createError({ status: 401, statusText: 'Unauthorized' }) })
+      .catch(appwriteRefused('get_session'))
     if (current.$id !== session.claims.sessionId || current.userId !== user.$id) {
       throw createError({ status: 401, statusText: 'Unauthorized' })
     }
     const { users } = createAdminClient(event)
     const { jwt } = await users.createJWT({ userId: user.$id, sessionId: session.claims.sessionId, duration })
-      .catch(() => { throw createError({ status: 401, statusText: 'Unauthorized' }) })
+      .catch(appwriteRefused('create_jwt'))
     setHeader(event, 'cache-control', 'no-store')
+    const avatarUrl = (user.prefs as { avatarUrl?: unknown } | undefined)?.avatarUrl
     return {
-      scope: { userId: user.$id, communityId, tenantId: tenant.tenantId },
+      scope,
+      profile: { userName: typeof user.name === 'string' ? user.name : '', ...(typeof avatarUrl === 'string' && avatarUrl ? { avatarUrl } : {}) },
       projectId: tenant.projectId,
       jwt,
       expiresAt: now + duration * 1000,

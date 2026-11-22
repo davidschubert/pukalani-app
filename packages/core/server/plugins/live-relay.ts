@@ -1,5 +1,5 @@
 import { closeAllLiveRelays } from '../utils/liveRelay'
-import { LIVE_RELAY_PATH } from '../../shared/liveRelay'
+import { LIVE_RELAY_LIMITS, LIVE_RELAY_PATH } from '../../shared/liveRelay'
 
 /**
  * WEBSOCKET NUR FÜR DIE LIVE-VERBINDUNG (PK1 E1d).
@@ -12,7 +12,8 @@ import { LIVE_RELAY_PATH } from '../../shared/liveRelay'
  * andere bekommt 404 wie vorher. In der Entwicklung bleiben Nuxts eigene
  * Pfade (`/_…`, z. B. Vites HMR) unberührt.
  *
- * Beim Herunterfahren schließt er alle Live-Verbindungen sauber.
+ * Dazu die größte Nachricht je Rahmen (`maxPayload`). Beim Herunterfahren
+ * schließt er alle Live-Verbindungen sauber.
  *
  * Ohne WebSocket im Build (alle anderen Apps) tut das Plugin nichts.
  */
@@ -38,6 +39,9 @@ export default defineNitroPlugin((nitroApp) => {
   const previous = app.options.websocket ?? {}
   app.options.websocket = {
     ...previous,
+    // Größte Nachricht des Browsers: `ws` puffert sonst bis 100 MiB, bevor
+    // der Dienst die Grenze prüft (Gegenlesen E1d).
+    serverOptions: { ...(previous.serverOptions as Record<string, unknown> | undefined), maxPayload: LIVE_RELAY_LIMITS.inboundBytes * 2 },
     hooks: {
       ...previous.hooks,
       upgrade: (request: UpgradeRequest) => liveUpgradeGuard(request, import.meta.dev),

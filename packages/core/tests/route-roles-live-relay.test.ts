@@ -4,7 +4,7 @@ import { probeRoute, resetCommunityWorld, userIdOf, type RouteProbe } from './su
 import { appwriteFake } from './support/appwriteFake'
 import { coreKit } from './support/coreRouteKit'
 import { configureSiteCard, deriveSiteCardKey, sealSiteCard, setWebsocketBuiltForTests } from '../server/utils/siteCard'
-import { LIVE_JWT_DURATION_S, liveTicketHeaderForTests } from '../server/utils/liveRelay'
+import { LIVE_CHECK_HEADER, LIVE_JWT_DURATION_S, liveTicketHeaderForTests } from '../server/utils/liveRelay'
 
 /**
  * `GET /api/live/realtime` — die Fahrkarte der Live-Verbindung unter einer
@@ -53,10 +53,11 @@ function sessionAlive() {
 
 const load = () => import('../server/api/live/realtime')
 
-function probe(cookie: string | undefined, over: Partial<RouteProbe> & { ticket?: boolean } = {}) {
+function probe(cookie: string | undefined, over: Partial<RouteProbe> & { ticket?: boolean, check?: boolean } = {}) {
   const header = liveTicketHeaderForTests()
   const headers: Record<string, string> = { host: OWN_DOMAIN }
   if (over.ticket !== false) headers[header.name] = header.value
+  if (over.check) headers[LIVE_CHECK_HEADER] = '1'
   const kit = coreKit({ cookies: cookie ? { [COOKIE]: cookie } : {}, headers })
   return probeRoute(load, {
     who: 'member',
@@ -196,7 +197,37 @@ describe('GET /api/live/realtime — wer eine Fahrkarte bekommt', () => {
       scope: { userId: USER, communityId: 'c-a', tenantId: 't-a' },
       projectId: 'pool',
       jwt: 'probe-jwt',
+      profile: { userName: 'Testperson' },
     })
+  })
+
+  it('Appwrite nicht erreichbar ⇒ 503 (kein Widerruf vorgetäuscht)', async () => {
+    writeMode()
+    appwriteFake.reply('session.account.getSession', () => { throw Object.assign(new Error('fetch failed'), { code: 0 }) })
+    expect((await probe(card())).status).toBe(503)
+  })
+
+  it('Nachprüfung: gleiche Kette, aber kein JWT und keine Sitzungs-Frage', async () => {
+    writeMode()
+    const run = await probe(card(), { check: true })
+    expect(run.status).toBe(200)
+    expect(run.result).toEqual({ scope: { userId: USER, communityId: 'c-a', tenantId: 't-a' } })
+    expect(appwriteFake.used('admin')).toBe(false)
+    expect(appwriteFake.used('session')).toBe(false)
+  })
+
+  it.each([
+    ['entfernt', { context: { customDomainScope: true, communityRemoved: true } }, 403],
+    ['nicht mehr eigene Domain', { context: {} }, 404],
+    ['Gast', { who: 'guest' as const }, 401],
+  ])('Nachprüfung: %s ⇒ %s', async (_name, over, status) => {
+    writeMode()
+    expect((await probe(card(), { ...over, check: true })).status).toBe(status)
+  })
+
+  it('Nachprüfung ohne Prozess-Geheimnis ⇒ 404', async () => {
+    writeMode()
+    expect((await probe(card(), { check: true, ticket: false })).status).toBe(404)
   })
 
   it('kurze Restlaufzeit der Sitzung kürzt das JWT', async () => {

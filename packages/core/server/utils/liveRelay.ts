@@ -36,11 +36,17 @@ import {
  * — unter den 60 s von nginx; wir antworten ohne Umweg.
  *
  * WIDERRUF: endet die Sitzung, schließt Appwrite oben (erst Fehler 401, dann
- * zu) — wir reichen den Fehler durch und schließen unten. Das JWT lebt
- * höchstens `LIVE_JWT_DURATION_S`; kurz vorher schließen wir unten mit
- * `4000`, das SDK verbindet neu und holt sich damit eine frische, vollständig
- * geprüfte Fahrkarte (Karte, Host, Community — eine abgeschaltete Domain
- * fällt spätestens dann heraus).
+ * zu) — wir reichen den Fehler durch und schließen unten. Alles andere, was
+ * die Karte wertlos macht (Domain abgeschaltet, Community gesperrt, Mitglied
+ * entfernt, Karte abgelaufen), prüft der Dienst alle `LIVE_RECHECK_MS` mit
+ * derselben Kette nach (Fahrkarte im Prüf-Modus, ohne neues JWT) und
+ * schließt dann mit `4403`. Das JWT lebt höchstens `LIVE_JWT_DURATION_S`;
+ * kurz vorher schließen wir unten mit `4000`, das SDK verbindet neu und holt
+ * sich eine frische Fahrkarte.
+ *
+ * GRENZEN: der Platz je Prozess und je Konto wird VOR dem Warten auf die
+ * Fahrkarte reserviert (sonst kämen viele gleichzeitige Aufbauten alle durch)
+ * und mit `open` übernommen oder nach `LIVE_RESERVATION_MS` freigegeben.
  */
 
 /** Lebensdauer des JWT oben und damit einer Verbindung (s). */
@@ -49,6 +55,10 @@ export const LIVE_JWT_DURATION_S = 600
 export const LIVE_RENEW_BEFORE_MS = 30_000
 /** Takt des Pings nach oben (ms) — Appwrite trennt nach 120 s Stille. */
 export const LIVE_UPSTREAM_PING_MS = 20_000
+/** Takt der Nachprüfung einer offenen Verbindung (ms). */
+export const LIVE_RECHECK_MS = 60_000
+/** Wie lange ein reservierter Platz auf `open` wartet (ms). */
+export const LIVE_RESERVATION_MS = 15_000
 /** Wie lange oben höchstens bis `connected` vergehen darf (ms). */
 export const LIVE_UPSTREAM_CONNECT_MS = 15_000
 /** Verbindungen je Prozess / je Konto. */
@@ -60,6 +70,8 @@ const PENDING_LIMIT = 32
 /** Schließ-Codes nach unten (das SDK verbindet bei allen außer 1008 neu). */
 export const LIVE_CLOSE_RENEW = 4000
 export const LIVE_CLOSE_UPSTREAM = 1011
+/** Die Nachprüfung lehnt ab (Domain, Community, Mitgliedschaft, Karte). */
+export const LIVE_CLOSE_REVOKED = 4403
 
 // ── Fahrkarte ────────────────────────────────────────────────────────────
 
@@ -73,10 +85,14 @@ export function isLiveTicketRequest(event: H3Event): boolean {
   return timingSafeEqual(Buffer.from(given), Buffer.from(ticketSecret))
 }
 
-/** Nur für Tests: Name und Wert der Kopfzeile, mit der der Dienst sich selbst fragt. */
+/** Nur für Tests (Vitest): Name und Wert der Kopfzeile, mit der der Dienst sich selbst fragt. */
 export function liveTicketHeaderForTests(): { name: string, value: string } {
+  if (process.env.VITEST !== 'true') throw new Error('liveTicketHeaderForTests: nur in Tests')
   return { name: TICKET_HEADER, value: ticketSecret }
 }
+
+/** Kopfzeile, mit der der Dienst die Fahrkarte nur PRÜFEN lässt (kein JWT). */
+export const LIVE_CHECK_HEADER = 'x-pukalani-live-check'
 
 /** Was die Fahrkarte trägt. */
 export interface LiveTicket {
@@ -85,6 +101,8 @@ export interface LiveTicket {
   jwt: string
   /** Ablauf des JWT (ms seit 1970). */
   expiresAt: number
+  /** Name und Bild für die eigene Anwesenheit — vom Server, nie vom Browser. */
+  profile: { userName: string, avatarUrl?: string }
 }
 
 function isLiveTicket(value: unknown): value is LiveTicket {
@@ -95,6 +113,13 @@ function isLiveTicket(value: unknown): value is LiveTicket {
     && typeof t.expiresAt === 'number' && Number.isFinite(t.expiresAt)
     && !!s && typeof s.userId === 'string' && s.userId !== '' && typeof s.communityId === 'string' && s.communityId !== ''
     && typeof s.tenantId === 'string' && s.tenantId !== ''
+    && !!t.profile && typeof t.profile.userName === 'string'
+}
+
+function sameScope(a: LiveRelayScope, b: unknown): boolean {
+  if (!b || typeof b !== 'object') return false
+  const o = b as Partial<LiveRelayScope>
+  return o.userId === a.userId && o.communityId === a.communityId && o.tenantId === a.tenantId
 }
 
 /**
@@ -107,17 +132,24 @@ const FORWARDED_HEADERS = ['cookie', 'host', 'x-forwarded-for', 'x-forwarded-pro
 /** Ergebnis der Fahrkarten-Frage: die Karte oder der Status der Ablehnung. */
 export type LiveTicketResult = { ticket: LiveTicket } | { status: number }
 
-export async function requestLiveTicket(headers: Headers): Promise<LiveTicketResult> {
+/** Nur die prüfenden Kopfzeilen der Anfrage (für Fahrkarte und Nachprüfung). */
+export function liveForwardHeaders(headers: Headers): Headers {
   const forwarded = new Headers()
   for (const name of FORWARDED_HEADERS) {
     const value = headers.get(name)
     if (value !== null) forwarded.set(name, value)
   }
-  forwarded.set(TICKET_HEADER, ticketSecret)
-  forwarded.set('accept', 'application/json')
+  return forwarded
+}
+
+async function askSelf(forwarded: Headers, check: boolean): Promise<{ status: number, body?: unknown }> {
+  const headers = new Headers(forwarded)
+  headers.set(TICKET_HEADER, ticketSecret)
+  headers.set('accept', 'application/json')
+  if (check) headers.set(LIVE_CHECK_HEADER, '1')
   let response: Response
   try {
-    response = await useNitroApp().localFetch(LIVE_RELAY_PATH, { method: 'GET', headers: forwarded })
+    response = await useNitroApp().localFetch(LIVE_RELAY_PATH, { method: 'GET', headers })
   }
   catch (error) {
     logEvent('error', 'live_relay.ticket_failed', { message: error instanceof Error ? error.message : String(error) })
@@ -128,13 +160,38 @@ export async function requestLiveTicket(headers: Headers): Promise<LiveTicketRes
     logEvent('error', 'live_relay.ticket_unreadable', { message: error instanceof Error ? error.message : String(error) })
     return null
   })
+  return { status: 200, body }
+}
+
+export async function requestLiveTicket(forwarded: Headers): Promise<LiveTicketResult> {
+  const { status, body } = await askSelf(forwarded, false)
+  if (status !== 200) return { status }
   return isLiveTicket(body) ? { ticket: body } : { status: 503 }
+}
+
+/**
+ * Nachprüfung einer offenen Verbindung: dieselbe Kette, kein JWT. Ergebnis
+ * `ok` (gilt weiter, gleiche Seite), `unknown` (Bremse 429 oder Störung 5xx —
+ * die Verbindung bleibt bis zur nächsten Prüfung, längstens bis zum
+ * JWT-Ablauf) oder sonst `revoked` (fail-closed: auch eine Umleitung zählt —
+ * eine abgeschaltete Domain antwortet 302 zur Pukalani-Adresse, gemessen auf
+ * der Bühne).
+ */
+export async function recheckLiveTicket(forwarded: Headers, scope: LiveRelayScope): Promise<'ok' | 'revoked' | 'unknown'> {
+  const { status, body } = await askSelf(forwarded, true)
+  if (status === 200) return sameScope(scope, (body as { scope?: unknown } | null)?.scope) ? 'ok' : 'revoked'
+  if (status === 429 || status >= 500) return 'unknown'
+  logEvent('info', 'live_relay.revoked', { status })
+  return 'revoked'
 }
 
 // ── Verbindungen ─────────────────────────────────────────────────────────
 
 const connections = new Map<string, LiveRelayConnection>()
 const perUser = new Map<string, number>()
+/** Aufbauten, die auf ihre Fahrkarte oder ihr `open` warten. */
+let pendingTotal = 0
+const pendingByUser = new Map<string, number>()
 
 /** Wie viele Verbindungen dieser Prozess gerade hält (für Tests und Grenzen). */
 export function liveRelayConnectionCount(): number {
@@ -142,26 +199,53 @@ export function liveRelayConnectionCount(): number {
 }
 
 function userCount(userId: string): number {
-  return perUser.get(userId) ?? 0
+  return (perUser.get(userId) ?? 0) + (pendingByUser.get(userId) ?? 0)
+}
+
+/** Platz eines Kontos reservieren; die Rückgabe gibt ihn frei (einmal wirksam). */
+function reserveUser(userId: string): () => void {
+  pendingTotal++
+  pendingByUser.set(userId, (pendingByUser.get(userId) ?? 0) + 1)
+  let released = false
+  const release = () => {
+    if (released) return
+    released = true
+    clearTimeout(timer)
+    pendingTotal--
+    const left = (pendingByUser.get(userId) ?? 1) - 1
+    if (left > 0) pendingByUser.set(userId, left)
+    else pendingByUser.delete(userId)
+  }
+  const timer = setTimeout(release, LIVE_RESERVATION_MS)
+  return release
 }
 
 /** Realtime-Adresse von Appwrite (`https://…/v1` ⇒ `wss://…/v1/realtime`). */
-export function upstreamRealtimeUrl(endpoint: string, projectId: string, jwt: string): string {
+export function upstreamRealtimeUrl(endpoint: string, projectId: string): string {
   const base = endpoint.replace(/\/+$/, '').replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://')
-  return `${base}/realtime?project=${encodeURIComponent(projectId)}&jwt=${encodeURIComponent(jwt)}`
+  return `${base}/realtime?project=${encodeURIComponent(projectId)}`
 }
 
 /** Was eine Verbindung von ihrer Umgebung braucht — in Tests gestellt. */
 export interface LiveRelayEnvironment {
-  /** Öffnet die Verbindung nach oben. */
-  openUpstream: (url: string) => WebSocket
+  /**
+   * Öffnet die Verbindung nach oben. Das JWT reist als Kopfzeile
+   * `x-appwrite-jwt` (Appwrite liest sie vor dem Adress-Parameter), nicht in
+   * der Adresse — sonst stünde es in Zugriffs-Protokollen vor Appwrite.
+   */
+  openUpstream: (url: string, jwt: string) => WebSocket
+  /** Nachprüfung (s. `recheckLiveTicket`). */
+  recheck: (scope: LiveRelayScope) => Promise<'ok' | 'revoked' | 'unknown'>
   endpoint: string
   now: () => number
 }
 
-function defaultEnvironment(): LiveRelayEnvironment {
+function defaultEnvironment(forwarded: Headers): LiveRelayEnvironment {
   return {
-    openUpstream: url => new WebSocket(url),
+    // Nodes `WebSocket` (undici) nimmt Kopfzeilen als zweites Argument an;
+    // der DOM-Typ kennt das nicht.
+    openUpstream: (url, jwt) => new (WebSocket as unknown as new (url: string, init: { headers: Record<string, string> }) => WebSocket)(url, { headers: { 'x-appwrite-jwt': jwt } }),
+    recheck: scope => recheckLiveTicket(forwarded, scope),
     endpoint: useRuntimeConfig().public.appwriteEndpoint,
     now: () => Date.now(),
   }
@@ -189,6 +273,8 @@ export class LiveRelayConnection {
   private pending: string[] = []
   private timers: ReturnType<typeof setTimeout>[] = []
   private pingTimer: ReturnType<typeof setInterval> | undefined
+  private recheckTimer: ReturnType<typeof setInterval> | undefined
+  private rechecking = false
   private closed = false
 
   constructor(
@@ -203,7 +289,7 @@ export class LiveRelayConnection {
 
   start(): void {
     connections.set(this.peer.id, this)
-    perUser.set(this.scope.userId, userCount(this.scope.userId) + 1)
+    perUser.set(this.scope.userId, (perUser.get(this.scope.userId) ?? 0) + 1)
     const lifetime = this.ticket.expiresAt - this.env.now() - LIVE_RENEW_BEFORE_MS
     if (lifetime <= 0) {
       this.shutdown(LIVE_CLOSE_RENEW, 'renew')
@@ -213,9 +299,10 @@ export class LiveRelayConnection {
     this.timers.push(setTimeout(() => {
       if (!this.upstreamReady) this.fail('connect_timeout')
     }, LIVE_UPSTREAM_CONNECT_MS))
+    this.recheckTimer = setInterval(() => { void this.recheck() }, LIVE_RECHECK_MS)
     let socket: WebSocket
     try {
-      socket = this.env.openUpstream(upstreamRealtimeUrl(this.env.endpoint, this.ticket.projectId, this.ticket.jwt))
+      socket = this.env.openUpstream(upstreamRealtimeUrl(this.env.endpoint, this.ticket.projectId), this.ticket.jwt)
     }
     catch (error) {
       this.fail('open_failed', error)
@@ -230,6 +317,23 @@ export class LiveRelayConnection {
     this.pingTimer = setInterval(() => {
       if (this.upstream?.readyState === WebSocket.OPEN) this.upstream.send('{"type":"ping"}')
     }, LIVE_UPSTREAM_PING_MS)
+  }
+
+  /** Gilt die Karte noch für diese Seite? Sonst schließen (`4403`). */
+  async recheck(): Promise<void> {
+    if (this.closed || this.rechecking) return
+    this.rechecking = true
+    try {
+      const verdict = await this.env.recheck(this.scope)
+      if (verdict === 'revoked') this.shutdown(LIVE_CLOSE_REVOKED, 'revoked')
+      else if (verdict === 'unknown') logEvent('warn', 'live_relay.recheck_unknown', {})
+    }
+    catch (error) {
+      logEvent('warn', 'live_relay.recheck_failed', { message: error instanceof Error ? error.message : String(error) })
+    }
+    finally {
+      this.rechecking = false
+    }
   }
 
   /** Eine Nachricht von oben. */
@@ -291,7 +395,7 @@ export class LiveRelayConnection {
         return
       }
       case 'presence': {
-        const data = filterPresenceUpsert(message.data, this.scope)
+        const data = filterPresenceUpsert(message.data, this.scope, this.ticket.profile)
         if (data) this.toUpstream({ type: 'presence', data })
         return
       }
@@ -338,6 +442,8 @@ export class LiveRelayConnection {
     this.timers = []
     if (this.pingTimer) clearInterval(this.pingTimer)
     this.pingTimer = undefined
+    if (this.recheckTimer) clearInterval(this.recheckTimer)
+    this.recheckTimer = undefined
     const upstream = this.upstream
     this.upstream = null
     if (upstream && upstream.readyState < WebSocket.CLOSING) {
@@ -355,7 +461,7 @@ export class LiveRelayConnection {
       logEvent('warn', 'live_relay.downstream_close_failed', { message: error instanceof Error ? error.message : String(error) })
     }
     if (connections.get(this.peer.id) === this) connections.delete(this.peer.id)
-    const left = userCount(this.scope.userId) - 1
+    const left = (perUser.get(this.scope.userId) ?? 0) - 1
     if (left > 0) perUser.set(this.scope.userId, left)
     else perUser.delete(this.scope.userId)
   }
@@ -390,17 +496,32 @@ function reject(status: number): Response {
 export async function liveRelayUpgrade(request: { url: string, headers: Headers, context?: Record<string, unknown> }): Promise<Response | undefined> {
   if (!liveRelayReady()) return reject(404)
   if (!liveOriginAllowed(request.headers.get('origin'), request.headers.get('host'))) return reject(403)
-  if (connections.size >= LIVE_PROCESS_LIMIT) {
+  if (connections.size + pendingTotal >= LIVE_PROCESS_LIMIT) {
     logEvent('warn', 'live_relay.limit', { scope: 'process', limit: LIVE_PROCESS_LIMIT })
     return reject(503)
   }
-  const result = await requestLiveTicket(request.headers)
+  const forwarded = liveForwardHeaders(request.headers)
+  // Platz VOR dem Warten halten — sonst kämen gleichzeitige Aufbauten alle durch.
+  pendingTotal++
+  let result: LiveTicketResult
+  try {
+    result = await requestLiveTicket(forwarded)
+  }
+  finally {
+    pendingTotal--
+  }
   if ('status' in result) return reject(result.status === 401 || result.status === 403 || result.status === 429 || result.status === 503 ? result.status : 404)
-  if (userCount(result.ticket.scope.userId) >= LIVE_USER_LIMIT) {
+  if (userCount(result.ticket.scope.userId) >= LIVE_USER_LIMIT || connections.size + pendingTotal >= LIVE_PROCESS_LIMIT) {
     logEvent('warn', 'live_relay.limit', { scope: 'user', limit: LIVE_USER_LIMIT })
     return reject(429)
   }
-  if (request.context) request.context.liveTicket = result.ticket
+  const release = reserveUser(result.ticket.scope.userId)
+  if (request.context) {
+    request.context.liveTicket = result.ticket
+    request.context.liveForwarded = forwarded
+    request.context.liveRelease = release
+  }
+  else release()
   return undefined
 }
 
@@ -408,12 +529,21 @@ export async function liveRelayUpgrade(request: { url: string, headers: Headers,
 export const liveRelayHooks = {
   upgrade: liveRelayUpgrade,
   open(peer: LivePeer) {
-    const ticket = (peer.context as { liveTicket?: LiveTicket } | undefined)?.liveTicket
-    if (!ticket) {
-      peer.close(1011, 'no_ticket')
+    const context = peer.context as { liveTicket?: LiveTicket, liveForwarded?: Headers, liveRelease?: () => void } | undefined
+    context?.liveRelease?.()
+    const ticket = context?.liveTicket
+    if (!ticket || !context?.liveForwarded) {
+      peer.close(LIVE_CLOSE_UPSTREAM, 'no_ticket')
       return
     }
-    new LiveRelayConnection(peer, ticket, defaultEnvironment()).start()
+    try {
+      new LiveRelayConnection(peer, ticket, defaultEnvironment(context.liveForwarded)).start()
+    }
+    catch (error) {
+      logEvent('error', 'live_relay.open_failed', { message: error instanceof Error ? error.message : String(error) })
+      connections.get(peer.id)?.shutdown(LIVE_CLOSE_UPSTREAM, 'open_failed')
+      peer.close(LIVE_CLOSE_UPSTREAM, 'open_failed')
+    }
   },
   async message(peer: LivePeer, message: { text: () => string }) {
     connections.get(peer.id)?.fromDownstream(message.text())

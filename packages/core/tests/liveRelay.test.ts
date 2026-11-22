@@ -125,10 +125,21 @@ describe('Ereignisse — fremde Community kommt nicht durch', () => {
 })
 
 describe('eigene Anwesenheit', () => {
-  const ok = { presenceId: 'u-1', status: 'online', permissions: presencePermissions(true, 'c-a', 'u-1'), metadata: { tenantId: 't-a', userName: 'X' } }
+  const PROFILE = { userName: 'Echter Name', avatarUrl: 'https://bild.test/a.png' }
+  const ok = { presenceId: 'u-1', status: 'online', permissions: presencePermissions(true, 'c-a', 'u-1'), metadata: { tenantId: 't-a', userName: 'X', page: '/p', typing: true } }
 
-  it('wie der Server sie rechnet ⇒ durch', () => {
-    expect(filterPresenceUpsert(ok, SCOPE)).toEqual(ok)
+  it('wie der Server sie rechnet ⇒ durch; Name und Bild vom Server', () => {
+    expect(filterPresenceUpsert(ok, SCOPE, PROFILE)).toEqual({
+      presenceId: 'u-1',
+      status: 'online',
+      permissions: ok.permissions,
+      metadata: { page: '/p', typing: true, userName: 'Echter Name', avatarUrl: 'https://bild.test/a.png', tenantId: 't-a' },
+    })
+  })
+
+  it('unbekannte und zu lange Felder fallen weg, fremder Name zählt nicht', () => {
+    const out = filterPresenceUpsert({ ...ok, metadata: { tenantId: 't-a', userName: 'Fremd', avatarUrl: 'https://boese.test', extra: 'x', scope: 'y'.repeat(600), action: { a: 1 } } }, SCOPE, { userName: 'Echt' })
+    expect(out?.metadata).toEqual({ userName: 'Echt', tenantId: 't-a' })
   })
 
   it.each([
@@ -139,7 +150,7 @@ describe('eigene Anwesenheit', () => {
     ['Leserecht einer anderen Community', { ...ok, permissions: presencePermissions(true, 'c-b', 'u-1') }],
     ['zusätzliches Recht', { ...ok, permissions: [...ok.permissions, 'read("users")'] }],
   ])('%s ⇒ verworfen', (_name, data) => {
-    expect(filterPresenceUpsert(data, SCOPE)).toBeNull()
+    expect(filterPresenceUpsert(data, SCOPE, PROFILE)).toBeNull()
   })
 })
 
@@ -238,6 +249,8 @@ describe('Dienst: eine Verbindung', () => {
     vi.useFakeTimers()
     relay = await import('../server/utils/liveRelay')
     upstreams = []
+    jwts = []
+    verdict = 'ok'
     now = Date.now()
   })
 
@@ -246,15 +259,20 @@ describe('Dienst: eine Verbindung', () => {
     vi.useRealTimers()
   })
 
+  let verdict: 'ok' | 'revoked' | 'unknown'
+  let jwts: string[]
+
   function connect(expiresIn = 600_000) {
     const { peer, sent } = fakePeer(`peer-${Math.random()}`)
-    const ticket = { scope: SCOPE, projectId: 'pool', jwt: 'jwt-1', expiresAt: now + expiresIn }
+    const ticket = { scope: SCOPE, projectId: 'pool', jwt: 'jwt-1', expiresAt: now + expiresIn, profile: { userName: 'P' } }
     const connection = new relay.LiveRelayConnection(peer, ticket, {
-      openUpstream: (url) => {
+      openUpstream: (url, jwt) => {
+        jwts.push(jwt)
         const up = new FakeUpstream(url)
         upstreams.push(up)
         return up as unknown as WebSocket
       },
+      recheck: async () => verdict,
       endpoint: 'https://api.beispiel.test/v1',
       now: () => now,
     })
@@ -263,9 +281,10 @@ describe('Dienst: eine Verbindung', () => {
     return { connection, peer, sent, up }
   }
 
-  it('oben: Realtime-Adresse mit JWT, ohne Cookie; unten: „connected" ohne Konto-Daten', () => {
+  it('oben: Realtime-Adresse OHNE JWT (das reist als Kopfzeile), ohne Cookie; unten: „connected" ohne Konto-Daten', () => {
     const { sent, up } = connect()
-    expect(up.url).toBe('wss://api.beispiel.test/v1/realtime?project=pool&jwt=jwt-1')
+    expect(up.url).toBe('wss://api.beispiel.test/v1/realtime?project=pool')
+    expect(jwts).toEqual(['jwt-1'])
     up.open()
     up.emit({ type: 'connected', data: { channels: [], user: { $id: 'u-1', email: 'x@y.test', prefs: { a: 1 } } } })
     expect(sent).toEqual([{ type: 'connected', data: { channels: [], subscriptions: {}, user: { $id: 'u-1' } } }])
@@ -335,6 +354,28 @@ describe('Dienst: eine Verbindung', () => {
     expect(up.closedWith).toBe(1000)
   })
 
+  it('Nachprüfung: Karte gilt nicht mehr (Domain, Community, entfernt) ⇒ zu mit 4403', async () => {
+    const { peer, up } = connect()
+    up.open()
+    up.emit({ type: 'connected', data: {} })
+    await vi.advanceTimersByTimeAsync(relay.LIVE_RECHECK_MS)
+    expect(peer.closed).toBeUndefined()
+    verdict = 'revoked'
+    await vi.advanceTimersByTimeAsync(relay.LIVE_RECHECK_MS)
+    expect(peer.closed?.code).toBe(relay.LIVE_CLOSE_REVOKED)
+    expect(up.closedWith).toBe(1000)
+    expect(relay.liveRelayConnectionCount()).toBe(0)
+  })
+
+  it('Nachprüfung ohne Antwort (Störung) ⇒ bleibt offen, bis zum JWT-Ablauf', async () => {
+    const { peer, up } = connect()
+    up.open()
+    up.emit({ type: 'connected', data: {} })
+    verdict = 'unknown'
+    await vi.advanceTimersByTimeAsync(relay.LIVE_RECHECK_MS * 2)
+    expect(peer.closed).toBeUndefined()
+  })
+
   it('oben kommt kein „connected" ⇒ nach der Frist zu', () => {
     const { peer } = connect()
     vi.advanceTimersByTime(relay.LIVE_UPSTREAM_CONNECT_MS + 1)
@@ -348,8 +389,9 @@ describe('Dienst: eine Verbindung', () => {
     connection.fromDownstream(JSON.stringify({ type: 'authentication', data: { session: 'x' } }))
     connection.fromDownstream(JSON.stringify({ type: 'presence', data: { presenceId: 'u-2', status: 'online', permissions: [], metadata: {} } }))
     expect(up.sent).toEqual([])
-    connection.fromDownstream(JSON.stringify({ type: 'presence', data: { presenceId: 'u-1', status: 'online', permissions: presencePermissions(true, 'c-a', 'u-1'), metadata: { tenantId: 't-a' } } }))
+    connection.fromDownstream(JSON.stringify({ type: 'presence', data: { presenceId: 'u-1', status: 'online', permissions: presencePermissions(true, 'c-a', 'u-1'), metadata: { tenantId: 't-a', userName: 'Fremd' } } }))
     expect(up.sent).toHaveLength(1)
+    expect(JSON.parse(up.sent[0]!).data.metadata.userName).toBe('P')
   })
 
   it('zu große Nachricht von unten ⇒ verworfen', () => {
@@ -366,16 +408,19 @@ describe('Dienst: Aufbau (upgrade)', () => {
   let relay: typeof import('../server/utils/liveRelay')
   let ticketStatus: number
   let lastTicketHeaders: Headers | undefined
+  let ticketDelay = 0
 
   beforeEach(async () => {
     relay = await import('../server/utils/liveRelay')
     ticketStatus = 200
+    ticketDelay = 0
     lastTicketHeaders = undefined
     vi.stubGlobal('useNitroApp', () => ({
       localFetch: async (_path: string, init: { headers: Headers }) => {
         lastTicketHeaders = init.headers
         if (ticketStatus !== 200) return new Response(null, { status: ticketStatus })
-        return Response.json({ scope: SCOPE, projectId: 'pool', jwt: 'j', expiresAt: Date.now() + 600_000 })
+        if (ticketDelay > 0) await new Promise(r => setTimeout(r, ticketDelay))
+        return Response.json({ scope: SCOPE, projectId: 'pool', jwt: 'j', expiresAt: Date.now() + 600_000, profile: { userName: 'P' } })
       },
     }))
   })
@@ -420,6 +465,7 @@ describe('Dienst: Aufbau (upgrade)', () => {
     setWebsocketBuiltForTests(true)
     const req = request()
     expect(await relay.liveRelayUpgrade(req)).toBeUndefined()
+    ;(req.context.liveRelease as () => void)()
     expect((req.context.liveTicket as { scope: LiveRelayScope }).scope).toEqual(SCOPE)
     expect(lastTicketHeaders?.get('cookie')).toBe('a_session_pool=c1.x')
     expect(lastTicketHeaders?.get('upgrade')).toBeNull()
@@ -430,14 +476,59 @@ describe('Dienst: Aufbau (upgrade)', () => {
     setWebsocketBuiltForTests(true)
     for (let i = 0; i < relay.LIVE_USER_LIMIT; i++) {
       const { peer } = fakePeer(`p${i}`)
-      new relay.LiveRelayConnection(peer, { scope: SCOPE, projectId: 'pool', jwt: 'j', expiresAt: Date.now() + 600_000 }, {
+      new relay.LiveRelayConnection(peer, { scope: SCOPE, projectId: 'pool', jwt: 'j', expiresAt: Date.now() + 600_000, profile: { userName: 'P' } }, {
         openUpstream: url => new FakeUpstream(url) as unknown as WebSocket,
+        recheck: async () => 'ok',
         endpoint: 'https://api.beispiel.test/v1',
         now: () => Date.now(),
       }).start()
     }
     expect((await relay.liveRelayUpgrade(request()))?.status).toBe(429)
     relay.closeAllLiveRelays()
-    expect(await relay.liveRelayUpgrade(request())).toBeUndefined()
+    const ok = request()
+    expect(await relay.liveRelayUpgrade(ok)).toBeUndefined()
+    ;(ok.context.liveRelease as () => void)()
+  })
+
+  it.each([
+    [302, 'revoked'], [401, 'revoked'], [403, 'revoked'], [404, 'revoked'],
+    [429, 'unknown'], [500, 'unknown'], [503, 'unknown'],
+  ])('Nachprüfung: Antwort %s ⇒ %s (eine abgeschaltete Domain leitet um)', async (status, verdict) => {
+    ticketStatus = status
+    expect(await relay.recheckLiveTicket(new Headers(), SCOPE)).toBe(verdict)
+  })
+
+  it('Nachprüfung: 200, aber eine andere Seite ⇒ revoked; gleiche Seite ⇒ ok; mit Prüf-Kopfzeile', async () => {
+    expect(await relay.recheckLiveTicket(new Headers(), SCOPE)).toBe('ok')
+    expect(lastTicketHeaders?.get(relay.LIVE_CHECK_HEADER)).toBe('1')
+    expect(await relay.recheckLiveTicket(new Headers(), { ...SCOPE, tenantId: 't-b' })).toBe('revoked')
+  })
+
+  it('gleichzeitige Aufbauten: die Grenze je Konto hält (Platz vor dem Warten reserviert)', async () => {
+    configureSiteCard({ mode: 'write', key: KEY })
+    setWebsocketBuiltForTests(true)
+    ticketDelay = 20
+    const requests = Array.from({ length: 30 }, () => request())
+    const results = await Promise.all(requests.map(r => relay.liveRelayUpgrade(r)))
+    expect(results.filter(r => r === undefined)).toHaveLength(relay.LIVE_USER_LIMIT)
+    expect(results.filter(r => r?.status === 429)).toHaveLength(30 - relay.LIVE_USER_LIMIT)
+    for (const r of requests) (r.context.liveRelease as (() => void) | undefined)?.()
+  })
+
+  it('reservierter Platz ohne `open` wird nach der Frist frei', async () => {
+    configureSiteCard({ mode: 'write', key: KEY })
+    setWebsocketBuiltForTests(true)
+    vi.useFakeTimers()
+    try {
+      for (let i = 0; i < relay.LIVE_USER_LIMIT; i++) expect(await relay.liveRelayUpgrade(request())).toBeUndefined()
+      expect((await relay.liveRelayUpgrade(request()))?.status).toBe(429)
+      await vi.advanceTimersByTimeAsync(relay.LIVE_RESERVATION_MS + 1)
+      const again = request()
+      expect(await relay.liveRelayUpgrade(again)).toBeUndefined()
+      ;(again.context.liveRelease as () => void)()
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 })

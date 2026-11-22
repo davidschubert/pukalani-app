@@ -175,6 +175,11 @@ const WRITE_LIMITED: { re: RegExp, bucket: string, max?: number, windowMs?: numb
   // Writes/JWTs erzeugen lassen. heartbeat+leave teilen EIN Budget.
   { re: /^POST \/api\/presence\/(heartbeat|leave)$/, bucket: 'presence:write', max: PRESENCE_MAX },
   { re: /^GET \/api\/auth\/realtime-token$/, bucket: 'auth:jwt', max: TOKEN_MAX },
+  // PK1 E1d: Fahrkarte und Nachprüfung der Live-Verbindung unter eigenen
+  // Domains (der Dienst fragt sich selbst, mit der Adresse des Browsers).
+  // Eigener Topf: je offener Verbindung eine Nachprüfung je Minute, dazu
+  // Aufbauten — 60 je Minute und Adresse bremst Auf-/Abbau-Schleifen.
+  { re: /^GET \/api\/live\/realtime$/, bucket: 'live:ticket', max: 60 },
   // Zwei-Faktor einrichten (U15 Teil 4): jeder Aufruf legt bei Appwrite einen
   // neuen TOTP-Authenticator an (der vorherige wird still ersetzt) und lässt
   // zusätzlich ein QR-Bild rendern. Session-gated, also kein offener Vektor —

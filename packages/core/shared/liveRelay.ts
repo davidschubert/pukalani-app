@@ -24,7 +24,8 @@
  *    bleibt leer — Sitzungen und Einstellungen des Kontos verlassen den Server
  *    nicht.
  *  - Schreiben: nur die eigene Anwesenheit, mit genau den Rechten und der
- *    Community, die der Server für diese Seite rechnet.
+ *    Community, die der Server für diese Seite rechnet, nur bekannten
+ *    Feldern, Name und Bild vom Server.
  *  - Fail-closed: was sich nicht einordnen lässt, wird verworfen.
  */
 import { presencePermissions } from './presencePermissions'
@@ -197,11 +198,25 @@ export function sanitizeLiveEvent(
 }
 
 /**
+ * Felder, die die eigene Anwesenheit tragen darf (Regel
+ * `.claude/rules/appwrite-presence.md`): Texte bis `PRESENCE_TEXT_MAX`,
+ * Wahrheitswerte oder leer. `userName`/`avatarUrl` setzt der Server aus dem
+ * Konto, `tenantId` aus der Seite — was der Browser dort schickt, zählt nicht.
+ */
+const PRESENCE_FIELDS = new Set(['scope', 'action', 'typing', 'page', 'replyingTo', 'near', 'away'])
+const PRESENCE_TEXT_MAX = 512
+
+/**
  * Die eigene Anwesenheit (`type: 'presence'`) prüfen: Id = Konto, Rechte
  * GENAU wie der Server sie für diese Seite rechnet (`presencePermissions`),
- * `metadata.tenantId` = diese Community. Sonst `null` (verworfen).
+ * `metadata.tenantId` = diese Community, sonst nur bekannte Felder; Name und
+ * Bild kommen vom Server (`profile`). Sonst `null` (verworfen).
  */
-export function filterPresenceUpsert(data: unknown, scope: LiveRelayScope): Record<string, unknown> | null {
+export function filterPresenceUpsert(
+  data: unknown,
+  scope: LiveRelayScope,
+  profile: { userName: string, avatarUrl?: string },
+): Record<string, unknown> | null {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null
   const raw = data as Record<string, unknown>
   if (raw.presenceId !== scope.userId) return null
@@ -213,7 +228,16 @@ export function filterPresenceUpsert(data: unknown, scope: LiveRelayScope): Reco
   const meta = raw.metadata
   if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return null
   if ((meta as Record<string, unknown>).tenantId !== scope.tenantId) return null
-  return { presenceId: scope.userId, status: raw.status, permissions: expected, metadata: meta }
+  const metadata: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(meta as Record<string, unknown>)) {
+    if (!PRESENCE_FIELDS.has(key)) continue
+    if (value === null || typeof value === 'boolean') metadata[key] = value
+    else if (typeof value === 'string' && value.length <= PRESENCE_TEXT_MAX) metadata[key] = value
+  }
+  metadata.userName = profile.userName
+  if (profile.avatarUrl) metadata.avatarUrl = profile.avatarUrl
+  metadata.tenantId = scope.tenantId
+  return { presenceId: scope.userId, status: raw.status, permissions: expected, metadata }
 }
 
 /** Die `connected`-Nachricht für unten: keine Konto-Daten, nur „angemeldet". */

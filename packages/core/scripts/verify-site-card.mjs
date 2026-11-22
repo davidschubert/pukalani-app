@@ -35,7 +35,8 @@
  *      eine Benachrichtigung der eigenen Community kommt durch, die der
  *      anderen nicht; ein nicht erlaubter Kanal bekommt nichts; Sitzung
  *      gelöscht (Widerruf) ⇒ Konto-Ereignis ohne Inhalt, Fehler 401, zu.
- *   5. Domain abgeschaltet (`paused`) ⇒ die Karte der Domain ist wertlos.
+ *   5. Domain abgeschaltet (`paused`) ⇒ die Karte der Domain ist wertlos,
+ *      und eine OFFENE Live-Verbindung schließt die Nachprüfung (4403).
  *
  * VIER REGELN: die Zeile von B wird im `finally` auf den VORGEFUNDENEN Wert
  * zurückgestellt; Konten und Mitglieds-Zeilen räumt `createCleanup` und zählt
@@ -314,9 +315,17 @@ try {
 
   // ── 5. Domain abgeschaltet ⇒ Karte wertlos ───────────────────────────────
   console.log('\n5. Domain abgeschaltet')
+  const openLive = await openProbeSocket({ port: PORT, host: DOMAIN, path: `/api/live/realtime?project=${encodeURIComponent(poolProject)}`, origin: `http://${DOMAIN}`, cookie: cardDomain })
+  check('vor dem Abschalten: Live-Verbindung offen (101)', openLive.status === 101, `Status ${openLive.status}`)
   await control.updateRow(databaseId, 'communities', COMMUNITY_B, { customDomainStatus: 'paused' })
   console.log(`  … ${RESOLVER_SETTLE_MS / 1000} s Resolver-Zwischenspeicher abwarten`)
   await sleep(RESOLVER_SETTLE_MS)
+  if (openLive.status === 101) {
+    // Die Nachprüfung läuft je Minute; dazu der Zwischenspeicher des Resolvers.
+    const closedBy = await Promise.race([openLive.closed, sleep(75_000).then(() => null)])
+    check('die offene Live-Verbindung wird geschlossen (Nachprüfung, 4403)', closedBy?.code === 4403, closedBy ? `Code ${closedBy.code}` : 'nach 75 s noch offen')
+    if (!closedBy) openLive.close()
+  }
   const meAfterPause = await call(DOMAIN, '/api/auth/me', { cookie: cardDomain })
   check('die Karte der Domain ist wertlos (kein Konto mehr dahinter)', meAfterPause.status !== 200 && meAfterPause.json?.email !== person.email,
     `Status ${meAfterPause.status}`)
