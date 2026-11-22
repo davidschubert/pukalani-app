@@ -30,6 +30,91 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Bahn 7 — Farbwelten ganz optimieren: Hauptfarbe, Gelb, Blau und Fokus-Rahmen erreichen als Schrift 4,5 zu 1 (Rest von UX-002) ✅ 2026-11-22
+
+**Was.** Nach Q07 waren als Schrift noch zu blass: die Hauptfarbe jeder
+Farbwelt (Links, Text in der Hauptfarbe, Weiß auf dem Knopf), Gelb und Blau
+und der Fokus-Rahmen (25 Prozent Deckkraft). Davids Entscheidung 2026-11-21:
+„alle ganz optimieren", Gelb und Blau abdunkeln, Fotos vor dem
+Zusammenführen (Ja am 2026-11-22).
+
+- **Generator (`packages/themes`).** `--ui-primary` jeder Stellung (26
+  Farbwelten, Basis und alle Varianten) rückt in der Helligkeit nur so weit,
+  bis die Farbe als Schrift auf Seite, gedämpfter und erhöhter Fläche ALLER
+  neun Paletten und auf ihrer 10-Prozent-Fläche besteht; Farbton und
+  Sättigung bleiben. Gate `auditPrimaryTokens` bricht sonst ab.
+- **Je Farbwelt entschieden (Katalog-Feld `keepFill`).** Gelb und Orange
+  (sunset, citrus, honey, meadow) würden beim Abdunkeln braun. Dort bleibt die
+  Fläche (Knopf, Etikett, Häkchen, Schalter) und bekommt dunkle Schrift (die
+  950er der Farbwelt); nur Links und Text in der Hauptfarbe werden dunkler.
+  Umgesetzt über einen Flächen-Block mit `PRIMARY_FILL_SELECTOR` (die
+  Nuxt-UI-Klassen der vollen Fläche). Alle anderen Welten rücken als Ganzes,
+  Grün bleibt Grün, Blau bleibt Blau.
+- **Custom Themes.** Die Farbe des Owners bleibt als Fläche exakt; Schrift
+  darauf (Weiß oder dunkel) und als Link werden gewählt. Die Paletten kommen
+  zur Laufzeit aus dem erzeugten `shared/neutralPalettes.gen.ts`.
+- **contrast.css.** Gelb `#f0b100` → `#7f6000`, Blau `#2b7fff` →
+  `#045cd8` (dieselbe Regel wie Rot und Grün); Fokus-Rahmen aller Farben
+  voll deckend.
+- **Hilfe.** Code-Beispiele mit den Hochkontrast-Themen von Shiki (im Paket
+  enthalten), Gelb/Blau der Hinweis-Kästen (`help.css`).
+
+**Vorher / nachher je Farbwelt** (Basis; hell: Fläche / Knopf-Schrift /
+Schrift auf der schwierigsten Fläche über alle Paletten; dunkel: Schrift):
+
+| Farbwelt | Weg | hell vorher: Fläche / Knopf-Schrift / Schrift min | hell nachher | dunkel vorher → nachher (Schrift min) |
+| --- | --- | --- | --- | --- |
+| crimson | dunkler | #d00041 / Weiß 5,6 / 4,2 | #c4003d / Weiß 6,2 / Schrift #c4003d 4,6 | #ff6878 4,4 → #ff6f7d 4,6 |
+| coral | dunkler | #c8391d / Weiß 5,2 / 4,0 | #bc2c0e / Weiß 6,0 / Schrift #bc2c0e 4,6 | #ff7559 4,7 (bleibt) |
+| sunset | Fläche bleibt, Schrift dunkel | #c75e00 / Weiß 4,2 / 3,3 | #c75e00 / dunkel 4,7 / Schrift #a24b00 4,6 | #ff934f 5,4 (bleibt) |
+| citrus | Fläche bleibt, Schrift dunkel | #c27c00 / Weiß 3,4 / 2,7 | #c17b00 / dunkel 5,6 / Schrift #8d5900 4,6 | #ffad3e 6,2 (bleibt) |
+| honey | Fläche bleibt, Schrift dunkel | #a78400 / Weiß 3,5 / 2,8 | #a78400 / dunkel 5,5 / Schrift #7c6100 4,6 | #e1b631 6,0 (bleibt) |
+| meadow | Fläche bleibt, Schrift dunkel | #848800 / Weiß 3,8 / 3,1 | #848800 / dunkel 5,1 / Schrift #656800 4,6 | #b7bd32 5,7 (bleibt) |
+| spring | dunkler | #529000 / Weiß 3,9 / 3,1 | #3f7100 / Weiß 5,9 / Schrift #3f7100 4,6 | #7cc732 5,6 (bleibt) |
+| forest | dunkler | #23a461 / Weiß 3,2 / 2,6 | #00743f / Weiß 5,9 / Schrift #00743f 4,6 | #65da93 6,5 (bleibt) |
+| jade | dunkler | #008d70 / Weiß 4,2 / 3,3 | #007159 / Weiß 6,0 / Schrift #007159 4,6 | #39c4a1 5,5 (bleibt) |
+| lagoon | dunkler | #009088 / Weiß 3,9 / 3,1 | #00706a / Weiß 6,0 / Schrift #00706a 4,6 | #39c7bd 5,7 (bleibt) |
+| reef | dunkler | #008892 / Weiß 4,3 / 3,4 | #006f78 / Weiß 5,9 / Schrift #006f78 4,6 | #38becb 5,3 (bleibt) |
+| arctic | dunkler | #008ba9 / Weiß 4,0 / 3,2 | #006d85 / Weiß 6,0 / Schrift #006d85 4,6 | #38c1e5 5,6 (bleibt) |
+| azure | dunkler | #007baa / Weiß 4,8 / 3,7 | #006b95 / Weiß 5,9 / Schrift #006b95 4,6 | #37afe9 4,9 (bleibt) |
+| denim | unverändert | #0063ac / Weiß 6,2 / 4,8 | #0063ac / Weiß 6,2 / Schrift #0063ac 4,8 | #3496ee 4,0 → #43a3fc 4,6 |
+| ocean | dunkler | #0f62cb / Weiß 5,8 / 4,5 | #0c60c9 / Weiß 5,9 / Schrift #0c60c9 4,6 | #4f97ff 4,2 → #5fa0ff 4,6 |
+| midnight | unverändert | #4c43dc / Weiß 6,7 / 5,1 | #4c43dc / Weiß 6,7 / Schrift #4c43dc 5,1 | #7a83ff 3,9 → #8c97ff 4,6 |
+| amethyst | unverändert | #703dd1 / Weiß 6,4 / 4,9 | #703dd1 / Weiß 6,4 / Schrift #703dd1 4,9 | #9e7aff 3,9 → #a98dff 4,6 |
+| orchid | dunkler | #9034cc / Weiß 5,9 / 4,5 | #8f33cb / Weiß 6,0 / Schrift #8f33cb 4,6 | #c272ff 4,2 → #c67eff 4,6 |
+| berry | dunkler | #b700cd / Weiß 5,4 / 4,0 | #a900be / Weiß 6,1 / Schrift #a900be 4,6 | #ea63ff 4,5 → #ea65ff 4,6 |
+| blossom | dunkler | #c1159f / Weiß 5,4 / 4,1 | #b60095 / Weiß 6,1 / Schrift #b60095 4,6 | #fc5bd4 4,5 → #fe5dd6 4,6 |
+| flamingo | dunkler | #c61877 / Weiß 5,5 / 4,2 | #be0671 / Weiß 6,1 / Schrift #be0671 4,6 | #ff5fa9 4,4 → #ff67ac 4,6 |
+| graphite | unverändert | #5a5a63 / Weiß 6,8 / 5,3 | #5a5a63 / Weiß 6,8 / Schrift #5a5a63 5,3 | #8a8a94 3,6 → #9f9fa9 4,6 |
+| espresso | unverändert | #5c3c25 / Weiß 9,9 / 7,5 | #5c3c25 / Weiß 9,9 / Schrift #5c3c25 7,5 | #8e6a52 2,7 → #be987f 4,6 |
+| sage | dunkler | #517458 / Weiß 5,3 / 4,2 | #4a6d51 / Weiß 5,8 / Schrift #4a6d51 4,6 | #82a688 4,5 → #85a98b 4,6 |
+| plum | unverändert | #603a68 / Weiß 9,1 / 6,9 | #603a68 / Weiß 9,1 / Schrift #603a68 6,9 | #91699a 2,9 → #bb91c4 4,6 |
+| steel | unverändert | #435f7d / Weiß 6,6 / 5,1 | #435f7d / Weiß 6,6 / Schrift #435f7d 5,1 | #7290b0 3,8 → #84a2c3 4,6 |
+
+**Beweis.** Eigenes Messskript im Browser (Kontrast jeder sichtbaren Schrift
+gegen ihren tatsächlichen Hintergrund), lokal: Visual-Seite in 27 Farbwelten
+hell und dunkel vorher 3 bis 10 Meldungen je Welt (hell) und 2 bis 7
+(dunkel: graphite, espresso, plum) → 0; Anmelde-Seite in 9 Welten 2 → 0;
+Hilfe auf 4 Seiten 3/1/1 → 0. Wächter
+`packages/themes/tests/primaryContrast.test.ts` (jede Stellung, Farbton
+bleibt, Gegenproben: alte 600er Stufe und ein von Hand aufgehellter Wert
+fallen durch, Custom Themes über alle Farbtöne),
+`apps/help/tests/helpContrast.test.ts`. Fotos vorher/nachher im
+Notiz-Ordner der Sessiongruppe (`bahn7-fotos`).
+
+**Nicht geprüft.** Dashboard im Browser (rechnerisch, dieselben Bausteine);
+Hover-Zustand der Knöpfe; `secondary` (kaum benutzt) und die Marketing-Site.
+
+**Gelernt:** `--ui-primary` ist bei Nuxt UI Schrift UND Fläche zugleich —
+wer nur eine Farbe rückt, macht Gelb braun. Die Trennung gelingt ohne
+Komponenten-Umbau über einen Block, der GENAU die Flächen-Klassen
+(`[class~='bg-primary']`, ganzes Wort) trifft und dort Fläche und Schrift
+neu setzt; der helle Block braucht `:not(.dark)`, weil `:root[data-theme]`
+auch im Dunkeln gilt. Und: in zsh ist `"$t:light"` der Modifier `:l` —
+die ersten Fotos zeigten alle dieselbe Farbwelt.
+
+---
+
 ### Q24 Nachtrag — Fußzeile „Auch von uns" mit Davids Wortlaut (Bahn 7, Paket 2) ✅ 2026-11-22
 
 **Was.** Die Zeile, mit der die drei Sites aufeinander zeigen, trägt jetzt

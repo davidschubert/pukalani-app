@@ -70,6 +70,25 @@ describe('Schriftfarben der Hilfe', () => {
     expect(contrast(hexVar(dark, '--ui-text-dimmed'), surface)).toBeGreaterThanOrEqual(4.5)
   })
 
+  // Gelb und Blau der Hinweis-Kästen (Bahn 7): dieselben Werte wie der Pool
+  const themesContrast = readFileSync(join(here, '../../../packages/themes/public/themes/contrast.css'), 'utf8')
+  const poolValue = (scope: ':root' | '.dark', name: string) =>
+    new RegExp(`^\\${scope} \\{[^}]*${name}: (#[0-9a-f]{6});`, 'm').exec(themesContrast)![1]
+
+  it.each(['--ui-warning', '--ui-info'])('%s: dieselben Werte wie contrast.css, als Schrift 4,5 zu 1 auf jeder Fläche', (name) => {
+    expect(hexVar(light, name)).toBe(poolValue(':root', name))
+    expect(hexVar(dark, name)).toBe(poolValue('.dark', name))
+    for (const surface of LIGHT_SURFACES) expect(contrast(hexVar(light, name), surface)).toBeGreaterThanOrEqual(4.5)
+    for (const surface of DARK_SURFACES) expect(contrast(hexVar(dark, name), surface)).toBeGreaterThanOrEqual(4.5)
+    // Die Hinweis-Kästen nehmen im Hellen die 600er Stufe — dieselbe Farbe
+    expect(hexVar(light, name.replace('--ui-', '--ui-color-') + '-600')).toBe(poolValue(':root', name))
+  })
+
+  it('Code-Farben: die Hochkontrast-Themen von Shiki sind gesetzt (die Vorgabe material-theme-lighter, 2,2 zu 1, hängt sonst als `light` mit dran)', () => {
+    const config = readFileSync(join(here, '..', 'nuxt.config.ts'), 'utf8')
+    expect(config).toContain(`theme: { default: 'github-light-high-contrast', light: 'github-light-high-contrast', dark: 'github-dark-high-contrast' }`)
+  })
+
   it('der dunkle Block setzt text-muted zurück (sonst gälte der helle Wert auch im Dunkeln)', () => {
     expect(dark).toMatch(/--ui-text-muted:\s*var\(--ui-color-neutral-400\)/)
   })

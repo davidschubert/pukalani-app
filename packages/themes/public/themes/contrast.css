@@ -1,16 +1,48 @@
 /* Pukalani Schrift-Kontrast — GENERIERT von scripts/generate-themes.ts, nicht von Hand editieren.
-   Die zwei blassen Textfarben je neutraler Palette und die zwei Statusfarben: Farbton wie
+   Die zwei blassen Textfarben je neutraler Palette, die vier Statusfarben und die Fokus-Rahmen: Farbton wie
    in neutral.css bzw. Tailwind, Helligkeit so weit verschoben, dass sie als Schrift
    4,5 zu 1 erreichen (Logik + Gate: shared/textContrast.ts). Immer geladen. */
 
 :root {
   --ui-error: #c6001d;
   --ui-success: #007432;
+  --ui-warning: #7f6000;
+  --ui-info: #045cd8;
 }
 
 .dark {
   --ui-error: #ff7071;
   --ui-success: #05df72;
+  --ui-warning: #f7c900;
+  --ui-info: #56a2ff;
+}
+
+.outline-primary\/25:focus-visible {
+  outline-color: var(--ui-primary-focus, var(--ui-primary));
+}
+
+.outline-secondary\/25:focus-visible {
+  outline-color: var(--ui-secondary);
+}
+
+.outline-success\/25:focus-visible {
+  outline-color: var(--ui-success);
+}
+
+.outline-info\/25:focus-visible {
+  outline-color: var(--ui-info);
+}
+
+.outline-warning\/25:focus-visible {
+  outline-color: var(--ui-warning);
+}
+
+.outline-error\/25:focus-visible {
+  outline-color: var(--ui-error);
+}
+
+.outline-inverted\/25:focus-visible {
+  outline-color: var(--ui-text-highlighted);
 }
 
 :root[data-neutral='neutral'] {

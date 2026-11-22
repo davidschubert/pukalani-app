@@ -120,7 +120,7 @@ describe('getönte Palette eines Custom Themes', () => {
 
   it('ohne getönte Palette bleibt das CSS eines Custom Themes frei von Textfarben', () => {
     const css = customThemeCss({ id: 'abc123', name: 'T', primary: '#2f7fee', order: 0, config: {} })
-    expect(css).not.toContain('--ui-text-')
+    expect(css).not.toMatch(/--ui-text-(dimmed|muted)/)
   })
 })
 
@@ -156,7 +156,8 @@ describe('contrast.css (ausgeliefert)', () => {
   })
 
   it('nennt zu jedem hellen Block sein dunkles Gegenstück (unlayered :root schlüge sonst .dark)', () => {
-    expect(CONTRAST_CSS).toMatch(/^:root \{\n {2}--ui-error: #[0-9a-f]{6};\n {2}--ui-success: #[0-9a-f]{6};\n\}\n\n\.dark \{\n {2}--ui-error: #[0-9a-f]{6};\n {2}--ui-success: #[0-9a-f]{6};\n\}$/m)
+    const status = '\\n {2}--ui-error: #[0-9a-f]{6};\\n {2}--ui-success: #[0-9a-f]{6};\\n {2}--ui-warning: #[0-9a-f]{6};\\n {2}--ui-info: #[0-9a-f]{6};\\n'
+    expect(CONTRAST_CSS).toMatch(new RegExp(`^:root \\{${status}\\}\\n\\n\\.dark \\{${status}\\}$`, 'm'))
     for (const name of Object.keys(PALETTES)) {
       const light = CONTRAST_CSS.indexOf(`:root[data-neutral='${name}'] {`)
       const dark = CONTRAST_CSS.indexOf(`.dark[data-neutral='${name}'] {`)

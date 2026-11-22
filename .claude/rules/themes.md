@@ -39,7 +39,17 @@ paths:
   merkt es). Die Datei ist unlayered: JEDER helle Block nennt sein dunkles
   Gegenstück, sonst schlüge `:root` auch `.dark`. Die getönte Palette eines
   Custom Themes bekommt dieselbe Rechnung zur Laufzeit (`customThemeCss`).
-  NICHT im Gate: `--ui-primary` als Schrift (3 zu 1, Bauteil-Farbe), Gelb, Blau.
+  Gelb und Blau (`--ui-warning`/`--ui-info`) laufen wie Rot und Grün; dazu die
+  Fokus-Rahmen in voller Deckkraft (Nuxt UI: 25 Prozent).
+- HAUPTFARBE ALS SCHRIFT (Bahn 7): `--ui-primary` jeder Farbwelt erreicht als
+  Schrift 4,5 zu 1 auf den Flächen ALLER neun Paletten (`primaryTokens`,
+  Gate `auditPrimaryTokens`, Wächter `themes/tests/primaryContrast.test.ts`).
+  Katalog-Feld `keepFill: true` (Gelb/Orange): die FLÄCHE bleibt, die Schrift
+  darauf wird dunkel, nur `--ui-primary` als Schrift rückt — über einen
+  Flächen-Block mit `PRIMARY_FILL_SELECTOR` (Nuxt-UI-Klassen, beim
+  Nuxt-UI-Update gegen `.nuxt/ui/*.ts` halten). Custom Themes: die Farbe des
+  Owners bleibt als Fläche EXAKT, nur die Schrift wird gewählt; Paletten zur
+  Laufzeit aus `themes/shared/neutralPalettes.gen.ts` (erzeugt, `--check`).
   Apps OHNE themes-Layer (help, marketing) sehen die Datei nicht — die Hilfe hat
   eigene Werte in `apps/help/app/assets/css/help.css`.
 - CUSTOMIZE THEME: `/dashboard/themes` (Galerie), Editor als Vollseite (`/new`,

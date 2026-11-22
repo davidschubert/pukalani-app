@@ -1,6 +1,18 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
-import { generateTheme, buildRegistryModule, specColorToHex, type ThemeSpec } from '../shared/themeGen'
+import { generateTheme as generateThemeWith, buildRegistryModule, parseNeutralPalettes, specColorToHex, type ThemeSpec } from '../shared/themeGen'
 import { SHADES, contrastRatio } from '../shared/ramp'
+
+const PALETTES = parseNeutralPalettes(readFileSync(resolve(__dirname, '..', 'public', 'themes', 'neutral.css'), 'utf8'))
+const generateTheme = (spec: ThemeSpec) => generateThemeWith(spec, PALETTES)
+
+/** Der Wert von `--ui-primary` im hellen Block, aufgelöst zur Hex-Farbe. */
+function lightPrimaryHex(css: string): string {
+  const value = /:root\[data-theme='[^']+'\] \{[^}]*--ui-primary: ([^;]+);/.exec(css)![1]!
+  const shade = /var\(--ui-color-primary-(\d+)\)/.exec(value)
+  return shade ? new RegExp(`--ui-color-primary-${shade[1]}: (#[0-9a-f]{6});`).exec(css)![1]! : value
+}
 
 const OCEAN: ThemeSpec = {
   id: 'ocean',
@@ -39,21 +51,16 @@ describe('generateTheme', () => {
     expect(generateTheme(OCEAN)).toEqual(generateTheme(OCEAN))
   })
 
-  it('Kontrast-Gate: gewählte --ui-primary-Stufen bestehen ≥ 3:1 gegen den Seitengrund', () => {
-    const theme = generateTheme(OCEAN)
-    const light = /--ui-primary: var\(--ui-color-primary-(\d+)\);/.exec(theme.css)!
-    const lightHex = new RegExp(`--ui-color-primary-${light[1]}: (#[0-9a-f]{6});`).exec(theme.css)![1]!
-    expect(contrastRatio(lightHex, '#ffffff')!).toBeGreaterThanOrEqual(3)
+  it('Kontrast-Gate: --ui-primary besteht als Schrift ≥ 4,5:1 auf weißem Grund', () => {
+    expect(contrastRatio(lightPrimaryHex(generateTheme(OCEAN).css), '#ffffff')!).toBeGreaterThanOrEqual(4.5)
   })
 
   it('Kontrast-Gate-Invariante hält auch für extreme Basisfarben', () => {
     // Die perceived-Ramp ankert Helligkeiten so, dass 600/400 meist reichen —
-    // entscheidend ist die INVARIANTE (nie <3:1), nicht ob verschoben wurde.
+    // entscheidend ist die INVARIANTE (als Schrift nie <4,5:1), nicht ob verschoben wurde.
     for (const base of ['#ffe66d', '#fef9e7', '#0b0b10', '#ff00ff']) {
       const theme = generateTheme({ id: 'extreme', name: 'X', base, variants: [] })
-      const light = /--ui-primary: var\(--ui-color-primary-(\d+)\);/.exec(theme.css)!
-      const lightHex = new RegExp(`--ui-color-primary-${light[1]}: (#[0-9a-f]{6});`).exec(theme.css)![1]!
-      expect(contrastRatio(lightHex, '#ffffff')!).toBeGreaterThanOrEqual(3)
+      expect(contrastRatio(lightPrimaryHex(theme.css), '#ffffff')!).toBeGreaterThanOrEqual(4.5)
     }
   })
 
