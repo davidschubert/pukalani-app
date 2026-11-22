@@ -70,6 +70,9 @@ Production im Log lesen, Davids Ja dazu, Zeile `apply` in
 den Lauf neu an, aber der erste Takt kommt erst nach einem sauberen Neustart
 — für den lokalen Beweis eines Zeit-Laufs den Server neu starten, nicht auf
 das Neuladen warten.
+
+---
+
 ### BT1 (e) — Übersicht und Statistik einer Pool-Community: über den Not-Zugang nur der Betreiber ✅ 2026-11-22
 
 **Was.** Davids Antwort vom 2026-11-21 auf die offene Frage aus N14: „Nur ich
@@ -100,6 +103,9 @@ ist zu; Community-Moderator (Rolle) und Betreiber 200/200/200.
 **Gelernt:** Eine Wache, die HINTER der Core-Wache ablehnt, sieht der
 Prüfstand als „Wache passiert" — der Test braucht dafür eine eigene,
 ausdrückliche Liste statt eines aufgeweichten `denied`.
+
+---
+
 ### SU1 (a) — Hauptsprache der Demo-Community: bleibt englisch; Runbooks nennen die Migrations-Env `admin.env` ✅ 2026-11-22
 
 **Was.** (a) Davids Antwort vom 2026-11-21: „Sie bleibt englisch". Die
