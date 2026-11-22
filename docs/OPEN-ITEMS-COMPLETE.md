@@ -62,8 +62,17 @@ Rückfall auf Impressum und Datenschutz (Merkmal
 **Beweis.** Wächter grün; `pnpm --filter @pukalani/brand test` (mit dem
 Rauch-Test der Werkstatt) und `pnpm --filter @pukalani/core test`;
 Typecheck `branding` und `portfolio`; `pnpm check`. Der Quelltext-Test des
-Brand-Check-Ergebnisses prüft jetzt auch den 503-Zweig. Die Klick-Probe im
-Browser macht die aufrufende Sitzung.
+Brand-Check-Ergebnisses prüft jetzt auch den 503-Zweig. Im Browser geprüft (lokal, Dev-Server
+aus dem Worktree, Abruf im Browser mit einer gestellten 500 gesperrt, dann
+wieder frei): Fußzeile des Studios (normal die Seiten aus dem CMS, gesperrt
+der Rückfall mit `data-footer-legal-fallback`), Discover-Teaser der
+branding-Startseite (normal Kacheln, gesperrt Fehlerzeile mit „Noch einmal
+versuchen", leer kein Abschnitt), Einladungsseite (normal „ungültig" für einen
+erfundenen Code, gesperrt die Fehlerzeile statt „ungültig") und
+Brand-Check-Ergebnis (unbekannte Kennung 404 „gibt es nicht", gesperrt die
+Fehlerkarte). Keine Hydration-Warnung. Nicht gesehen: ein echtes
+Check-Ergebnis (lokal keine Kennung ohne Anmeldung) und die 503 beim
+vollen Seitenaufbau (die Sperre greift nur im Browser).
 
 **Gelernt:** Ein Quelltext-Test, der „nur dieser Status" festschreibt
 (`brandCheckResultStatus.test.ts`), wird beim ehrlichen Ausfall-Zweig rot —
