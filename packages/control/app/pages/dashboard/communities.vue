@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui'
 import { nameToSubdomain, OPERATOR_APEX } from '../../../schemas/tenant'
-import type { TenantMode, TenantPlan, TenantStatus, TenantWave } from '../../../shared/types/tenantRecord'
+import { QUOTA_KINDS, type TenantMode, type TenantPlan, type TenantStatus, type TenantWave } from '../../../shared/types/tenantRecord'
 import type { CommunitySuspension } from '../../../../core/shared/communitySuspension'
 import type { CustomDomainApprovalResponse, CustomDomainStatus } from '../../../shared/customDomain'
 import type { CustomDomainSweepItem, CustomDomainSweepMode, CustomDomainSweepRouteResponse } from '../../../shared/customDomainSweep'
 import { planLabelKey } from '../../utils/planLabels'
+import { planLimitKinds, planLimitsEditFrom, planLimitsPatch, type PlanLimitsEdit } from '../../utils/planLimitsForm'
 
 definePageMeta({ layout: 'dashboard', middleware: ['auth', 'admin'], requiredCapability: 'sites.manage' })
 
@@ -345,26 +346,32 @@ const plansFailed = computed(() => {
   if (!plansError.value) return false
   return isFetchOutage(plansError.value)
 })
-const planEdits = reactive<Record<string, { perDay: number, total: number }>>({})
+// Je Plan und Art: Zahl aus dem Katalog oder `null` = „Vorgabe" (KK1 c,
+// Regel pur in app/utils/planLimitsForm.ts). Gespeichert werden nur die
+// geänderten Arten; die Route führt zusammen.
+const planEdits = reactive<Record<string, PlanLimitsEdit>>({})
 watch(() => plansData.value?.plans, (plans) => {
-  for (const plan of plans ?? []) {
-    planEdits[plan.key] = {
-      perDay: plan.limits.comments?.perDay ?? 0,
-      total: plan.limits.comments?.total ?? 0,
-    }
-  }
+  for (const plan of plans ?? []) planEdits[plan.key] = planLimitsEditFrom(plan.limits)
 }, { immediate: true })
 const planSaving = ref<string | null>(null)
 
-async function savePlanLimits(key: string) {
-  const edit = planEdits[key]
+/** Name einer Art im Kasten: bekannte übersetzt, eine fremde Art roh. */
+function kindLabel(kind: string): string {
+  return (QUOTA_KINDS as readonly string[]).includes(kind) ? t(`control.plans.kind.${kind}`) : kind
+}
+function planDirty(plan: PlanLimitsDto): boolean {
+  const edit = planEdits[plan.key]
+  return edit ? Object.keys(planLimitsPatch(plan.limits, edit)).length > 0 : false
+}
+
+async function savePlanLimits(plan: PlanLimitsDto) {
+  const edit = planEdits[plan.key]
   if (!edit) return
-  planSaving.value = key
+  const body = planLimitsPatch(plan.limits, edit)
+  if (Object.keys(body).length === 0) return
+  planSaving.value = plan.key
   try {
-    await $fetch(`/api/control/plans/${key}`, {
-      method: 'PATCH',
-      body: { comments: { perDay: edit.perDay, total: edit.total } },
-    })
+    await $fetch(`/api/control/plans/${plan.key}`, { method: 'PATCH', body })
     toast.add({ title: t('control.plans.saved'), color: 'success' })
     await refreshPlans()
   }
@@ -574,23 +581,66 @@ function rowActions(tenant: TenantDto): DropdownMenuItem[][] {
         <p class="mt-1 text-sm text-muted">{{ t('control.plans.subtitle') }}</p>
         <CoreInlineLoadError v-if="plansFailed" class="mt-4" :retry="refreshPlans" data-plan-limits-error />
         <div v-else class="mt-4 space-y-3">
-          <div v-for="plan in plansData?.plans ?? []" :key="plan.key" class="flex flex-wrap items-end gap-3" :data-plan-row="plan.key">
-            <UBadge :color="plan.key === 'pro' ? 'primary' : plan.key === 'personal' ? 'info' : 'neutral'" variant="subtle" class="mb-1.5 w-36 justify-center" data-plan-label>
-              {{ planLabel(plan.key) }}
-            </UBadge>
-            <UFormField :label="t('control.plans.commentsPerDay')" size="sm">
-              <UInput v-model.number="planEdits[plan.key]!.perDay" type="number" min="0" size="sm" class="w-32" />
-            </UFormField>
-            <UFormField :label="t('control.plans.commentsTotal')" size="sm">
-              <UInput v-model.number="planEdits[plan.key]!.total" type="number" min="0" size="sm" class="w-32" />
-            </UFormField>
-            <UButton
-              size="sm"
-              variant="soft"
-              :loading="planSaving === plan.key"
-              :label="t('control.plans.save')"
-              @click="() => savePlanLimits(plan.key)"
-            />
+          <div v-for="plan in plansData?.plans ?? []" :key="plan.key" class="rounded-md border border-default p-3" :data-plan-row="plan.key">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <UBadge :color="plan.key === 'pro' ? 'primary' : plan.key === 'personal' ? 'info' : 'neutral'" variant="subtle" class="w-36 justify-center" data-plan-label>
+                {{ planLabel(plan.key) }}
+              </UBadge>
+              <UButton
+                size="sm"
+                variant="soft"
+                :disabled="!planDirty(plan)"
+                :loading="planSaving === plan.key"
+                :label="t('control.plans.save')"
+                data-plan-save
+                @click="() => savePlanLimits(plan)"
+              />
+            </div>
+            <div class="mt-3 space-y-2">
+              <div
+                v-for="kind in planLimitKinds(plan.limits)"
+                :key="kind"
+                class="flex flex-wrap items-end gap-3"
+                :data-plan-kind="kind"
+                :data-plan-source="planEdits[plan.key]?.[kind] ? 'catalog' : 'default'"
+              >
+                <span class="mb-1.5 w-28 text-sm font-medium">{{ kindLabel(kind) }}</span>
+                <template v-if="planEdits[plan.key]?.[kind]">
+                  <UFormField :label="t('control.plans.perDay')" size="sm">
+                    <UInput v-model.number="planEdits[plan.key]![kind]!.perDay" type="number" min="0" size="sm" class="w-32" />
+                  </UFormField>
+                  <UFormField :label="t('control.plans.total')" size="sm">
+                    <UInput v-model.number="planEdits[plan.key]![kind]!.total" type="number" min="0" size="sm" class="w-32" />
+                  </UFormField>
+                  <UBadge color="primary" variant="subtle" class="mb-1.5">
+                    {{ t('control.plans.fromCatalog') }}
+                  </UBadge>
+                  <UButton
+                    size="sm"
+                    variant="ghost"
+                    color="neutral"
+                    class="mb-0.5"
+                    :label="t('control.plans.resetToDefault')"
+                    data-plan-reset
+                    @click="() => { planEdits[plan.key]![kind] = null }"
+                  />
+                </template>
+                <template v-else>
+                  <UBadge color="neutral" variant="subtle" class="mb-1.5">
+                    {{ t('control.plans.fromDefault') }}
+                  </UBadge>
+                  <UButton
+                    size="sm"
+                    variant="ghost"
+                    color="neutral"
+                    class="mb-0.5"
+                    :label="t('control.plans.setOwn')"
+                    data-plan-set-own
+                    @click="() => { planEdits[plan.key]![kind] = { perDay: 0, total: 0 } }"
+                  />
+                </template>
+              </div>
+            </div>
           </div>
         </div>
         <p class="mt-3 text-xs text-dimmed">{{ t('control.plans.hint') }}</p>

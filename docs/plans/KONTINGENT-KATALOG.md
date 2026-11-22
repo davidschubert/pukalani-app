@@ -1,6 +1,6 @@
 # Kontingent-Zahlen im Katalog des Control Plane (KK1 c)
 
-> **Plan-Status (2026-11-22):** teils gebaut — offen: Felder je Art in der Betreiber-Oberfläche und die Zahlen in den drei Plan-Zeilen der echten Datenbank ([OPEN-ITEMS](../OPEN-ITEMS.md) „KK1“).
+> **Plan-Status (2026-11-22):** teils gebaut — offen: nur control-042 auf Production (Davids Ja; [OPEN-ITEMS](../OPEN-ITEMS.md) „KK1“). Gebaut nach Davids Antworten 6a „Jetzt bauen“, 6b Vorgabe bleibt in der Platform-App, 6c heutige Werte: Vorgabe bleibt in `apps/platform/app/app.config.ts` (die Migration lädt sie), Konsole je Art, Daten-Migration control-042 (COMPLETE „KK1 (c) — Kontingent-Zahlen“).
 
 Davids Antwort vom 2026-11-21: „Ja, in den Katalog". Gemeint sind die Zahlen
 des Seiten-Kontingents (und damit jede Art außer den Kommentaren), die heute
