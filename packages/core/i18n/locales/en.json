@@ -224,6 +224,11 @@
       "decline": "Decline"
     },
     "adminArea": "Dashboard",
+    "customDomain": {
+      "manage": "Manage in your customer area",
+      "account": "Account and security",
+      "accountHint": "Settings, devices, export and deletion are in your customer area."
+    },
     "showMore": "Show more",
     "showLess": "Show less",
     "more": "More",

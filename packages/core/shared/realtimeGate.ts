@@ -28,6 +28,18 @@
  * `enabled !== false` statt `=== true`: fehlt der Schlüssel (Test ohne
  * App-Config, App mit `realtime: {}`), gilt der Core-Default.
  */
+/**
+ * TOKEN FÜR DIE LIVE-VERBINDUNG? (PK1 E1b-2) — nur mit Sitzung, und nicht auf
+ * der eigenen Domain einer Community im Modus `write`: dort antwortet
+ * `/api/auth/realtime-token` 404 (bis E1d, Plan § 13.3 Weg 3). Der Socket
+ * läuft dort als Gast weiter (öffentliche Kanäle), die Anwesenheit hält ihr
+ * 20-s-Herzschlag über unseren Server. Ohne diese Weiche fragte jede Seite
+ * und jeder 12-min-Takt vergeblich nach.
+ */
+export function realtimeTokenWanted(loggedIn: boolean, customDomainScope: boolean): boolean {
+  return loggedIn && !customDomainScope
+}
+
 export function realtimeAllowed(
   enabled: boolean | undefined,
   ...requiredIds: (string | undefined)[]

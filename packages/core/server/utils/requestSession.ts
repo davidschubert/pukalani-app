@@ -48,7 +48,11 @@ function resolve(event: H3Event, raw: string | undefined): RequestSession | null
     return claims ? { secret: claims.secret, format: 'card', claims } : null
   }
 
-  if (settings.mode === 'write' && isCustomDomainHost(host, tenant)) return null
+  // `write`: Klartext gilt nur, wo der Host belegt UNSER ist — nicht auf einer
+  // eigenen Domain und nicht auf Pfaden ohne Mandanten-Auflösung (PK1 E1b-2,
+  // `event.context.hostUnproven` aus `00.tenant.ts`; sie brauchen keine
+  // Anmeldung).
+  if (settings.mode === 'write' && (event.context.hostUnproven === true || isCustomDomainHost(host, tenant))) return null
   return { secret: raw, format: 'plain' }
 }
 

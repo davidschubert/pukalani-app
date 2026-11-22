@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { accountMenuLinks } from '../../../shared/customDomainScope'
 
 const { t } = useI18n()
 const localePath = useLocalePath()
@@ -14,6 +15,19 @@ const canSiteDashboard = useCommunityCapability('dashboard.access')
  */
 const roleLabel = useRoleLabel()
 
+/**
+ * Eigene Domain im Modus `write` (PK1 E1b-2): „Verwalten" führt in den
+ * Kundenbereich, ein Hinweis zeigt, wo Konto und Sicherheit liegen — die
+ * Routen dafür antworten hier 404. Überall sonst wie vorher.
+ */
+const customDomainScope = useCustomDomainScope()
+const accountUrl = useAccountAreaUrl()
+const links = computed(() => accountMenuLinks({
+  scope: customDomainScope.value,
+  canDashboard: userHasCapability(auth.user, 'dashboard.access') || canSiteDashboard.value,
+  accountUrl,
+}))
+
 const items = computed<DropdownMenuItem[]>(() => [
   {
     label: auth.user?.name || t('ui.account'),
@@ -25,8 +39,20 @@ const items = computed<DropdownMenuItem[]>(() => [
   // Dashboard-Link für jeden mit dashboard.access — per Operator-Label (admin +
   // moderator) ODER Site-Rolle dieses Mandanten (N1);
   // die Route liefert der admin-Layer — Apps ohne ihn haben keine solchen User.
-  ...(userHasCapability(auth.user, 'dashboard.access') || canSiteDashboard.value
+  ...(links.value.manage?.kind === 'dashboard'
     ? [{ label: t('ui.adminArea'), icon: 'i-ph-gauge', to: localePath('/dashboard') } satisfies DropdownMenuItem]
+    : []),
+  ...(links.value.manage?.kind === 'external'
+    ? [{ label: t('ui.customDomain.manage'), icon: 'i-ph-gauge', to: links.value.manage.href, external: true } satisfies DropdownMenuItem]
+    : []),
+  ...(links.value.accountHref
+    ? [{
+        label: t('ui.customDomain.account'),
+        description: t('ui.customDomain.accountHint'),
+        icon: 'i-ph-user-gear',
+        to: links.value.accountHref,
+        external: true,
+      } satisfies DropdownMenuItem]
     : []),
   {
     label: t('auth.logout'),

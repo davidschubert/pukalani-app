@@ -84,6 +84,20 @@ declare module 'h3' {
      */
     controlCenter?: boolean
     /**
+     * Eigene Domain einer Community im Modus `write` (PK1 E1b-2) — gesetzt
+     * von server/middleware/01.custom-domain-scope.ts. Dort nur Mitmachen:
+     * Konto- und Verwaltungs-Routen antworten 404. Leser:
+     * tenant-brand.server.ts (Spiegel in den Client).
+     */
+    customDomainScope?: true
+    /**
+     * Die Anfrage kam ohne Mandanten-Auflösung durch (`/api/health`,
+     * `/_i18n/`, Symbole, Fehlerseiten-Durchgang) — gesetzt von
+     * server/middleware/00.tenant.ts. Im Modus `write` gilt dort kein
+     * Klartext-Cookie als Sitzung (PK1 E1b-2).
+     */
+    hostUnproven?: true
+    /**
      * Verlangte Zustimmungen, die dem eingeloggten Konto fehlen (SEC-007) —
      * gesetzt von server/middleware/07.consent-required.ts, NUR für
      * Seiten-SSR und nur, wenn etwas fehlt. Leser: consent-state.server.ts

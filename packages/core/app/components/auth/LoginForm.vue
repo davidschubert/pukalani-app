@@ -7,6 +7,19 @@ import type { LoginResponse } from '../../../shared/types/auth-responses'
 const { t } = useI18n()
 const pukalaniSpeaks = usePukalaniSpeaks()
 const { afterAuthTarget, authLinkTarget } = useAuthRedirect()
+const localePath = useLocalePath()
+/**
+ * Eigene Domain im Modus `write` (PK1 E1b-2): ein neues Passwort setzt man
+ * im Kundenbereich — die Routen dafür antworten hier 404. Überall sonst wie
+ * vorher. Ohne eingestellten Kundenbereich bleibt der alte Link.
+ */
+const customDomainScope = useCustomDomainScope()
+const accountUrl = useAccountAreaUrl()
+const forgotPasswordTarget = computed(() => (
+  customDomainScope.value && accountUrl
+    ? `${accountUrl}${localePath('/forgot-password')}`
+    : authLinkTarget('/forgot-password')
+))
 const appConfig = useAppConfig()
 const auth = useAuthStore()
 const toast = useToast()
@@ -136,7 +149,7 @@ function onMfaCancelled() {
              von der E-Mail auf ihn statt ins Passwortfeld. Zu sehen ist er
              weiter oben rechts neben der Beschriftung. -->
         <ULink
-          :to="authLinkTarget('/forgot-password')"
+          :to="forgotPasswordTarget"
           class="absolute top-0 end-0 text-sm text-muted hover:text-primary"
           data-login-forgot
         >
