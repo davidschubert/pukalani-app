@@ -157,8 +157,8 @@ den ersten zahlenden Kunden, also vor A2.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Wartet auf … |
 | --- | --- | --- | --- | --- | --- |
-| PK1 | **Pukalani-Konto: ein Konto für alle Seiten.** Gesamtkonzept entschieden (2026-11-12), nichts gebaut. Konzept der ersten Etappe (E1 mit Beweis E0) seit 2026-11-22; wartet auf sechs Entscheidungen. Daran hängt auch, ob gelöschte **Konten** zurückholbar werden (WH1). | Hoch | XL (5 Etappen) | Ja: Freigabe je Etappe | **das Ende des Gesamtaudits (GA1)** — [PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md), E1: [PUKALANI-KONTO-E1.md](plans/PUKALANI-KONTO-E1.md) |
-| VDB1 | **Semantische Suche mit Appwrite VectorsDB — geprüft 2026-11-06, lohnt jetzt nicht.** Self-hosted braucht es ein zweites Postgres und einen Embedding-Container, die eingebauten Modelle können nur Englisch. [Notiz](plans/offen/VDB1.md) | Niedrig | M | Ja: Strategie-Freigabe | ein mehrsprachiges Modell in Appwrite + eine Insights-Basis mit einigen hundert Einträgen |
+| PK1 | **Pukalani-Konto: ein Konto für alle Seiten.** Gesamtkonzept entschieden (2026-11-12), nichts gebaut. E1: Davids Entscheidungen K1–K6 da (2026-11-22), Beweis E0 gelaufen; wartet auf Davids Wahl des Live-Wegs unter Kundendomains (K4) und für Zwei-Faktor-Konten. Daran hängt auch, ob gelöschte **Konten** zurückholbar werden (WH1). | Hoch | XL (5 Etappen) | Ja: Freigabe je Etappe | **das Ende des Gesamtaudits (GA1)** — [PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md), E1: [PUKALANI-KONTO-E1.md](plans/PUKALANI-KONTO-E1.md) |
+| VDB1 | **Semantische Suche — neu geprüft 2026-11-22: jetzt nicht bauen.** Appwrite 2.7.4 kann weiter nur Englisch und bräuchte ein zweites Postgres; besser später ein Vektor als Spalte mit EU-Embeddings, das hält die Mandanten-Grenze von selbst. [Plan](plans/SEMANTISCHE-SUCHE.md) · [Notiz](plans/offen/VDB1.md) | Niedrig | M | Ja: Strategie-Freigabe (erster Schritt: eine Mess-Session) | Insights-Basis mit einigen hundert Einträgen oder Nachfrage der Kundschaft |
 
 Die bewusst zurückgestellten Punkte stehen am Ende des Anhangs.
 

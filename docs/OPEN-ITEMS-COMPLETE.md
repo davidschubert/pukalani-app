@@ -72,6 +72,27 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1 E0 — Beweis und Messung für die Eintrittskarte je Seite ✅ 2026-11-22
+
+**Was.** Erster Schritt der Etappe E1 ([Konzept § 13](plans/PUKALANI-KONTO-E1.md)),
+nichts am Anmeldeweg geändert. Lokal gegen Appwrite 2.7.4 (Wegwerf-Konto,
+gelöscht) und auf der Pool-Bühne (kunde-a/kunde-b, `down` zählte nichts
+übrig) gemessen: der Cookie-Wert gilt heute auf jedem Host, der Host-Wechsel
+kopiert das Geheimnis, Abmelden wirkt überall; eine Sitzung aus
+`users.createToken` besteht `account.get()`, trägt aber nur einen Faktor;
+`maxSessions = 0` heißt in 2.7.4 „ohne Grenze"; Zahl für K5: 50. Für Davids
+K4 („auch dort live lassen") drei Wege ausgearbeitet, Empfehlung Weg 3
+(Weiterleitung über unseren Server, eigener Schritt E1d).
+
+**Gelernt:** Realtime nimmt in 2.7.4 nur Cookie, JWT oder Sitzungs-Geheimnis —
+es gibt kein auf Kanäle oder „nur lesen" beschränktes Token; das steht nicht
+in der Doku, sondern nur im Quelltext des Containers
+(`app/init/realtime/connection.php`). Und `users.createJWT` ohne `sessionId`
+bindet an die NEUESTE Sitzung des Kontos, nicht an die der Anfrage — wer ein
+JWT an eine Sitzung binden will, gibt sie ausdrücklich mit.
+
+---
+
 ### KM1 c — Probe für ein günstigeres Textmodell gebaut und lokal gefahren ✅ 2026-11-22
 
 **Was.** Davids Klick 2026-11-19/21: „Ja, Probe vorbereiten". Neu ist
