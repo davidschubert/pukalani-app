@@ -9,9 +9,11 @@ import { throughDoor, type AdminExpectation, describeAdminRoute } from './suppor
  *
  *  - Pool: JEDE Rolle der Community erreicht die Startseite des Dashboards
  *    (Owner, Admin, Moderator, Editor, Mitglied), dazu der Betreiber über den
- *    protokollierten Not-Zugang. Auch die Instanz-Rolle `moderator` kommt über
- *    denselben Not-Zugang durch (ihr Instanz-Label trägt `dashboard.access`,
- *    `communityAccess.ts`). Ein Konto ohne Rolle und ohne Label nicht.
+ *    protokollierten Not-Zugang. Die Instanz-Rolle `moderator` NICHT (BT1 e,
+ *    Davids Entscheidung 2026-11-21: „Nur ich als Betreiber") — ihr
+ *    Instanz-Label trägt zwar `dashboard.access`, aber `requireOverviewAccess`
+ *    verlangt im Not-Zugang das Betreiber-Label. Ein Konto ohne Rolle und
+ *    ohne Label auch nicht.
  *  - Einzel-Instanz: nur die Instanz-Labels — Betreiber und Instanz-Moderator.
  *
  * WELCHE Zahlen jemand sieht, entscheidet hinter der Wache die Kachel
@@ -20,8 +22,8 @@ import { throughDoor, type AdminExpectation, describeAdminRoute } from './suppor
 
 const DASHBOARD: AdminExpectation = {
   pool: {
-    allow: ['owner', 'admin', 'moderator', 'editor', 'member', 'operator', 'instanzModerator'],
-    deny: ['konto'],
+    allow: ['owner', 'admin', 'moderator', 'editor', 'member', 'operator'],
+    deny: ['konto', 'instanzModerator'],
   },
   silo: {
     allow: ['instanzModerator', 'operator'],
@@ -29,8 +31,10 @@ const DASHBOARD: AdminExpectation = {
   },
 }
 
+const BEHIND_GATE = { poolDenyBehindGate: ['instanzModerator'] } as const
+
 describeAdminRoute('GET /api/admin/stats', () => import('../server/api/admin/stats.get'), DASHBOARD, {
   globals: { getEffectiveProducts: throughDoor },
-})
+}, BEHIND_GATE)
 
-describeAdminRoute('GET /api/admin/analytics', () => import('../server/api/admin/analytics.get'), DASHBOARD)
+describeAdminRoute('GET /api/admin/analytics', () => import('../server/api/admin/analytics.get'), DASHBOARD, {}, BEHIND_GATE)

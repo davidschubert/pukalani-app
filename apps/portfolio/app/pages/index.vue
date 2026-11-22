@@ -1,20 +1,26 @@
 <script setup lang="ts">
 import { CASES } from '../data/cases'
-import { CONTACT } from '../data/contact'
+import { CONTACT, CTA_LABELS, CTA_NOTE } from '../data/contact'
 import {
   ABOUT_AI_NOTE,
   ABOUT_QUOTE,
   AUDIENCES,
   CASE_STUDIES,
+  COMPARISON,
+  COMPARISON_MARK_LABELS,
+  COMPARISON_ROWS,
   CONTACT_CHANNELS,
   FAQS,
+  FIT,
   GUIDES,
   HERO,
   HOME_META,
   KEY_FACTS,
   KNOWS_ABOUT,
+  PROBLEMS,
   PROCESS_STEPS,
   REMOTE_CARDS,
+  RESULTS_DISCLAIMER,
   SECTIONS,
   SERVICES,
   SERVICES_NOTE,
@@ -23,6 +29,7 @@ import {
   TIMELINE,
   TRUST_BADGES,
 } from '../data/home'
+import type { ComparisonMark, ComparisonRow } from '../data/home'
 import type { Lang } from '../data/localized'
 import {
   DACH_AREA_SERVED,
@@ -40,6 +47,10 @@ const localePath = useLocalePath()
 const { trackFunnel } = useFunnelEvent()
 
 const lang = computed<Lang>(() => (locale.value.startsWith('de') ? 'de' : 'en'))
+
+/** Spalten der Vergleichstabelle (W3) — Reihenfolge = Kopfzeile. */
+const COMPARISON_COLUMNS = ['studio', 'agency', 'freelancer', 'builder'] as const satisfies readonly (keyof ComparisonRow)[]
+const MARK_SYMBOLS: Record<ComparisonMark, string> = { yes: '✓', partly: '○', no: '✕', none: '—' }
 
 /**
  * Der Terminkanal zeigt seit W1 (2026-08-21) auf den Erstgespräch-Wizard und
@@ -237,8 +248,22 @@ usePortfolioSeo({
       </div>
     </section>
 
+    <!-- PROBLEM-SPIEGEL (W3): vor den Leistungen --------------------------- -->
+    <section id="kennen-sie-das" class="section section--soft section--line" aria-labelledby="kennen-sie-das-title">
+      <div class="container">
+        <h2 id="kennen-sie-das-title" class="section-title">{{ SECTIONS.problems.title[lang] }}</h2>
+        <p class="section-lead">{{ SECTIONS.problems.lead[lang] }}</p>
+        <ul class="grid-3 problems">
+          <li v-for="problem in PROBLEMS" :key="problem.quote.en" class="card">
+            <p class="problem__quote">{{ problem.quote[lang] }}</p>
+            <p class="card__text">{{ problem.text[lang] }}</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
     <!-- LEISTUNGEN & PREISE ---------------------------------------------- -->
-    <section id="leistungen" class="section section--soft section--line" aria-labelledby="leistungen-title">
+    <section id="leistungen" class="section section--line" aria-labelledby="leistungen-title">
       <div class="container">
         <h2 id="leistungen-title" class="section-title">{{ SECTIONS.services.title[lang] }}</h2>
         <p class="section-lead">{{ SECTIONS.services.lead[lang] }}</p>
@@ -266,6 +291,62 @@ usePortfolioSeo({
           </article>
         </div>
         <p class="section-note">{{ SERVICES_NOTE[lang] }}</p>
+      </div>
+    </section>
+
+    <!-- VERGLEICH + SELBST-SELEKTION (W3): hinter den Leistungen ------------ -->
+    <section id="passt-das" class="section section--soft section--line" aria-labelledby="passt-das-title">
+      <div class="container">
+        <h2 id="passt-das-title" class="section-title">{{ SECTIONS.fit.title[lang] }}</h2>
+        <p class="section-lead">{{ SECTIONS.fit.lead[lang] }}</p>
+        <div class="table-wrap">
+          <table class="data-table comparison">
+            <caption>{{ COMPARISON.caption[lang] }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{{ COMPARISON.columns.criterion[lang] }}</th>
+                <th v-for="column in COMPARISON_COLUMNS" :key="column" scope="col" :class="{ 'is-accent': column === 'studio' }">
+                  {{ COMPARISON.columns[column][lang] }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in COMPARISON_ROWS" :key="row.criterion.en">
+                <th scope="row">{{ row.criterion[lang] }}</th>
+                <td v-for="column in COMPARISON_COLUMNS" :key="column" :class="['comparison__mark', `comparison__mark--${row[column]}`]">
+                  <span aria-hidden="true">{{ MARK_SYMBOLS[row[column]] }}</span>
+                  <span class="visually-hidden">{{ COMPARISON_MARK_LABELS[row[column]][lang] }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="section-note" aria-hidden="true">{{ COMPARISON.legend[lang] }}</p>
+
+        <div class="grid-2 fit">
+          <div class="card fit__card fit__card--good">
+            <h3 class="card__title">{{ FIT.goodTitle[lang] }}</h3>
+            <ul class="ticks">
+              <li v-for="item in FIT.good[lang]" :key="item">{{ item }}</li>
+            </ul>
+          </div>
+          <div class="card fit__card fit__card--bad">
+            <h3 class="card__title">{{ FIT.badTitle[lang] }}</h3>
+            <ul class="ticks fit__crosses">
+              <li v-for="item in FIT.bad[lang]" :key="item">{{ item }}</li>
+            </ul>
+          </div>
+        </div>
+        <div class="fit__cta">
+          <NuxtLink
+            :to="localePath('/erstgespraech')"
+            class="btn btn--solid"
+            @click="trackFunnel('studio_cta_erstgespraech', { source: 'fit' })"
+          >
+            {{ CTA_LABELS.primary[lang] }} →
+          </NuxtLink>
+          <p class="section-note">{{ CTA_NOTE[lang] }}</p>
+        </div>
       </div>
     </section>
 
@@ -308,6 +389,7 @@ usePortfolioSeo({
             </ul>
           </article>
         </div>
+        <p class="note results-disclaimer">{{ RESULTS_DISCLAIMER[lang] }}</p>
 
         <!-- Eigene Produkte: dieselben Cases wie bisher, mit Detailseite. -->
         <h3 class="subheading own__heading">{{ SECTIONS.ownWork.title[lang] }}</h3>
@@ -807,6 +889,54 @@ usePortfolioSeo({
   font-weight: 700;
   color: var(--accent);
   overflow-wrap: anywhere;
+}
+
+/* W3: PROBLEM-SPIEGEL, VERGLEICH, PASST DAS? ---------------------------- */
+.problems {
+  padding: 0;
+}
+.problem__quote {
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 0.7rem;
+}
+.comparison th.is-accent {
+  color: var(--accent);
+}
+.comparison__mark {
+  /* Halt für die versteckte Beschriftung: ohne ihn hängt sie an der Seite
+     statt an der Zelle und schiebt das Dokument auf 375 px breiter. */
+  position: relative;
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+.comparison td.comparison__mark--yes {
+  color: var(--accent);
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ticks.fit__crosses li::before {
+  content: "✕";
+  color: var(--text-soft);
+}
+.fit__card .ticks {
+  margin-top: 1rem;
+}
+.fit__cta {
+  margin-top: clamp(1.6rem, 3vw, 2.2rem);
+}
+.fit__cta .section-note {
+  margin-top: 0.8rem;
+}
+.results-disclaimer {
+  margin-top: 1.4rem;
 }
 
 @media (max-width: 960px) {
