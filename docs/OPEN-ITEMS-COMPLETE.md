@@ -30,6 +30,50 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### IN1 (a) — Knopf „KI-Prüfung" in der Insights-Redaktion: berät, sperrt nichts, Lauf im Hintergrund ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21: „Ja, jetzt bauen". Im Editor eines
+Artikels liest der Knopf die AKTUELLE (auch ungespeicherte) Grundfassung und
+meldet in drei Arten, was unstimmig wirkt, was inhaltlich fehlt und was den
+Artikel für Leser und Suche besser machte. Er schreibt nichts in den Artikel
+und sperrt nichts; die festen Prüfregeln bleiben die Sperre.
+
+**Wie.** `POST /api/insights/posts/:id/review` (`insights.manage`): erst
+alles Kostenlose (Beitrag da, Fliesstext nicht leer ⇒ sonst 409
+`nothing_to_review`), dann die Lauf-Sperre in `insights_runs` (Art `review`,
+Gegenstand = Beitrag; belegt ⇒ 409 `review_running`, die Seite zeigt einen
+ruhigen Hinweis), dann Kill-Switch und eigenes Kontingent (`review`;
+Ablehnung ⇒ die Sperre fällt), `paid`-Vermerk vor dem bezahlten Schritt,
+`202` und `runDetached`. Nach dem Aufruf wird geklemmt (höchstens 12 Punkte,
+unbekannte Art fällt weg). `GET …/review` liefert den Lauf-Stand gegen die
+Server-Uhr und das Ergebnis. **Das Ergebnis liegt im Speicher des Prozesses**
+(Map je Lauf-Zeile, 60 min, Deckel 200): `insights_runs` hat keine
+Ergebnis-Spalte, und eine neue wäre eine Production-Migration gewesen; nach
+einem Neustart sagt die Seite ehrlich „Ergebnis nicht mehr da". Bremsen-Liste
+(`insights:ai`), Fristen-Buch (`detached`), Rollen-Tests beider Routen,
+Protokoll nur mit Kennungen und Zahlen.
+
+**Beweis.** `packages/insights/tests/insightsAiReviewRoutes.test.ts` (26
+Fälle, gestellte KI) mit zehn Gegenproben (Sperre, Rückgabe der Sperre bei
+Kontingent-Ablehnung, Kill-Switch, Klemme, Neustart, Ablage, `paid`,
+Protokoll ohne Text, Bremsen-Liste, Fristen-Buch — je rot). Lokal geklickt
+(Branding-App aus dem Worktree, Wegwerf-Betreiberkonto, gestellter
+OpenAI-kompatibler Server auf localhost): Knopf sperrt während des Laufs, ein
+zweiter Klick schickt keinen zweiten Start, nach dem gestellten Lauf stehen
+drei Funde nach Art, der vierte (unbekannte Art) ist weggeklemmt; genau EIN
+Aufruf am gestellten Server. Konto und vier Lauf-Zeilen danach gelöscht.
+
+**Nicht belegt:** ein Lauf mit echtem Modell (Prompt-Güte, Kosten je Klick) —
+auf Production wurde der Knopf nicht ausgelöst.
+
+**Gelernt:** In `apps/branding/app/app.config.ts` steht `pukalani.ai` als
+eigener Block weiter unten; ein zweiter `ai`-Schlüssel oben im selben Objekt
+wird still überschrieben. Eine lokale Probe mit gestelltem Server deshalb mit
+einem Schein-Schlüssel fahren — der erste Versuch ging an den echten
+Anbieter und scheiterte dort nur dank des Schein-Schlüssels (401, kostenlos).
+
+---
+
 ### SU1 (a) — Hauptsprache der Demo-Community: bleibt englisch; Runbooks nennen die Migrations-Env `admin.env` ✅ 2026-11-22
 
 **Was.** (a) Davids Antwort vom 2026-11-21: „Sie bleibt englisch". Die

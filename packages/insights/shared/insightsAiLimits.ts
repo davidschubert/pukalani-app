@@ -54,8 +54,13 @@ export const INSIGHTS_AI_DAY_WINDOW_MS = 24 * 60 * 60_000
  * kleinste Lauf — ein Satz je Sprache aus einem gedeckelten Unterschied. Er
  * bekommt trotzdem seinen EIGENEN Eimer: wer an einem Nachmittag zehn
  * Hinweise vorschlagen lässt, soll dadurch keine Übersetzung verlieren.
+ *
+ * `review` (KI-Prüfung eines Artikels, IN1 a, 2026-11-22) liest die ganze
+ * Fassung und meldet nur — etwa 1 bis 5 Cent je Klick. Eigener Eimer aus
+ * demselben Grund: wer einen Artikel fünfmal prüfen lässt, während er ihn
+ * überarbeitet, soll danach noch übersetzen und Hinweise vorschlagen können.
  */
-export type InsightsAiKind = 'translate' | 'draft' | 'brief' | 'changeNote'
+export type InsightsAiKind = 'translate' | 'draft' | 'brief' | 'changeNote' | 'review'
 
 /**
  * Der Stunden-Eimer EINES Kontos für EINE Art. `kind` vor `userId`, damit die

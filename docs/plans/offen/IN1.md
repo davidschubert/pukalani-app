@@ -10,14 +10,16 @@ Gebaut am 2026-11-17 (COMPLETE „N05"): Marken-Seiten laufen durch dieselbe
 Prüfung wie Artikel, die KI-Wege der Redaktion stehen in der Bremsen-Liste,
 der Kasten der Prüfregeln sagt an einem öffentlichen Artikel das Richtige.
 
-- **(a) KI-Prüfung als eigener Knopf.** Davids Wunsch vom 2026-11-12, am
-  2026-11-16 bewusst auf später gelegt. Der Knopf liest die aktuelle Fassung
-  und meldet, was unstimmig wirkt, was inhaltlich fehlt und wie der Artikel
-  für Leser und Suche besser wird. Er sperrt nichts und darf falsch warnen;
-  die festen Regeln bleiben die Sperre. Kosten je Klick etwa 1 bis 5 Cent.
-  Vorschlag für den Zuschnitt: eigene Route wie der Vorschlag für den
-  Änderungshinweis (eigenes Kontingent, schreibt nichts, Ergebnis nur
-  angezeigt), langer Lauf ⇒ die Frist am Proxy mitdenken.
+- **(a) KI-Prüfung als eigener Knopf — GEBAUT (2026-11-22), Klick offen.**
+  Knopf „KI-Prüfung starten" im Editor; `POST`/`GET
+  /api/insights/posts/:id/review`: Lauf-Sperre in `insights_runs` (Art
+  `review`), eigenes Kontingent, `202` und Abfrage, Ergebnis nur angezeigt.
+  Das Ergebnis liegt im Speicher des Prozesses (keine neue Spalte, keine
+  Migration); nach einem Neustart sagt die Seite „Ergebnis nicht mehr da".
+  Begründung im Kopf von `packages/insights/server/utils/insightsAiReviewRun.ts`.
+  Lokal geklickt mit gestellter KI (COMPLETE „IN1 (a)"). OFFEN: ein Lauf mit
+  echtem Modell (Prompt und Kosten je Klick unbelegt) — auf Live, wenn David
+  ihn auslöst.
 - **(b) Klick-Probe auf Live.** Auf Production ist noch kein Artikel
   veröffentlicht (BI5). Danach einmal: einen veröffentlichten Artikel
   regelwidrig ändern (erwartet: „nicht gespeichert", die Seite bleibt), einen
