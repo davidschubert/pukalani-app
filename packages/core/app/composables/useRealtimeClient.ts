@@ -1,5 +1,6 @@
 import type { Client, Realtime } from 'appwrite'
-import { realtimeAllowed, realtimeTokenWanted } from '../../shared/realtimeGate'
+import { realtimeAllowed, realtimeRelayWanted, realtimeTokenWanted } from '../../shared/realtimeGate'
+import { LIVE_RELAY_ENDPOINT_PATH } from '../../shared/liveRelay'
 import { isJwtCookieConflict, isRealtimeAccessEnded } from '../../shared/realtimeAuth'
 import { nextReconnectFailures, reconnectDelayMs } from '../../shared/realtimeReconnect'
 
@@ -55,6 +56,8 @@ interface RealtimeClients {
 }
 
 let clientsPromise: Promise<RealtimeClients> | null = null
+/** Appwrites Realtime-Adresse (`wss://…/v1`) — Ziel ohne Weiterleitung (PK1 E1d). */
+let directRealtimeEndpoint = ''
 
 /**
  * ── DAS CONFIG-GATE (F14, 2026-08-01) ──────────────────────────────────────
@@ -110,6 +113,7 @@ export function ensureRealtimeClients(): Promise<RealtimeClients | null> {
     const config = useRuntimeConfig()
     const endpoint = config.public.appwriteEndpoint
     const project = config.public.appwriteProjectId
+    directRealtimeEndpoint = endpoint.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://')
     clientsPromise = import('appwrite').then(({ Client, Realtime }) => {
       const cookieClient = new Client().setEndpoint(endpoint).setProject(project)
       const rtClient = new Client().setEndpoint(endpoint).setProject(project)
@@ -247,6 +251,37 @@ function onCustomDomainScope(): boolean {
   return useCustomDomainScope().value
 }
 
+/** Läuft die Live-Verbindung dieser eigenen Domain über unseren Server? (SSR-Spiegel, `useLiveRelay`). */
+function onLiveRelay(): boolean {
+  if (!tryUseNuxtApp()) return false
+  return useLiveRelay().value
+}
+
+/**
+ * ── WOHIN DER SOCKET GEHT (PK1 E1d) ──────────────────────────────────────────
+ * Auf der eigenen Domain einer Community (angemeldet, Dienst bereit) spricht
+ * der Socket UNSEREN Host an (`wss://<host>/api/live`, das SDK hängt
+ * `/realtime` an) — der Server prüft die Karte und hält das JWT; der Browser
+ * bekommt keins. Überall sonst und nach dem Abmelden: Appwrite direkt. Die
+ * Adresse wird nur gesetzt; den Neuaufbau macht der Aufrufer (oder der erste
+ * Aufbau des Sockets).
+ */
+let relayActive = false
+
+function routeRealtime(rtClient: Client, relay: boolean) {
+  if (relay === relayActive) return
+  if (relay) {
+    if (typeof window === 'undefined') return
+    const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    rtClient.setEndpointRealtime(`${scheme}://${window.location.host}${LIVE_RELAY_ENDPOINT_PATH}`)
+    rtClient.setJWT('')
+  }
+  else if (directRealtimeEndpoint) {
+    rtClient.setEndpointRealtime(directRealtimeEndpoint)
+  }
+  relayActive = relay
+}
+
 /** Refresh-Timer anhalten (Logout/Gast) — sonst 401-te er alle 12 min weiter. */
 function stopJwtRefresh() {
   if (jwtTimer === undefined) return
@@ -336,12 +371,25 @@ export function ensureRealtimeJwt(): Promise<void> {
   // eingeloggten Nutzer keinen Token (F14).
   if (!realtimeEnabled()) return Promise.resolve()
   // Synchron anstoßen, solange der Nuxt-Kontext noch steht (Config-Lesen).
-  void ensureRealtimeClients()
-  // Eigene Domain im Modus `write` (PK1 E1b-2): kein Token, kein Refresh-Timer
+  const clientsReady = ensureRealtimeClients()
+  // Eigene Domain im Modus `write` mit bereitem Dienst (PK1 E1d): kein Token,
+  // kein Refresh-Timer — der Socket geht über unseren Server und ist dort mit
+  // der Karte angemeldet (der Server erneuert sein JWT selbst).
+  if (realtimeRelayWanted(hasSession(), onCustomDomainScope(), onLiveRelay())) {
+    stopJwtRefresh()
+    return clientsReady.then((clients) => {
+      if (!clients) return
+      routeRealtime(clients.rtClient, true)
+      jwtReady = true
+    })
+  }
+  // Eigene Domain ohne Dienst (PK1 E1b-2): kein Token, kein Refresh-Timer
   // — die Route antwortet dort 404, der Socket bleibt Gast.
   if (!realtimeTokenWanted(hasSession(), onCustomDomainScope())) {
     stopJwtRefresh()
-    return Promise.resolve()
+    return clientsReady.then((clients) => {
+      if (clients) routeRealtime(clients.rtClient, false)
+    })
   }
   // RT1: das Cookie trägt den Socket selbst — kein Token, kein Refresh-Timer.
   if (useCookieAuth) {
@@ -384,6 +432,9 @@ export async function syncRealtimeAuth(loggedIn: boolean): Promise<void> {
   if (!clientsPromise) return
   const { rtClient, realtime } = await clientsPromise
   rtClient.setJWT('')
+  // Abgemeldet ⇒ zurück zu Appwrite direkt (als Gast); angemeldet entscheidet
+  // ensureRealtimeJwt() über Weiterleitung oder Token (PK1 E1d).
+  if (!loggedIn) routeRealtime(rtClient, false)
   if (loggedIn) await ensureRealtimeJwt()
   await reconnectSocket(realtime)
 }

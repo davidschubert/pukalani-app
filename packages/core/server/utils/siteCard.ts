@@ -147,10 +147,40 @@ export interface SiteCardHealth {
   mode: SiteCardMode
   cards: boolean
   previous: boolean
+  /**
+   * PK1 E1d: die Live-Verbindung unter eigenen Domains läuft über diesen
+   * Server (`/api/live/realtime`, Plan § 13.3 Weg 3). `true` nur, wenn der
+   * Dienst hier bereit ist: Modus `write`, ein Schlüssel UND WebSocket im
+   * Build dieser App (`nitro.experimental.websocket`). Die Konsole hebt die
+   * Freigabe-Pflicht eigener Domains erst darauf hin auf (K6,
+   * `customDomainApprovalWaiver.ts`).
+   */
+  liveRelay: boolean
+}
+
+/**
+ * Hat der Build dieser App WebSocket (Nitro ersetzt `import.meta._websocket`
+ * beim Bauen durch den Wert von `nitro.experimental.websocket`)? Nur die
+ * Platform schaltet es ein (`apps/platform/nuxt.config.ts`).
+ */
+let websocketBuiltOverride: boolean | null = null
+function websocketBuilt(): boolean {
+  if (websocketBuiltOverride !== null) return websocketBuiltOverride
+  return import.meta._websocket === true
+}
+
+/** Nur für Tests: WebSocket im Build vortäuschen (`null` = wie gebaut). */
+export function setWebsocketBuiltForTests(value: boolean | null): void {
+  websocketBuiltOverride = value
+}
+
+/** Ist die Weiterleitung der Live-Verbindung (PK1 E1d) in diesem Prozess bereit? */
+export function liveRelayReady(): boolean {
+  return current.mode === 'write' && current.keys.length > 0 && websocketBuilt()
 }
 
 export function siteCardHealth(): SiteCardHealth {
-  return { mode: current.mode, cards: current.keys.length > 0, previous: current.keys.length > 1 }
+  return { mode: current.mode, cards: current.keys.length > 0, previous: current.keys.length > 1, liveRelay: liveRelayReady() }
 }
 
 /** Kann es in diesem Prozess überhaupt Karten geben? */

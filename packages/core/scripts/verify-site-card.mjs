@@ -27,6 +27,14 @@
  *      `server.allowedHosts`): Umleitungen in beide Richtungen, Karte nur auf
  *      der Domain, Mitmachen ja (Benachrichtigungen), Kontoweites und
  *      Verwaltendes 404, Owner-Recht unter Produkt-Präfix 403.
+ *   4b. Live-Verbindung über unseren Server (E1d, Plan § 13.3 Weg 3):
+ *      `/api/health` meldet `liveRelay`; ein gewöhnliches GET auf
+ *      `/api/live/realtime` ⇒ 404; WebSocket als Gast, mit fremder Herkunft
+ *      und mit der Karte der Pukalani-Adresse ⇒ abgelehnt; mit der Karte der
+ *      Domain ⇒ angenommen, `connected` ohne Konto-Daten, Ping ⇒ Pong;
+ *      eine Benachrichtigung der eigenen Community kommt durch, die der
+ *      anderen nicht; ein nicht erlaubter Kanal bekommt nichts; Sitzung
+ *      gelöscht (Widerruf) ⇒ Konto-Ereignis ohne Inhalt, Fehler 401, zu.
  *   5. Domain abgeschaltet (`paused`) ⇒ die Karte der Domain ist wertlos.
  *
  * VIER REGELN: die Zeile von B wird im `finally` auf den VORGEFUNDENEN Wert
@@ -46,6 +54,7 @@ import {
   createHttpCaller,
   createProbeAccount,
   login,
+  openProbeSocket,
   runStamp,
 } from '../../../scripts/lib/probe-stage.mjs'
 
@@ -210,7 +219,9 @@ try {
   check('/dashboard auf der Domain → 302 zur Pukalani-Adresse', dashOnDomain.status === 302 && String(dashOnDomain.headers.location ?? '').includes(HOST_B),
     `${dashOnDomain.status} → ${dashOnDomain.headers.location ?? ''}`)
 
-  const cardDomain = await login(call, DOMAIN, person)
+  const sessionsBeforeDomain = await sessionsOf(person.userId)
+  let cardDomain = await login(call, DOMAIN, person)
+  const domainSession = (await sessionsOf(person.userId)).find(id => !sessionsBeforeDomain.includes(id)) ?? ''
   check('Anmelden auf der Domain schreibt eine Karte', valueOf(cardDomain).startsWith('c1.'))
   const meDomain = await call(DOMAIN, '/api/auth/me', { cookie: cardDomain })
   check('auf der Domain angemeldet', meDomain.status === 200, `Status ${meDomain.status}`)
@@ -230,6 +241,76 @@ try {
   for (const [label, res] of blocked) check(`${label} auf der Domain → 404`, res.status === 404, `Status ${res.status}`)
   const trustOnDomain = await call(DOMAIN, '/api/posts/trust-levels', { cookie: cardDomain })
   check('Owner: Verwaltungs-Route unter Produkt-Präfix auf der Domain → 403', trustOnDomain.status === 403, `Status ${trustOnDomain.status}`)
+
+  // ── 4b. Live-Verbindung über unseren Server (E1d) ────────────────────────
+  console.log('\n4b. Live-Verbindung über unseren Server')
+  check('/api/health meldet liveRelay: true', siteCard.liveRelay === true, `liveRelay=${siteCard.liveRelay}`)
+  const plainGet = await call(DOMAIN, '/api/live/realtime', { cookie: cardDomain })
+  check('gewöhnliches GET auf /api/live/realtime → 404 (wie unbekannt)', plainGet.status === 404, `Status ${plainGet.status}`)
+  const livePath = `/api/live/realtime?project=${encodeURIComponent(poolProject)}`
+  const socket = options => openProbeSocket({ port: PORT, host: DOMAIN, path: livePath, origin: `http://${DOMAIN}`, ...options })
+  const asGuest = await socket({})
+  check('WebSocket als Gast → abgelehnt (401)', asGuest.status === 401, `Status ${asGuest.status}`)
+  if (asGuest.close) asGuest.close()
+  const foreignOrigin = await socket({ cookie: cardDomain, origin: `http://${HOST_A}` })
+  check('WebSocket mit fremder Herkunft → abgelehnt (403)', foreignOrigin.status === 403, `Status ${foreignOrigin.status}`)
+  if (foreignOrigin.close) foreignOrigin.close()
+  const otherCard = await socket({ cookie: cardBHost })
+  check('WebSocket mit der Karte der Pukalani-Adresse → abgelehnt (401)', otherCard.status === 401, `Status ${otherCard.status}`)
+  if (otherCard.close) otherCard.close()
+
+  const live = await socket({ cookie: cardDomain })
+  check('WebSocket mit der Karte der Domain → angenommen (101)', live.status === 101, `Status ${live.status}`)
+  if (live.status === 101) {
+    const connected = await live.next(m => m.type === 'connected', 15_000)
+    check('connected mit Konto-Id, ohne Konto-Daten', connected?.data?.user?.$id === person.userId && !JSON.stringify(connected).includes(person.email),
+      JSON.stringify(connected ?? null).slice(0, 120))
+    live.send({ type: 'ping' })
+    check('Ping → Pong', !!(await live.next(m => m.type === 'pong', 5000)))
+
+    const notifications = `tablesdb.${poolDatabaseId}.tables.notifications.rows`
+    live.send({ type: 'subscribe', data: [
+      { subscriptionId: 'live-n', channels: [notifications], queries: [] },
+      { subscriptionId: 'live-k', channels: ['account'], queries: [] },
+      { subscriptionId: 'live-f', channels: ['files'], queries: [] },
+    ] })
+    await sleep(1500)
+    const tenantOf = async id => (await control.getRow(databaseId, 'communities', id)).tenantId
+    const [tenantA, tenantB] = [await tenantOf(COMMUNITY_A), await tenantOf(COMMUNITY_B)]
+    const notify = async (tag, tenantId) => {
+      const rowId = `live${tag}${stamp}`.replace(/[^a-zA-Z0-9]/g, '').slice(0, 36)
+      await pool.post(`/tablesdb/${poolDatabaseId}/tables/notifications/rows`, {
+        rowId,
+        data: { recipientId: person.userId, type: 'replied', title: `Live ${tag}`, body: '', link: '/', read: false, communityId: tenantId },
+        permissions: [`read("user:${person.userId}")`],
+      })
+      cleanup.track('poolRow', `notifications/${rowId}`)
+      return rowId
+    }
+    const rowOther = await notify('a', tenantA)
+    const rowOwn = await notify('b', tenantB)
+    const own = await live.next(m => m.type === 'event' && m.data?.payload?.$id === rowOwn, 10_000)
+    check('Benachrichtigung der eigenen Community kommt live an', !!own && own.data.subscriptions?.join() === 'live-n', JSON.stringify(own?.data?.subscriptions ?? null))
+    await sleep(2000)
+    check('Benachrichtigung der anderen Community kommt NICHT durch', !live.messages.some(m => m.type === 'event' && JSON.stringify(m).includes(rowOther)))
+    check('nicht erlaubter Kanal (files) bekommt nichts', !live.messages.some(m => Array.isArray(m.data?.subscriptions) && m.data.subscriptions.includes('live-f')))
+
+    // Widerruf: die Sitzung der Karte endet (an unserem Code vorbei).
+    check('Sitzung der Domain-Karte gefunden', !!domainSession)
+    if (domainSession) await pool.delete(`/users/${person.userId}/sessions/${domainSession}`)
+    const accountEvent = await live.next(m => m.type === 'event' && (m.data?.events ?? []).some(e => /sessions\.[^.]+\.delete$/.test(e)), 10_000)
+    check('Widerruf: Konto-Ereignis kommt, ohne Inhalt', !!accountEvent && JSON.stringify(accountEvent.data.payload) === '{}', JSON.stringify(accountEvent?.data?.payload ?? null).slice(0, 80))
+    const denied = await live.next(m => m.type === 'error' && m.data?.code === 401, 10_000)
+    check('Widerruf: Fehler 401 wird durchgereicht', !!denied)
+    const ended = await Promise.race([live.closed, sleep(10_000).then(() => null)])
+    check('Widerruf: unser Server schließt die Verbindung', !!ended, 'nach 10 s noch offen')
+    if (!ended) live.close()
+    const again = await socket({ cookie: cardDomain })
+    check('neuer Aufbau mit der widerrufenen Karte → abgelehnt (401)', again.status === 401, `Status ${again.status}`)
+    if (again.close) again.close()
+  }
+  // Für Schritt 5 eine frische Karte der Domain (die vorige ist widerrufen).
+  cardDomain = await login(call, DOMAIN, person)
 
   // ── 5. Domain abgeschaltet ⇒ Karte wertlos ───────────────────────────────
   console.log('\n5. Domain abgeschaltet')

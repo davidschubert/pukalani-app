@@ -20,7 +20,7 @@
 import { isCustomDomainApiAllowed } from '../../shared/customDomainScope'
 import { isCustomDomainHost } from '../../shared/siteCard'
 import { getProductRegistry } from '../utils/productRegistry'
-import { siteCardSettings } from '../utils/siteCard'
+import { liveRelayReady, siteCardSettings } from '../utils/siteCard'
 import { normalizeHost } from '../utils/tenantResolver'
 
 /** `apiPrefixes` aller registrierten Layer der Art `product`. */
@@ -41,6 +41,10 @@ export default defineEventHandler((event) => {
   if (!isCustomDomainHost(host, tenant)) return
 
   event.context.customDomainScope = true
+  // PK1 E1d: läuft die Live-Verbindung hier über unseren Server? Der
+  // Seitenaufbau spiegelt es (`useLiveRelay`), damit der Browser nur dann
+  // `/api/live` anspricht, wenn es den Dienst wirklich gibt.
+  if (liveRelayReady()) event.context.liveRelay = true
 
   if (!isCustomDomainApiAllowed(event.path, communityProductPrefixes(), event.method)) {
     throw createError({ status: 404, statusText: 'Not found' })

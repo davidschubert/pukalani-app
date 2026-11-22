@@ -19,14 +19,14 @@ vi.mock('../server/lib/appwrite', () => ({
 /** Ohne registrierte Layer gibt es keine Probe ⇒ ok 0/0. */
 const NO_PROBES = { state: 'ok', expected: 0, found: 0 }
 /** Ohne Start-Plugin steht der Schalter der Karte auf `off` (PK1 E1c). */
-const CARD_OFF = { mode: 'off', cards: false, previous: false }
+const CARD_OFF = { mode: 'off', cards: false, previous: false, liveRelay: false }
 
 type Handler = (event: object) => Promise<{
   ok: boolean
   build: string | null
   reason?: string
   schema?: { state: string, expected: number, found: number | null }
-  siteCard?: { mode: string, cards: boolean, previous: boolean }
+  siteCard?: { mode: string, cards: boolean, previous: boolean, liveRelay: boolean }
 }>
 let handler: Handler
 let tenancy: { enabled?: boolean } = {}
@@ -235,13 +235,13 @@ describe('/api/health — Schalter der Karte (PK1 E1c)', () => {
   })
 
   it.each([
-    [{ mode: 'read', key: KEY }, { mode: 'read', cards: true, previous: false }],
-    [{ mode: 'write', key: KEY }, { mode: 'write', cards: true, previous: false }],
-    [{ mode: 'write', key: KEY, previousKey: OLD }, { mode: 'write', cards: true, previous: true }],
+    [{ mode: 'read', key: KEY }, { mode: 'read', cards: true, previous: false, liveRelay: false }],
+    [{ mode: 'write', key: KEY }, { mode: 'write', cards: true, previous: false, liveRelay: false }],
+    [{ mode: 'write', key: KEY, previousKey: OLD }, { mode: 'write', cards: true, previous: true, liveRelay: false }],
     // `write` ohne brauchbaren Schlüssel bleibt `write`, aber ohne Karten.
-    [{ mode: 'write', key: '' }, { mode: 'write', cards: false, previous: false }],
+    [{ mode: 'write', key: '' }, { mode: 'write', cards: false, previous: false, liveRelay: false }],
     // `read` ohne Schlüssel fällt auf `off`.
-    [{ mode: 'read', key: 'kaputt' }, { mode: 'off', cards: false, previous: false }],
+    [{ mode: 'read', key: 'kaputt' }, { mode: 'off', cards: false, previous: false, liveRelay: false }],
   ])('%j ⇒ %j', async (config, expected) => {
     const { configureSiteCard } = await import('../server/utils/siteCard')
     configureSiteCard(config)
@@ -252,10 +252,29 @@ describe('/api/health — Schalter der Karte (PK1 E1c)', () => {
     expect(JSON.stringify(body)).not.toContain(OLD)
   })
 
+  // PK1 E1d: `liveRelay` nur mit `write`, Schlüssel UND WebSocket im Build.
+  it.each([
+    [{ mode: 'write', key: KEY }, true, true],
+    [{ mode: 'write', key: KEY }, false, false],
+    [{ mode: 'read', key: KEY }, true, false],
+    [{ mode: 'write', key: '' }, true, false],
+    [{ mode: 'off' }, true, false],
+  ])('liveRelay: %j, WebSocket gebaut %s ⇒ %s', async (config, built, expected) => {
+    const { configureSiteCard, setWebsocketBuiltForTests } = await import('../server/utils/siteCard')
+    configureSiteCard(config)
+    setWebsocketBuiltForTests(built)
+    try {
+      expect((await handler({})).siteCard?.liveRelay).toBe(expected)
+    }
+    finally {
+      setWebsocketBuiltForTests(null)
+    }
+  })
+
   it('auch bei fehlendem Resolver lesbar (SEC-025)', async () => {
     tenancy = { enabled: true }
     const { configureSiteCard } = await import('../server/utils/siteCard')
     configureSiteCard({ mode: 'write', key: KEY })
-    expect((await handler({})).siteCard).toEqual({ mode: 'write', cards: true, previous: false })
+    expect((await handler({})).siteCard).toEqual({ mode: 'write', cards: true, previous: false, liveRelay: false })
   })
 })

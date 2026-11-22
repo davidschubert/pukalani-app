@@ -179,4 +179,8 @@ export default defineNuxtPlugin(() => {
   // es sagt nur, unter welcher Adresse die Seite gerade läuft.
   const customDomainScope = useCustomDomainScope()
   customDomainScope.value = event?.context.customDomainScope === true
+  // PK1 E1d: die Live-Verbindung dieser eigenen Domain läuft über unseren
+  // Server — nur wenn der Dienst hier bereit ist (sonst bleibt der Socket Gast).
+  const liveRelay = useLiveRelay()
+  liveRelay.value = event?.context.customDomainScope === true && event.context.liveRelay === true
 })

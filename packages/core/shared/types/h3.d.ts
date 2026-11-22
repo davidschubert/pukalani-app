@@ -91,6 +91,12 @@ declare module 'h3' {
      */
     customDomainScope?: true
     /**
+     * Auf dieser eigenen Domain läuft die Live-Verbindung über unseren Server
+     * (PK1 E1d, `/api/live/realtime`) — gesetzt von
+     * 01.custom-domain-scope.ts, gespiegelt von tenant-brand.server.ts.
+     */
+    liveRelay?: true
+    /**
      * Die Anfrage kam ohne Mandanten-Auflösung durch (`/api/health`,
      * `/_i18n/`, Symbole, Fehlerseiten-Durchgang) — gesetzt von
      * server/middleware/00.tenant.ts. Im Modus `write` gilt dort kein

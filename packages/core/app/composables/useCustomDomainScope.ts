@@ -17,6 +17,15 @@ export function useCustomDomainScope() {
 }
 
 /**
+ * Läuft die Live-Verbindung auf dieser eigenen Domain über unseren Server
+ * (PK1 E1d)? Spiegel von `event.context.liveRelay`; nur zusammen mit
+ * `useCustomDomainScope()` sinnvoll. Leser: `useRealtimeClient.ts`.
+ */
+export function useLiveRelay() {
+  return useState<boolean>('pukalani-live-relay', () => false)
+}
+
+/**
  * Adresse des Kundenbereichs (erster Kontroll-Host aus der vorhandenen
  * Config, nie fest geschrieben) — leer, wenn keiner eingestellt ist.
  */
