@@ -235,6 +235,22 @@ export const COMMUNITY_ROLE_CAPABILITIES: Record<CommunityRole, readonly Capabil
 }
 
 /** Type-Guard: ist der String eine bekannte Community-Rolle? */
+/**
+ * EIGENE DOMAIN: MITMACHEN JA, VERWALTEN NEIN (PK1 E1b-2, Davids Entscheidung
+ * im Gesamtkonzept). Auf der eigenen Domain einer Community im Modus `write`
+ * gelten `owner` und `admin` als `moderator`: moderieren bleibt, verwalten
+ * (Team, Einstellungen, Plan, Branding, Struktur, Seiten …) nicht — das geht
+ * unter der Pukalani-Adresse. Alle anderen Rollen bleiben, wie sie sind;
+ * `editor` steht NEBEN `moderator` (nicht darunter) und behält seine Rechte.
+ *
+ * Angewandt an der EINEN Stelle, die die Rolle für Server UND Browser
+ * bestimmt (`resolveCommunityRole`, `core/server/utils/communityPermission.ts`).
+ */
+export function capCommunityRoleOnCustomDomain(role: CommunityRole | null, customDomainScope: boolean): CommunityRole | null {
+  if (!customDomainScope) return role
+  return role === 'owner' || role === 'admin' ? 'moderator' : role
+}
+
 export function isCommunityRole(value: string): value is CommunityRole {
   return (COMMUNITY_ROLES as readonly string[]).includes(value)
 }

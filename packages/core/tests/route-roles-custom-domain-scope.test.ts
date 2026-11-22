@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { probeRoute, resetCommunityWorld, type RouteProbe, type Who } from './support/participationHarness'
 import { appwriteFake } from './support/appwriteFake'
 import { coreKit } from './support/coreRouteKit'
+import { OWN_DOMAIN as OWN, PUKALANI_ADDRESS, customDomainContext } from './support/customDomainScope'
 import { configureSiteCard } from '../server/utils/siteCard'
 import type { TenantContext } from '../shared/types/tenant'
 
@@ -26,8 +27,8 @@ vi.mock('../server/lib/appwrite', async () => (await import('./support/appwriteF
 vi.mock('../server/utils/logEvent', () => ({ logEvent: () => {} }))
 
 const key = randomBytes(32).toString('base64')
-const PUKALANI = 'kunde-a.pukalani.app'
-const OWN_DOMAIN = 'www.kunde.de'
+const PUKALANI = PUKALANI_ADDRESS
+const OWN_DOMAIN = OWN
 
 const tenant: TenantContext = {
   mode: 'pool',
@@ -163,4 +164,29 @@ describe('Mitmach-Routen', () => {
       }
     })
   }
+})
+
+describe('Rolle auf der eigenen Domain: owner/admin gelten als moderator (Knopf = Wache)', () => {
+  const loadRole = () => import('../server/api/community/role.get')
+
+  async function roleOf(who: Who, context: Record<string, unknown>): Promise<unknown> {
+    const run = await probeRoute(loadRole, { who, context, globals: coreKit().globals })
+    return (run.result as { role?: unknown } | undefined)?.role
+  }
+
+  it('write + eigene Domain: owner und admin ⇒ moderator, die anderen unverändert', async () => {
+    const context = await customDomainContext('write', OWN_DOMAIN, '/api/community/role')
+    expect(context.customDomainScope).toBe(true)
+    expect(await roleOf('owner', context)).toBe('moderator')
+    expect(await roleOf('admin', context)).toBe('moderator')
+    expect(await roleOf('moderator', context)).toBe('moderator')
+    expect(await roleOf('editor', context)).toBe('editor')
+    expect(await roleOf('member', context)).toBe('viewer')
+  })
+
+  it('Gegenprobe: Pukalani-Adresse im Modus write und eigene Domain im Modus read ⇒ owner bleibt owner', async () => {
+    expect(await roleOf('owner', await customDomainContext('write', PUKALANI_ADDRESS, '/api/community/role'))).toBe('owner')
+    expect(await roleOf('owner', await customDomainContext('read', OWN_DOMAIN, '/api/community/role'))).toBe('owner')
+    expect(await roleOf('admin', await customDomainContext('off', OWN_DOMAIN, '/api/community/role'))).toBe('admin')
+  })
 })

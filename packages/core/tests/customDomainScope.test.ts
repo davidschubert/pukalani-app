@@ -16,6 +16,7 @@ import {
   staysOnPukalaniAddress,
 } from '../shared/customDomainScope'
 import { realtimeTokenWanted } from '../shared/realtimeGate'
+import { capCommunityRoleOnCustomDomain } from '../shared/communityAuthz'
 import type { ProductManifest } from '../shared/types/manifest'
 import type { TenantContext } from '../shared/types/tenant'
 
@@ -239,6 +240,17 @@ describe('Verwaltungs-Seiten und Ausnahmen der Umleitung', () => {
       .toEqual({ manage: null, accountHref: 'https://account.pukalani.app' })
     // Ohne Kundenbereich lieber kein Link als einer ins Leere.
     expect(accountMenuLinks({ scope: true, canDashboard: true, accountUrl: '' })).toEqual({ manage: null, accountHref: null })
+  })
+
+  it('Rolle: owner/admin gelten auf der eigenen Domain als moderator, sonst unverändert', () => {
+    expect(capCommunityRoleOnCustomDomain('owner', true)).toBe('moderator')
+    expect(capCommunityRoleOnCustomDomain('admin', true)).toBe('moderator')
+    expect(capCommunityRoleOnCustomDomain('moderator', true)).toBe('moderator')
+    expect(capCommunityRoleOnCustomDomain('editor', true)).toBe('editor')
+    expect(capCommunityRoleOnCustomDomain('viewer', true)).toBe('viewer')
+    expect(capCommunityRoleOnCustomDomain(null, true)).toBeNull()
+    expect(capCommunityRoleOnCustomDomain('owner', false)).toBe('owner')
+    expect(capCommunityRoleOnCustomDomain('admin', false)).toBe('admin')
   })
 
   it('Live-Verbindung: Token nur mit Sitzung und nicht auf der eigenen Domain', () => {
