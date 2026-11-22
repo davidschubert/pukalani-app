@@ -2,9 +2,11 @@
 
 > **Plan-Status (2026-11-22):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
 
-**Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-22 · Status: Konzept der
-ersten Etappe, wartet auf Davids Entscheidungen (§ 12).** Nichts hiervon ist
-umgesetzt — keine Code-Änderung, keine Migration, nichts an Production.
+**Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-22 · Status: Davids
+Entscheidungen K1–K6 liegen vor (§ 12), der Beweis E0 ist gelaufen (§ 13);
+wartet auf Davids Wahl des Wegs zu K4 und zu Zwei-Faktor-Konten (§ 13.4).**
+Nichts hiervon ist umgesetzt — keine Code-Änderung, keine Migration, nichts an
+Production.
 
 Dieses Dokument vertieft **eine** Etappe des Gesamtkonzepts
 [PUKALANI-KONTO.md](PUKALANI-KONTO.md). Dort sind der Weg (a) und Davids zehn
@@ -305,6 +307,121 @@ Konsole mit eigenen Konten (Gesamtkonzept § 10).
 | 5 | Darf die bauende Session die Sitzungs-Obergrenze im Projekt `account` anheben, sobald E0 die Zahl liefert? | **Ja, auf die gemessene Zahl mit Abstand (Vorschlag 50).** | Ein Klick in der Appwrite-Konsole; ohne ihn fliegen Menschen mit vielen Communities raus. |
 | 6 | Fällt die Freigabe-Pflicht für eigene Domains, wenn E1 live ist? | **Ja; die Sperre in der Testphase bleibt.** | Owner mit Plan Pro schalten eigene Domains selbst frei; die Hand-Freigabe des Betreibers entfällt. EIGENE-DOMAIN.md wird angepasst. |
 
-## 13. Ergebnis von E0
+**Davids Antworten vom 2026-11-22:** 1 = A, 2 = in allen Apps, 3 = eigener
+Env-Wert je App, 5 = ja (die Einstellung in der Konsole braucht ein eigenes
+Ja), 6 = ja, Pflicht fällt weg — **abweichend bei 4:** „Nein, auch dort live
+lassen". Die Live-Verbindung bleibt also auch unter einer Kundendomain; wie
+das geht, ohne das Ziel der Etappe aufzugeben, steht in § 13.3.
 
-Noch nicht gelaufen.
+## 13. E0: Messung und K4
+
+Gelaufen am 2026-11-22 gegen die lokale Appwrite **2.7.4** (Projekt
+`account`, Wegwerf-Konto, danach gelöscht) und auf der Pool-Bühne
+(`pnpm buehne up`, kunde-a/kunde-b, danach `down`: nichts übrig). Nichts am
+Anmeldeweg wurde geändert. Production wurde nicht angefasst.
+
+### 13.1 Wie Sitzung, Cookie und Hosts heute zusammenhängen (Bühne)
+
+| Gemessen | Ergebnis |
+| --- | --- |
+| Cookie nach dem Anmelden auf kunde-a | `Path`, `Expires`, `HttpOnly`, `SameSite`; **kein** `Domain` (nur dieser Host) |
+| Derselbe Wert, an kunde-b oder an den Kontroll-Host geschickt | `/api/auth/me` antwortet **angemeldet** (200) — der Wert gilt auf jedem Host |
+| `/api/auth/realtime-token` auf kunde-b mit dem Wert von kunde-a | 200, JWT mit `projectId`, `userId`, `sessionId`, `exp` |
+| Host-Wechsel Kontroll-Host → kunde-a (`/api/onboarding/handoff` → `site-session`) | das Ziel bekommt **dasselbe** Geheimnis (Kopie) |
+| Abmelden auf kunde-a mit der Kopie | der Kontroll-Host ist danach ebenfalls abgemeldet (401) |
+
+Eine Kundendomain ist für den Server ein Host wie kunde-b (Auflösung in
+`00.tenant.ts`); eine gestellte Kundendomain kommt erst mit der Bühnen-Probe
+in E1c dazu (§ 9). Die nginx-Vorlage der Kundendomain
+(`ops/nginx/pool-kundendomain.conf.template`) reicht `Upgrade`/`Connection`
+schon durch, mit `proxy_read_timeout 60s`.
+
+### 13.2 Antworten auf die Fragen aus § 7 (lokal, Appwrite 2.7.4)
+
+1. **Eigene Sitzung je Seite** (`users.createToken` → `account.createSession`):
+   liefert eine **neue** Sitzung (andere Id), `account.get()` besteht. Zwei
+   Funde:
+   - **Zwei-Faktor:** Die neue Sitzung trägt nur den Faktor `token`. Bei einem
+     Konto mit Zwei-Faktor antwortet Appwrite `user_more_factors_required` —
+     auch ein JWT auf diese Sitzung. Die API des Servers kennt keinen Weg,
+     einer Sitzung den zweiten Faktor nachzureichen. ⇒ Entscheidung in § 13.4.
+   - **Frische:** `$createdAt` der neuen Sitzung ist „jetzt". `requireRecentAuth`
+     würde einen Host-Wechsel als frische Anmeldung zählen. ⇒ Der Umschlag
+     trägt den Zeitpunkt der **ursprünglichen** Anmeldung, und die
+     Frische-Prüfung nimmt den älteren der beiden Werte (selbst entschieden:
+     nur strenger als heute).
+2. **Obergrenze:** Lokal steht `maxSessions` im Projekt `account` auf `0`; in
+   2.7.4 heißt `0` **ohne Grenze** (13 Sitzungen eines Kontos blieben alle
+   stehen). Ist ein Wert gesetzt, löscht Appwrite nach jeder neuen Sitzung die
+   ältesten über der Grenze (Standard für neue Projekte: 10, höchstens 100).
+   Gezählt im lokalen Spiegel (156 Konten): 117 mit einer Sitzung, höchstens 11
+   (ein Test-Konto); Communities je Konto höchstens 3. Mit einer Sitzung je
+   Seite braucht ein Mensch etwa (Communities + Kundendomains + Kundenbereich)
+   × Geräte; 5 Communities, 2 davon mit eigener Domain, Kundenbereich, drei
+   Geräte ⇒ 24. **Zahl für K5: 50** (doppelter Abstand). Der Wert auf
+   Production ist unbekannt (ohne Production-Schlüssel nicht lesbar): steht er
+   dort auf `0`, ist nichts zu tun; steht er auf 10, wird er vor dem
+   Einschalten auf 50 gesetzt (Klick, eigenes Ja).
+3. **Kosten je Anfrage:** Host und Community liegen im Umschlag und werden mit
+   dem schon aufgelösten Mandanten verglichen — kein Aufruf mehr. Der
+   Anmelde-Merker bleibt bei einem Appwrite-Aufruf je Sitzung.
+4. **Live-Verbindung unter einer Kundendomain:** § 13.3.
+5. **Einbettung:** unverändert offen; wird in E1b mit dem Einbettungs-E2E
+   geprüft, bevor der Schalter angeht.
+6. **Gegenprobe aus SEC-022:** „vorher angenommen" ist gemessen (Tabelle
+   13.1, Zeile 2); „nachher abgewiesen" ist der Beweis von E1a.
+
+Nebenbefund: `users.createJWT` ohne `sessionId` bindet das JWT an die
+**neueste** Sitzung des Kontos, nicht an die der Anfrage (gemessen). E1 gibt
+die Sitzung der Karte ausdrücklich mit; dann endet das JWT genau mit dieser
+Sitzung (ebenfalls gemessen: Sitzung gelöscht ⇒ JWT abgewiesen).
+
+### 13.3 K4: Live-Verbindung unter einer Kundendomain behalten
+
+**Was Realtime in 2.7.4 zur Anmeldung annimmt** (Quelltext des laufenden
+Containers, `app/init/realtime/connection.php` und der Nachrichten-Typ
+`authentication`; die Doku sagt nur „gesichert über das Rechte-System"):
+das Sitzungs-Cookie, ein JWT (`jwt` in der Adresse oder als Kopfzeile) oder
+das Sitzungs-Geheimnis in einer `authentication`-Nachricht. Es gibt **kein**
+Token, das sich auf Kanäle, auf „nur lesen" oder auf eine Community
+beschränken lässt: Die Verbindung bekommt alle Rollen des Kontos. Ein JWT ist
+außerdem eine volle Anmeldung bei der Appwrite-API (gemessen: Sitzungen
+listen, Einstellungen ändern). Ein JWT mit Sitzung lebt höchstens bis zu
+seinem `exp` und endet mit seiner Sitzung — die Verbindung schließt Appwrite
+dann selbst (RT2).
+
+**Maßstab:** Unter einer Kundendomain hält der Browser die Karte dieser
+Community. Was er für die Live-Verbindung bekommt, darf **nicht mehr können
+als die Karte**: nur lesen, nur diese Community, nur so lange wie die Karte.
+
+| | Weg 1: kurzes Konto-JWT | Weg 2: Lese-Ausweis der Community | Weg 3: Weiterleitung über unseren Server |
+| --- | --- | --- | --- |
+| Was der Browser hält | ein JWT des Kontos, an die Sitzung der Seite gebunden, 5 min | ein JWT eines technischen Lese-Kontos **dieser Community** (nur ihr Mitglieder-Label, kein Passwort, keine Mail), 5 min | **nichts Neues** — die Karte (HttpOnly) öffnet einen WebSocket zu unserem Host; der Server hält das JWT der Sitzung und spricht mit Appwrite |
+| Schützt | Widerruf der Seiten-Sitzung beendet JWT und Verbindung sofort | außerhalb der Seite wertlos bis auf „lesen, was ein Mitglied dieser Community lesen darf" — so viel, wie die Karte ohnehin zeigt | alles: kein Wert im Browser, nur erlaubte Kanäle dieser Community (Liste im Server), Konto-Kanal und persönliche Meldungen bleiben live |
+| Schützt **nicht** | das Ziel: das JWT kann mehr als die Karte (ganzes Konto, alle Communities, Konto-Einstellungen) — und wer die Karte hat, kann sich auf dem Host jederzeit ein neues holen | persönliche Kanäle (Konto-Kanal, eigene Meldungen) und Moderations-Kanäle — die kommen dort im 20-s-Takt; die Anwesenheit anderer sieht man dort im Takt statt sofort | — (neue Fehlerquelle im Anmeldeweg: ein eigener Dienst, der Verbindungen hält) |
+| Sofortiger Widerruf | wie heute | über den Herzschlag (20 s) und die Prüfung der Karte bei jeder Anfrage; der Lese-Ausweis selbst lebt bis zu 5 min weiter | wie heute: die Sitzung endet ⇒ Appwrite schließt oben, unser Server schließt unten |
+| 120-s-Regel | SDK pingt wie heute | SDK pingt wie heute | **zweimal:** unser Server pingt Appwrite alle 20 s, und der Browser pingt uns unter den 60 s von nginx |
+| Aufwand | S | M (Lese-Konten anlegen und aus Listen und Export heraushalten; Takt für Persönliches) | L (WebSocket in Nitro, Kanal-Liste, Neuverbinden, Last-Test); nginx schon bereit |
+| Hält das Ziel der Etappe? | **nein** | ja | ja |
+
+**Empfehlung: Weg 3.** Er ist der einzige, der Davids „auch dort live lassen"
+**ganz** erfüllt — mit Konto-Kanal, persönlichen Meldungen und sofortigem
+Widerruf — und das Ziel der Etappe hält. Er wird ein eigener Schritt **E1d**
+nach E1c, ebenfalls hinter dem Schalter; bis er steht, bleibt die
+Freigabe-Pflicht für Kundendomains (K6 hängt am selben Schalter). Weg 2 ist
+die günstigere Rückfall-Lösung, wenn der Dienst in E1d nicht trägt. Weg 1
+ist die kleinste Abweichung vom Ziel, schließt SEC-022 aber nicht.
+
+### 13.4 Offene Entscheidung: Konten mit Zwei-Faktor
+
+Eine eigene Sitzung je Seite ist für Zwei-Faktor-Konten nicht ohne erneuten
+Code möglich (§ 13.2 Punkt 1). Zwei Wege:
+
+- **(a) Kopie im Umschlag (Empfehlung):** Zwei-Faktor-Konten bekommen beim
+  Host-Wechsel wie heute eine Kopie ihrer Sitzung — aber im Umschlag, an Host
+  und Community gebunden. SEC-022 ist damit auch für sie geschlossen; nur
+  „Abmelden wirkt je Seite" gilt für sie nicht (Abmelden wirkt überall, wie
+  heute). Niemand muss mehr tun als heute.
+- **(b) Code je neuer Seite:** Beim ersten Betreten einer weiteren Seite fragt
+  diese den zweiten Faktor ab. Strenger, aber ein zusätzlicher Schritt bei
+  jeder neuen Community und jedem neuen Gerät.
