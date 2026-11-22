@@ -92,7 +92,7 @@ export async function sealCommunityHandoff(
 
   // Im Modus `write` trägt das Siegel dazu Konto, Sitzung und ursprüngliche
   // Anmeldung (PK1 E1b) — das Ziel legt damit eine eigene Sitzung an.
-  const grant = requestHandoffGrant(event)
+  const grant = requestHandoffGrant(event, { leavesHost: true })
   if (!grant) {
     // Kein Cookie trotz Session-Kontext: dann käme ein Token heraus, das nichts
     // öffnet — lieber ehrlich 401 als ein Link, der beim Kunden scheitert.
@@ -147,7 +147,7 @@ export function sealControlHostHandoff(event: H3Event, host: string): SealedComm
 
   // Im Modus `write` trägt das Siegel dazu Konto, Sitzung und ursprüngliche
   // Anmeldung (PK1 E1b) — das Ziel legt damit eine eigene Sitzung an.
-  const grant = requestHandoffGrant(event)
+  const grant = requestHandoffGrant(event, { leavesHost: true })
   if (!grant) {
     // Kein Cookie trotz Session-Kontext: dann käme ein Token heraus, das nichts
     // öffnet — lieber ehrlich 401 als ein Link, der beim Kunden scheitert.

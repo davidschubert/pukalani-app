@@ -67,13 +67,14 @@ describe('POST /api/onboarding/handoff — Siegel trägt die Angaben der Karte',
       userId: userIdOf('member'),
       sessionId: 's-control',
       authAt: ORIGINAL_AUTH,
+      nonce: expect.any(String),
     })
   })
 
   it('write mit Klartext auf dem Kontroll-Host: Geheimnis und Konto', async () => {
     configureSiteCard({ mode: 'write', key: rawCardKey.toString('base64') })
     const run = await probeRoute(load, { who: 'member', mode: 'control', body: { communityId: 'c-x' }, globals: { ...controlSeam(list).globals, ...globals('klartext-sitzung') } })
-    expect(open((run.result as { token: string }).token)).toEqual({ secret: 'klartext-sitzung', userId: userIdOf('member') })
+    expect(open((run.result as { token: string }).token)).toEqual({ secret: 'klartext-sitzung', userId: userIdOf('member'), nonce: expect.any(String) })
   })
 
   it('off: Siegel wie vor E1b, nur das Geheimnis', async () => {
@@ -95,6 +96,48 @@ describe('POST /api/community/control-handoff — Klartext-Quelle im Modus write
     })
     expect(run.status).toBe(200)
     const { token } = run.result as { token: string }
-    expect(openHandoff(token, deriveHandoffKey(SERVER_KEY), CONTROL_HOST)).toEqual({ secret: 'klartext-sitzung', userId: userIdOf('member') })
+    expect(openHandoff(token, deriveHandoffKey(SERVER_KEY), CONTROL_HOST)).toEqual({ secret: 'klartext-sitzung', userId: userIdOf('member'), nonce: expect.any(String) })
   })
+})
+
+// ── Kein Siegel auf einer eigenen Domain (Modus write) ──────────────────────
+
+describe('Sprung-Siegel auf einer eigenen Domain einer Community: 404', () => {
+  const POOL_HOST = 'c-a.pukalani.app'
+  const CUSTOM_HOST = 'forum.kunde.example'
+  const LIST = mine([{ communityId: 'c-team', host: 'team.example.test', role: 'admin' }])
+
+  /** Anfrage auf `host`; die Community des Mandanten heißt `POOL_HOST`. */
+  function onHost(host: string, cookie = 'klartext-sitzung') {
+    return { ...globals(cookie), getHeader: (_event: unknown, name: string) => (name.toLowerCase() === 'host' ? host : undefined) }
+  }
+
+  const ROUTES = [
+    ['POST /api/community/switch', () => import('../server/api/community/switch.post'), { communityId: 'c-team' }],
+    ['POST /api/community/control-handoff', () => import('../server/api/community/control-handoff.post'), { target: 'manage' }],
+    ['POST /api/onboarding/handoff', () => import('../server/api/onboarding/handoff.post'), { communityId: 'c-team' }],
+  ] as const
+
+  for (const [name, load, body] of ROUTES) {
+    it(`${name}: write auf der eigenen Domain ⇒ 404, kein Ruf ins Control Plane`, async () => {
+      configureSiteCard({ mode: 'write', key: rawCardKey.toString('base64') })
+      const seam = controlSeam(LIST)
+      const run = await probeRoute(load, { who: 'member', body, tenantFields: { pukalaniHost: POOL_HOST }, globals: { ...seam.globals, ...onHost(CUSTOM_HOST) } })
+      expect(run.status).toBe(404)
+      expect(seam.calls).toEqual([])
+    })
+
+    it(`${name}: write auf der Pukalani-Adresse ⇒ Siegel wie bisher (Gegenprobe)`, async () => {
+      configureSiteCard({ mode: 'write', key: rawCardKey.toString('base64') })
+      const run = await probeRoute(load, { who: 'member', body, tenantFields: { pukalaniHost: POOL_HOST }, globals: { ...controlSeam(LIST).globals, ...onHost(POOL_HOST) } })
+      expect(run.status).toBe(200)
+      expect(typeof (run.result as { token?: unknown }).token).toBe('string')
+    })
+
+    it(`${name}: read auf der eigenen Domain ⇒ wie heute (Siegel)`, async () => {
+      configureSiteCard({ mode: 'read', key: rawCardKey.toString('base64') })
+      const run = await probeRoute(load, { who: 'member', body, tenantFields: { pukalaniHost: POOL_HOST }, globals: { ...controlSeam(LIST).globals, ...onHost(CUSTOM_HOST) } })
+      expect(run.status).toBe(200)
+    })
+  }
 })
