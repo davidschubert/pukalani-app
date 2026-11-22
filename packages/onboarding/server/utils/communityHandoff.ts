@@ -2,8 +2,8 @@ import type { H3Event } from 'h3'
 // Cross-Layer als EXPLIZITER Vertrag (A14): der Umschlag gehört dem Control
 // Plane — reiner Typ-Import, kein Laufzeit-Coupling.
 import type { MyCommunitiesResponse, MyCommunityView } from '../../../control/shared/myCommunities'
-import { deriveHandoffKey, sealHandoffToken } from '../../../core/server/utils/embedHandoff'
-import { requestSessionSecret } from '../../../core/server/utils/requestSession'
+import { deriveHandoffKey, sealHandoff } from '../../../core/server/utils/embedHandoff'
+import { requestHandoffGrant } from '../../../core/server/utils/sessionHandoff'
 import { callControlPlane, mintRuntimeJwt } from './controlPlane'
 
 /**
@@ -33,7 +33,7 @@ import { callControlPlane, mintRuntimeJwt } from './controlPlane'
  * einlösen — der setzte ihm daraufhin das Session-Cookie des Opfers.
  *
  * Beide Hälften sind zu, und beide leben in dieser Datei:
- *  (a) Das Siegel trägt seinen Ziel-Host (`sealHandoffToken(..., host)`), und
+ *  (a) Das Siegel trägt seinen Ziel-Host (`sealHandoff(..., host)`), und
  *      `/api/auth/site-session` löst es nur ein, wenn es der eigene ist.
  *  (b) Der Host kommt aus der MITGLIEDSCHAFTS-Liste des Nutzers, nie aus dem
  *      Body. Damit ist die Zugehörigkeit serverseitig belegt, BEVOR ein Siegel
@@ -90,8 +90,10 @@ export async function sealCommunityHandoff(
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
-  const secret = requestSessionSecret(event)
-  if (!secret) {
+  // Im Modus `write` trägt das Siegel dazu Konto, Sitzung und ursprüngliche
+  // Anmeldung (PK1 E1b) — das Ziel legt damit eine eigene Sitzung an.
+  const grant = requestHandoffGrant(event)
+  if (!grant) {
     // Kein Cookie trotz Session-Kontext: dann käme ein Token heraus, das nichts
     // öffnet — lieber ehrlich 401 als ein Link, der beim Kunden scheitert.
     throw createError({ status: 401, statusText: 'Unauthorized' })
@@ -114,7 +116,7 @@ export async function sealCommunityHandoff(
     userId: event.context.user.$id,
   })
   return {
-    token: sealHandoffToken(secret, deriveHandoffKey(config.appwriteKey), community.host),
+    token: sealHandoff(grant, deriveHandoffKey(config.appwriteKey), community.host),
     host: community.host,
   }
 }
@@ -143,8 +145,10 @@ export function sealControlHostHandoff(event: H3Event, host: string): SealedComm
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
-  const secret = requestSessionSecret(event)
-  if (!secret) {
+  // Im Modus `write` trägt das Siegel dazu Konto, Sitzung und ursprüngliche
+  // Anmeldung (PK1 E1b) — das Ziel legt damit eine eigene Sitzung an.
+  const grant = requestHandoffGrant(event)
+  if (!grant) {
     // Kein Cookie trotz Session-Kontext: dann käme ein Token heraus, das nichts
     // öffnet — lieber ehrlich 401 als ein Link, der beim Kunden scheitert.
     throw createError({ status: 401, statusText: 'Unauthorized' })
@@ -156,11 +160,11 @@ export function sealControlHostHandoff(event: H3Event, host: string): SealedComm
     userId: event.context.user.$id,
   })
   return {
-    // Der rohe Host genügt: `sealHandoffToken` normalisiert die Audience
+    // Der rohe Host genügt: `sealHandoff` normalisiert die Audience
     // SELBST (handoffAudience — Kleinschreibung, Port weg), genau wie beim
     // Community-Sprung oben. Ein lokaler Kontroll-Host mit Port ist damit
     // abgedeckt.
-    token: sealHandoffToken(secret, deriveHandoffKey(config.appwriteKey), host),
+    token: sealHandoff(grant, deriveHandoffKey(config.appwriteKey), host),
     host,
   }
 }
