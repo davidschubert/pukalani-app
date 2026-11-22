@@ -557,14 +557,14 @@ steht im tenants-Register (`wave`: internal → canary → stable, Control-UI
 ```bash
 # VORHER: Verzeichnis der Silo-Communities + ihrer Schlüsseldateien (read-only,
 # druckt NIE einen Schlüsselwert). Exit 1 = der Wellen-Lauf würde abbrechen.
-node --experimental-strip-types --env-file="$HOME/.appwrite-secrets/migrations/control.env" \
+node --experimental-strip-types --env-file="$HOME/.appwrite-secrets/migrations/admin.env" \
   packages/control/scripts/list-silo-keys.ts        # [--wave <welle>] [--keys-dir <ordner>]
 
 # Silo-Projekte einer Welle migrieren (Reihenfolge: internal → canary → stable)
 # (erst ansehen: `--dry-run` statt `--prod` — zeigt Projekte und Dateien, schreibt nichts)
-pnpm migrate --wave internal --control-env ~/.appwrite-secrets/migrations/control.env --prod
-pnpm migrate --wave canary   --control-env ~/.appwrite-secrets/migrations/control.env --prod
-pnpm migrate --wave stable   --control-env ~/.appwrite-secrets/migrations/control.env --prod
+pnpm migrate --wave internal --control-env ~/.appwrite-secrets/migrations/admin.env --prod
+pnpm migrate --wave canary   --control-env ~/.appwrite-secrets/migrations/admin.env --prod
+pnpm migrate --wave stable   --control-env ~/.appwrite-secrets/migrations/admin.env --prod
 ```
 
 - **Ziel-Prüfung (seit 2026-11-16, GA1 P21):** jede Datei `<projectId>.env`
@@ -574,7 +574,7 @@ pnpm migrate --wave stable   --control-env ~/.appwrite-secrets/migrations/contro
 
 - `--control-env` = Env der **Control-Plane-Instanz** (`control`) — daraus
   kommen die Silo-Projekte der Welle. Nie raten, immer explizit. Der Pfad ist
-  seit dem Cutover `~/.appwrite-secrets/migrations/control.env`. Lokal steht
+  seit dem Umzug auf das Projekt `admin` (AH-4c) `~/.appwrite-secrets/migrations/admin.env` (`control.env` ist die alte Variante). Lokal steht
   dieselbe Instanz in `apps/control/.env`. (Bis zum 2026-08-03 lag daneben ein
   `apps/control/.env.production`, das noch auf das gelöschte Projekt `studio`
   zeigte — es ist gelöscht; taucht es wieder auf, ist es falsch.)

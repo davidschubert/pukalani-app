@@ -2,7 +2,7 @@
 /**
  * Was DARF dieser Appwrite-Schlüssel eigentlich?
  *
- *   node scripts/ops/probe-key-scopes.mjs ~/.appwrite-secrets/migrations/control.env
+ *   node scripts/ops/probe-key-scopes.mjs ~/.appwrite-secrets/migrations/admin.env
  *   node scripts/ops/probe-key-scopes.mjs --key-file ~/.appwrite-secrets/control-runtime.key \
  *        --endpoint https://api.pukalani.app/v1 --project control
  *

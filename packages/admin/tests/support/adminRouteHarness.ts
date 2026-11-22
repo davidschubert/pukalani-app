@@ -60,6 +60,13 @@ export interface AdminRouteOptions {
    * (z. B. nur in der Entwicklung), nennt hier ihre Antwort.
    */
   onPass?: (run: ProbeRun) => void
+  /**
+   * Personen aus `pool.deny`, die die Core-Wache passieren und erst die Route
+   * selbst abweist (BT1 e: Instanz-Moderator vor der Übersicht,
+   * `server/utils/overviewAccess.ts`). Für sie gilt: 403, Datentür zu — die
+   * Core-Wache darf durchgelassen haben.
+   */
+  poolDenyBehindGate?: readonly PoolWho[]
 }
 
 function coreWho(who: PoolWho | 'gast'): Who {
@@ -128,9 +135,9 @@ const defaultPass = (run: ProbeRun) => {
   expect(run.doorOpened, 'die Datentür wird erreicht').toBe(true)
 }
 
-const denied = (run: ProbeRun) => {
+const denied = (run: ProbeRun, behindGate = false) => {
   expect(run.status).toBe(403)
-  expect(run.guardPassed, 'die Wache lässt nicht durch').toBe(false)
+  if (!behindGate) expect(run.guardPassed, 'die Wache lässt nicht durch').toBe(false)
   expect(run.doorOpened, 'die Datentür bleibt zu').toBe(false)
 }
 
@@ -168,7 +175,7 @@ export function describeAdminRoute(
 
     for (const who of expectation.pool.deny) {
       it(`pool, ${who}: 403, Datentür zu`, async () => {
-        denied(await probeAdminRoute(load, who, { ...base, mode: 'pool' }))
+        denied(await probeAdminRoute(load, who, { ...base, mode: 'pool' }), options.poolDenyBehindGate?.includes(who))
       })
     }
     for (const who of expectation.pool.allow) {

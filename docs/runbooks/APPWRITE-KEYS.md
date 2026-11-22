@@ -6,8 +6,10 @@
 > Die Messung unten ist vom 2026-08-03 und nennt die Namen von damals — das
 > ist Geschichte, kein Handgriff. Die Handgriffe (Abschnitte „Ein
 > Migrations-Schlüssel“ und „Nachmessen“) nennen den heutigen Namen. Die
-> lokalen Dateien unter `~/.appwrite-secrets/` behalten ihre Namen
-> (`control.env`, `control-*.key`).
+> lokale Migrations-Env heißt heute `migrations/admin.env` — so lesen sie
+> `scripts/ops/verify-schema-parity.mjs` und `scripts/ops/verify-site-env.mjs`;
+> `control.env` ist die alte Variante. Die Schlüssel-Dateien `control-*.key`
+> behalten ihre Namen.
 
 **Anlass (F42, 2026-08-03):** In der Console lag ein Schlüssel mit **84 Scopes**
 namens „Claude Code" — praktisch Vollzugriff auf das Betreiber-Projekt. Die
@@ -77,7 +79,7 @@ benutzt hier niemand.
 ## Nachmessen
 
 ```bash
-node scripts/ops/probe-key-scopes.mjs ~/.appwrite-secrets/migrations/control.env
+node scripts/ops/probe-key-scopes.mjs ~/.appwrite-secrets/migrations/admin.env
 node scripts/ops/probe-key-scopes.mjs --key-file ~/.appwrite-secrets/control-runtime.key \
   --endpoint https://api.pukalani.app/v1 --project admin
 ```
