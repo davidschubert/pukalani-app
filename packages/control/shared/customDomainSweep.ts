@@ -122,13 +122,21 @@ export type CustomDomainSweepRow = Pick<TenantRow, 'status' | 'mode'> & Partial<
  *    Bestand beginnt beim ersten Lauf zu zählen.
  *  - `customDomainClaimExpired` ⇒ `expire_claim` (Eintrag wie „Domain
  *    entfernen" leeren, die Freigabe bleibt).
+ *
+ * `approvalWaived` (PK1 K6): dieselbe Ausnahme wie an der Tür der Domain-Routen
+ * — der Lauf fragt sie EINMAL je Lauf (`customDomainApprovalWaived`), nie je
+ * Zeile.
  */
-export function decideCustomDomainSweep(row: CustomDomainSweepRow, now: number): CustomDomainSweepDecision {
+export function decideCustomDomainSweep(
+  row: CustomDomainSweepRow,
+  now: number,
+  options: { approvalWaived?: boolean } = {},
+): CustomDomainSweepDecision {
   if (row.status !== 'active' || row.mode !== 'pool' || !row.customDomain) return { action: 'none' }
   const status = resolveCustomDomainStatus(row.customDomainStatus)
 
   if (status === 'active') {
-    const entitled = customDomainEntitlement(row, now).allowed
+    const entitled = customDomainEntitlement(row, now, options).allowed
     const graceRaw = row.customDomainGraceEndsAt ?? ''
     if (entitled) {
       return graceRaw

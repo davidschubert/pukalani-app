@@ -30,6 +30,7 @@ import {
   normalizeCustomDomain,
   resolveCustomDomainStatus,
   validateCustomDomain,
+  healthConfirmsSiteCardWrite,
 } from '../shared/customDomain'
 import { isDryRunFlag } from '../server/utils/ploi'
 
@@ -502,5 +503,43 @@ describe('Fristen', () => {
     expect(customDomainClaimExpiresAt({ customDomain: 'kunde.de', customDomainStatus: 'pending_dns', customDomainClaimedAt: claimed }))
       .toBe(new Date(NOW + 14 * DAY).toISOString())
     expect(customDomainClaimExpiresAt({ customDomain: 'kunde.de', customDomainStatus: 'active', customDomainClaimedAt: claimed })).toBeNull()
+  })
+})
+
+/**
+ * PK1 K6: die Freigabe-Pflicht entfällt NUR mit bestätigter Ausnahme
+ * (`approvalWaived`); Plan und Testphase bleiben.
+ */
+describe('customDomainEntitlement — Freigabe-Pflicht entfällt (PK1 K6)', () => {
+  const NOW = Date.parse('2026-11-16T12:00:00.000Z')
+  const FUTURE = '2026-11-30T12:00:00.000Z'
+  it('ohne Ausnahme bleibt die Pflicht (Gegenprobe)', () => {
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: false }, NOW)).toEqual({ allowed: false, reason: 'approval_required' })
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: false }, NOW, { approvalWaived: false })).toEqual({ allowed: false, reason: 'approval_required' })
+  })
+  it('mit Ausnahme braucht eine bezahlte Pro-Community keine Freigabe', () => {
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: false }, NOW, { approvalWaived: true })).toEqual({ allowed: true })
+    expect(customDomainEntitlement({ plan: 'pro', billingStatus: 'active', customDomainApproved: null }, NOW, { approvalWaived: true })).toEqual({ allowed: true })
+  })
+  it('Testphase und Plan bleiben gesperrt', () => {
+    expect(customDomainEntitlement({ plan: 'pro', trialEndsAt: FUTURE, billingStatus: '', customDomainApproved: true }, NOW, { approvalWaived: true })).toEqual({ allowed: false, reason: 'trial' })
+    expect(customDomainEntitlement({ plan: 'basic', customDomainApproved: true }, NOW, { approvalWaived: true })).toEqual({ allowed: false, reason: 'plan_required' })
+  })
+})
+
+describe('healthConfirmsSiteCardWrite (PK1 K6)', () => {
+  it.each([
+    [{ ok: true, siteCard: { mode: 'write', cards: true, previous: false } }, true],
+    [{ ok: false, siteCard: { mode: 'write', cards: true } }, true],
+    [{ ok: true, siteCard: { mode: 'write', cards: false } }, false],
+    [{ ok: true, siteCard: { mode: 'read', cards: true } }, false],
+    [{ ok: true, siteCard: { mode: 'off', cards: false } }, false],
+    [{ ok: true, siteCard: { mode: 'write', cards: 'true' } }, false],
+    [{ ok: true }, false],
+    [{ ok: true, siteCard: null }, false],
+    [null, false],
+    ['write', false],
+  ])('%j ⇒ %s', (body, expected) => {
+    expect(healthConfirmsSiteCardWrite(body)).toBe(expected)
   })
 })

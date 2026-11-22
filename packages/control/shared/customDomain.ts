@@ -185,17 +185,42 @@ export interface CustomDomainEntitlementInput {
  *     (`billingStatus === 'active'`) zählt als bezahlt.
  *  3. Keine Freigabe des Betreibers (`customDomainApproved !== true`) ⇒
  *     `approval_required` — Übergang bis zum Vorhaben „Pukalani-Konto": wir
- *     schalten jede Community einzeln frei.
+ *     schalten jede Community einzeln frei. ENTFÄLLT mit
+ *     `approvalWaived: true` (PK1 E1c, Davids Entscheidung K6: die Pflicht
+ *     fällt, wenn die Eintrittskarte live ist). Wann das gilt, entscheidet
+ *     NUR `customDomainApprovalWaived()`
+ *     (`control/server/utils/customDomainApprovalWaiver.ts`): eigener Schalter
+ *     auf `write` mit Schlüssel UND die Platform bestätigt dasselbe — im
+ *     Zweifel bleibt die Pflicht. Die Testphasen-Sperre (2.) bleibt immer.
  *
  * Ein vom Betreiber gesetzter Pro-Plan ohne Testphasen-Datum ist bezahlt im
  * Sinne dieser Regel (der Betreiber hat entschieden), braucht aber ebenso die
  * Freigabe.
  */
-export function customDomainEntitlement(row: CustomDomainEntitlementInput, now: number): CustomDomainEntitlement {
+export function customDomainEntitlement(
+  row: CustomDomainEntitlementInput,
+  now: number,
+  options: { approvalWaived?: boolean } = {},
+): CustomDomainEntitlement {
   if (!customDomainAllowedForPlan(row.plan)) return { allowed: false, reason: 'plan_required' }
   if (isTrialActive(row.trialEndsAt, now) && row.billingStatus !== 'active') return { allowed: false, reason: 'trial' }
-  if (row.customDomainApproved !== true) return { allowed: false, reason: 'approval_required' }
+  if (options.approvalWaived !== true && row.customDomainApproved !== true) return { allowed: false, reason: 'approval_required' }
   return { allowed: true }
+}
+
+/**
+ * PURE (PK1 E1c, K6): bestätigt diese Antwort von `/api/health` der Platform,
+ * dass dort Karten geschrieben werden (`siteCard.mode === 'write'` UND
+ * `siteCard.cards === true`)? Alles andere — kein JSON, fehlendes Feld (Stand
+ * vor E1c), anderer Modus, kein brauchbarer Schlüssel — ist „nein": die
+ * Freigabe-Pflicht bleibt.
+ */
+export function healthConfirmsSiteCardWrite(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false
+  const siteCard = (body as { siteCard?: unknown }).siteCard
+  if (!siteCard || typeof siteCard !== 'object') return false
+  const { mode, cards } = siteCard as { mode?: unknown, cards?: unknown }
+  return mode === 'write' && cards === true
 }
 
 /** Antwort der Betreiber-Route `POST /api/control/tenants/[id]/custom-domain`

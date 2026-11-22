@@ -85,6 +85,21 @@ describe('decideCustomDomainSweep — aktive Domain', () => {
   })
 })
 
+describe('decideCustomDomainSweep — Freigabe-Pflicht entfällt (PK1 K6)', () => {
+  it('ohne Freigabe und ohne Ausnahme beginnt die Frist (Gegenprobe)', () => {
+    expect(decideCustomDomainSweep(row({ customDomainApproved: false }), NOW).action).toBe('start_grace')
+  })
+
+  it('mit bestätigter Ausnahme ist eine bezahlte Pro-Domain ohne Freigabe berechtigt', () => {
+    expect(decideCustomDomainSweep(row({ customDomainApproved: false }), NOW, { approvalWaived: true })).toEqual({ action: 'none' })
+    expect(decideCustomDomainSweep(row({ customDomainApproved: false, customDomainGraceEndsAt: iso(NOW + DAY) }), NOW, { approvalWaived: true }).action).toBe('clear_grace')
+  })
+
+  it('die Testphasen-Sperre bleibt auch mit Ausnahme', () => {
+    expect(decideCustomDomainSweep(row({ trialEndsAt: iso(NOW + 5 * DAY), billingStatus: null }), NOW, { approvalWaived: true }).action).toBe('start_grace')
+  })
+})
+
 describe('decideCustomDomainSweep — nichts zu tun', () => {
   it.each([
     ['stillgelegte Community', { status: 'disabled' }],

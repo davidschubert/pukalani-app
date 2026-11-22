@@ -20,6 +20,7 @@ import {
 import { COMMUNITY_MEMBERS_TABLE, type CommunityMemberRow } from '../../shared/types/communityMember'
 import { COMMUNITIES_TABLE, type TenantRow } from '../../shared/types/tenantRecord'
 import { controlLockStore } from './controlLock'
+import { customDomainApprovalWaived } from './customDomainApprovalWaiver'
 import { clearCustomDomainEntry } from './customDomainRemoval'
 import { normalizePloiConfig, type PloiConfig } from './ploi'
 
@@ -64,6 +65,11 @@ export interface CustomDomainSweepDeps {
   ploi: PloiConfig
   /** `null` = ohne Sperre (nur `dry-run`). */
   leaseStore: RunLeaseStore | null
+  /**
+   * Entfällt die Freigabe-Pflicht (PK1 K6)? Ohne Angabe: nein — die Pflicht
+   * bleibt (fail-closed).
+   */
+  approvalWaived?: () => Promise<boolean>
 }
 
 /** Der Schalter aus der app.config — unbekannt ⇒ `off`. */
@@ -80,6 +86,7 @@ function defaultDeps(mode: 'dry-run' | 'apply'): CustomDomainSweepDeps {
     databaseId: config.public.appwriteDatabaseId,
     ploi: normalizePloiConfig(config as unknown as Record<string, unknown>),
     leaseStore: mode === 'apply' ? controlLockStore() : null,
+    approvalWaived: () => customDomainApprovalWaived(),
   }
 }
 
@@ -153,6 +160,8 @@ export async function runCustomDomainSweep(
 
   try {
     const { tablesDB, databaseId } = deps
+    // EINMAL je Lauf gefragt, gilt für jede Zeile (PK1 K6).
+    const sweepOptions = { approvalWaived: deps.approvalWaived ? await deps.approvalWaived() : false }
     // VOLLSTÄNDIG, nicht die erste Seite (listAllRows, Index idx_custom_domain).
     // `!= ''` schließt auch `null` aus (Bestand von vor control-035) — beides
     // heißt „keine Domain".
@@ -177,7 +186,7 @@ export async function runCustomDomainSweep(
         break
       }
       try {
-        const decision = decideCustomDomainSweep(listed, now)
+        const decision = decideCustomDomainSweep(listed, now, sweepOptions)
         if (decision.action === 'none') {
           // Keine Handlung — aber vielleicht die Erinnerung „in drei Tagen".
           if (resolveDomainActive(listed) && customDomainNoticesDue(listed.customDomainGraceEndsAt, now).includes('ending')) {
@@ -191,7 +200,7 @@ export async function runCustomDomainSweep(
           // Kauf angekommen sein (Webhook) oder der Owner die Domain entfernt
           // haben. Geschrieben wird nur, wenn die Entscheidung dieselbe bleibt.
           const fresh = await tablesDB.getRow<TenantRow>({ databaseId, tableId: COMMUNITIES_TABLE, rowId: listed.$id })
-          const again = decideCustomDomainSweep(fresh, now)
+          const again = decideCustomDomainSweep(fresh, now, sweepOptions)
           if (again.action === 'none' || again.action !== decision.action) continue
 
           if (again.action === 'expire_claim') {

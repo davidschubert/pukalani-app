@@ -108,6 +108,15 @@ export default defineNuxtConfig({
      *  frisch angelegte Zone minutenlang für nicht existent, und der Kunde
      *  legt seinen Record dreimal an. */
     customDomainDnsServers: '',
+    /**
+     * Wo die Konsole nachfragt, ob die Platform Eintrittskarten schreibt
+     * (PK1 E1c, K6): erst wenn BEIDE auf `write` stehen, entfällt die
+     * Freigabe-Pflicht für eigene Domains (`customDomainApprovalWaiver.ts`).
+     * Öffentliche Adresse, nur lesend; leer ⇒ die Pflicht bleibt.
+     * Env: NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL (lokal auf den eigenen
+     * Platform-Server zeigen lassen).
+     */
+    customDomainPlatformHealthUrl: 'https://platform.pukalani.app/api/health',
     public: {
       // Laufzeit-Override des Pool-Projekts (Muster wie getEffectiveAiConfig:
       // app.config = Build-Default, Env = Umgebung). NÖTIG, weil das Pool-
