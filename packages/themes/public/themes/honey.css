@@ -43,6 +43,10 @@
   --ui-primary: #786222;
 }
 
+.dark[data-theme='honey'][data-variant='soft'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='honey'][data-variant='soft']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #130c00;
@@ -64,6 +68,10 @@
   --ui-color-primary-900: #322c19;
   --ui-color-primary-950: #110d03;
   --ui-primary: #706443;
+}
+
+.dark[data-theme='honey'][data-variant='muted'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='honey'][data-variant='muted']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -111,6 +119,10 @@
   --ui-primary: #7d6100;
 }
 
+.dark[data-theme='honey'][data-variant='deep'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='honey'][data-variant='deep']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #ffffff;
@@ -132,6 +144,10 @@
   --ui-color-primary-900: #3d2e00;
   --ui-color-primary-950: #130c00;
   --ui-primary: #7b6100;
+}
+
+.dark[data-theme='honey'][data-variant='bright'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='honey'][data-variant='bright']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -157,6 +173,10 @@
   --ui-primary: #6a6700;
 }
 
+.dark[data-theme='honey'][data-variant='warm'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='honey'][data-variant='warm']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #0f0e00;
@@ -178,6 +198,10 @@
   --ui-color-primary-900: #3f2600;
   --ui-color-primary-950: #160a00;
   --ui-primary: #8c5900;
+}
+
+.dark[data-theme='honey'][data-variant='cool'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='honey'][data-variant='cool']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -203,6 +227,10 @@
   --ui-primary: #9f4e00;
 }
 
+.dark[data-theme='honey'][data-variant='dawn'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='honey'][data-variant='dawn']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: #cc7432;
   --ui-text-inverted: #1a0700;
@@ -226,6 +254,10 @@
   --ui-primary: #516e00;
 }
 
+.dark[data-theme='honey'][data-variant='dusk'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='honey'][data-variant='dusk']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #091000;
@@ -247,6 +279,10 @@
   --ui-color-primary-900: #3a3015;
   --ui-color-primary-950: #130c00;
   --ui-primary: #736339;
+}
+
+.dark[data-theme='honey'][data-variant='pastel'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='honey'][data-variant='pastel']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {

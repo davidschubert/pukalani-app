@@ -109,6 +109,10 @@
   --ui-primary: #905633;
 }
 
+.dark[data-theme='sunset'][data-variant='soft'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='sunset'][data-variant='soft']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #1b0700;
@@ -132,6 +136,10 @@
   --ui-primary: #7e5d4a;
 }
 
+.dark[data-theme='sunset'][data-variant='muted'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='sunset'][data-variant='muted']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #150a05;
@@ -153,6 +161,10 @@
   --ui-color-primary-900: #441b00;
   --ui-color-primary-950: #1b0700;
   --ui-primary: #a24c00;
+}
+
+.dark[data-theme='sunset'][data-variant='vivid'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='sunset'][data-variant='vivid']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -210,6 +222,10 @@
   --ui-primary: #9f4e11;
 }
 
+.dark[data-theme='sunset'][data-variant='bright'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='sunset'][data-variant='bright']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: #ca743f;
   --ui-text-inverted: #1b0700;
@@ -231,6 +247,10 @@
   --ui-color-primary-900: #3e2400;
   --ui-color-primary-950: #170a00;
   --ui-primary: #905800;
+}
+
+.dark[data-theme='sunset'][data-variant='warm'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='sunset'][data-variant='warm']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -256,6 +276,10 @@
   --ui-primary: #b43721;
 }
 
+.dark[data-theme='sunset'][data-variant='cool'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='sunset'][data-variant='cool']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #220100;
@@ -277,6 +301,10 @@
   --ui-color-primary-900: #51131d;
   --ui-color-primary-950: #220005;
   --ui-primary: #ac3e4e;
+}
+
+.dark[data-theme='sunset'][data-variant='dawn'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='sunset'][data-variant='dawn']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {

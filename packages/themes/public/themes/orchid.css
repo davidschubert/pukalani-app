@@ -79,6 +79,10 @@
   --ui-primary: var(--ui-color-primary-600);
 }
 
+.dark[data-theme='orchid'][data-variant='vivid'] {
+  --ui-primary: #c67eff;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='orchid'][data-variant='deep'] {
@@ -94,6 +98,10 @@
   --ui-color-primary-900: #33004f;
   --ui-color-primary-950: #170028;
   --ui-primary: var(--ui-color-primary-600);
+}
+
+.dark[data-theme='orchid'][data-variant='deep'] {
+  --ui-primary: #c67eff;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */

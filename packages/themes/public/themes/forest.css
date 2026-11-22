@@ -37,6 +37,10 @@
   --ui-primary: #3a7100;
 }
 
+.dark[data-theme='forest'][data-variant='lime'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='forest'][data-variant='moss'] {
@@ -52,6 +56,10 @@
   --ui-color-primary-900: #283200;
   --ui-color-primary-950: #0b1000;
   --ui-primary: #596c00;
+}
+
+.dark[data-theme='forest'][data-variant='moss'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -71,6 +79,10 @@
   --ui-primary: #386f4d;
 }
 
+.dark[data-theme='forest'][data-variant='soft'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='forest'][data-variant='muted'] {
@@ -86,6 +98,10 @@
   --ui-color-primary-900: #213126;
   --ui-color-primary-950: #061009;
   --ui-primary: #4e6c58;
+}
+
+.dark[data-theme='forest'][data-variant='muted'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -121,6 +137,10 @@
   --ui-primary: #00733f;
 }
 
+.dark[data-theme='forest'][data-variant='deep'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='forest'][data-variant='bright'] {
@@ -136,6 +156,10 @@
   --ui-color-primary-900: #003c1e;
   --ui-color-primary-950: #001206;
   --ui-primary: #007340;
+}
+
+.dark[data-theme='forest'][data-variant='bright'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -155,6 +179,10 @@
   --ui-primary: #00715b;
 }
 
+.dark[data-theme='forest'][data-variant='warm'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='forest'][data-variant='cool'] {
@@ -172,6 +200,10 @@
   --ui-primary: #337202;
 }
 
+.dark[data-theme='forest'][data-variant='cool'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='forest'][data-variant='dawn'] {
@@ -187,4 +219,8 @@
   --ui-color-primary-900: #2b3300;
   --ui-color-primary-950: #0c0f00;
   --ui-primary: #5d6b00;
+}
+
+.dark[data-theme='forest'][data-variant='dawn'] {
+  --ui-primary: var(--ui-color-primary-400);
 }

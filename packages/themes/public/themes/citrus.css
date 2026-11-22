@@ -43,6 +43,10 @@
   --ui-primary: #8a5a17;
 }
 
+.dark[data-theme='citrus'][data-variant='soft'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='citrus'][data-variant='soft']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: #b38143;
   --ui-text-inverted: #170a00;
@@ -64,6 +68,10 @@
   --ui-color-primary-900: #392a18;
   --ui-color-primary-950: #150b02;
   --ui-primary: #7c6042;
+}
+
+.dark[data-theme='citrus'][data-variant='muted'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='citrus'][data-variant='muted']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -89,6 +97,10 @@
   --ui-primary: #8e5900;
 }
 
+.dark[data-theme='citrus'][data-variant='vivid'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='citrus'][data-variant='vivid']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #170a00;
@@ -110,6 +122,10 @@
   --ui-color-primary-900: #3b2200;
   --ui-color-primary-950: #170a00;
   --ui-primary: #8e5900;
+}
+
+.dark[data-theme='citrus'][data-variant='deep'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='citrus'][data-variant='deep']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -135,6 +151,10 @@
   --ui-primary: #8c5a11;
 }
 
+.dark[data-theme='citrus'][data-variant='bright'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='citrus'][data-variant='bright']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-700);
   --ui-text-inverted: #ffffff;
@@ -156,6 +176,10 @@
   --ui-color-primary-900: #3a2b00;
   --ui-color-primary-950: #130c00;
   --ui-primary: #7d6000;
+}
+
+.dark[data-theme='citrus'][data-variant='warm'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='citrus'][data-variant='warm']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -181,6 +205,10 @@
   --ui-primary: #a04d00;
 }
 
+.dark[data-theme='citrus'][data-variant='cool'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='citrus'][data-variant='cool']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #1b0700;
@@ -202,6 +230,10 @@
   --ui-color-primary-900: #4c2117;
   --ui-color-primary-950: #1e0401;
   --ui-primary: #9c4e3d;
+}
+
+.dark[data-theme='citrus'][data-variant='dawn'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='citrus'][data-variant='dawn']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
@@ -227,6 +259,10 @@
   --ui-primary: #6c6700;
 }
 
+.dark[data-theme='citrus'][data-variant='dusk'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 :root[data-theme='citrus'][data-variant='dusk']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-600);
   --ui-text-inverted: #0f0e00;
@@ -248,6 +284,10 @@
   --ui-color-primary-900: #432d12;
   --ui-color-primary-950: #170a00;
   --ui-primary: #815e33;
+}
+
+.dark[data-theme='citrus'][data-variant='pastel'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 :root[data-theme='citrus'][data-variant='pastel']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {

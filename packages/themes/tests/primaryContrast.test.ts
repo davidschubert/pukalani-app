@@ -99,6 +99,34 @@ describe('Hauptfarbe der 26 Farbwelten', () => {
     expect(auditPrimaryTokens('ocean', { ...tokens, light: { text: lighter } }, PALETTES).length).toBeGreaterThan(0)
   })
 
+  /**
+   * `:root[data-theme][data-variant]` ist spezifischer als `.dark[data-theme]`:
+   * setzt der helle Varianten-Block `--ui-primary`, gälte der Wert ohne
+   * eigenen dunklen Block auch im Dunkeln (live gesehen 2026-11-22: Honey,
+   * Variante dawn, helle Schriftfarbe auf dunkler Seite, 2,75 zu 1).
+   */
+  function variantsWithoutDarkTwin(css: string): string[] {
+    const missing: string[] = []
+    for (const m of css.matchAll(/:root(\[data-theme='[^']+'\]\[data-variant='[^']+'\]) \{([^}]*)\}/g)) {
+      if (m[2]!.includes('--ui-primary:') && !css.includes(`.dark${m[1]} {`)) missing.push(m[1]!)
+    }
+    return missing
+  }
+
+  it('jeder Varianten-Block, der --ui-primary hell setzt, nennt sein dunkles Gegenstück', () => {
+    for (const spec of THEME_CATALOG) {
+      expect(variantsWithoutDarkTwin(readFileSync(resolve(THEMES_DIR, `${spec.id}.css`), 'utf8')), spec.id).toEqual([])
+    }
+    const custom = customThemeCss({ id: 'v', name: 'V', primary: '#2f7fee', order: 0, variants: [{ id: 'gelb', color: '#f5d000' }, { id: 'rot', color: '#e11d48' }] })
+    expect(variantsWithoutDarkTwin(custom)).toEqual([])
+  })
+
+  it('GEGENPROBE: fehlt der dunkle Varianten-Block, meldet die Prüfung ihn', () => {
+    const css = readFileSync(resolve(THEMES_DIR, 'honey.css'), 'utf8')
+    const broken = css.replace(/\.dark\[data-theme='honey'\]\[data-variant='dawn'\] \{[^}]*\}/, '')
+    expect(variantsWithoutDarkTwin(broken)).toEqual([`[data-theme='honey'][data-variant='dawn']`])
+  })
+
   it('die erzeugte Paletten-Datei für die Laufzeit trägt dieselben Werte wie neutral.css', () => {
     expect(NEUTRAL_PALETTES).toEqual(PALETTES)
   })
