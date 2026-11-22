@@ -25,6 +25,11 @@ import { KAILUA_COFFEE_DESIGN } from './kailuaCoffeeDesign'
  * welche Kapitel ohne Lücke entfallen). Produktions-Code liest ihn seither
  * NICHT mehr; wer ihn wieder einbaut, sollte das hier vermerken.
  *
+ * VERMERK (BK1 Paket K7, 2026-11-22): das öffentliche Beispiel-Kit
+ * (`server/utils/brandKitExample.ts`, Routen `/api/brand/example/kit/*`)
+ * rechnet seine Dateien aus DIESEM Snapshot. Damit ist er wieder
+ * Produktions-Code — die Zusage „nur, was reist" gilt jetzt auch öffentlich.
+ *
  * ── WAS HIER NICHT STEHT, STEHT AUCH NICHT ZUFÄLLIG NICHT ────────────────
  * Nur Sessions, die REISEN (`sessionTravels` — öffentlich UND Festlegung,
  * §2.3). Keine Rohantworten (Gründungsimpuls, Party-Persona), nichts

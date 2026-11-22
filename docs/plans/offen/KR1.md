@@ -182,5 +182,28 @@ E12. **Suchseiten** (Q10) · als Gast eine Diskussion der Demo aufrufen,
     Quelltext ansehen: `canonical` einmal, auf der Konto-Seite
     `noindex`. Wortlaut kann abweichen.
 
+## Block F — branding.supply: Beispiel-Kit und neue Texte (BK1 K7) · ≈ 5 Min
+
+Gast, privates Fenster; passt an Block A.
+
+F1. **Das Kit am Beispiel** · `branding.supply/de/discover/kailua-coffee-co`
+    · Gast. Bis unter das Dossier scrollen. *Sehen:* Abschnitt „Das Kit" mit
+    vier Kacheln (brand.md, tokens.json, tokens.css, Zeichen (SVG)); ein Klick
+    auf „brand.md" öffnet die Datei im Browser (Text, beginnt mit „# Kailua
+    Coffee Co."), „Zeichen" und „Ganzes Kit laden (.zip)" laden eine Datei
+    `kailua-coffee-co-brand-kit-2026-09-09.zip`; entpackt liegen darin
+    `README.md`, `brand.md`, `tokens.css` und ein Ordner `marks/` mit SVGs.
+    Auf einer anderen Marke unter „Marken entdecken" gibt es den Abschnitt
+    NICHT. *Sonst:* Adresse, Kachel und was stattdessen kam melden.
+F2. **Texte zu Book & Kit** · `branding.supply/de` (Abschnitt „Was am Ende auf
+    dem Tisch liegt"), `branding.supply/de/team`, das Menü „Produkte" ·
+    Gast. *Sehen:* Brand Book „Das vollständige Handbuch — Regel-Kapitel, Do &
+    Don’t, AI-Guidelines."; die Karte brand.json nennt brand.md und brand.json;
+    Content-Kompass und 90-Tage-Plan tragen das Etikett „Brand Experience";
+    auf der Team-Seite steht nirgends mehr „Strategy Playbook"; im Menü steht
+    bei Book & Kit „Book, Tokens, brand.md + brand.json." *Dein Wort zur
+    Copy* (Gate von K7): passt oder ändern — die Sätze stehen in der Meldung
+    von Bahn 9.
+
 Nicht Teil der Runde, weil sie auf den ersten Artikel warten: die Proben aus
 BI2 und IN1 (b), siehe BI5.

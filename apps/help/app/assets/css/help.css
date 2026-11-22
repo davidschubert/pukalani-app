@@ -23,11 +23,22 @@
 .marketing-site {
   --ui-text-dimmed: #647072;
   --ui-text-muted: #546468;
+  /* Gelb und Blau der Hinweis-Kästen (Bahn 7): dieselben Werte wie
+     packages/themes/public/themes/contrast.css — der Test hält sie gleich. */
+  --ui-warning: #7f6000;
+  --ui-info: #045cd8;
+  /* Die Hinweis-Kästen (ProseCallout) malen ihre Schrift im Hellen mit der
+     600er Stufe statt mit --ui-warning/--ui-info (Gelb 2,3 zu 1, Blau 4,0
+     zu 1 gemessen) — dieselben Werte; im Dunkeln nehmen sie die 300er. */
+  --ui-color-warning-600: #7f6000;
+  --ui-color-info-600: #045cd8;
 }
 
 .dark .marketing-site {
   --ui-text-dimmed: #819296;
   --ui-text-muted: var(--ui-color-neutral-400);
+  --ui-warning: #f7c900;
+  --ui-info: #56a2ff;
 }
 
 /*

@@ -17,7 +17,7 @@
 }
 
 .dark[data-theme='plum'] {
-  --ui-primary: var(--ui-color-primary-400);
+  --ui-primary: #bb91c4;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -36,6 +36,10 @@
   --ui-color-primary-950: #110a13;
 }
 
+.dark[data-theme='plum'][data-variant='soft'] {
+  --ui-primary: #ae98b3;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='plum'][data-variant='muted'] {
@@ -52,6 +56,10 @@
   --ui-color-primary-950: #100c11;
 }
 
+.dark[data-theme='plum'][data-variant='muted'] {
+  --ui-primary: #a79baa;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='plum'][data-variant='vivid'] {
@@ -66,6 +74,10 @@
   --ui-color-primary-800: #3b1443;
   --ui-color-primary-900: #2c0e33;
   --ui-color-primary-950: #17041b;
+}
+
+.dark[data-theme='plum'][data-variant='vivid'] {
+  --ui-primary: #c58bd2;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -85,7 +97,7 @@
 }
 
 .dark[data-theme='plum'][data-variant='deep'] {
-  --ui-primary: var(--ui-color-primary-300);
+  --ui-primary: #b793bf;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -120,6 +132,10 @@
   --ui-color-primary-950: #180613;
 }
 
+.dark[data-theme='plum'][data-variant='warm'] {
+  --ui-primary: #c78fb5;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='plum'][data-variant='cool'] {
@@ -134,6 +150,10 @@
   --ui-color-primary-800: #322348;
   --ui-color-primary-900: #241835;
   --ui-color-primary-950: #10081b;
+}
+
+.dark[data-theme='plum'][data-variant='cool'] {
+  --ui-primary: #ab96cf;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -152,6 +172,10 @@
   --ui-color-primary-950: #0c0a1e;
 }
 
+.dark[data-theme='plum'][data-variant='dawn'] {
+  --ui-primary: #9a9ad6;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='plum'][data-variant='dusk'] {
@@ -168,6 +192,10 @@
   --ui-color-primary-950: #1a050e;
 }
 
+.dark[data-theme='plum'][data-variant='dusk'] {
+  --ui-primary: #ce8ca5;
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='plum'][data-variant='pastel'] {
@@ -182,4 +210,8 @@
   --ui-color-primary-800: #3d3140;
   --ui-color-primary-900: #29202c;
   --ui-color-primary-950: #110b12;
+}
+
+.dark[data-theme='plum'][data-variant='pastel'] {
+  --ui-primary: #ac99b1;
 }

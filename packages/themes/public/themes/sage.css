@@ -12,12 +12,12 @@
   --ui-color-primary-800: #28412d;
   --ui-color-primary-900: #182b1c;
   --ui-color-primary-950: #051107;
-  --ui-primary: var(--ui-color-primary-600);
+  --ui-primary: #4a6d51;
   --ui-radius: 0.375rem;
 }
 
 .dark[data-theme='sage'] {
-  --ui-primary: var(--ui-color-primary-400);
+  --ui-primary: #85a98b;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -34,6 +34,11 @@
   --ui-color-primary-800: #313e33;
   --ui-color-primary-900: #1f2921;
   --ui-color-primary-950: #090f0a;
+  --ui-primary: #58695b;
+}
+
+.dark[data-theme='sage'][data-variant='soft'] {
+  --ui-primary: #91a494;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -50,6 +55,11 @@
   --ui-color-primary-800: #353c36;
   --ui-color-primary-900: #222823;
   --ui-color-primary-950: #0b0e0b;
+  --ui-primary: #5b675d;
+}
+
+.dark[data-theme='sage'][data-variant='muted'] {
+  --ui-primary: #97a399;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -66,6 +76,11 @@
   --ui-color-primary-800: #1c3f25;
   --ui-color-primary-900: #102b17;
   --ui-color-primary-950: #021105;
+  --ui-primary: var(--ui-color-primary-600);
+}
+
+.dark[data-theme='sage'][data-variant='vivid'] {
+  --ui-primary: #79ab83;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -82,6 +97,11 @@
   --ui-color-primary-800: #1e3624;
   --ui-color-primary-900: #142618;
   --ui-color-primary-950: #051007;
+  --ui-primary: var(--ui-color-primary-600);
+}
+
+.dark[data-theme='sage'][data-variant='deep'] {
+  --ui-primary: #85a78a;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -98,6 +118,11 @@
   --ui-color-primary-800: #304936;
   --ui-color-primary-900: #1c2f20;
   --ui-color-primary-950: #051007;
+  --ui-primary: #4b6c52;
+}
+
+.dark[data-theme='sage'][data-variant='bright'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -114,6 +139,11 @@
   --ui-color-primary-800: #204235;
   --ui-color-primary-900: #122c22;
   --ui-color-primary-950: #02110b;
+  --ui-primary: #406d5c;
+}
+
+.dark[data-theme='sage'][data-variant='warm'] {
+  --ui-primary: #7baa97;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -130,6 +160,11 @@
   --ui-color-primary-800: #313f26;
   --ui-color-primary-900: #1f2a17;
   --ui-color-primary-950: #091005;
+  --ui-primary: #576a48;
+}
+
+.dark[data-theme='sage'][data-variant='cool'] {
+  --ui-primary: #91a682;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -146,6 +181,11 @@
   --ui-color-primary-800: #3d4124;
   --ui-color-primary-900: #272a14;
   --ui-color-primary-950: #0d0f03;
+  --ui-primary: #636840;
+}
+
+.dark[data-theme='sage'][data-variant='dawn'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -162,6 +202,11 @@
   --ui-color-primary-800: #133b38;
   --ui-color-primary-900: #092926;
   --ui-color-primary-950: #01110f;
+  --ui-primary: var(--ui-color-primary-600);
+}
+
+.dark[data-theme='sage'][data-variant='dusk'] {
+  --ui-primary: #74a9a3;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -178,4 +223,9 @@
   --ui-color-primary-800: #3d483f;
   --ui-color-primary-900: #252d27;
   --ui-color-primary-950: #090f0b;
+  --ui-primary: #5a685c;
+}
+
+.dark[data-theme='sage'][data-variant='pastel'] {
+  --ui-primary: var(--ui-color-primary-400);
 }

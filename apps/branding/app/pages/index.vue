@@ -216,7 +216,11 @@ const KIT_FILES = ['logo.svg', 'wortmarke.svg', 'boilerplate.md', 'gruender.jpg'
                 <p class="bw-label flex items-baseline justify-between gap-3">{{ t('home.art5P3') }} <span style="color: var(--bw-muted)">{{ t('home.art5P3n') }}</span></p>
               </div>
             </div>
-            <p class="bw-label" style="color: var(--bw-muted)">{{ t('home.art5Label') }}</p>
+            <p class="bw-label flex flex-wrap items-center gap-2" style="color: var(--bw-muted)">
+              {{ t('home.art5Label') }}
+              <!-- BK1 §2.14: Kompass und Plan gehören zu Produkt 04, nicht zu Book & Kit. -->
+              <span class="rounded-full px-2 py-0.5" style="background: var(--bw-surface-hi)">{{ t('home.experienceTag') }}</span>
+            </p>
             <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('home.art5Body') }}</p>
           </div>
           <div class="bw-card p-8">
@@ -227,7 +231,11 @@ const KIT_FILES = ['logo.svg', 'wortmarke.svg', 'boilerplate.md', 'gruender.jpg'
                 <p class="bw-label flex items-baseline justify-between gap-3"><span style="color: var(--bw-muted)">{{ t('home.art6W3') }}</span> {{ t('home.art6P3') }}</p>
               </div>
             </div>
-            <p class="bw-label" style="color: var(--bw-muted)">{{ t('home.art6Label') }}</p>
+            <p class="bw-label flex flex-wrap items-center gap-2" style="color: var(--bw-muted)">
+              {{ t('home.art6Label') }}
+              <!-- BK1 §2.14: Kompass und Plan gehören zu Produkt 04, nicht zu Book & Kit. -->
+              <span class="rounded-full px-2 py-0.5" style="background: var(--bw-surface-hi)">{{ t('home.experienceTag') }}</span>
+            </p>
             <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('home.art6Body') }}</p>
           </div>
         </div>

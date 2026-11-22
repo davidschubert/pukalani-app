@@ -57,6 +57,16 @@ export default defineNuxtConfig({
     build: {
       markdown: {
         toc: { searchDepth: 1 },
+        /**
+         * Code-Farben (Bahn 7, Rest von UX-002): die Vorgabe von Nuxt Content
+         * malt Kommentare, Zahlen und Zeichenketten im Hellen mit 2,2 bis 4,1
+         * zu 1. Die zwei Hochkontrast-Themen von GitHub liegen schon in Shiki
+         * und erreichen als Schrift 4,5 zu 1 (hell) bzw. 7 zu 1 (dunkel).
+         * Wächter: `tests/helpContrast.test.ts`.
+         */
+        highlight: {
+          theme: { default: 'github-light-high-contrast', light: 'github-light-high-contrast', dark: 'github-dark-high-contrast' },
+        },
       },
     },
     experimental: {

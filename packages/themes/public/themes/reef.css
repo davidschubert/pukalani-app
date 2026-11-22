@@ -12,7 +12,7 @@
   --ui-color-primary-800: #004a50;
   --ui-color-primary-900: #002f34;
   --ui-color-primary-950: #001113;
-  --ui-primary: var(--ui-color-primary-600);
+  --ui-primary: #006f78;
   --ui-radius: 0.375rem;
 }
 
@@ -34,6 +34,7 @@
   --ui-color-primary-800: #13494e;
   --ui-color-primary-900: #042f33;
   --ui-color-primary-950: #001113;
+  --ui-primary: #286e75;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -50,6 +51,7 @@
   --ui-color-primary-800: #2b4548;
   --ui-color-primary-900: #192d2f;
   --ui-color-primary-950: #041011;
+  --ui-primary: #476b6e;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -66,6 +68,7 @@
   --ui-color-primary-800: #00454a;
   --ui-color-primary-900: #002d31;
   --ui-color-primary-950: #001113;
+  --ui-primary: #006f77;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -82,6 +85,11 @@
   --ui-color-primary-800: #003e43;
   --ui-color-primary-900: #002a2e;
   --ui-color-primary-950: #001113;
+  --ui-primary: var(--ui-color-primary-600);
+}
+
+.dark[data-theme='reef'][data-variant='deep'] {
+  --ui-primary: #43adb6;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -114,6 +122,7 @@
   --ui-color-primary-800: #00485a;
   --ui-color-primary-900: #002e3b;
   --ui-color-primary-950: #001016;
+  --ui-primary: #006d87;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -130,6 +139,7 @@
   --ui-color-primary-800: #004b45;
   --ui-color-primary-900: #00312c;
   --ui-color-primary-950: #00110f;
+  --ui-primary: #007068;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -146,6 +156,7 @@
   --ui-color-primary-800: #00513c;
   --ui-color-primary-900: #003425;
   --ui-color-primary-950: #00120b;
+  --ui-primary: #007256;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -162,6 +173,11 @@
   --ui-color-primary-800: #003e5f;
   --ui-color-primary-900: #002941;
   --ui-color-primary-950: #000f1c;
+  --ui-primary: #006a9f;
+}
+
+.dark[data-theme='reef'][data-variant='dusk'] {
+  --ui-primary: #47a7e3;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -178,4 +194,5 @@
   --ui-color-primary-800: #2b5256;
   --ui-color-primary-900: #143336;
   --ui-color-primary-950: #001013;
+  --ui-primary: #376d72;
 }

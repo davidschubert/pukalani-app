@@ -134,8 +134,8 @@ const productTeam: Member[] = [
       en: 'Gets what you decided ready to ship — he never invents anything new.',
     },
     will: {
-      de: ['Book, Tokens, brand.json und Pressekit produzieren', 'das Strategy Playbook versandfertig machen', 'Konsistenz bis ins letzte Kapitel prüfen'],
-      en: ['produce book, tokens, brand.json and press kit', 'get the strategy playbook ready to ship', 'check consistency down to the last chapter'],
+      de: ['Book, Tokens, brand.json und Pressekit produzieren', 'brand.md und brand.json für jede KI bereitstellen', 'Konsistenz bis ins letzte Kapitel prüfen'],
+      en: ['produce book, tokens, brand.json and press kit', 'provide brand.md and brand.json for any AI', 'check consistency down to the last chapter'],
     },
     because: {
       de: ['ihm kein Detail durchrutscht', 'er Beschlossenes nie eigenmächtig ändert'],
