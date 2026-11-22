@@ -158,8 +158,8 @@ describe('Siegel für den Host-Wechsel: neue und alte Fassung', () => {
   const key = deriveHandoffKey('probe-server-key')
 
   it('neue Fassung trägt Konto, Sitzung und ursprüngliche Anmeldung', () => {
-    const token = sealHandoff({ secret: 's', userId: 'u-a', sessionId: 'sess-a', authAt: NOW - 5000 }, key, HOST, NOW)
-    expect(openHandoff(token, key, HOST, NOW)).toEqual({ secret: 's', userId: 'u-a', sessionId: 'sess-a', authAt: NOW - 5000 })
+    const token = sealHandoff({ secret: 's', userId: 'u-a', sessionId: 'sess-a', authAt: NOW - 5000, nonce: 'kennung-1' }, key, HOST, NOW)
+    expect(openHandoff(token, key, HOST, NOW)).toEqual({ secret: 's', userId: 'u-a', sessionId: 'sess-a', authAt: NOW - 5000, nonce: 'kennung-1' })
     // Die Kurzform liest auch die neue Fassung.
     expect(openHandoffToken(token, key, HOST, NOW)).toBe('s')
   })

@@ -1,7 +1,7 @@
 import { Account, Client } from 'node-appwrite'
 import { z } from 'zod'
 import { deriveHandoffKey, handoffAudience, openHandoff } from '../../utils/embedHandoff'
-import { establishSiteSession, handoffMatchesSession } from '../../utils/sessionHandoff'
+import { claimHandoffOnce, establishSiteSession, handoffMatchesSession } from '../../utils/sessionHandoff'
 import { safeRedirectTarget } from '../../../shared/redirectTarget'
 import { softFail } from '../../utils/softFail'
 
@@ -65,7 +65,9 @@ export default defineEventHandler(async (event) => {
   // nicht — dieselbe Antwort wie bei einem manipulierten Token, damit ein
   // Angreifer nicht erfährt, ob er nur den falschen Host erwischt hat.
   const grant = openHandoff(query.token, deriveHandoffKey(config.appwriteKey), handoffAudience(getHeader(event, 'host')))
-  if (!grant) {
+  // Ein Siegel mit Kennung (Modus `write`) gilt nur EINMAL — ein zweites
+  // Einlösen sieht aus wie ein abgelaufenes Siegel.
+  if (!grant || (grant.nonce !== undefined && !claimHandoffOnce(grant.nonce))) {
     throw createError({ status: 401, statusText: 'Invalid or expired handoff token' })
   }
 

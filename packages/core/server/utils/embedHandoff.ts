@@ -72,12 +72,17 @@ export interface HandoffGrant {
   sessionId?: string
   /** Zeitpunkt der ursprünglichen Anmeldung (ms seit 1970). */
   authAt?: number
+  /**
+   * Zufällige Kennung dieses Siegels (nur neue Fassung, Modus `write`): das
+   * Ziel löst jede Kennung nur EINMAL ein (`claimHandoffOnce`).
+   */
+  nonce?: string
 }
 
 /**
  * Siegel bauen (base64url iv.tag.cipher). `audience` = Host, der es einlösen
  * darf (Pflicht, s. Kopf). Inhalt: `s` Geheimnis, `exp`, `a` Ziel-Host, dazu
- * optional `u` Konto, `sid` Sitzung, `at` ursprüngliche Anmeldung.
+ * optional `u` Konto, `sid` Sitzung, `at` ursprüngliche Anmeldung, `n` Kennung.
  */
 export function sealHandoff(grant: HandoffGrant, key: Buffer, audience: string, now: number = Date.now()): string {
   const target = handoffAudience(audience)
@@ -91,6 +96,7 @@ export function sealHandoff(grant: HandoffGrant, key: Buffer, audience: string, 
     ...(grant.userId ? { u: grant.userId } : {}),
     ...(grant.sessionId ? { sid: grant.sessionId } : {}),
     ...(typeof grant.authAt === 'number' && Number.isFinite(grant.authAt) ? { at: grant.authAt } : {}),
+    ...(grant.nonce ? { n: grant.nonce } : {}),
   })
   const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()])
   const tag = cipher.getAuthTag()
@@ -113,18 +119,20 @@ export function openHandoff(token: string, key: Buffer, audience: string, now: n
     const encrypted = raw.subarray(28)
     const decipher = createDecipheriv('aes-256-gcm', key, iv)
     decipher.setAuthTag(tag)
-    const payload = JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')) as { s?: unknown, exp?: unknown, a?: unknown, u?: unknown, sid?: unknown, at?: unknown }
+    const payload = JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')) as { s?: unknown, exp?: unknown, a?: unknown, u?: unknown, sid?: unknown, at?: unknown, n?: unknown }
     if (typeof payload.s !== 'string' || typeof payload.exp !== 'number') return null
     if (typeof payload.a !== 'string' || payload.a !== self) return null
     if (payload.exp < now) return null
     if (payload.u !== undefined && (typeof payload.u !== 'string' || !payload.u)) return null
     if (payload.sid !== undefined && (typeof payload.sid !== 'string' || !payload.sid)) return null
     if (payload.at !== undefined && (typeof payload.at !== 'number' || !Number.isFinite(payload.at))) return null
+    if (payload.n !== undefined && (typeof payload.n !== 'string' || !payload.n)) return null
     return {
       secret: payload.s,
       ...(payload.u ? { userId: payload.u } : {}),
       ...(payload.sid ? { sessionId: payload.sid } : {}),
       ...(typeof payload.at === 'number' ? { authAt: payload.at } : {}),
+      ...(payload.n ? { nonce: payload.n } : {}),
     }
   }
   catch {

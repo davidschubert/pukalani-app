@@ -2,7 +2,7 @@ import { Account, Client } from 'node-appwrite'
 import { z } from 'zod'
 import { deriveHandoffKey, handoffAudience, openHandoff } from '../../utils/embedHandoff'
 import { setSessionCookie } from '../../lib/appwrite'
-import { handoffAuthAt, handoffMatchesSession } from '../../utils/sessionHandoff'
+import { claimHandoffOnce, handoffAuthAt, handoffMatchesSession } from '../../utils/sessionHandoff'
 import { softFail } from '../../utils/softFail'
 
 const bodySchema = z.object({ token: z.string().min(1).max(2048) }).strict()
@@ -33,7 +33,9 @@ export default defineEventHandler(async (event) => {
   // Zielgruppe = der EIGENE Host: das Popup, das gesiegelt hat, ist unsere
   // Login-Seite auf genau dieser Origin (s. embed-handoff.post.ts).
   const grant = openHandoff(body.token, deriveHandoffKey(config.appwriteKey), handoffAudience(getHeader(event, 'host')))
-  if (!grant) {
+  // Ein Siegel mit Kennung (Modus `write`) gilt nur EINMAL — ein zweites
+  // Einlösen sieht aus wie ein abgelaufenes Siegel.
+  if (!grant || (grant.nonce !== undefined && !claimHandoffOnce(grant.nonce))) {
     throw createError({ status: 401, statusText: 'Invalid or expired handoff token' })
   }
 

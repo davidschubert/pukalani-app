@@ -4,6 +4,7 @@ import { probeRoute, resetCommunityWorld, userIdOf } from './support/participati
 import { appwriteFake } from './support/appwriteFake'
 import { coreKit } from './support/coreRouteKit'
 import { configureSiteCard, deriveSiteCardKey, sealSiteCard } from '../server/utils/siteCard'
+import { claimHandoffOnce, establishSiteSession, resetHandoffClaimsForTests } from '../server/utils/sessionHandoff'
 import { HANDOFF_TTL_MS, deriveHandoffKey, openHandoff, sealHandoff, sealHandoffToken, type HandoffGrant } from '../server/utils/embedHandoff'
 import type { SessionCookieCard } from '../server/utils/requestSession'
 
@@ -88,11 +89,19 @@ function newSessionWorks() {
 }
 
 const seal = (grant: HandoffGrant, host = OWN_HOST, now = Date.now()) => sealHandoff(grant, deriveHandoffKey(SERVER_KEY), host, now)
-const fullGrant = (over: Partial<HandoffGrant> = {}): HandoffGrant => ({ secret: SOURCE_SECRET, userId: USER, sessionId: 's-source', authAt: ORIGINAL_AUTH, ...over })
+const fullGrant = (over: Partial<HandoffGrant> = {}): HandoffGrant => ({
+  secret: SOURCE_SECRET,
+  userId: USER,
+  sessionId: 's-source',
+  authAt: ORIGINAL_AUTH,
+  nonce: randomBytes(12).toString('base64url'),
+  ...over,
+})
 
 beforeEach(() => {
   appwriteFake.reset()
   cookieWrites.length = 0
+  resetHandoffClaimsForTests()
 })
 
 afterEach(() => {
@@ -137,22 +146,67 @@ describe('GET /api/auth/site-session — eigene Sitzung je Seite', () => {
     expect(appwriteFake.argsOf('admin.users.createSession')).toEqual([{ userId: USER }])
     expect(cookieWrites).toEqual([{
       secret: 'neues-geheimnis',
-      expire: NEW_EXPIRE,
+      expire: SOURCE_EXPIRE,
       partitioned: false,
       card: { sessionId: 's-new', userId: USER, authAt: ORIGINAL_AUTH, own: true },
     }])
     expect(cookieWrites[0]!.secret).not.toBe(SOURCE_SECRET)
   })
 
-  it('write, altes Siegel ohne Zusatz (laufender 60-s-Link): neue Sitzung, authAt = Beginn der Quell-Sitzung', async () => {
+  it('write, altes Siegel ohne Kennung (laufender 60-s-Link): nur Kopie in der Karte, KEINE neue Sitzung, authAt = Beginn der Quell-Sitzung', async () => {
     writeMode()
     sourceSessionIsAlive()
     plainAccount()
     newSessionWorks()
     const result = await run(sealHandoffToken(SOURCE_SECRET, deriveHandoffKey(SERVER_KEY), OWN_HOST))
     expect(result.status).toBe(200)
-    expect(cookieWrites[0]!.secret).toBe('neues-geheimnis')
-    expect(cookieWrites[0]!.card?.authAt).toBe(Date.parse(SOURCE_CREATED))
+    expect(appwriteFake.argsOf('admin.users.createSession')).toEqual([])
+    expect(cookieWrites).toEqual([{
+      secret: SOURCE_SECRET,
+      expire: SOURCE_EXPIRE,
+      partitioned: false,
+      card: { sessionId: 's-source', userId: USER, authAt: Date.parse(SOURCE_CREATED), own: false },
+    }])
+  })
+
+  it('write: dasselbe Siegel ein zweites Mal ⇒ 401 wie abgelaufen, keine zweite Sitzung', async () => {
+    writeMode()
+    sourceSessionIsAlive()
+    plainAccount()
+    newSessionWorks()
+    const token = seal(fullGrant())
+    expect((await run(token)).status).toBe(200)
+    expect((await run(token)).status).toBe(401)
+    expect(appwriteFake.argsOf('admin.users.createSession')).toHaveLength(1)
+    expect(cookieWrites).toHaveLength(1)
+    // Gegenprobe: ein zweites, eigenes Siegel geht.
+    expect((await run(seal(fullGrant()))).status).toBe(200)
+  })
+
+  it('write ohne Schlüssel: Kopie, keine neue Sitzung (nie eine neue Sitzung im Klartext)', async () => {
+    configureSiteCard({ mode: 'write' })
+    sourceSessionIsAlive()
+    plainAccount()
+    newSessionWorks()
+    const result = await run(seal(fullGrant()))
+    expect(result.status).toBe(200)
+    expect(appwriteFake.argsOf('admin.users.createSession')).toEqual([])
+    expect(cookieWrites[0]!.secret).toBe(SOURCE_SECRET)
+  })
+
+  it('write: die Karte der neuen Sitzung gilt nicht länger als die Quelle (Gegenprobe: kürzere neue Sitzung bleibt)', async () => {
+    writeMode()
+    sourceSessionIsAlive()
+    plainAccount()
+    newSessionWorks()
+    await run(seal(fullGrant()))
+    // neue Sitzung läuft 2027 ab, die Quelle schon 2026-12-01
+    expect(cookieWrites[0]!.expire).toBe(SOURCE_EXPIRE)
+
+    cookieWrites.length = 0
+    appwriteFake.reply('admin.users.createSession', args => ({ $id: 's-new', userId: args.userId, secret: 'neues-geheimnis', expire: '2026-11-30T00:00:00.000Z' }))
+    await run(seal(fullGrant()))
+    expect(cookieWrites[0]!.expire).toBe('2026-11-30T00:00:00.000Z')
   })
 
   it('write, Zwei-Faktor (verifizierte E-Mail): Kopie in der Karte, keine neue Sitzung', async () => {
@@ -285,6 +339,27 @@ describe('GET /api/auth/site-session — eigene Sitzung je Seite', () => {
       expect(appwriteFake.argsOf('admin.users.deleteSession')).toEqual([])
     })
 
+    it('Löschen scheitert: eigene gezählte Zeile, die neue Karte steht trotzdem (Gegenprobe: 404 = schon weg, keine Zeile)', async () => {
+      const lines = vi.spyOn(console, 'log').mockImplementation(() => {})
+      const warns = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const cleanupLines = () => [...lines.mock.calls, ...warns.mock.calls, ...errors.mock.calls]
+        .map(args => String(args[0])).filter(line => line.includes('auth.site_session_cleanup_failed'))
+      appwriteFake.reply('admin.users.deleteSession', () => {
+        throw Object.assign(new Error('gone'), { code: 404 })
+      })
+      await run(seal(fullGrant()), { cookie: existingCard() })
+      expect(cleanupLines()).toEqual([])
+      appwriteFake.reply('admin.users.deleteSession', () => {
+        throw Object.assign(new Error('boom'), { code: 500 })
+      })
+      await run(seal(fullGrant()), { cookie: existingCard() })
+      expect(cleanupLines()).toHaveLength(1)
+      lines.mockRestore()
+      warns.mockRestore()
+      errors.mockRestore()
+    })
+
     it('Löschen scheitert: die neue Karte steht trotzdem', async () => {
       appwriteFake.reply('admin.users.deleteSession', () => {
         throw Object.assign(new Error('boom'), { code: 500 })
@@ -330,6 +405,15 @@ describe('POST /api/auth/embed-session — dieselbe Sitzung in einer Karte (Kopi
     }])
   })
 
+  it('dasselbe Siegel ein zweites Mal: 401, nur ein Cookie', async () => {
+    writeMode()
+    sourceSessionIsAlive()
+    const token = seal(fullGrant())
+    expect((await probeRoute(load, { who: 'guest', body: { token }, globals: embedGlobals() })).status).toBe(200)
+    expect((await probeRoute(load, { who: 'guest', body: { token }, globals: embedGlobals() })).status).toBe(401)
+    expect(cookieWrites).toHaveLength(1)
+  })
+
   it('Siegel passt nicht zur Sitzung: 401, kein Cookie', async () => {
     writeMode()
     sourceSessionIsAlive()
@@ -347,13 +431,13 @@ describe('POST /api/auth/embed-handoff — Siegel mit Konto, Sitzung und Anmelde
     writeMode()
     const result = await probeRoute(load, { who: 'member', globals: embedGlobals({ cookie: existingCard() }), tenantFields: { pukalaniHost: OWN_HOST } })
     expect(result.status).toBe(200)
-    expect(open((result.result as { token: string }).token)).toEqual({ secret: 'alte-seiten-sitzung', userId: USER, sessionId: 's-old', authAt: ORIGINAL_AUTH })
+    expect(open((result.result as { token: string }).token)).toEqual({ secret: 'alte-seiten-sitzung', userId: USER, sessionId: 's-old', authAt: ORIGINAL_AUTH, nonce: expect.any(String) })
   })
 
   it('write mit Klartext (Pukalani-Adresse): Siegel trägt nur Geheimnis und Konto', async () => {
     writeMode()
     const result = await probeRoute(load, { who: 'member', globals: embedGlobals({ cookie: 'klartext-geheimnis' }), tenantFields: { pukalaniHost: OWN_HOST } })
-    expect(open((result.result as { token: string }).token)).toEqual({ secret: 'klartext-geheimnis', userId: USER })
+    expect(open((result.result as { token: string }).token)).toEqual({ secret: 'klartext-geheimnis', userId: USER, nonce: expect.any(String) })
   })
 
   it('off: Siegel wie vor E1b, nur das Geheimnis', async () => {
@@ -379,19 +463,72 @@ describe('GET /api/auth/realtime-token — mit Karte an deren Sitzung gebunden',
     expect(appwriteFake.argsOf('admin.users.createJWT')).toEqual([{ userId: USER, sessionId: 's-old', duration: 900 }])
   })
 
-  it('Karte eines anderen Kontos als die Sitzung: keine Sitzung mitgegeben', async () => {
+  it('Karte eines anderen Kontos als die Sitzung: deren Sitzung zählt nicht, die der Anfrage wird erfragt', async () => {
     writeMode()
     appwriteFake.reply('admin.users.createJWT', () => ({ jwt: 'probe-jwt' }))
+    appwriteFake.reply('session.account.getSession', () => ({ $id: 's-klartext', userId: USER }))
     await probeRoute(load, { who: 'member', globals: tokenGlobals(existingCard({ userId: 'u-anders' })), tenantFields: { pukalaniHost: OWN_HOST } })
-    expect(appwriteFake.argsOf('admin.users.createJWT')).toEqual([{ userId: USER, duration: 900 }])
+    expect(appwriteFake.argsOf('admin.users.createJWT')).toEqual([{ userId: USER, sessionId: 's-klartext', duration: 900 }])
   })
 
-  for (const mode of ['off', 'write'] as const) {
-    it(`${mode}, ohne Karte: unverändert (ohne sessionId)`, async () => {
-      if (mode === 'write') writeMode()
+  for (const mode of ['off', 'read'] as const) {
+    it(`${mode}, ohne Karte: unverändert (ohne sessionId, keine Sitzungs-Frage)`, async () => {
+      if (mode === 'read') configureSiteCard({ mode: 'read', key: rawCardKey.toString('base64') })
       appwriteFake.reply('admin.users.createJWT', () => ({ jwt: 'probe-jwt' }))
       await probeRoute(load, { who: 'member', globals: tokenGlobals('klartext-geheimnis'), tenantFields: { pukalaniHost: OWN_HOST } })
       expect(appwriteFake.argsOf('admin.users.createJWT')).toEqual([{ userId: USER, duration: 900 }])
+      expect(appwriteFake.used('session')).toBe(false)
     })
   }
+
+  it('write, Klartext: die Sitzung der Anfrage wird erfragt und mitgegeben', async () => {
+    writeMode()
+    appwriteFake.reply('admin.users.createJWT', () => ({ jwt: 'probe-jwt' }))
+    appwriteFake.reply('session.account.getSession', () => ({ $id: 's-klartext', userId: USER }))
+    const result = await probeRoute(load, { who: 'member', globals: tokenGlobals('klartext-geheimnis'), tenantFields: { pukalaniHost: OWN_HOST } })
+    expect(result.status).toBe(200)
+    expect(appwriteFake.argsOf('session.account.getSession')).toEqual([{ sessionId: 'current' }])
+    expect(appwriteFake.argsOf('admin.users.createJWT')).toEqual([{ userId: USER, sessionId: 's-klartext', duration: 900 }])
+  })
+
+  it('write, Klartext, Sitzung nicht lesbar: 401, kein JWT', async () => {
+    writeMode()
+    appwriteFake.reply('session.account.getSession', () => {
+      throw Object.assign(new Error('gone'), { code: 401 })
+    })
+    const result = await probeRoute(load, { who: 'member', globals: tokenGlobals('klartext-geheimnis'), tenantFields: { pukalaniHost: OWN_HOST } })
+    expect(result.status).toBe(401)
+    expect(appwriteFake.argsOf('admin.users.createJWT')).toEqual([])
+  })
+})
+
+// ── Einmal einlösen und „Karte schreibbar?" direkt an den Hilfen ────────────
+
+describe('claimHandoffOnce — je Kennung genau einmal, mit Ablauf', () => {
+  it('erstes Mal ja, zweites Mal nein, nach Ablauf des Merkers wieder ja', () => {
+    const now = Date.now()
+    expect(claimHandoffOnce('k-1', now)).toBe(true)
+    expect(claimHandoffOnce('k-1', now + 1000)).toBe(false)
+    expect(claimHandoffOnce('k-2', now + 1000)).toBe(true)
+    expect(claimHandoffOnce('k-1', now + 3 * 60_000)).toBe(true)
+  })
+})
+
+describe('establishSiteSession — ohne Host keine neue Sitzung', () => {
+  it('kein Host: Kopie, createSession nicht gerufen (Gegenprobe mit Host: neue Sitzung)', async () => {
+    writeMode()
+    plainAccount()
+    newSessionWorks()
+    const source = { $id: 's-source', userId: USER, expire: SOURCE_EXPIRE, $createdAt: SOURCE_CREATED } as never
+    const kit = (host?: string) => coreKit({ headers: host ? { host } : {} }).globals
+    for (const [name, value] of Object.entries(kit())) vi.stubGlobal(name, value)
+    await establishSiteSession({ context: {} } as never, fullGrant(), source)
+    expect(appwriteFake.argsOf('admin.users.createSession')).toEqual([])
+    expect(cookieWrites[0]!.secret).toBe(SOURCE_SECRET)
+
+    cookieWrites.length = 0
+    for (const [name, value] of Object.entries(kit(OWN_HOST))) vi.stubGlobal(name, value)
+    await establishSiteSession({ context: {} } as never, fullGrant(), source)
+    expect(cookieWrites[0]!.secret).toBe('neues-geheimnis')
+  })
 })

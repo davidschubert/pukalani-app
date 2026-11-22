@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   if (!event.context.user) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
-  const grant = requestHandoffGrant(event)
+  const grant = requestHandoffGrant(event, { leavesHost: false })
   if (!grant) {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
