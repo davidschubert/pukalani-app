@@ -438,14 +438,24 @@
     },
     "plans": {
       "title": "Plans & limits (pool)",
-      "subtitle": "Quota limits per plan — apply to all pool sites without a deploy (take effect within 90 seconds). 0 = unlimited.",
-      "commentsPerDay": "Comments / day",
-      "commentsTotal": "Comments total",
+      "subtitle": "Limits per plan and kind — the catalog applies to all pool communities without a deploy (takes effect within 90 seconds). “Default” means the catalog has no entry and the number from the platform app’s configuration applies.",
       "save": "Save",
       "saved": "Limits saved — effective within 90 seconds.",
       "saveFailed": "Could not save limits.",
       "saveFailedHint": "The previous limits still apply. Whole numbers from 0 upwards are allowed (0 = unlimited).",
-      "hint": "perDay counts a rolling 24 hours; total = overall per site. 0 means unlimited."
+      "hint": "“Per day” counts a rolling 24 hours, “total” the overall count per community. 0 means unlimited. Only changed kinds are saved.",
+      "perDay": "per day",
+      "total": "total",
+      "fromCatalog": "Catalog",
+      "fromDefault": "Default from configuration",
+      "resetToDefault": "Back to default",
+      "setOwn": "Set own numbers",
+      "kind": {
+        "comments": "Comments",
+        "pages": "Pages",
+        "events": "Events",
+        "media": "Media library"
+      }
     },
     "prices": {
       "title": "Prices (Stripe)",

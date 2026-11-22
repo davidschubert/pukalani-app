@@ -115,8 +115,10 @@ describe('der Katalog nennt Zahlen für pages', () => {
   it('alle drei Pläne der Platform-App tragen pages: 50 am Tag, 300 gesamt', () => {
     // Als TEXT gelesen: ein Layer-Test importiert nichts aus apps/ (in der CI
     // fehlt dort .nuxt/ — Wächter core/tests/layerTestsNoAppImports.test.ts).
-    const source = readFileSync(fileURLToPath(new URL('../../../apps/platform/app/app.config.ts', import.meta.url)), 'utf8')
-    const plans = blockAfter(blockAfter(source, /\bquota:\s*\{/), /\bplans:\s*\{/)
+    // Die Vorgabe-Zahlen stehen seit KK1 c (2026-11-22) in einer eigenen
+    // Datei der Platform-App; der Katalog `community_plans` schlägt sie.
+    const source = readFileSync(fileURLToPath(new URL('../../../apps/platform/shared/quotaPlans.ts', import.meta.url)), 'utf8')
+    const plans = blockAfter(source, /\bPLATFORM_QUOTA_PLANS\s*=\s*\{/)
     const planKeys = ['basic', 'personal', 'pro']
     for (const plan of planKeys) {
       const block = blockAfter(plans, new RegExp(`\\b${plan}:\\s*\\{`))
