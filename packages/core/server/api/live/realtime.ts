@@ -32,15 +32,19 @@ import { siteCardCommunityOf } from '../../../shared/siteCard'
  */
 const MIN_DURATION_S = 60
 
+/**
+ * Dieselbe Antwort wie für einen Pfad, den es nicht gibt (Nuxts früher 404,
+ * `early-404.js`): mit Schalter aus soll die Route nicht zu erkennen sein.
+ */
+function notFound(path: string) {
+  return createError({ status: 404, statusText: `Page not found: ${path}`, data: { path } })
+}
+
 export default defineEventHandler({
   handler: async (event) => {
-    if (!isLiveTicketRequest(event) || !liveRelayReady()) {
-      throw createError({ status: 404, statusText: 'Not found' })
-    }
+    if (!isLiveTicketRequest(event) || !liveRelayReady()) throw notFound(event.path)
     const tenant = event.context.tenant
-    if (event.context.customDomainScope !== true || tenant?.mode !== 'pool') {
-      throw createError({ status: 404, statusText: 'Not found' })
-    }
+    if (event.context.customDomainScope !== true || tenant?.mode !== 'pool') throw notFound(event.path)
     const user = event.context.user
     const session = readRequestSession(event)
     if (!user || session?.format !== 'card' || session.claims.userId !== user.$id) {
