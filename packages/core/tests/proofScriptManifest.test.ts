@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { BEWEISE, e2eDetector, GRUND_MIN, manifestProblems } from '../../../scripts/buehne/beweise.mjs'
-import { CENSUS_IGNORE, censusGrowth, countMarks, missingServices, selectProofs, timeoutSeconds } from '../../../scripts/buehne/run.mjs'
+import { CENSUS_IGNORE, censusGrowth, countMarks, missingServices, selectProofs, skipReason, timeoutSeconds } from '../../../scripts/buehne/run.mjs'
 import { proofScripts } from '../../../scripts/live-beweise.mjs'
 
 /**
@@ -165,6 +165,15 @@ describe('Selbsttest des Läufers', () => {
   it('zählt ✔ und ✗ am Zeilenanfang, nicht die Schlusszeile', () => {
     const lines = ['  ✔ eins', '✔ zwei', '  ✗ drei', 'Text mit ✔ mittendrin', '✔ 2 bestanden, 1 fehlgeschlagen', '✔ 3/3 Prüfungen bestanden', '  ✔ 1. Lauf kommt durch']
     expect(countMarks(lines)).toEqual({ pass: 3, fail: 1 })
+  })
+
+  it('ein ganz übersprungenes Skript zählt nie als bestanden (PK1 E1c)', () => {
+    expect(skipReason(['Beweis …', '○ übersprungen: Platform meldet siteCard.mode=off'])).toBe('Platform meldet siteCard.mode=off')
+    // Gegenproben: eine einzige Prüfung macht daraus einen gewöhnlichen Lauf,
+    // und ohne die Zeile ist ein leerer Lauf kein „übersprungen".
+    expect(skipReason(['○ übersprungen: x', '  ✔ trotzdem geprüft'])).toBeNull()
+    expect(skipReason(['  ○ übersprungen: Teil nicht prüfbar', '  ✗ rot'])).toBeNull()
+    expect(skipReason(['nichts geprüft'])).toBeNull()
   })
 })
 

@@ -28,6 +28,14 @@
  * `enabled !== false` statt `=== true`: fehlt der Schlüssel (Test ohne
  * App-Config, App mit `realtime: {}`), gilt der Core-Default.
  */
+export function realtimeAllowed(
+  enabled: boolean | undefined,
+  ...requiredIds: (string | undefined)[]
+): boolean {
+  if (enabled === false) return false
+  return requiredIds.every(id => !!id)
+}
+
 /**
  * TOKEN FÜR DIE LIVE-VERBINDUNG? (PK1 E1b-2) — nur mit Sitzung, und nicht auf
  * der eigenen Domain einer Community im Modus `write`: dort antwortet
@@ -38,14 +46,6 @@
  */
 export function realtimeTokenWanted(loggedIn: boolean, customDomainScope: boolean): boolean {
   return loggedIn && !customDomainScope
-}
-
-export function realtimeAllowed(
-  enabled: boolean | undefined,
-  ...requiredIds: (string | undefined)[]
-): boolean {
-  if (enabled === false) return false
-  return requiredIds.every(id => !!id)
 }
 
 /**

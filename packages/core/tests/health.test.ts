@@ -18,12 +18,15 @@ vi.mock('../server/lib/appwrite', () => ({
 
 /** Ohne registrierte Layer gibt es keine Probe ⇒ ok 0/0. */
 const NO_PROBES = { state: 'ok', expected: 0, found: 0 }
+/** Ohne Start-Plugin steht der Schalter der Karte auf `off` (PK1 E1c). */
+const CARD_OFF = { mode: 'off', cards: false, previous: false }
 
 type Handler = (event: object) => Promise<{
   ok: boolean
   build: string | null
   reason?: string
   schema?: { state: string, expected: number, found: number | null }
+  siteCard?: { mode: string, cards: boolean, previous: boolean }
 }>
 let handler: Handler
 let tenancy: { enabled?: boolean } = {}
@@ -88,7 +91,7 @@ describe('/api/health', () => {
 
   it('antwortet ohne `user`, mit `ok` und `build`', async () => {
     const body = await handler({ context: { user: { $id: 'u1' } } })
-    expect(body).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES })
+    expect(body).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES, siteCard: CARD_OFF })
     expect(body).not.toHaveProperty('user')
   })
 
@@ -153,7 +156,7 @@ describe('/api/health — Schema-Stand (OPS-008)', () => {
   it('Lesefehler ⇒ unknown, ok bleibt true', async () => {
     listRows.mockRejectedValue(Object.assign(new Error('x'), { code: 500, type: 'general_unknown' }))
     const body = await handler({})
-    expect(body).toEqual({ ok: true, build: 'abc1234', schema: { state: 'unknown', expected: 1, found: null } })
+    expect(body).toEqual({ ok: true, build: 'abc1234', schema: { state: 'unknown', expected: 1, found: null }, siteCard: CARD_OFF })
   })
 
   it('eine hängende Probe hält die Antwort höchstens 4 s auf', async () => {
@@ -186,7 +189,7 @@ describe('/api/health — Trennung ohne Resolver (SEC-025)', () => {
   it('meldet ok:false mit benanntem Grund, `build` bleibt lesbar', async () => {
     tenancy = { enabled: true }
     const body = await handler({})
-    expect(body).toEqual({ ok: false, build: 'abc1234', reason: 'tenant_resolver_missing' })
+    expect(body).toEqual({ ok: false, build: 'abc1234', reason: 'tenant_resolver_missing', siteCard: CARD_OFF })
   })
 
   it('fragt Appwrite dann gar nicht — auch keine Schema-Probe', async () => {
@@ -207,11 +210,52 @@ describe('/api/health — Trennung ohne Resolver (SEC-025)', () => {
     tenancy = { enabled: true }
     const { registerTenantResolver } = await import('../server/utils/tenantResolver')
     registerTenantResolver(() => null)
-    expect(await handler({})).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES })
+    expect(await handler({})).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES, siteCard: CARD_OFF })
   })
 
   it('Trennung aus ⇒ kein Grund, Antwort unverändert', async () => {
     tenancy = { enabled: false }
-    expect(await handler({})).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES })
+    expect(await handler({})).toEqual({ ok: true, build: 'abc1234', schema: NO_PROBES, siteCard: CARD_OFF })
+  })
+})
+
+/**
+ * DER SCHALTER DER KARTE (PK1 E1c): `/api/health` sagt, wie die App ihn
+ * gelesen hat — Runbook-Prüfung nach dem Umschalten, Bestätigung für die
+ * Freigabe-Pflicht eigener Domains (K6) und die Warnung des Wächters bei einem
+ * stehen gebliebenen vorigen Schlüssel. Nie ein Schlüssel, nie seine Kennung.
+ */
+describe('/api/health — Schalter der Karte (PK1 E1c)', () => {
+  const KEY = Buffer.alloc(32, 7).toString('base64')
+  const OLD = Buffer.alloc(32, 9).toString('base64')
+
+  afterEach(async () => {
+    const { configureSiteCard } = await import('../server/utils/siteCard')
+    configureSiteCard({ mode: 'off' })
+  })
+
+  it.each([
+    [{ mode: 'read', key: KEY }, { mode: 'read', cards: true, previous: false }],
+    [{ mode: 'write', key: KEY }, { mode: 'write', cards: true, previous: false }],
+    [{ mode: 'write', key: KEY, previousKey: OLD }, { mode: 'write', cards: true, previous: true }],
+    // `write` ohne brauchbaren Schlüssel bleibt `write`, aber ohne Karten.
+    [{ mode: 'write', key: '' }, { mode: 'write', cards: false, previous: false }],
+    // `read` ohne Schlüssel fällt auf `off`.
+    [{ mode: 'read', key: 'kaputt' }, { mode: 'off', cards: false, previous: false }],
+  ])('%j ⇒ %j', async (config, expected) => {
+    const { configureSiteCard } = await import('../server/utils/siteCard')
+    configureSiteCard(config)
+    const body = await handler({})
+    expect(body.siteCard).toEqual(expected)
+    // Kein Schlüssel und keine Kennung in der Antwort.
+    expect(JSON.stringify(body)).not.toContain(KEY)
+    expect(JSON.stringify(body)).not.toContain(OLD)
+  })
+
+  it('auch bei fehlendem Resolver lesbar (SEC-025)', async () => {
+    tenancy = { enabled: true }
+    const { configureSiteCard } = await import('../server/utils/siteCard')
+    configureSiteCard({ mode: 'write', key: KEY })
+    expect((await handler({})).siteCard).toEqual({ mode: 'write', cards: true, previous: false })
   })
 })

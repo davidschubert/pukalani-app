@@ -51,6 +51,7 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Presences, Users } from 'node-appwrite'
+import { createHostLogins } from '../../../scripts/lib/probe-stage.mjs'
 
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -107,6 +108,13 @@ function call(host, path, { method = 'GET', body, cookie } = {}) {
     req.end()
   })
 }
+
+/**
+ * Anmelden JE HOST (PK1 E1c): zwei Tabs auf zwei Hosts sind im Browser zwei
+ * Anmeldungen — das Cookie ist host-only, im Modus `write` eine Karte, die
+ * nur auf ihrem Host gilt.
+ */
+const cookieOn = createHostLogins(call)
 
 /** Heartbeat über den ECHTEN Endpunkt — `away` ist der einzige Unterschied. */
 async function heartbeat(host, cookie, away) {
@@ -171,15 +179,12 @@ try {
   // VOR der Anmeldung, damit schon der erste Takt als Mitglied läuft.
   await adminUsers.updateLabels({ userId: user.$id, labels: [COMMUNITY_A, COMMUNITY_B] })
 
-  // EIN Cookie für beide Hosts: der Session-Cookie hängt am PROJEKT
-  // (a_session_<projectId>) — im Pool teilen sich alle Mandanten-Hosts eines.
-  // Genau deshalb kann ein Mensch überhaupt zwei Dashboards offen haben.
-  const login = await call(HOST_A, '/api/auth/login', {
-    method: 'POST', body: { email: account.email, password: account.password },
-  })
-  if (login.status !== 200) throw new Error(`Login auf ${HOST_A} fehlgeschlagen (${login.status}): ${login.text.slice(0, 160)}`)
-  const cookie = login.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
-  if (!cookie) throw new Error('Kein Session-Cookie erhalten')
+  // EIN Konto, ZWEI Tabs auf zwei Hosts: jeder Tab hat seine eigene
+  // Anmeldung (host-only Cookie; im Modus `write` gilt eine Karte nur auf
+  // ihrem Host). Die Anwesenheit hängt am KONTO (presenceId = userId), nicht
+  // an der Sitzung — darum teilen sich beide Tabs trotzdem die EINE Presence.
+  const cookieA = await cookieOn(HOST_A, account)
+  const cookieB = await cookieOn(HOST_B, account)
 
   console.log('0. Aufwärmen — ohne Zugehörigkeit keine Anwesenheit, mit ihr die Stempel der zwei Hosts')
   // Die Regel selbst, mit einem ZWEITEN Konto ohne jedes Label: der Takt wird
@@ -191,16 +196,14 @@ try {
   })
   created.users.push(stranger.$id)
   created.presences.push(stranger.$id)
-  const strangerLogin = await call(HOST_A, '/api/auth/login', { method: 'POST', body: strangerAccount })
-  const strangerCookie = strangerLogin.setCookie.find(c => c.startsWith('a_session_'))?.split(';')[0]
-  if (!strangerCookie) throw new Error('Kein Session-Cookie für das Konto ohne Zugehörigkeit')
+  const strangerCookie = await cookieOn(HOST_A, strangerAccount)
   await heartbeat(HOST_A, strangerCookie, false)
   check('ein Konto OHNE Zugehörigkeit: der Takt wird angenommen, aber es entsteht keine Anwesenheit',
     await presenceState(stranger.$id) === null, JSON.stringify(await presenceState(stranger.$id)))
 
-  await heartbeat(HOST_A, cookie, false)
+  await heartbeat(HOST_A, cookieA, false)
   const warmA = await presenceState(user.$id)
-  await heartbeat(HOST_B, cookie, false)
+  await heartbeat(HOST_B, cookieB, false)
   const warmB = await presenceState(user.$id)
   const TENANT_A = warmA?.tenantId ?? ''
   const TENANT_B = warmB?.tenantId ?? ''
@@ -220,13 +223,13 @@ try {
   console.log(`   Stempel A = ${TENANT_A} · B = ${TENANT_B} · Labels = ${COMMUNITY_A}, ${COMMUNITY_B}`)
 
   console.log('\n1. Sichtbarer Tab auf Host A schreibt')
-  await heartbeat(HOST_A, cookie, false)
+  await heartbeat(HOST_A, cookieA, false)
   const s1 = await presenceState(user.$id)
   check('Presence trägt den Stempel von A und ist NICHT away',
     s1?.tenantId === TENANT_A && s1.away === false, JSON.stringify(s1))
 
   console.log('\n2. DER KERN — versteckter Tab auf Host B (away) darf nicht überschreiben')
-  await heartbeat(HOST_B, cookie, true)
+  await heartbeat(HOST_B, cookieB, true)
   const s2 = await presenceState(user.$id)
   check('Stempel BLEIBT A (vor dem Fix flippte er hier auf B)',
     s2?.tenantId === TENANT_A, JSON.stringify(s2))
@@ -236,7 +239,7 @@ try {
   console.log('\n3. Gegenprobe — GLEICHER Mandant: away muss durchkommen')
   // Sonst könnte ein Mensch mit nur EINEM Tab nie „im anderen Tab" melden:
   // seine eigene letzte sichtbare Presence trägt denselben Stempel.
-  await heartbeat(HOST_A, cookie, true)
+  await heartbeat(HOST_A, cookieA, true)
   const s3 = await presenceState(user.$id)
   check('away ist gesetzt, Stempel weiterhin A',
     s3?.away === true && s3.tenantId === TENANT_A, JSON.stringify(s3))
@@ -244,23 +247,23 @@ try {
   console.log('\n4. Gegenprobe — away über away bleibt bewusst Letzter-gewinnt')
   // Zwei versteckte Tabs, die sich gegenseitig sperren, hießen im Grenzfall:
   // niemand verlängert die Expiry und die Presence stirbt.
-  await heartbeat(HOST_B, cookie, true)
+  await heartbeat(HOST_B, cookieB, true)
   const s4 = await presenceState(user.$id)
   check('Stempel wechselt zu B', s4?.tenantId === TENANT_B, JSON.stringify(s4))
 
   console.log('\n5. Leave-Guard — Hintergrund-Tab schließen radiert den sichtbaren nicht aus')
-  await heartbeat(HOST_A, cookie, false)
+  await heartbeat(HOST_A, cookieA, false)
   const beforeLeave = await presenceState(user.$id)
   check('Ausgangslage: A sichtbar', beforeLeave?.tenantId === TENANT_A && beforeLeave.away === false,
     JSON.stringify(beforeLeave))
-  const leaveB = await call(HOST_B, '/api/presence/leave', { method: 'POST', cookie })
+  const leaveB = await call(HOST_B, '/api/presence/leave', { method: 'POST', cookie: cookieB })
   check('leave über Host B → 200 (fail-soft wie bisher)', leaveB.status === 200, `Status ${leaveB.status}`)
   const s5 = await presenceState(user.$id)
   check('Presence LEBT weiter und trägt weiterhin A',
     s5?.tenantId === TENANT_A, JSON.stringify(s5))
 
   console.log('\n6. Gegenprobe — leave über den EIGENEN Host löscht wie immer')
-  const leaveA = await call(HOST_A, '/api/presence/leave', { method: 'POST', cookie })
+  const leaveA = await call(HOST_A, '/api/presence/leave', { method: 'POST', cookie: cookieA })
   check('leave über Host A → 200', leaveA.status === 200, `Status ${leaveA.status}`)
   const s6 = await presenceState(user.$id)
   check('Presence ist weg', s6 === null, JSON.stringify(s6))
