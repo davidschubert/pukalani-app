@@ -30,6 +30,52 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### FL1 — Rauch-Test der Werkstatt unter Last rot („Design-Studio") ✅ 2026-11-22
+
+**Was.** Der Lauf „Test" zum Merge-Commit `29ce5c14` (PR 543, nur
+`packages/market` und Doku) war rot: `packages/brand/tests/render/workshopPage.test.ts`,
+Fall „öffnet den Steckbrief, die früheren Fassungen und den Konflikt-Dialog",
+erwartet „Markenberatung für kleine Firmen", bekommen „Design-Studio". Die
+fünf Läufe davor waren grün.
+
+**Ursache.** Der Test setzte den Konflikt von Hand (`store.conflict = …`),
+direkt nachdem „In den Editor" die ältere Fassung „Design-Studio" gewählt
+hatte. Diese Wahl plant den Autosave (750 ms). Dauern die Schritte bis
+„Serverfassung laden" unter Last länger, geht das Speichern los, und seine
+Antwort (`applySaveResponse`, trägt „Design-Studio") kommt NACH dem Auflösen
+an und überschreibt die Serverfassung. Nachgestellt: allein, die Datei ganz und
+20× hintereinander grün; parallel zu zwei vollen `pnpm -r test` waren BEIDE
+vollen Läufe an genau dieser Stelle rot; deterministisch mit einer
+festgehaltenen Speicher-Antwort, die erst nach dem Klick losgelassen wird
+(gleiche Meldung wie in der CI).
+
+**Test oder Seite?** Der Test (a). Geprüft an der Seite: der Dialog entsteht
+nur in `applyConflict`, und das ruft nur der 409-Zweig des EINEN laufenden
+Speicherns (`useBrandAutosave`, eine Instanz je Seite, ein zweites Speichern
+wartet auf das erste); solange der Dialog steht, ist Speichern gesperrt
+(`brandAutosaveAllowed`). Eine Speicher-Antwort nach dem Auflösen kann es im
+Betrieb also nicht geben — nur der von Hand gesetzte Zustand erzeugte sie.
+
+**Geändert.** Der Konflikt entsteht im Test jetzt wie im Betrieb: das nächste
+Speichern antwortet 409, das Kapitel liefert danach Revision 2 mit der ersten
+Fassung; der Test wartet auf den Dialog (das Ereignis, nicht eine Zeit) und
+prüft dazu, dass der Autosave die gewählte Fassung geschickt hat, dass der
+Zustand `conflict` ist und dass nach „Serverfassung laden" Revision 2 und keine
+offene Arbeit bleiben.
+
+**Beweis.** Neuer Stand 50× hintereinander grün, 5 Runden unter Last (je zwei
+volle `pnpm -r test` parallel plus ein Lauf der Datei) grün. Gegenprobe: der
+alte Weg (Konflikt von Hand, Speicher-Antwort nach dem Klick) ist rot mit
+„Design-Studio".
+
+**Gelernt:** Wer in einem Render-Test einen Zustand des Stores von Hand setzt,
+den die Seite nur als Ende eines Abrufs kennt (hier der 409-Dialog), lässt
+laufende Abrufe der Seite weiterlaufen — deren späte Antwort schreibt dann
+dazwischen, und das zeigt sich erst unter Last. Den Zustand über die gestellte
+Antwort herbeiführen (`registerEndpoint` mit 409) und auf das Ereignis warten.
+
+---
+
 ### MV1 — Bibliothek des Marktvergleichs neu gerechnet (Auffrischung vor dem 90-Tage-Stichtag) ✅ 2026-11-22
 
 **Was.** Die vier Einträge (`the-barn`, `apple`, `nike`, `anthropic`, alle vom

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import { flushPromises } from '@vue/test-utils'
-import { getQuery, readBody } from 'h3'
+import { createError, getQuery, readBody } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { NuxtLayout, NuxtPage, UApp } from '#components'
@@ -99,6 +99,17 @@ const site = de.brand.workspace.site
 const base = `/api/brand/profiles/${WORKSHOP_PROFILE_ID}`
 
 const calls = { analyze: 0, ai: 0, versions: 0, foreign: 0 }
+/**
+ * Der Konflikt-Fall lässt das NÄCHSTE Speichern mit 409 enden — so entsteht
+ * der Dialog auch im Betrieb (`applyConflict` im 409-Zweig des Autosave).
+ * `served`: danach liefert das Kapitel den neueren Stand; `sent` ist, was der
+ * Autosave geschickt hat.
+ */
+const saveConflict: { armed: boolean, served: boolean, sent: Record<string, { value?: string }> | null } = {
+  armed: false,
+  served: false,
+  sent: null,
+}
 /** Erst der Farbwelt-Fall listet die zweite Marke (die Leiste der ersten Fälle bleibt gleich). */
 const designProfileListed = { on: false }
 
@@ -122,7 +133,11 @@ for (const route of ['converse', 'generate']) {
 
 registerEndpoint('/api/brand/profiles', () => (designProfileListed.on ? designProfileList() : workshopProfileList()))
 registerEndpoint(base, () => workshopProfileDetail())
-registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}`, () => workshopStepDetail())
+registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}`, {
+  method: 'GET',
+  // Nach dem gestellten 409 liest die Seite den neueren Stand (Revision 2).
+  handler: () => (saveConflict.served ? { ...workshopStepDetail(), revision: 2 } : workshopStepDetail()),
+})
 // Ein FREMDES Kapitel, das der Log beim Aufklappen lesend holt.
 registerEndpoint(`${base}/steps/${WORKSHOP_FOREIGN_STEP}`, () => {
   calls.foreign += 1
@@ -134,7 +149,16 @@ registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}/generations`, (event) => {
 })
 registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}`, {
   method: 'PATCH',
-  handler: async event => workshopSave(await readBody(event)),
+  handler: async (event) => {
+    const body = await readBody(event)
+    if (saveConflict.armed) {
+      saveConflict.armed = false
+      saveConflict.served = true
+      saveConflict.sent = body.slots
+      throw createError({ status: 409, statusText: 'Conflict' })
+    }
+    return workshopSave(body)
+  },
 })
 registerEndpoint(`${base}/messages`, event => workshopMessages(String(getQuery(event).session ?? '')))
 registerEndpoint(`${base}/analyze`, {
@@ -210,6 +234,9 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     calls.ai = 0
     calls.versions = 0
     calls.foreign = 0
+    saveConflict.armed = false
+    saveConflict.served = false
+    saveConflict.sent = null
     warn = vi.spyOn(console, 'warn')
     error = vi.spyOn(console, 'error')
   })
@@ -356,34 +383,31 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     // das Ergebnis warten, nicht auf eine feste Zahl von Runden.
     await vi.waitFor(() => expect(bodyText()).toContain(WORKSHOP_OLDER_DRAFT))
     expect(bodyText()).toContain(ws.versions.first)
+    // Konflikt (409) so, wie er im Betrieb entsteht: der Autosave schickt die
+    // gewählte Fassung, der Server lehnt ab, die Seite liest den neueren Stand
+    // (Revision 2, dort steht die erste Fassung) und zeigt beide nebeneinander.
+    // NIE `store.conflict` von Hand setzen: dann läuft der Autosave der Wahl
+    // noch, und unter Last überschreibt seine späte Antwort die Serverfassung
+    // NACH dem Auflösen (FL1, rot auf `main` 2026-11-22).
+    saveConflict.armed = true
     await clickInBody(ws.versions.use)
     expect(bodyText()).not.toContain(ws.versions.first)
     const store = useBrandWorkspaceStore()
     expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_OLDER_DRAFT)
 
-    // Konflikt (409): beide Fassungen nebeneinander; „Serverfassung laden" löst ihn.
-    // Die Server-Fassung ist der VOLLE Stand des Kapitels (wie ein echter
-    // 409) — der Store übernimmt ihn beim Auflösen ganz.
-    store.conflict = {
-      revision: 2,
-      slots: {
-        ...workshopStepDetail().slots,
-        [WORKSHOP_VERSIONS_SLOT]: {
-          firstDraft: WORKSHOP_FIRST_DRAFT,
-          latestDraft: WORKSHOP_FIRST_DRAFT,
-          confirmed: null,
-          confidence: null,
-          updatedAt: null,
-        },
-      },
-    }
-    await flushPromises()
-    expect(bodyText()).toContain(ws.conflict.title)
+    // Auf das Ereignis warten (den Dialog), nicht auf Zeit: der Autosave
+    // wartet 750 ms, dann Speichern, 409 und Nachlesen.
+    await vi.waitFor(() => expect(bodyText()).toContain(ws.conflict.title), { timeout: 10_000 })
+    expect(saveConflict.sent?.[WORKSHOP_VERSIONS_SLOT]?.value).toBe(WORKSHOP_OLDER_DRAFT)
+    expect(store.syncState).toBe('conflict')
     expect(bodyText()).toContain(ws.conflict.mineLabel)
     expect(bodyText()).toContain(ws.conflict.serverLabel)
+    // „Serverfassung laden" übernimmt den VOLLEN Stand des Kapitels.
     await clickInBody(ws.conflict.loadServer)
     expect(store.conflict).toBeNull()
+    expect(store.revision).toBe(2)
     expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_FIRST_DRAFT)
+    expect(store.hasPendingWork).toBe(false)
     expect(bodyText()).not.toContain(ws.conflict.mineLabel)
 
     expect(calls.ai).toBe(0)
