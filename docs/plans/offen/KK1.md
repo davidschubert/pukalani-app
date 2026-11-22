@@ -21,15 +21,12 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 - **(c) Kleinigkeiten.** Das Nachholen eines halb gescheiterten Ausblendens
   (Termine) geht über die Route, die Oberfläche bietet es an einem schon
   ausgeblendeten Termin nicht an — sie kann den halben Zustand nicht erkennen.
-  Die Zahlen des Seiten-Kontingents stehen nur in der Konfiguration der
-  Platform-App, nicht im Katalog des Control Plane. Bewertet am 2026-11-17:
-  das wirkt heute richtig (fehlt eine Art im Katalog, gilt die Zahl aus der
-  Konfiguration). Für den Katalog bräuchte es zweierlei: die Plan-Route
-  (`plans/[key].patch.ts`) schreibt heute die ganze Grenzen-Zeile neu und
-  löschte einen Seiten-Eintrag beim nächsten Speichern der Kommentar-Grenzen
-  — sie müsste zusammenführen, und die Seite bräuchte Felder je Art; dazu die
-  Zahlen einmal in die drei Plan-Zeilen der echten Datenbank (Davids Ja).
-  Empfehlung: erst bauen, wenn die Zahl je Plan verschieden sein soll. Die
+  Die Zahlen des Seiten-Kontingents in den Katalog: Konzept in
+  [KONTINGENT-KATALOG.md](../KONTINGENT-KATALOG.md) (Davids Ja 2026-11-21);
+  seit dem 2026-11-22 führt die Plan-Route zusammen, statt die ganze
+  Grenzen-Zeile zu überschreiben (COMPLETE „KK1 (c) — Plan-Route"). Offen:
+  Oberfläche je Art und die Zahlen in der echten Datenbank (Davids
+  Freigabe). Die
   drei Verwaltungs-Routen der Seiten haben noch keinen Rollen-Test (stehen im
   Bestand, BT1 b); ein solcher Test belegt dann auch den Hinweis der Liste
   und den Fehler beim unvollständigen Löschen.

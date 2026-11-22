@@ -105,6 +105,7 @@ verlangt sie. Offene Punkte stehen trotzdem nur in [OPEN-ITEMS.md](OPEN-ITEMS.md
 | [plans/PUKALANI-KONTO-E1.md](plans/PUKALANI-KONTO-E1.md) | Pukalani-Konto, Etappe 1 (Eintrittskarte je Seite, mit dem Beweis E0): Konzept 2026-11-22, nichts gebaut; wartet auf sechs Entscheidungen
 | [plans/ACCOUNT-HORIZONT.md](plans/ACCOUNT-HORIZONT.md) | Account-Horizont (AH-1 … AH-7): teils gebaut; die Fortsetzung ist das Pukalani-Konto |
 | [plans/WIEDERHERSTELLUNG.md](plans/WIEDERHERSTELLUNG.md) | Gelöschtes zurückholen (WH1): nicht gebaut, wartet auf die Freigabe des Prototyps |
+| [plans/KONTINGENT-KATALOG.md](plans/KONTINGENT-KATALOG.md) | Kontingent-Zahlen im Katalog des Control Plane (KK1 c): Plan-Route führt zusammen (gebaut 2026-11-22); offen Oberfläche und Zahlen in der Datenbank, wartet auf Davids Freigabe |
 | [plans/KI-TEXTMODELL-WECHSEL.md](plans/KI-TEXTMODELL-WECHSEL.md) | Günstigeres Textmodell (KM1): Aufstellung der Proben vom 2026-11-19, nichts gebaut |
 | [plans/BRAND-BOOK-KIT.md](plans/BRAND-BOOK-KIT.md) | Brand Book & Kit (Produkt 03, BK1): K0 bis K6 gebaut; offen K7, K8 und Davids Blicke |
 | [plans/BRAND-INSIGHTS.md](plans/BRAND-INSIGHTS.md) | Brand Insights (BI1): I0 bis I5 und I6 Stufe 1 gebaut; offen I6 Stufe 2, Anwaltsantworten, Newsletter-Schalter. Die Fortsetzung BI2 (Kuration) ist gebaut: [archiv/BRAND-INSIGHTS-KURATION.md](archiv/BRAND-INSIGHTS-KURATION.md) |

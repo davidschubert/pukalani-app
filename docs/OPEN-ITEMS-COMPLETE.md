@@ -115,6 +115,34 @@ die ersten Fotos zeigten alle dieselbe Farbwelt.
 
 ---
 
+### KK1 (c) — Plan-Route: Kontingent-Grenzen zusammenführen statt überschreiben; Konzept für den Katalog ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21: „Ja, in den Katalog". Geschrieben
+ist das Konzept `docs/plans/KONTINGENT-KATALOG.md` (was sich ändert, keine
+Schema-Änderung, drei Zeilen Daten auf Production als Klick-Pflicht,
+Rückweg, drei Punkte zur Freigabe). Gebaut ist nur der Teil ohne
+Datenbank-Änderung: `PATCH /api/control/plans/:key` liest die Zeile unter
+der Sperre des Control Plane (`withControlLock`, Scope `plans`), führt die
+genannten Arten mit dem gespeicherten Stand zusammen
+(`mergeTenantPlanLimits`, `null` nimmt eine Art heraus) und schreibt dann.
+Vorher löschte „Kommentar-Grenzen speichern" jede andere Art aus dem
+Katalog. Ein Lesefehler außer 404 bricht ab, statt einen unvollständigen
+Stand zu schreiben. Heute ändert sich im Betrieb nichts (im Katalog stehen
+nur Kommentare, die Oberfläche schickt nur sie).
+
+**Beweis.** `packages/control/tests/planLimitsMerge.test.ts`: pur (ersetzt
+nur die genannte Art, `null` nimmt heraus, Eingabe unverändert) und an der
+echten Route gegen die Renn-Ablage (Kommentare speichern lässt Seiten
+stehen, fehlende Zeile wird angelegt, keine Sperr-Zeile bleibt zurück).
+Gegenprobe: Zusammenführen abgeschaltet ⇒ der Seiten-Fall rot. Rollen-Test
+der Route unverändert grün.
+
+**Gelernt:** Eine Route, die „die Zeile" schreibt, wird zur Falle, sobald
+ein zweiter Schreiber nur einen Teil kennt — vor dem Ausbau eines Katalogs
+erst das Schreiben auf Zusammenführen umstellen.
+
+---
+
 ### Q24 Nachtrag — Fußzeile „Auch von uns" mit Davids Wortlaut (Bahn 7, Paket 2) ✅ 2026-11-22
 
 **Was.** Die Zeile, mit der die drei Sites aufeinander zeigen, trägt jetzt
