@@ -63,6 +63,15 @@ export function readRequestSession(event: H3Event): RequestSession | null {
   return session
 }
 
+/**
+ * Nach Abmelden/Widerruf in DERSELBEN Anfrage: der Zwischenspeicher gibt das
+ * alte Geheimnis nicht mehr heraus (Gegenlesen E1a, Fund 4). Ruft
+ * `clearSessionCookie`.
+ */
+export function forgetRequestSessionCache(event: H3Event): void {
+  perRequest.set(event, null)
+}
+
 /** Kurzform: nur das innere Geheimnis (oder `undefined`). */
 export function requestSessionSecret(event: H3Event): string | undefined {
   return readRequestSession(event)?.secret

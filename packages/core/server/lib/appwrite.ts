@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { trustedClientIp } from '../utils/clientIp'
 import { createAppwriteHealth } from '../utils/appwriteHealth'
 import { forgetRequestSession } from '../utils/sessionAccount'
-import { requestSessionSecret } from '../utils/requestSession'
+import { forgetRequestSessionCache, requestSessionSecret } from '../utils/requestSession'
 
 /**
  * Projekt des Requests (Horizont-3 Naht 2): der Tenant-Context der Middleware
@@ -68,6 +68,7 @@ export function clearSessionCookie(event: H3Event) {
   // (Q12) — das Cookie der ANFRAGE trägt sie noch, darum vor dem Löschen.
   forgetRequestSession(event)
   deleteCookie(event, sessionCookieName(event), { path: '/' })
+  forgetRequestSessionCache(event)
 }
 
 /**

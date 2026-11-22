@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto'
 import { handoffAudience } from './embedHandoff'
 import { logEvent } from './logEvent'
 import { secretBoxKeyId } from './secretBox'
@@ -29,8 +29,10 @@ import { parseSiteCardMode, SITE_CARD_PREFIX, type SiteCardClaims, type SiteCard
  *
  * SCHLÜSSEL: `NUXT_SITE_CARD_KEY` (32 Byte, base64, `openssl rand -base64 32`);
  * `NUXT_SITE_CARD_PREVIOUS_KEY` nur zum LESEN während eines geplanten
- * Tauschs. Fehlt der Schlüssel oder ist er ungültig, gilt `off` — mit EINER
- * Log-Zeile `site_card.config_invalid` beim Start, nie ein Absturz.
+ * Tauschs. Fehlt der Schlüssel oder ist er ungültig, gilt bei `read` `off`; bei
+ * `write` bleibt Klartext auf eigenen Domains abgelehnt, es öffnet sich nur
+ * keine Karte. Immer mit EINER Log-Zeile `site_card.config_invalid` beim
+ * Start, nie ein Absturz. Der Env-Wert wird über HKDF abgeleitet.
  *
  * RÜCKWEG: `NUXT_SITE_CARD_MODE=off` (oder leer) und die App neu starten —
  * kein Ausliefern nötig. Solange noch keine Karte geschrieben wird, verliert
@@ -86,20 +88,48 @@ export function configureSiteCard(raw: unknown): SiteCardSettings {
     current = OFF
     return current
   }
-  const key = parseSiteCardKey(input.key)
-  if (key === null || key === 'invalid') {
-    logEvent('error', 'site_card.config_invalid', { reason: key === null ? 'key_missing' : 'key_invalid', mode, fallback: 'off' })
+  const rawKey = parseSiteCardKey(input.key)
+  if (rawKey === null || rawKey === 'invalid') {
+    const reason = rawKey === null ? 'key_missing' : 'key_invalid'
+    if (mode === 'write') {
+      // SCHUTZ BLEIBT AN (Gegenlesen E1a, Fund 2): `write` ohne brauchbaren
+      // Schlüssel öffnet keine Karte, lehnt Klartext auf eigenen Domains aber
+      // WEITER ab — ein vergessener Schlüssel darf den Schutz nicht still
+      // abschalten. Wer dort niemanden aussperren will, stellt `read` ein.
+      logEvent('error', 'site_card.config_invalid', { reason, mode, fallback: 'write_without_cards' })
+      current = Object.freeze({ mode, keys: Object.freeze([]) as readonly Buffer[] })
+      return current
+    }
+    logEvent('error', 'site_card.config_invalid', { reason, mode, fallback: 'off' })
     current = OFF
     return current
   }
-  const previous = parseSiteCardKey(input.previousKey)
-  if (previous === 'invalid') {
-    logEvent('error', 'site_card.config_invalid', { reason: 'previous_key_invalid', mode, fallback: 'off' })
-    current = OFF
-    return current
+  const key = deriveSiteCardKey(rawKey)
+  const rawPrevious = parseSiteCardKey(input.previousKey)
+  let previous: Buffer | null = null
+  if (rawPrevious === 'invalid') {
+    // Ein kaputter VORIGER Schlüssel kostet nur die Karten, die mit ihm
+    // versiegelt wurden (Neuanmeldung) — er schaltet nichts ab.
+    logEvent('error', 'site_card.config_invalid', { reason: 'previous_key_invalid', mode, fallback: 'current_key_only' })
+  }
+  else if (rawPrevious) {
+    previous = deriveSiteCardKey(rawPrevious)
+    if (previous.equals(key)) {
+      logEvent('warn', 'site_card.config_invalid', { reason: 'previous_key_equals_key', mode, fallback: 'current_key_only' })
+      previous = null
+    }
   }
   current = Object.freeze({ mode, keys: Object.freeze(previous ? [key, previous] : [key]) })
   return current
+}
+
+/**
+ * Der Env-Wert wird nie direkt als AES-Schlüssel benutzt, sondern über HKDF
+ * mit eigenem Etikett abgeleitet (Gegenlesen E1a, Fund 5): derselbe Rohwert
+ * in einer anderen Ablage ergäbe so nie denselben Schlüssel.
+ */
+export function deriveSiteCardKey(raw: Buffer): Buffer {
+  return Buffer.from(hkdfSync('sha256', raw, Buffer.alloc(0), 'pukalani-site-card-v1', KEY_BYTES))
 }
 
 /** Die geltenden Einstellungen (vor dem Start-Plugin: `off`). */

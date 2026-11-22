@@ -46,8 +46,8 @@ vi.stubGlobal('getHeader', (event: { headers: Record<string, string> }, name: st
 vi.stubGlobal('createError', (input: { status: number, statusText: string, data?: unknown }) =>
   Object.assign(new Error(input.statusText), input))
 
-const { sealSiteCard, openSiteCard, configureSiteCard, parseSiteCardKey, siteCardSettings } = await import('../server/utils/siteCard')
-const { readRequestSession } = await import('../server/utils/requestSession')
+const { sealSiteCard, openSiteCard, configureSiteCard, parseSiteCardKey, siteCardSettings, deriveSiteCardKey } = await import('../server/utils/siteCard')
+const { readRequestSession, forgetRequestSessionCache } = await import('../server/utils/requestSession')
 const { lookupSessionAccount, forgetRequestSession } = await import('../server/utils/sessionAccount')
 const { requireRecentAuth } = await import('../server/utils/recentAuth')
 
@@ -193,7 +193,9 @@ describe('Schalter: configureSiteCard', () => {
   it('alter Schlüssel kommt als zweiter dazu', () => {
     const settings = configureSiteCard({ mode: 'write', key: asEnv(mainKey), previousKey: asEnv(otherKey) })
     expect(settings.mode).toBe('write')
-    expect(settings.keys.map(key => key.toString('hex'))).toEqual([mainKey.toString('hex'), otherKey.toString('hex')])
+    expect(settings.keys.map(key => key.toString('hex'))).toEqual([deriveSiteCardKey(mainKey).toString('hex'), deriveSiteCardKey(otherKey).toString('hex')])
+    // Der Env-Wert selbst ist nie der AES-Schlüssel (eigene Ableitung)
+    expect(settings.keys[0]?.equals(mainKey)).toBe(false)
   })
 
   it('Schlüssel fehlt ⇒ off und GENAU eine Log-Zeile ohne Wert', () => {
@@ -202,19 +204,37 @@ describe('Schalter: configureSiteCard', () => {
     expect(logLines[0]).toMatchObject({ level: 'error', event: 'site_card.config_invalid', data: { reason: 'key_missing' } })
   })
 
-  it('Schlüssel kaputt (zu kurz, kein base64, keine Zeichenkette) ⇒ off, eine Log-Zeile je Versuch', () => {
+  it('Schlüssel kaputt (zu kurz, kein base64, keine Zeichenkette) ⇒ bei read off, eine Log-Zeile je Versuch', () => {
     for (const bad of [randomBytes(16).toString('base64'), 'kein base64!', 12345]) {
       logLines.length = 0
-      expect(configureSiteCard({ mode: 'write', key: bad }).mode).toBe('off')
+      expect(configureSiteCard({ mode: 'read', key: bad }).mode).toBe('off')
       expect(logLines).toHaveLength(1)
       expect(logLines[0]?.data.reason).toBe('key_invalid')
       expect(JSON.stringify(logLines[0])).not.toContain(String(bad))
     }
   })
 
-  it('kaputter alter Schlüssel ⇒ off', () => {
-    expect(configureSiteCard({ mode: 'read', key: asEnv(mainKey), previousKey: 'xx' }).mode).toBe('off')
+  it('write ohne brauchbaren Schlüssel bleibt write, öffnet aber keine Karte (Schutz bleibt an)', () => {
+    for (const bad of ['', 'kaputt']) {
+      logLines.length = 0
+      const settings = configureSiteCard({ mode: 'write', key: bad })
+      expect(settings.mode).toBe('write')
+      expect(settings.keys).toHaveLength(0)
+      expect(logLines[0]?.data.fallback).toBe('write_without_cards')
+    }
+  })
+
+  it('kaputter alter Schlüssel ⇒ nur der aktuelle gilt, mit Log', () => {
+    const settings = configureSiteCard({ mode: 'read', key: asEnv(mainKey), previousKey: 'xx' })
+    expect(settings.mode).toBe('read')
+    expect(settings.keys).toHaveLength(1)
     expect(logLines[0]?.data.reason).toBe('previous_key_invalid')
+  })
+
+  it('alter Schlüssel gleich dem aktuellen ⇒ wird nicht doppelt geführt', () => {
+    const settings = configureSiteCard({ mode: 'read', key: asEnv(mainKey), previousKey: asEnv(mainKey) })
+    expect(settings.keys).toHaveLength(1)
+    expect(logLines[0]?.data.reason).toBe('previous_key_equals_key')
   })
 
   it('unbekannter Modus ⇒ off mit Log', () => {
@@ -292,7 +312,7 @@ function makeEvent(cookie: string | undefined, host: string, tenant?: TenantCont
   } as unknown as H3Event
 }
 
-function cardFor(over: Partial<SiteCardClaims> = {}, key: Buffer = mainKey): string {
+function cardFor(over: Partial<SiteCardClaims> = {}, key: Buffer = deriveSiteCardKey(mainKey)): string {
   return sealSiteCard(claims({ expiresAt: Date.now() + HOUR, ...over }), { key, cookieName: COOKIE })
 }
 
@@ -318,12 +338,9 @@ describe('readRequestSession je Modus', () => {
       expect(readRequestSession(makeEvent('klartext', 'www.kunde.de', poolTenant()))?.secret).toBe('klartext')
     })
 
-    it('fehlender oder kaputter Schlüssel verhält sich wie off', () => {
-      configureSiteCard({ mode: 'write', key: '' })
-      const card = cardFor()
-      expect(readRequestSession(makeEvent(card, 'kunde-a.pukalani.app', poolTenant()))).toEqual({ secret: card, format: 'plain' })
-      expect(readRequestSession(makeEvent('klartext', 'www.kunde.de', poolTenant()))?.secret).toBe('klartext')
+    it('read mit kaputtem Schlüssel verhält sich wie off', () => {
       configureSiteCard({ mode: 'read', key: 'kaputt' })
+      const card = cardFor()
       expect(readRequestSession(makeEvent(card, 'kunde-a.pukalani.app', poolTenant()))).toEqual({ secret: card, format: 'plain' })
     })
   })
@@ -361,6 +378,13 @@ describe('readRequestSession je Modus', () => {
       ;(event as unknown as { cookies: Record<string, string> }).cookies[COOKIE] = 'geändert'
       expect(readRequestSession(event)).toBe(first)
     })
+
+    it('nach dem Abmelden in derselben Anfrage gibt der Zwischenspeicher nichts mehr heraus', () => {
+      const event = makeEvent(cardFor(), 'kunde-a.pukalani.app', poolTenant())
+      expect(readRequestSession(event)?.format).toBe('card')
+      forgetRequestSessionCache(event)
+      expect(readRequestSession(event)).toBeNull()
+    })
   })
 
   describe('write', () => {
@@ -373,6 +397,13 @@ describe('readRequestSession je Modus', () => {
       expect(readRequestSession(makeEvent('klartext', 'www.kunde.de', tenant))).toBeNull()
       const card = cardFor({ host: 'www.kunde.de' })
       expect(readRequestSession(makeEvent(card, 'www.kunde.de', tenant))?.format).toBe('card')
+    })
+
+    it('ohne brauchbaren Schlüssel: keine Karte, Klartext auf eigener Domain bleibt abgelehnt', () => {
+      configureSiteCard({ mode: 'write', key: '' })
+      expect(readRequestSession(makeEvent(cardFor(), 'kunde-a.pukalani.app', poolTenant()))).toBeNull()
+      expect(readRequestSession(makeEvent('klartext', 'www.kunde.de', poolTenant({ canonicalHost: 'www.kunde.de' })))).toBeNull()
+      expect(readRequestSession(makeEvent('klartext', 'kunde-a.pukalani.app', poolTenant()))?.format).toBe('plain')
     })
 
     it('auf der Pukalani-Adresse und dem Kontroll-Host gilt Klartext weiter (Gegenprobe)', () => {
