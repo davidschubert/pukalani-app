@@ -6,6 +6,7 @@ import { communityRoleHasCapability } from '../../../../core/shared/communityAut
 import { configFlagEnabled, resolveDashboardPlace } from '../../../../core/shared/dashboardNav'
 import { isProductStateEnabled } from '../../../../core/shared/types/config'
 import { planAllowsProduct } from '../../../../core/server/utils/tenantPlanProducts'
+import { requireOverviewAccess } from '../../utils/overviewAccess'
 
 /**
  * DIE ZAHLEN DER ÜBERSICHT — EINE Route für ALLE Kacheln (U9/K2, 2026-08-11).
@@ -32,8 +33,10 @@ import { planAllowsProduct } from '../../../../core/server/utils/tenantPlanProdu
  * Kachel (C1) — zwei Netze, weil ein Deklarations-Fehler in einer Registry
  * weit trägt.
  *
- * AUTORISIERUNG (C1, unverändert): `await requireCommunityPermission(event,
- * 'dashboard.access')`. Das ist der Gate der SEITE — alle fünf Site-Rollen
+ * AUTORISIERUNG (C1): `await requireCommunityPermission(event,
+ * 'dashboard.access')`, seit BT1 e verpackt in `requireOverviewAccess` — im
+ * Pool-Not-Zugang kommt nur der Betreiber (Label `admin`) durch, nicht das
+ * Instanz-Label `moderator`. Das ist der Gate der SEITE — alle fünf Site-Rollen
  * tragen ihn und landen hier (communityAuthz.ts). Was jemand von den Zahlen
  * sieht, entscheidet die Kachel, nicht der Gate; eine engere Capability hier
  * ließe Editor und Viewer wieder vor leeren Kacheln stehen. Das `await` ist
@@ -51,7 +54,7 @@ import { planAllowsProduct } from '../../../../core/server/utils/tenantPlanProdu
  * außerhalb des Pools; die Begründung steht dort.
  */
 export default defineEventHandler(async (event): Promise<Record<string, DashboardStatValue>> => {
-  const { user, role } = await requireCommunityPermission(event, 'dashboard.access')
+  const { user, role } = await requireOverviewAccess(event)
 
   const appConfig = useAppConfig() as {
     pukalani?: {

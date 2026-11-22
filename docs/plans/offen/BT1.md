@@ -60,17 +60,8 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   macOS und Linux nicht nachstellen, das Skript ist seitdem umgebaut). Seit
   dem 2026-11-18 hält der Test bei einem Fehlschlag die Spur des Skripts
   fest — wird er wieder rot, steht die Zeile da (COMPLETE „N14").
-- **(e) Eine Frage an David.** Von den vier Stellen, die die Rollen-Tests
-  notiert hatten, sind am 2026-11-18 zwei klein geschlossen und eine mit Test
-  festgehalten (COMPLETE „N14"). Offen ist die vierte, weil sie eine
-  Grundsatzfrage ist: **Übersicht des Dashboards im Pool — soll die
-  Instanz-Rolle „Moderator" (ein Konto mit dem globalen Label, also ein
-  Mitarbeiter des Betreibers) in die Übersicht und die Statistik jeder
-  Community hinein dürfen, oder nur der Betreiber?** Heute darf sie es (über
-  den protokollierten Not-Zugang); der Test
-  `packages/admin/tests/route-roles-overview.test.ts` hält das so fest. Soll
-  es anders sein, kommt die Rolle dort in die Abweisungs-Liste und die Wache
-  wird angepasst.
+- **(e) erledigt am 2026-11-22** (COMPLETE „BT1 (e)"): Übersicht und
+  Statistik einer Pool-Community sieht über den Not-Zugang nur der Betreiber.
 - **(f) Reste aus dem roten Nacht-Lauf vom 2026-11-21** (COMPLETE „N21": ein
   Beweis-Skript ließ beide Probe-Communities ohne Plan zurück; behoben, und
   der Läufer prüft seitdem nach jedem Skript den Soll-Stand der Bühne).
