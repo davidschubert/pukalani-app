@@ -60,6 +60,25 @@ ist zu; Community-Moderator (Rolle) und Betreiber 200/200/200.
 **Gelernt:** Eine Wache, die HINTER der Core-Wache ablehnt, sieht der
 Prüfstand als „Wache passiert" — der Test braucht dafür eine eigene,
 ausdrückliche Liste statt eines aufgeweichten `denied`.
+
+### BK1 K7 — Brand Book & Kit: öffentliches Beispiel-Kit und Copy (Bahn 9, Paket 3) ✅ 2026-11-22
+
+**Was.** Kailua Coffee Co. hat ein öffentliches Kit: `GET /api/brand/example/kit/:file`
+und `…/kit.zip` (ohne Konto, `public, max-age=3600`), gerechnet aus dem
+eingefrorenen Beispiel mit denselben Erzeugern wie das Kit einer Marke, fester
+Stand ⇒ byte-gleiches Bündel. Die Anatomie `/discover/kailua-coffee-co` zeigt
+den Abschnitt „Das Kit" mit vier Kacheln. Die Copy aus
+`docs/plans/BRAND-BOOK-KIT.md` §2.14 steht auf Startseite, Team-Seite und im
+Produkt-Menü. `verify:kit` deckt K7 ab (Abschnitt 10, 65/65 lokal).
+Einzelheiten und Abweichungen vom Prototyp: Plan §2.18 „Stand K7". Offen
+bleiben K8 und Davids Wort zur Copy (KR1 Block F).
+
+**Gelernt:** Ein Beispiel, das dieselben Erzeuger wie das Produkt fährt, braucht
+einen FESTEN Stand — mit „jetzt" trüge jede Datei täglich einen anderen Namen,
+und `public, max-age` träfe nie. Und `curl -I` ist kein Beweis für eine
+`.get.ts`-Route: HEAD trifft sie nicht und liefert eine JSON-404 mit eigenem
+Inhaltstyp — geprüft wird mit GET und `-D -`.
+
 ### SU1 (a) — Hauptsprache der Demo-Community: bleibt englisch; Runbooks nennen die Migrations-Env `admin.env` ✅ 2026-11-22
 
 **Was.** (a) Davids Antwort vom 2026-11-21: „Sie bleibt englisch". Die
