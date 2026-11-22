@@ -207,3 +207,33 @@ F2. **Texte zu Book & Kit** · `branding.supply/de` (Abschnitt „Was am Ende au
 
 Nicht Teil der Runde, weil sie auf den ersten Artikel warten: die Proben aus
 BI2 und IN1 (b), siehe BI5.
+
+## Block G — Marktvergleich: neu gerechnete Entwürfe prüfen (MV1) · ≈ 15 Min
+
+Am Rechner, kein Konto nötig. Am 2026-11-22 neu gerechnet (Bahn 12, lokal,
+mit Davids Ja; unter 0,25 $). Zwei Entwürfe sind entstanden: `nike` (5
+belegte Felder) und `anthropic` (8). Sie liegen NICHT im Repo (Entwürfe sind
+`.gitignore`, Runbook §0), sondern im Notiz-Ordner der Leitstand-Sitzung,
+Unterordner `mv1-entwuerfe-2026-11-22`; vor der Prüfung nach
+`packages/market/shared/library/drafts/` im eigenen Checkout kopieren.
+
+G1. **Handprüfung je Feld** ([Runbook §4](../../runbooks/MARKTVERGLEICH-BIBLIOTHEK.md))
+    · `nike.json`, `anthropic.json`. Je Feld `sourceUrl` im Browser öffnen
+    und `quote` dort suchen. *Sehen:* das Zitat steht wörtlich da, das Feld
+    passt zum Zitat, kein Name einer Person, keine Wertung, Zitat höchstens
+    200 Zeichen. *Achtung bei nike:* ein Teil der Belege stammt von
+    `nike.com/help/` — ob eine Hilfe-Seite die Marke beschreibt, ist deine
+    Entscheidung; im Zweifel das Feld streichen. *Dann:* im Entwurf
+    `status: "verified"`, `verifiedAt` und `verifiedBy` setzen und der
+    nächsten Sitzung sagen „übernehmen" — sie fährt `--promote` und liefert
+    aus. *Sonst:* Feld löschen; bleiben weniger als drei, den Entwurf
+    verwerfen.
+G2. **Drei Marken ohne neuen Entwurf** · deine Entscheidung, ohne Klick auf
+    einer Seite. `apple` und `the-barn` lieferten diesmal „kein Text" (die
+    Startseite gab dem Abruf keinen lesbaren Text, am 2026-09-06 ging es
+    noch), `meta` hatte wieder kein belegtes Feld. Die zwei Einträge `apple`
+    und `the-barn` in der Bibliothek werden um den 2026-12-05 überfällig; der
+    Montags-Wächter öffnet dann ein Issue. *Entscheiden:* (a) mit einer
+    anderen Startadresse neu versuchen (wie bei anthropic `/company`),
+    (b) aus der Bibliothek nehmen (Runbook §6), oder (c) vorerst stehen
+    lassen und das Issue offen lassen.

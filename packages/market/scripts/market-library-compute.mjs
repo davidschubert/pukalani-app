@@ -91,6 +91,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { createServer, request } from 'node:http'
 import { dirname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { confirmProbeConsent, removeProbeConsent } from '../../../scripts/lib/probe-stage.mjs'
 import { assertTarget } from '../../../scripts/lib/target.mjs'
 import { RUN_BUSY_REASON, startRunRespectingBrake, waitForRun } from './lib/runStart.mjs'
 import { spawnSync } from 'node:child_process'
@@ -690,7 +691,10 @@ async function runCompute({ stub }) {
   const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
   const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
   const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
-  const apiKey = process.env.NUXT_APPWRITE_MIGRATIONS_KEY || process.env.NUXT_APPWRITE_KEY
+  // LAUFZEIT-SCHLÜSSEL ZUERST (Regel `tests.md`, Bühne Regel 1): der Lauf legt
+  // ein Wegwerf-Konto an (`users.create`), und der Migrations-Schlüssel trägt
+  // kein `users.write` — so brach die Auffrischung am 2026-11-22 ab (MV1).
+  const apiKey = process.env.NUXT_APPWRITE_KEY || process.env.NUXT_APPWRITE_MIGRATIONS_KEY
   if (!endpoint || !projectId || !databaseId || !apiKey) {
     fail('Env unvollständig — Aufruf mit --env-file=apps/branding/.env')
   }
@@ -749,6 +753,10 @@ async function runCompute({ stub }) {
     cleanup.access.push(access.$id)
     const session = await users.createSession({ userId: user.$id })
     const cookie = `a_session_${projectId}=${encodeURIComponent(session.secret)}`
+    // AGB-PFLICHT (Regel `tests.md`, Bühne Regel 2): ein direkt angelegtes Konto
+    // hat nie zugestimmt, jede schreibende Route antwortet sonst 403
+    // `consent_required` — so brach die Auffrischung am 2026-11-22 ab (MV1).
+    await confirmProbeConsent({ port: PORT, host: HOST, cookie })
 
     // FÜNF KANDIDATEN JE BRANDING (`MARKET_COMPETITORS_MAX`) — die Grenze ist
     // die des Produkts, und ein Werkzeug, das sie umginge, liefe an einer
@@ -869,6 +877,7 @@ async function runCompute({ stub }) {
       catch { /* schon weg */ }
     }
     for (const id of cleanup.users) {
+      await removeProbeConsent({ tablesDB, databaseId, userId: id }).catch(() => {})
       try { await users.delete({ userId: id }) }
       catch { /* schon weg */ }
     }

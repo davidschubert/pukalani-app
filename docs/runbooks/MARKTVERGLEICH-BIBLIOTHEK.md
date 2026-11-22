@@ -172,7 +172,15 @@ Ein Häkchen ohne Datum und Namen wäre keins.
 - [ ] `meta` — Lauf 3 mit `/about/` (2026-09-06): 4 Felder, nur eine Seite
       lesbar; Entwurf liegt unter `drafts/`, **von David bewusst liegen
       gelassen** — nächster Versuch bei der 90-Tage-Auffrischung, ggf. mit
-      `/about/company-info/` als dritter Adresse.
+      `/about/company-info/` als dritter Adresse. Lauf 4 (2026-11-22, Auffrischung):
+      wieder kein belegtes Feld, kein Entwurf.
+
+**Auffrischung 2026-11-22** (Bahn 12, mit Davids Ja): neue Entwürfe für
+`nike` (5 Felder) und `anthropic` (8), Handprüfung offen (KR1 Block G);
+`apple` und `the-barn` lieferten „kein Text", `meta` kein Feld. Für den Lauf
+braucht der branding-Server einen KI-Schlüssel (`NUXT_AI_KEY`): die lokale
+Datenbank hat keinen, ohne ihn endet jede Auslesung still mit
+`503 AI not configured` und das Werkzeug meldet nur „kein Marktprofil".
 
 **Rechts-Check offen.** Die anwaltlichen Fragen aus Plan
 [Anhang G](../archiv/BRAND-MARKTVERGLEICH.md) (Namensnennung im bezahlten
