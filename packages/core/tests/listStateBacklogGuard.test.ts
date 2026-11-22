@@ -49,4 +49,12 @@ describe('Rest-Liste Listen-Zustände (Q14)', () => {
     expect(openFetchCount('const own = a ? await useFetch<X>(\'/api/x\') : null')).toBe(1)
     expect(Object.keys(actual).length).toBeGreaterThan(0)
   })
+
+  it('nur noch die eine bestätigte Ausnahme (LZ1 abgeschlossen am 2026-11-22)', () => {
+    // Eine zweite Ausnahme braucht eine eigene Entscheidung: Grund an der Stelle
+    // UND im Kopf von listStateBacklog.ts, dann diese Zeile bewusst ändern.
+    expect(Object.keys(LIST_STATE_BACKLOG)).toEqual([
+      'packages/blueprint/app/components/DiscussionSidebarLinks.vue',
+    ])
+  })
 })

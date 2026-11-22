@@ -20,7 +20,7 @@ const lang = computed<'de' | 'en'>(() => (isGerman.value ? 'de' : 'en'))
  * `pukalani.chrome.pagesNav` — dieselbe Wache wie im blueprint-Layout): sonst
  * liefe je Seitenaufbau eine Anfrage gegen eine Route, die es nicht gibt.
  *
- * DREI ZUSTÄNDE, NICHT ZWEI: `null` heißt „die Anfrage ist GESCHEITERT", `[]`
+ * DREI ZUSTÄNDE, NICHT ZWEI: `error` heißt „die Anfrage ist GESCHEITERT", `[]`
  * heißt „es ist nichts veröffentlicht". Vorher fielen beide auf `[]` zusammen
  * — und das ist der teurere von zwei Fehlern: bei einem Appwrite-Schluckauf
  * verschwand der Impressums-Link einer deutschen Geschäftsseite still aus dem
@@ -28,14 +28,20 @@ const lang = computed<'de' | 'en'>(() => (isGerman.value ? 'de' : 'en'))
  * Impressums-Link; deshalb der feste Rückfall unten. Wer bewusst NICHTS
  * veröffentlicht hat, bekommt weiterhin nichts — das ist eine Entscheidung,
  * kein Ausfall.
+ *
+ * DER FEHLER-ZUSTAND IST DER RÜCKFALL (LZ1, 2026-11-22): der Abruf schluckt
+ * den Fehler nicht mehr zu `null`, sondern lässt ihn in `error` stehen; die
+ * Fußzeile zeigt dann die zwei Pflichtseiten und trägt das Merkmal
+ * `data-footer-legal-fallback`. Bewusst KEIN „Noch einmal versuchen" im Fuß
+ * einer Geschäftsseite: der Rückfall gibt dem Besucher schon, was er dort
+ * sucht, und der nächste Seitenaufruf fragt ohnehin neu.
  */
 const pagesNavEnabled = appConfig.pukalani?.chrome?.pagesNav === true
 const requestFetch = useRequestFetch()
-const { data: publicPages } = await useAsyncData(
+const { data: publicPages, error: publicPagesError } = await useAsyncData(
   () => `footer-legal-pages-${locale.value}`,
   () => pagesNavEnabled
     ? requestFetch<PublicPageNavItem[]>('/api/pages/public', { query: { locale: locale.value } })
-        .catch(() => null)
     : Promise.resolve([] as PublicPageNavItem[]),
   { watch: [locale] },
 )
@@ -52,13 +58,15 @@ const LEGAL_FALLBACK: Record<'de' | 'en', PublicPageNavItem[]> = {
   ],
 }
 
+/** Der Abruf ist gescheitert — nur dann gilt der Rückfall (s. oben). */
+const legalFailed = computed(() => Boolean(publicPagesError.value))
+
 const legalPages = computed(() => {
-  const pages = publicPages.value
-  // Nur das ausdrückliche `null` ist der Ausfall. `undefined` heißt „noch
-  // nicht gelaufen" (der Zustand vor dem ersten Auflösen) — dort den
-  // Rückfall zu zeigen hiesse, ihn beim Nachladen wieder wegzunehmen.
-  if (pages === null) return LEGAL_FALLBACK[lang.value]
-  return (pages ?? []).filter(page => isLegalPageSlug(page.slug))
+  // Nur der gesetzte Fehler ist der Ausfall. Leere Daten ohne Fehler heißen
+  // „noch nicht gelaufen" oder „nichts veröffentlicht" — dort den Rückfall
+  // zu zeigen hiesse, ihn beim Nachladen wieder wegzunehmen.
+  if (legalFailed.value) return LEGAL_FALLBACK[lang.value]
+  return (publicPages.value ?? []).filter(page => isLegalPageSlug(page.slug))
 })
 
 /** Sprachwechsel: Ziel ist immer die ANDERE Sprache derselben Seite. */
@@ -163,7 +171,7 @@ const knowledgeLinks = computed(() => [
 
     <div class="container footer__base">
       <p class="footer__muted">© {{ new Date().getFullYear() }} David Schubert · Pukalani Studio. {{ t('portfolio.footer.rights') }}</p>
-      <p class="footer__muted">
+      <p class="footer__muted" :data-footer-legal-fallback="legalFailed || undefined">
         <template v-for="page in legalPages" :key="page.slug">
           <NuxtLink :to="localePath(`/${page.slug}`)" class="footer__link">{{ page.title }}</NuxtLink>
           <span aria-hidden="true"> · </span>

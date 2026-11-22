@@ -79,15 +79,15 @@ const id = computed(() => String(route.params.id ?? ''))
  * Der HTTP-STATUS ist trotzdem 404 (SEO-008, 2026-11-21) — dasselbe Muster wie
  * `discover/[slug].vue`: Seite ruhig, Antwort ehrlich, sonst führt ein
  * Crawler jede erfundene Kennung als Seite mit 200. Nur bei einer 404 der
- * Route: ein 503 (Datenbank weg) ist kein „gibt es nicht" und bleibt beim
- * alten Verhalten. Einen „läuft noch"-Zustand gibt es unter dieser Adresse
+ * Route: ein 503 (Datenbank weg) ist kein „gibt es nicht" — dort
+ * antwortet die Seite 503 und zeigt den Fehler-Zustand (LZ1). Einen „läuft noch"-Zustand gibt es unter dieser Adresse
  * nicht — ein laufender Check wohnt unter seiner Lauf-Kennung
  * (`/api/brand/check/runs/…`), hierher führt erst das fertige Ergebnis.
  * `requestEvent` wird VOR dem Abruf gegriffen (nach einem `await` fehlt der
  * Nuxt-Kontext); im Browser ist es leer, dort gibt es keinen Kopf mehr.
  */
 const requestEvent = useRequestEvent()
-const { data: result, status: loadStatus } = await useAsyncData<BrandCheckResult | null>(
+const { data: result, status: loadStatus, error: loadError, refresh: refreshResult } = await useAsyncData<BrandCheckResult | null>(
   'brand-check',
   async () => {
     if (!id.value) {
@@ -101,11 +101,20 @@ const { data: result, status: loadStatus } = await useAsyncData<BrandCheckResult
       const value = error as { status?: number, statusCode?: number, response?: { status?: number } } | null
       const status = value?.status ?? value?.statusCode ?? value?.response?.status ?? 0
       if (status === 404 && requestEvent) setResponseStatus(requestEvent, 404)
+      // AUSFALL (LZ1, 2026-11-22): kein Status oder 5xx ist kein „gibt es
+      // nicht". Der Fehler bleibt im `error` des Abrufs, die Seite zeigt
+      // „Noch einmal versuchen", und die Antwort sagt 503 statt 200.
+      if (isFetchOutage(error)) {
+        if (requestEvent) setResponseStatus(requestEvent, 503)
+        throw error
+      }
       return null
     }
   },
   { watch: [id] },
 )
+
+const loadFailed = computed(() => isFetchOutage(loadError.value))
 
 const host = computed(() => result.value?.host ?? '')
 
@@ -324,6 +333,11 @@ const CARD_UI = {
       <div v-if="loadStatus === 'pending'" class="bw-card p-10 text-center" data-check-loading>
         <UIcon name="i-ph-circle-notch" class="mx-auto size-6 animate-spin" style="color: var(--bw-muted)" />
         <p class="mt-4 text-sm" style="color: var(--bw-ink-soft)">{{ t('brand.check.result.loading') }}</p>
+      </div>
+
+      <!-- Ausfall (LZ1): kein „gibt es nicht", sondern ein neuer Versuch. -->
+      <div v-else-if="loadFailed" class="bw-card p-10" data-check-error>
+        <CoreLoadError :retry="refreshResult" />
       </div>
 
       <!-- Es gibt ihn nicht (mehr): ruhig, mit einem Weg zurück. -->

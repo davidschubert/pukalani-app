@@ -1801,7 +1801,8 @@
         "score": "Brand Score: {score}",
         "empty": "Brand Score: noch keiner",
         "open": "Score ansehen",
-        "addUrl": "Website hinterlegen"
+        "addUrl": "Website hinterlegen",
+        "loadFailed": "Die Brand Scores ließen sich gerade nicht laden."
       },
       "list": {
         "nav": "Brand Scores",

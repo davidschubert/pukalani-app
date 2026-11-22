@@ -99,6 +99,10 @@ const doc = await useAsyncData<KitState>(
     catch (error) {
       const failure = error as KitFetchError
       if (failure.statusCode === 403) return { kind: 'locked' }
+      // AUSFALL (LZ1, 2026-11-22): kein Status oder 5xx ist kein „gibt es
+      // nicht" — vorher wurde daraus eine 404-Fehlerseite. Der Fehler bleibt
+      // im `error` des Abrufs; die Seite steht und sagt es im Kopf.
+      if (isFetchOutage(error)) throw error
       return { kind: 'missing' }
     }
   },
@@ -115,7 +119,11 @@ const shell = await useAsyncData<{ found: boolean } | null>(
   { watch: [profileId], default: () => null },
 )
 
-if (doc.data.value?.kind === 'missing' || (shell.data.value && !shell.data.value.found)) {
+/** Ausfall des Manifests bzw. des Profils (LZ1) — nie ein 404, s. oben. */
+const kitFailed = computed(() => isFetchOutage(doc.error.value))
+const shellFailed = computed(() => isFetchOutage(shell.error.value))
+
+if ((!doc.error.value && doc.data.value?.kind === 'missing') || (shell.data.value && !shell.data.value.found)) {
   throw createError({ status: 404, statusText: 'Unknown brand profile' })
 }
 
@@ -199,7 +207,14 @@ function useLazyPreview(id: string, ready: () => boolean, immediate: boolean) {
     void state.execute()
   }
   if (immediate) onMounted(load)
-  return { ...state, load }
+  /**
+   * Gescheitert (LZ1, 2026-11-22): die Vorschau sagt es mit „Noch einmal
+   * versuchen" statt still leer zu bleiben. Jeder Fehler zählt — die Datei
+   * steht laut Manifest bereit, ein 4xx wäre hier genauso unerwartet.
+   */
+  const failed = computed(() => Boolean(state.error.value))
+  const retry = (): Promise<void> => state.execute()
+  return { ...state, load, failed, retry }
 }
 
 const brandMd = useLazyPreview('brand.md', () => fileAvailable('brand.md'), true)
@@ -258,9 +273,9 @@ watch(tokenTab, (value) => {
   if (value === 'css') tokensCssText.load()
 })
 
-const tokenText = computed(() => (tokenTab.value === 'json'
-  ? tokensJsonText.data.value
-  : tokensCssText.data.value))
+/** Die Vorschau des offenen Reiters — Text, Fehler und Neuversuch aus einer Hand. */
+const tokenPreview = computed(() => (tokenTab.value === 'json' ? tokensJsonText : tokensCssText))
+const tokenText = computed(() => tokenPreview.value.data.value)
 
 const shades = BRAND_RAMP_SHADES
 
@@ -653,6 +668,9 @@ useBrandTitle(() => (title.value
               <UIcon name="i-ph-check" /> {{ t('brand.kitPage.complete') }}
             </span>
           </div>
+          <!-- Ausfall des Manifests oder des Profils (LZ1): sagen, nicht verschweigen. -->
+          <CoreInlineLoadError v-if="kitFailed" class="mt-3" :retry="doc.refresh" data-kit-error />
+          <CoreInlineLoadError v-else-if="shellFailed" class="mt-3" :retry="shell.refresh" data-brand-shell-error />
           <p class="bw-pending mt-3">{{ t('brand.kitPage.correctHint') }}</p>
         </div>
 
@@ -692,6 +710,10 @@ useBrandTitle(() => (title.value
                   {{ t('brand.kitPage.loading') }}
                 </p>
                 <pre v-else-if="brandMd.data.value" class="fd-code fd-code--wrap">{{ brandMd.data.value }}</pre>
+                <CoreInlineLoadError
+                  v-else-if="brandMd.failed.value" :text="t('brand.kitPage.previewFailed')"
+                  :retry="brandMd.retry" data-kit-preview-error="brand.md"
+                />
                 <p v-else class="bw-pending">{{ t('brand.kitPage.previewFailed') }}</p>
               </div>
               <p class="bw-label mt-2" style="color: var(--bw-muted)">{{ downloadName('brand.md') }}</p>
@@ -718,6 +740,10 @@ useBrandTitle(() => (title.value
                 </span>
               </div>
               <div class="mt-3 rounded-2xl px-5 py-4" style="background: var(--bw-surface)">
+                <CoreInlineLoadError
+                  v-if="brandJsonText.failed.value" :text="t('brand.kitPage.previewFailed')"
+                  :retry="brandJsonText.retry" data-kit-preview-error="brand.json"
+                />
                 <pre class="fd-code" :class="jsonOpen ? '' : 'fd-code--clipped'">{{ brandJsonText.data.value }}</pre>
                 <UButton
                   class="mt-2 rounded-full" size="xs" color="neutral" variant="ghost"
@@ -818,6 +844,10 @@ useBrandTitle(() => (title.value
               </div>
               <div class="mt-3 max-h-96 overflow-auto rounded-2xl px-5 py-4" style="background: var(--bw-surface)">
                 <pre v-if="tokenText" class="fd-code">{{ tokenText }}</pre>
+                <CoreInlineLoadError
+                  v-else-if="tokenPreview.failed.value" :text="t('brand.kitPage.previewFailed')"
+                  :retry="tokenPreview.retry" data-kit-preview-error="tokens"
+                />
                 <p v-else class="bw-pending">{{ t('brand.kitPage.loading') }}</p>
               </div>
               <p class="bw-pending mt-3">{{ t('brand.kitPage.tokens.note') }}</p>

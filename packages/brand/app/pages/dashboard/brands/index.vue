@@ -38,10 +38,25 @@ const localePath = useLocalePath()
 const store = useBrandWorkspaceStore()
 const request = useRequestFetch()
 
-await useAsyncData('brand-profiles', async () => {
+/**
+ * DIE VIER ZUSTÄNDE (LZ1, 2026-11-22): `loadProfiles` wirft alles außer dem
+ * 404 des Gates weiter. Vorher blieb dieser Fehler ungelesen, und die Seite
+ * sagte bei einer Störung „noch keine Brandings" — die Einladung, eine erste
+ * anzulegen, an jemanden, der schon welche hat. `listState()` entscheidet,
+ * die Zweige zeichnet die Seite selbst: lädt und Fehler aus dem Core
+ * (`CoreLoadingState`, `CoreLoadError`), leer und „kein Zugang" bleiben die
+ * abgenommenen Karten des Klickdummys (s. Kopf, kein Datengrid).
+ */
+const { status: profilesStatus, error: profilesError, refresh: refreshProfiles } = await useAsyncData('brand-profiles', async () => {
   await store.loadProfiles(request)
   return true
 })
+
+const profilesState = computed(() => listState({
+  status: profilesStatus.value,
+  error: profilesError.value,
+  empty: !store.profiles.length,
+}))
 
 const newBrandOpen = ref(false)
 
@@ -150,17 +165,23 @@ function resultReady(profile: BrandProfileSummary): boolean {
  * einer Zahl: sie messen Verschiedenes (§5b), und eine Karte hat für die
  * Erklärung keinen Platz — die hat die Score-Seite.
  */
-const { data: scores } = await useAsyncData<BrandProfileScoresResponse | null>(
+const { data: scores, error: scoresError, refresh: refreshScores } = await useAsyncData<BrandProfileScoresResponse | null>(
   'brand-profile-scores',
   async () => {
     try {
       return await request<BrandProfileScoresResponse>('/api/brand/profiles/scores')
     }
-    catch {
+    catch (error) {
+      // Ein AUSFALL (LZ1) bleibt im `error`: sonst stünde unter jeder Karte
+      // „noch kein Score", obwohl es vielleicht einen gibt. Alles andere
+      // (z. B. das 404 des Gates) bleibt still wie bisher.
+      if (isFetchOutage(error)) throw error
       return null
     }
   },
 )
+
+const scoresFailed = computed(() => isFetchOutage(scoresError.value))
 
 function scoreOf(profile: BrandProfileSummary): number | null {
   const entry = scores.value?.items.find(item => item.profileId === profile.id)
@@ -297,8 +318,20 @@ useBrandTitle(() => t('brand.brands.title'))
         />
       </div>
 
+      <div v-else-if="profilesState === 'loading'" class="flex min-h-56 items-center justify-center" role="status">
+        <CoreLoadingState />
+      </div>
+
       <div
-        v-else-if="!store.profiles.length"
+        v-else-if="profilesState === 'error'"
+        class="bw-rounded-card flex min-h-56 items-center justify-center border border-dashed p-10"
+        style="border-color: var(--bw-line-strong)" role="alert" data-brands-error
+      >
+        <CoreLoadError :retry="refreshProfiles" :description="t('brand.brands.loadFailed')" />
+      </div>
+
+      <div
+        v-else-if="profilesState === 'empty'"
         class="bw-rounded-card flex flex-col items-center justify-center border border-dashed p-10 text-center"
         style="border-color: var(--bw-line-strong)"
       >
@@ -316,7 +349,14 @@ useBrandTitle(() => t('brand.brands.title'))
            und ein Klick ohne `.stop` navigierte nebenbei zur Werkstatt.
            Verlinkt sind jetzt die Kachel (sie trägt den Titel) und
            „Weiterarbeiten"; die Karte bekommt ihr Ziel als Prop. -->
-      <div v-else class="grid gap-x-6 gap-y-16 @sm:grid-cols-2 @lg:grid-cols-3">
+      <!-- Die Scores sind ausgefallen (LZ1): eine Zeile über allen Karten,
+           und unter den Karten keine falsche „noch kein Score"-Auskunft. -->
+      <CoreInlineLoadError
+        v-if="!store.denied && profilesState === 'ready' && scoresFailed" class="mb-6"
+        :text="t('brand.myScores.card.loadFailed')" :retry="refreshScores" data-brand-scores-error
+      />
+
+      <div v-if="!store.denied && profilesState === 'ready'" class="grid gap-x-6 gap-y-16 @sm:grid-cols-2 @lg:grid-cols-3">
         <div v-for="profile in store.profiles" :key="profile.id">
           <BwBrandCard
             :to="workspacePath(profile)"
@@ -338,7 +378,7 @@ useBrandTitle(() => t('brand.brands.title'))
                zur Score-Seite, und wo keine Website hinterlegt ist, steht der
                fehlende Schritt daneben. -->
           <div class="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1" data-brand-score-line>
-            <NuxtLink :to="scorePath(profile)" class="bw-label hover:underline" style="color: var(--bw-ink-soft)">
+            <NuxtLink v-if="!scoresFailed" :to="scorePath(profile)" class="bw-label hover:underline" style="color: var(--bw-ink-soft)">
               {{ scoreLine(profile) }}
             </NuxtLink>
             <NuxtLink
