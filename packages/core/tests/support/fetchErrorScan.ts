@@ -61,7 +61,8 @@ export function openFetchCount(source: string): number {
       if (!/\berror\b/.test(destructured[1]!)) open++
       continue
     }
-    const named = before.match(/(?:const|let)\s+(\w+)\s*=\s*(?:await\s+)?$/)
+    // Auch `const x = bedingung ? await useFetch(…) : null` (PostFeed, LZ1).
+    const named = before.match(/(?:const|let)\s+(\w+)\s*=\s*(?:[^;\n]*\?\s*)?(?:await\s+)?$/)
     if (named) {
       if (!source.includes(`${named[1]}.error`)) open++
       continue
