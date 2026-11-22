@@ -21,12 +21,12 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
 - **(c) Kleinigkeiten.** Das Nachholen eines halb gescheiterten Ausblendens
   (Termine) geht über die Route, die Oberfläche bietet es an einem schon
   ausgeblendeten Termin nicht an — sie kann den halben Zustand nicht erkennen.
-  Die Zahlen des Seiten-Kontingents in den Katalog: Konzept in
-  [KONTINGENT-KATALOG.md](../KONTINGENT-KATALOG.md) (Davids Ja 2026-11-21);
-  seit dem 2026-11-22 führt die Plan-Route zusammen, statt die ganze
-  Grenzen-Zeile zu überschreiben (COMPLETE „KK1 (c) — Plan-Route"). Offen:
-  Oberfläche je Art und die Zahlen in der echten Datenbank (Davids
-  Freigabe). Die
+  Die Kontingent-Zahlen in den Katalog: gebaut am 2026-11-22 (COMPLETE
+  „KK1 (c) — Kontingent-Zahlen"). Offen: control-042 auf Production
+  (`pnpm migrate --app control --env … --only control-042 --prod`, nur mit
+  Davids Ja; erst `--dry-run`) und Davids Entscheidung zur Pro-Kommentar-Zahl
+  im Katalog (lokal 1000/50.000, Vorgabe 5000/250.000 — control-042
+  überschreibt sie nicht). Die
   drei Verwaltungs-Routen der Seiten haben noch keinen Rollen-Test (stehen im
   Bestand, BT1 b); ein solcher Test belegt dann auch den Hinweis der Liste
   und den Fehler beim unvollständigen Löschen.

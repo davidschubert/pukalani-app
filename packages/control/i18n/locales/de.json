@@ -438,14 +438,24 @@
     },
     "plans": {
       "title": "Pläne & Limits (Pool)",
-      "subtitle": "Quota-Limits je Plan — wirken auf alle Pool-Sites ohne Deploy (greifen nach spätestens 90 Sekunden). 0 = unbegrenzt.",
-      "commentsPerDay": "Kommentare / Tag",
-      "commentsTotal": "Kommentare gesamt",
+      "subtitle": "Kontingente je Plan und Art — der Katalog gilt für alle Pool-Communities ohne Ausliefern (greift nach spätestens 90 Sekunden). „Vorgabe“ heißt: im Katalog steht nichts, es gilt die Zahl aus der Konfiguration der Platform-App.",
       "save": "Speichern",
       "saved": "Limits gespeichert — wirken in spätestens 90 Sekunden.",
       "saveFailed": "Limits konnten nicht gespeichert werden.",
       "saveFailedHint": "Die bisherigen Limits gelten weiter. Erlaubt sind ganze Zahlen ab 0 (0 = unbegrenzt).",
-      "hint": "perDay zählt rollierende 24 Stunden; gesamt = Bestand je Site. 0 bedeutet unbegrenzt."
+      "hint": "„pro Tag“ zählt rollierende 24 Stunden, „insgesamt“ den Bestand je Community. 0 bedeutet unbegrenzt. Gespeichert werden nur die geänderten Arten.",
+      "perDay": "pro Tag",
+      "total": "insgesamt",
+      "fromCatalog": "Katalog",
+      "fromDefault": "Vorgabe aus der Konfiguration",
+      "resetToDefault": "Auf Vorgabe zurück",
+      "setOwn": "Eigene Zahlen",
+      "kind": {
+        "comments": "Kommentare",
+        "pages": "Seiten",
+        "events": "Termine",
+        "media": "Mediathek"
+      }
     },
     "prices": {
       "title": "Preise (Stripe)",

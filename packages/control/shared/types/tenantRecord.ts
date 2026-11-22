@@ -274,6 +274,36 @@ export function mergeTenantPlanLimits(
   return merged
 }
 
+/**
+ * Die Arten, die der Kasten „Pläne & Limits" je Plan zeigt (KK1 c) — jede
+ * hat einen Anlege-Weg mit `assertPoolWriteQuota` (comments, pages, events,
+ * media). Eine Art, die nur im Katalog steht, zeigt der Kasten zusätzlich;
+ * diese Liste ist Anzeige, keine Sperre.
+ */
+export const QUOTA_KINDS = ['comments', 'pages', 'events', 'media'] as const
+
+/**
+ * PURE (KK1 c, Migration control-042): die Vorgabe-Zahlen dort in den
+ * Katalog tragen, wo eine Art FEHLT. Eine Art, die im Katalog steht, bleibt
+ * genau so — auch wenn ihre Zahl von der Vorgabe abweicht (der Betreiber hat
+ * sie so gesetzt). Gibt den neuen Stand und die hinzugefügten Arten zurück;
+ * `added` leer ⇒ nichts zu schreiben.
+ */
+export function fillMissingPlanLimits(
+  stored: Record<string, TenantPlanLimits>,
+  defaults: Record<string, TenantPlanLimits>,
+): { limits: Record<string, TenantPlanLimits>, added: string[] } {
+  const limits: Record<string, TenantPlanLimits> = {}
+  for (const [kind, value] of Object.entries(stored)) limits[kind] = { ...value }
+  const added: string[] = []
+  for (const [kind, value] of Object.entries(defaults)) {
+    if (kind in limits) continue
+    limits[kind] = { ...value }
+    added.push(kind)
+  }
+  return { limits, added }
+}
+
 /** PURE (unit-getestet): limits-JSON defensiv parsen — kaputte/fremde Werte
  *  fallen auf {} zurück (Quota greift dann via app.config-Fallback). */
 export function parseTenantPlanLimits(raw: string): Record<string, TenantPlanLimits> {

@@ -293,6 +293,14 @@ export default defineAppConfig({
       // (control-014), der pro Plan VOR diesen Werten greift
       // (tenantsResolver.ts → tenant.limits).
       //
+      // DIE EINE STELLE IM CODE (KK1 c, Davids 6b/6c vom 2026-11-22): die
+      // Zahlen unten sind die VORGABE. Migration control-042 trägt genau
+      // diese Zahlen in den Katalog ein, wo dort eine Art fehlt (sie lädt
+      // diese Datei); im Betrieb gilt danach der Katalog, und die Zahlen hier
+      // greifen nur noch, wo er eine Art nicht nennt. NUR DATEN, KEIN
+      // WERT-IMPORT in dieser Datei: die Migration und `check:i18n-keys`
+      // laden sie ohne Nuxt (Test apps/platform/tests/quotaPlans.test.ts).
+      //
       // WAS GEZÄHLT WIRD, SIND ZEILEN — NICHT BYTES. Für `comments` und
       // `events` ist das dasselbe (eine Zeile kostet eine Zeile). Für `media`
       // ist es ein STELLVERTRETER: die Kosten sind die Datei auf der Platte.
