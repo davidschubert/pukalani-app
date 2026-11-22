@@ -1,6 +1,6 @@
 # Brand Book & Kit (Produkt 03) — Strategie
 
-> **Plan-Status (2026-11-21):** teils gebaut — offen: K7, K8 und Davids Blicke ([OPEN-ITEMS](../OPEN-ITEMS.md) „BK1“). K0 bis K6 sind gebaut.
+> **Plan-Status (2026-11-22):** teils gebaut — offen: K8 und Davids Blicke ([OPEN-ITEMS](../OPEN-ITEMS.md) „BK1“). K0 bis K7 sind gebaut.
 
 Status: **Phase 5 — K0–K6 GEBAUT (K0–K4 auf main dae02441, K5 2026-09-09,
 K6 2026-09-09 auf main 2a4f6a26; Stand je Paket mit Gelernt in §2.18). K7 und
@@ -956,6 +956,31 @@ verschiedenen Seitenverhältnissen (Wortmarke 400×120, Monogramm 160×120)
 brauchen eine feste Bühne, in die sie HINEINPASSEN — auf volle Breite gezogen
 stand jede Beschriftung auf einer anderen Linie und das Raster sah aus wie ein
 Fehler.
+
+**Stand K7 (GEBAUT 2026-11-22; Davids Wort zur Copy offen — Probe in KR1
+Block F):** das öffentliche Beispiel-Kit steht. `server/utils/brandKitExample.ts`
+rechnet es aus `KAILUA_COFFEE_EXAMPLE` + `KAILUA_COFFEE_DESIGN` mit DENSELBEN
+Erzeugern wie das Kit einer Marke (`BRAND_KIT_BUILDERS`,
+`renderBrandMarkFiles`, `buildBrandKitZip`), einmal je Prozess, mit festem
+Stand `2026-09-09` (`shared/examples/kailuaCoffeeKit.ts`) — byte-gleiches
+Bündel, Dateiname mit Datum. Routen `GET /api/brand/example/kit/:file`
+(Registry-Wahl, sonst 404; `inline`, damit „Ansehen" die Datei zeigt) und
+`GET /api/brand/example/kit.zip`, beide `public, max-age=3600`, ohne Konto
+und ohne Tages-Deckel (nichts daran ist teuer). Die Anatomie
+`/discover/kailua-coffee-co` zeigt — nur dort und nur mit Beispiel-Abzeichen —
+den Abschnitt „Das Kit" (Anker `kit`) mit vier Kacheln: brand.md,
+tokens.json, tokens.css, Zeichen (→ Bündel; Einzel-SVGs gibt es öffentlich
+nicht). Abweichung vom Prototyp: statt „Pressekit" die Kachel tokens.css —
+das eingefrorene Beispiel hat keine Kit-Kapitel, ein Pressekit gäbe es dort
+nicht; „Ganzes Kit ansehen" heißt „Ganzes Kit laden (.zip)", weil es keine
+öffentliche Lieferseite gibt. Copy §2.14: Startseite `art1Body`, `art2Body`,
+Etikett „Brand Experience" an Kompass und Plan, Team `flow3Body` ohne Rex
+und Rex' Liste ohne „Strategy Playbook", Menü-Zeilen Produkt 03/04. Beweis:
+3985 brand-Tests (+12 `brandKitExample.test.ts`), Typecheck branding 0,
+**`verify:kit` 65/65** (Abschnitt 10 „Das öffentliche Beispiel-Kit" neu, mit
+Gegenprobe „nicht die Marke dieses Laufs" und dem Abschnitt auf der lokalen
+Anatomie). Geld: nichts — das Beispiel ist frei, Preis und Freischalten
+gegen Zahlung bleiben bei BS1 Z1.
 
 ### 2.19 Offene Entscheidungen für die Freigabe
 

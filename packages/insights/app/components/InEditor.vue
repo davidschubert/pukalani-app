@@ -31,6 +31,8 @@ import {
   INSIGHTS_DRAFT_WORDS_MIN,
 } from '../../shared/insightsPrompts'
 import { INSIGHTS_NEWSLETTER_INTRO_MAX } from '../../shared/insightsNewsletter'
+import type { InsightsAiReviewFinding, InsightsAiReviewKind, InsightsAiReviewView } from '../../shared/insightsAiReview'
+import { INSIGHTS_AI_REVIEW_KINDS, INSIGHTS_AI_REVIEW_OUTCOMES, insightsAiReviewHasText } from '../../shared/insightsAiReview'
 import type {
   InsightsBrandListItem,
   InsightsEvidenceResponse,
@@ -50,7 +52,8 @@ import { createInsightsBrandSchema } from '../utils/insightsForms'
  *
  * ── DIESE KOMPONENTE SPRICHT MIT KEINER ROUTE ────────────────────────────
  * Sie bekommt einen Beitrag herein und meldet Absichten hinaus (`save`,
- * `changeState`, `checkEvidence`, `translate`, `draft`, `createBrand`). Alles
+ * `changeState`, `checkEvidence`, `translate`, `draft`, `createBrand`,
+ * `suggestChangeNote`, `aiReview`). Alles
  * Ladende, alle Fehlercodes und alle Toasts gehören der SEITE. Zwei Gründe:
  * der Prototyp im `.playground` mountet dieselbe Komponente ohne Server, und
  * eine Komponente, die selbst holt, kann man in keinem zweiten Zusammenhang
@@ -115,6 +118,14 @@ const props = defineProps<{
   noteSuggestion?: { de: string, en: string, nonce: number } | null
   /** Läuft gerade ein Vorschlags-Lauf? */
   suggestingNote?: boolean
+  /**
+   * DER STAND DER KI-PRÜFUNG (IN1 a) — von der Seite geholt und abgefragt,
+   * hier nur angezeigt. `null` heisst „noch kein Stand" (vor dem ersten
+   * Laden, oder im Prototyp ohne Server).
+   */
+  aiReview?: InsightsAiReviewView | null
+  /** Startet gerade eine Prüfung oder läuft eine? Dann ist der Knopf aus. */
+  aiReviewBusy?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -126,6 +137,7 @@ const emit = defineEmits<{
   createBrand: [{ name: string, homepage: string, industry: string }]
   sendNewsletter: [{ introDe: string, introEn: string }]
   suggestChangeNote: [InsightsPostEdit]
+  aiReview: [InsightsPostEdit]
 }>()
 
 const { t, locale } = useI18n()
@@ -605,6 +617,58 @@ watch(() => props.noteSuggestion?.nonce, () => {
   draft.changeNotes.unshift({ at: '', de: suggestion.de, en: suggestion.en })
 })
 
+// ── KI-Prüfung (IN1 a) ─────────────────────────────────────────────────────
+
+/**
+ * DIE PRÜFUNG BERÄT NUR. Der Knopf schickt den aktuellen Stand (auch
+ * ungespeichert) an die Seite; das Ergebnis kommt als Prop zurück und wird
+ * NUR angezeigt — nichts davon landet im Entwurf. Was gesperrt ist,
+ * entscheiden weiter die Prüfregeln im Kasten darüber.
+ *
+ * Aus ist der Knopf, solange ein Lauf startet oder läuft, und ohne
+ * Fliesstext in der Grundfassung (der Server lehnte dann mit
+ * `nothing_to_review` ab — dieselbe pure Regel an beiden Enden).
+ */
+const aiReviewHasText = computed(() => insightsAiReviewHasText(editPayload()))
+const canAiReview = computed(() => aiReviewHasText.value && !props.aiReviewBusy)
+
+function startAiReview(): void {
+  if (!canAiReview.value) return
+  emit('aiReview', editPayload())
+}
+
+/** Die Funde nach Art, in fester Reihenfolge; leere Arten fallen weg. */
+const aiReviewGroups = computed((): { kind: InsightsAiReviewKind, findings: InsightsAiReviewFinding[] }[] => {
+  const findings = props.aiReview?.findings ?? []
+  return INSIGHTS_AI_REVIEW_KINDS
+    .map(kind => ({ kind, findings: findings.filter(finding => finding.kind === kind) }))
+    .filter(group => group.findings.length > 0)
+})
+
+const AI_REVIEW_KIND_ICON: Readonly<Record<InsightsAiReviewKind, string>> = {
+  inconsistency: 'i-ph-warning-circle',
+  missing: 'i-ph-puzzle-piece',
+  improvement: 'i-ph-lightbulb',
+}
+
+/** Feste Schlüssel statt eines zusammengesetzten — so liest sie `check:i18n-keys`. */
+function aiReviewKindLabel(kind: InsightsAiReviewKind): string {
+  if (kind === 'inconsistency') return t('insights.editor.aiReview.kinds.inconsistency')
+  if (kind === 'missing') return t('insights.editor.aiReview.kinds.missing')
+  return t('insights.editor.aiReview.kinds.improvement')
+}
+
+/** Der Satz zu einem gescheiterten Lauf — je Ausgang, sonst der allgemeine. */
+const aiReviewFailure = computed((): string => {
+  const failure = props.aiReview?.failure ?? ''
+  if (failure === INSIGHTS_AI_REVIEW_OUTCOMES.empty) return t('insights.editor.aiReview.failedEmpty')
+  if (failure === INSIGHTS_AI_REVIEW_OUTCOMES.aiDisabled) return t('insights.editor.aiReview.failedDisabled')
+  // Ein Lauf im Hintergrund erreicht den zentralen Hinweis nicht und sagt
+  // denselben Satz selbst (`ki.md`, „Kein Endpunkt ⇒ laut").
+  if (failure === INSIGHTS_AI_REVIEW_OUTCOMES.aiEndpointUnavailable) return t('error.aiEndpointUnavailableHint')
+  return t('insights.editor.aiReview.failed')
+})
+
 // ── Vorschau ───────────────────────────────────────────────────────────────
 
 const previewOpen = ref(false)
@@ -927,6 +991,76 @@ const urlPlaceholder = 'https://'
             color="neutral" variant="ghost" class="rounded-full" style="background: var(--bw-surface)"
             @click="previewOpen = true"
           />
+        </div>
+      </div>
+
+      <!-- KI-Prüfung (IN1 a): berät nur, sperrt nichts, schreibt nichts.
+           Die Funde sind eine Handvoll Sätze ohne Spalten und ohne etwas zu
+           sortieren — deshalb eine schlichte Liste wie die Prüfregeln
+           darüber, kein UTable. -->
+      <div class="bw-card p-6" data-insights-ai-review>
+        <p class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.aiReview.title') }}</p>
+        <p class="mt-2 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">{{ t('insights.editor.aiReview.hint') }}</p>
+
+        <div class="mt-4 flex flex-col gap-2">
+          <UButton
+            :label="t('insights.editor.aiReview.start')" icon="i-ph-sparkle"
+            color="neutral" variant="ghost" class="rounded-full" style="background: var(--bw-surface)"
+            :loading="aiReviewBusy" :disabled="!canAiReview"
+            data-insights-ai-review-start
+            @click="startAiReview"
+          />
+          <p class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.aiReview.cost') }}</p>
+          <p v-if="!aiReviewHasText" class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.aiReview.needsText') }}</p>
+        </div>
+
+        <p
+          v-if="aiReview?.state === 'running'"
+          class="mt-4 flex items-start gap-2 text-sm leading-snug" style="color: var(--bw-ink-soft)"
+          data-insights-ai-review-running
+        >
+          <UIcon name="i-ph-hourglass-medium" class="mt-0.5 size-4 shrink-0" />
+          {{ t('insights.editor.aiReview.running') }}
+        </p>
+        <p
+          v-else-if="aiReview?.state === 'stalled'"
+          class="mt-4 flex items-start gap-2 text-sm leading-snug" style="color: var(--bw-stale)"
+        >
+          <UIcon name="i-ph-warning-circle" class="mt-0.5 size-4 shrink-0" />
+          {{ t('insights.editor.aiReview.stalled') }}
+        </p>
+        <p
+          v-else-if="aiReview?.state === 'failed'"
+          class="mt-4 flex items-start gap-2 text-sm leading-snug" style="color: var(--bw-stale)"
+          data-insights-ai-review-failed
+        >
+          <UIcon name="i-ph-warning-circle" class="mt-0.5 size-4 shrink-0" />
+          {{ aiReviewFailure }}
+        </p>
+        <p
+          v-else-if="aiReview?.state === 'done' && aiReview.gone"
+          class="mt-4 flex items-start gap-2 text-sm leading-snug" style="color: var(--bw-muted)"
+          data-insights-ai-review-gone
+        >
+          <UIcon name="i-ph-arrow-counter-clockwise" class="mt-0.5 size-4 shrink-0" />
+          {{ t('insights.editor.aiReview.gone') }}
+        </p>
+        <div v-else-if="aiReview?.state === 'done' && aiReviewGroups.length" class="mt-4 space-y-4" data-insights-ai-review-findings>
+          <div v-for="group in aiReviewGroups" :key="group.kind">
+            <p class="bw-label flex items-center gap-2" style="color: var(--bw-muted)">
+              <UIcon :name="AI_REVIEW_KIND_ICON[group.kind]" class="size-4" />
+              {{ aiReviewKindLabel(group.kind) }}
+            </p>
+            <ul class="mt-2 space-y-2">
+              <li
+                v-for="(finding, index) in group.findings" :key="index"
+                class="text-sm leading-snug" style="color: var(--bw-ink-soft)"
+              >
+                {{ finding.text }}
+              </li>
+            </ul>
+          </div>
+          <p class="bw-label" style="color: var(--bw-muted)">{{ t('insights.editor.aiReview.staleHint') }}</p>
         </div>
       </div>
 

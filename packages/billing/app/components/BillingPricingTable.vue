@@ -18,11 +18,18 @@ const { config, planId: currentPlanId, entitled } = useBilling()
 const interval = ref<BillingInterval>('monthly')
 const busyPlan = ref('')
 
-const { data: priceData } = useFetch<BillingPricesResponse>('/api/billing/prices', {
+const { data: priceData, error: priceError, refresh: refreshPrices } = useFetch<BillingPricesResponse>('/api/billing/prices', {
   key: 'billing:prices',
   immediate: config.value.enabled,
-  ignoreResponseError: true,
   default: () => ({ prices: null }),
+})
+// Nur ein ECHTER Ausfall (Status ab 500 oder kein Status = Netz) bekommt den
+// kleinen Hinweis; eine erwartete Ablehnung (404/403) bleibt still. Die Karten
+// stehen in jedem Fall weiter da — die Preisliste ist öffentlich und rendert
+// im Notfall ohne Beträge („—").
+const pricesFailed = computed(() => {
+  if (!priceError.value) return false
+  return isFetchOutage(priceError.value)
 })
 
 /** Betrag in Cent → lokalisierte Anzeige („9 €" statt „9,00 €" bei glatten Beträgen) */
@@ -112,6 +119,8 @@ async function openPortal() {
         {{ t('billing.pricing.yearly') }}
       </UButton>
     </div>
+
+    <CoreInlineLoadError v-if="pricesFailed" class="mb-6 justify-center" :retry="refreshPrices" data-testid="pricing-load-error" />
 
     <div
       class="mx-auto grid grid-cols-1 gap-6"

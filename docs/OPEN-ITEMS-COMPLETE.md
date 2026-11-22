@@ -30,6 +30,164 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### Bahn 7 — Farbwelten ganz optimieren: Hauptfarbe, Gelb, Blau und Fokus-Rahmen erreichen als Schrift 4,5 zu 1 (Rest von UX-002) ✅ 2026-11-22
+
+**Was.** Nach Q07 waren als Schrift noch zu blass: die Hauptfarbe jeder
+Farbwelt (Links, Text in der Hauptfarbe, Weiß auf dem Knopf), Gelb und Blau
+und der Fokus-Rahmen (25 Prozent Deckkraft). Davids Entscheidung 2026-11-21:
+„alle ganz optimieren", Gelb und Blau abdunkeln, Fotos vor dem
+Zusammenführen (Ja am 2026-11-22).
+
+- **Generator (`packages/themes`).** `--ui-primary` jeder Stellung (26
+  Farbwelten, Basis und alle Varianten) rückt in der Helligkeit nur so weit,
+  bis die Farbe als Schrift auf Seite, gedämpfter und erhöhter Fläche ALLER
+  neun Paletten und auf ihrer 10-Prozent-Fläche besteht; Farbton und
+  Sättigung bleiben. Gate `auditPrimaryTokens` bricht sonst ab.
+- **Je Farbwelt entschieden (Katalog-Feld `keepFill`).** Gelb und Orange
+  (sunset, citrus, honey, meadow) würden beim Abdunkeln braun. Dort bleibt die
+  Fläche (Knopf, Etikett, Häkchen, Schalter) und bekommt dunkle Schrift (die
+  950er der Farbwelt); nur Links und Text in der Hauptfarbe werden dunkler.
+  Umgesetzt über einen Flächen-Block mit `PRIMARY_FILL_SELECTOR` (die
+  Nuxt-UI-Klassen der vollen Fläche). Alle anderen Welten rücken als Ganzes,
+  Grün bleibt Grün, Blau bleibt Blau.
+- **Custom Themes.** Die Farbe des Owners bleibt als Fläche exakt; Schrift
+  darauf (Weiß oder dunkel) und als Link werden gewählt. Die Paletten kommen
+  zur Laufzeit aus dem erzeugten `shared/neutralPalettes.gen.ts`.
+- **contrast.css.** Gelb `#f0b100` → `#7f6000`, Blau `#2b7fff` →
+  `#045cd8` (dieselbe Regel wie Rot und Grün); Fokus-Rahmen aller Farben
+  voll deckend.
+- **Hilfe.** Code-Beispiele mit den Hochkontrast-Themen von Shiki (im Paket
+  enthalten), Gelb/Blau der Hinweis-Kästen (`help.css`).
+
+**Vorher / nachher je Farbwelt** (Basis; hell: Fläche / Knopf-Schrift /
+Schrift auf der schwierigsten Fläche über alle Paletten; dunkel: Schrift):
+
+| Farbwelt | Weg | hell vorher: Fläche / Knopf-Schrift / Schrift min | hell nachher | dunkel vorher → nachher (Schrift min) |
+| --- | --- | --- | --- | --- |
+| crimson | dunkler | #d00041 / Weiß 5,6 / 4,2 | #c4003d / Weiß 6,2 / Schrift #c4003d 4,6 | #ff6878 4,4 → #ff6f7d 4,6 |
+| coral | dunkler | #c8391d / Weiß 5,2 / 4,0 | #bc2c0e / Weiß 6,0 / Schrift #bc2c0e 4,6 | #ff7559 4,7 (bleibt) |
+| sunset | Fläche bleibt, Schrift dunkel | #c75e00 / Weiß 4,2 / 3,3 | #c75e00 / dunkel 4,7 / Schrift #a24b00 4,6 | #ff934f 5,4 (bleibt) |
+| citrus | Fläche bleibt, Schrift dunkel | #c27c00 / Weiß 3,4 / 2,7 | #c17b00 / dunkel 5,6 / Schrift #8d5900 4,6 | #ffad3e 6,2 (bleibt) |
+| honey | Fläche bleibt, Schrift dunkel | #a78400 / Weiß 3,5 / 2,8 | #a78400 / dunkel 5,5 / Schrift #7c6100 4,6 | #e1b631 6,0 (bleibt) |
+| meadow | Fläche bleibt, Schrift dunkel | #848800 / Weiß 3,8 / 3,1 | #848800 / dunkel 5,1 / Schrift #656800 4,6 | #b7bd32 5,7 (bleibt) |
+| spring | dunkler | #529000 / Weiß 3,9 / 3,1 | #3f7100 / Weiß 5,9 / Schrift #3f7100 4,6 | #7cc732 5,6 (bleibt) |
+| forest | dunkler | #23a461 / Weiß 3,2 / 2,6 | #00743f / Weiß 5,9 / Schrift #00743f 4,6 | #65da93 6,5 (bleibt) |
+| jade | dunkler | #008d70 / Weiß 4,2 / 3,3 | #007159 / Weiß 6,0 / Schrift #007159 4,6 | #39c4a1 5,5 (bleibt) |
+| lagoon | dunkler | #009088 / Weiß 3,9 / 3,1 | #00706a / Weiß 6,0 / Schrift #00706a 4,6 | #39c7bd 5,7 (bleibt) |
+| reef | dunkler | #008892 / Weiß 4,3 / 3,4 | #006f78 / Weiß 5,9 / Schrift #006f78 4,6 | #38becb 5,3 (bleibt) |
+| arctic | dunkler | #008ba9 / Weiß 4,0 / 3,2 | #006d85 / Weiß 6,0 / Schrift #006d85 4,6 | #38c1e5 5,6 (bleibt) |
+| azure | dunkler | #007baa / Weiß 4,8 / 3,7 | #006b95 / Weiß 5,9 / Schrift #006b95 4,6 | #37afe9 4,9 (bleibt) |
+| denim | unverändert | #0063ac / Weiß 6,2 / 4,8 | #0063ac / Weiß 6,2 / Schrift #0063ac 4,8 | #3496ee 4,0 → #43a3fc 4,6 |
+| ocean | dunkler | #0f62cb / Weiß 5,8 / 4,5 | #0c60c9 / Weiß 5,9 / Schrift #0c60c9 4,6 | #4f97ff 4,2 → #5fa0ff 4,6 |
+| midnight | unverändert | #4c43dc / Weiß 6,7 / 5,1 | #4c43dc / Weiß 6,7 / Schrift #4c43dc 5,1 | #7a83ff 3,9 → #8c97ff 4,6 |
+| amethyst | unverändert | #703dd1 / Weiß 6,4 / 4,9 | #703dd1 / Weiß 6,4 / Schrift #703dd1 4,9 | #9e7aff 3,9 → #a98dff 4,6 |
+| orchid | dunkler | #9034cc / Weiß 5,9 / 4,5 | #8f33cb / Weiß 6,0 / Schrift #8f33cb 4,6 | #c272ff 4,2 → #c67eff 4,6 |
+| berry | dunkler | #b700cd / Weiß 5,4 / 4,0 | #a900be / Weiß 6,1 / Schrift #a900be 4,6 | #ea63ff 4,5 → #ea65ff 4,6 |
+| blossom | dunkler | #c1159f / Weiß 5,4 / 4,1 | #b60095 / Weiß 6,1 / Schrift #b60095 4,6 | #fc5bd4 4,5 → #fe5dd6 4,6 |
+| flamingo | dunkler | #c61877 / Weiß 5,5 / 4,2 | #be0671 / Weiß 6,1 / Schrift #be0671 4,6 | #ff5fa9 4,4 → #ff67ac 4,6 |
+| graphite | unverändert | #5a5a63 / Weiß 6,8 / 5,3 | #5a5a63 / Weiß 6,8 / Schrift #5a5a63 5,3 | #8a8a94 3,6 → #9f9fa9 4,6 |
+| espresso | unverändert | #5c3c25 / Weiß 9,9 / 7,5 | #5c3c25 / Weiß 9,9 / Schrift #5c3c25 7,5 | #8e6a52 2,7 → #be987f 4,6 |
+| sage | dunkler | #517458 / Weiß 5,3 / 4,2 | #4a6d51 / Weiß 5,8 / Schrift #4a6d51 4,6 | #82a688 4,5 → #85a98b 4,6 |
+| plum | unverändert | #603a68 / Weiß 9,1 / 6,9 | #603a68 / Weiß 9,1 / Schrift #603a68 6,9 | #91699a 2,9 → #bb91c4 4,6 |
+| steel | unverändert | #435f7d / Weiß 6,6 / 5,1 | #435f7d / Weiß 6,6 / Schrift #435f7d 5,1 | #7290b0 3,8 → #84a2c3 4,6 |
+
+**Beweis.** Eigenes Messskript im Browser (Kontrast jeder sichtbaren Schrift
+gegen ihren tatsächlichen Hintergrund), lokal: Visual-Seite in 27 Farbwelten
+hell und dunkel vorher 3 bis 10 Meldungen je Welt (hell) und 2 bis 7
+(dunkel: graphite, espresso, plum) → 0; Anmelde-Seite in 9 Welten 2 → 0;
+Hilfe auf 4 Seiten 3/1/1 → 0. Wächter
+`packages/themes/tests/primaryContrast.test.ts` (jede Stellung, Farbton
+bleibt, Gegenproben: alte 600er Stufe und ein von Hand aufgehellter Wert
+fallen durch, Custom Themes über alle Farbtöne),
+`apps/help/tests/helpContrast.test.ts`. Fotos vorher/nachher im
+Notiz-Ordner der Sessiongruppe (`bahn7-fotos`).
+
+**Nicht geprüft.** Dashboard im Browser (rechnerisch, dieselben Bausteine);
+Hover-Zustand der Knöpfe; `secondary` (kaum benutzt) und die Marketing-Site.
+
+**Gelernt:** `--ui-primary` ist bei Nuxt UI Schrift UND Fläche zugleich —
+wer nur eine Farbe rückt, macht Gelb braun. Die Trennung gelingt ohne
+Komponenten-Umbau über einen Block, der GENAU die Flächen-Klassen
+(`[class~='bg-primary']`, ganzes Wort) trifft und dort Fläche und Schrift
+neu setzt; der helle Block braucht `:not(.dark)`, weil `:root[data-theme]`
+auch im Dunkeln gilt. Und: in zsh ist `"$t:light"` der Modifier `:l` —
+die ersten Fotos zeigten alle dieselbe Farbwelt.
+
+---
+
+### LZ1 Bahn 8 — 42 Seiten zeigen einen Ausfall ehrlich; kleiner Baustein `CoreInlineLoadError` (Schübe A bis C) ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21: „Auch diese abarbeiten". Von den 56
+Dateien der Rest-Liste sind 42 umgestellt, in drei Pull Requests:
+**A** (Onboarding-Hinweise, Konto-Karten, Einladung, Diskussions-Hilfen),
+**B** (Dashboard-Kacheln, Diskussionen „Über", Kategorie- und Lektions-Seite,
+Kommentare, Einbetter- und Schriften-Liste, Betreiber-Seiten, Docs, SEO),
+**C** (Hilfe, Community-Startseite, Markt, Radar, Insights-Editor, Feed,
+Einbett-Fenster).
+
+**Wie.** Zwei kleine Core-Bausteine: `CoreInlineLoadError` (eine ruhige Zeile
+mit „Noch einmal versuchen" an Stelle eines Hinweises oder einer Kachel) und
+`isFetchOutage(error)` (kein Status oder 5xx = echter Ausfall; 401/403/404
+bleiben dort still, wo sie erwartet sind — auch die neue 403 der Übersicht
+für ein Konto mit nur dem Instanz-Label `moderator`, BT1 e). Listen über
+`listState()`/`CoreListState`; Seiten mit eigenem Fehlerweg antworten bei
+einem Ausfall 503 statt eines falschen 404 (Hilfe, Kategorie, Lektion,
+Docs). Die Zwei-Faktor-Karte sagt bei einem Ausfall nicht mehr „aus". Das
+Einbett-Fenster bleibt bei gescheiterter Einbetter-Prüfung bewusst offen (die
+CSP ist die Grenze) und trägt nur ein Merkmal `data-embed-check="failed"`.
+Der Zähler der Rest-Liste erkennt jetzt auch `x = bedingung ? await
+useFetch(…)` (PostFeed zeigte den Fehler schon).
+
+**Beweis.** Wächter `listStateBacklogGuard.test.ts` (mit neuem Test- und
+Gegenfall für den Zähler), `pnpm -r test`, Typecheck. Im Browser je Schub vier
+Seiten gegen die lokale Bühne (Abruf im Browser mit 500 gestellt, dann 404/403,
+dann „Noch einmal versuchen"): Community-Einstellungen, Übersicht mit Hinweisen,
+Sicherheit und Sitzungen, Einladung annehmen (A); Übersicht-Kacheln,
+Einbetter-Liste (Fehler, leer), Diskussionen „Über", Statistik-Einstellungen
+(B); Hilfe-Artikel und Hilfe-Start (503), Community-Startseite (Ausfall ⇒
+Fehlerzeile, 404 ⇒ Willkommens-Seite), Feed, Einbett-Fenster,
+Seitenleisten-Links (C). Keine Hydration-Meldung beim vollen Seitenaufbau.
+
+**Offen** (OPEN-ITEMS „LZ1"): 12 Dateien in `packages/brand` und der
+Fußbereich von `apps/portfolio` — Gebiet einer parallelen Bahn, nicht
+angefasst. Bleibt mit Grund: `DiscussionSidebarLinks.vue`.
+
+**Gelernt:** Ein Helfer, der nur `pnpm check` und den Wächter fährt, übersieht
+die übrigen Unit-Tests (`ssrTenantFetch`: roher `$fetch` in `useAsyncData`
+verliert im SSR den Mandanten) — je Schub `pnpm -r test` vor dem Push. Und:
+die Hilfs-Probe „Abruf im Browser stellen" trifft nur Abrufe, die NACH dem
+Stellen laufen; ein Zurückblättern bedient Nuxt aus dem Zwischenspeicher —
+dann den Abruf über `nuxtApp._asyncData[<key>].execute()` neu auslösen.
+---
+
+### KK1 (c) — Plan-Route: Kontingent-Grenzen zusammenführen statt überschreiben; Konzept für den Katalog ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21: „Ja, in den Katalog". Geschrieben
+ist das Konzept `docs/plans/KONTINGENT-KATALOG.md` (was sich ändert, keine
+Schema-Änderung, drei Zeilen Daten auf Production als Klick-Pflicht,
+Rückweg, drei Punkte zur Freigabe). Gebaut ist nur der Teil ohne
+Datenbank-Änderung: `PATCH /api/control/plans/:key` liest die Zeile unter
+der Sperre des Control Plane (`withControlLock`, Scope `plans`), führt die
+genannten Arten mit dem gespeicherten Stand zusammen
+(`mergeTenantPlanLimits`, `null` nimmt eine Art heraus) und schreibt dann.
+Vorher löschte „Kommentar-Grenzen speichern" jede andere Art aus dem
+Katalog. Ein Lesefehler außer 404 bricht ab, statt einen unvollständigen
+Stand zu schreiben. Heute ändert sich im Betrieb nichts (im Katalog stehen
+nur Kommentare, die Oberfläche schickt nur sie).
+
+**Beweis.** `packages/control/tests/planLimitsMerge.test.ts`: pur (ersetzt
+nur die genannte Art, `null` nimmt heraus, Eingabe unverändert) und an der
+echten Route gegen die Renn-Ablage (Kommentare speichern lässt Seiten
+stehen, fehlende Zeile wird angelegt, keine Sperr-Zeile bleibt zurück).
+Gegenprobe: Zusammenführen abgeschaltet ⇒ der Seiten-Fall rot. Rollen-Test
+der Route unverändert grün.
+
+**Gelernt:** Eine Route, die „die Zeile" schreibt, wird zur Falle, sobald
+ein zweiter Schreiber nur einen Teil kennt — vor dem Ausbau eines Katalogs
+erst das Schreiben auf Zusammenführen umstellen.
+
+---
+
 ### Q24 Nachtrag — Fußzeile „Auch von uns" mit Davids Wortlaut (Bahn 7, Paket 2) ✅ 2026-11-22
 
 **Was.** Die Zeile, mit der die drei Sites aufeinander zeigen, trägt jetzt
@@ -48,6 +206,49 @@ aus Namen und Rollen zusammen und hält sie gegen den Satz, je Sprache.
 **Gelernt:** Ein Satz, den David wörtlich vorgibt, gehört als Satz in den
 Test — die Bausteine einzeln zu prüfen („Rolle ist gesetzt") hätte den
 Wortlaut nie festgehalten.
+
+---
+
+### SI1 (b) — der zweite Sicherungs-Lauf: `active`-Zeilen in stillgelegten Communities, live nur zählend ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21 auf die Frage aus N14: „Ja, nur
+zählend". Der Label-Abgleich der Platform-App nimmt einer `active`-Zeile in
+einer stillgelegten Community das Label, darf die Zeile aber nicht umstellen
+(er liest das Control Plane nur). Jetzt gibt es dafür einen Lauf in der
+Betreiber-App, die dort schreiben darf.
+
+**Wie.** Zeit-Lauf `disabled-member-sweep` (`defineTimedJob`, stündlich, im
+Plugin der Testphasen-Läufe), Kern
+`packages/control/server/utils/disabledMembershipSweep.ts`, Schalter pur in
+`packages/control/shared/disabledMembershipSweep.ts`:
+`pukalani.control.disabledMembershipSweep` = `off` | `dry-run` | `apply`,
+unbekannt = `off`, **Layer-Vorgabe `dry-run`, keine App schaltet `apply`**.
+`dry-run` liest zwei Listen und schreibt die Zeile
+`community_members.disabled_sweep_dry_run` (`warn`, sobald etwas zu tun wäre).
+`apply` liest vor jedem Schreiben Zeile UND Community frisch und stellt nur
+um, wenn die Zeile noch `active` und die Community noch `disabled` ist
+(`status: 'removed'`, `removedAt` — dieselbe Semantik wie das Stilllegen);
+das Label nimmt danach der erste Lauf über seinen normalen Weg. Neue Kennung
+in `ops/timed-jobs.conf` und im Wächter `timedJobGuard.test.ts`. Runbook:
+`docs/runbooks/LABEL-ABGLEICH.md`, „Der zweite Lauf".
+
+**Beweis.** `packages/control/tests/disabledMembershipSweep.test.ts` (Renn-
+Ablage): `dry-run` schreibt nichts und zählt nur stillgelegte Communities;
+`apply` stellt genau diese Zeilen um, lässt eine wieder geöffnete Community
+und eine schon umgestellte Zeile stehen, ein Fehlschlag hält die anderen nicht
+auf; Schalter fail-closed. Gegenprobe (frisches Lesen weg, `dry-run`
+schreibend) ⇒ genau zwei Fälle rot. Lokal gegen den Spiegel: erster Takt
+`disabledCommunities: 5, affectedCommunities: 3, activeRows: 3` — die drei
+Zeilen, die N14 im lokalen Spiegel gefunden hatte; nichts geändert.
+
+**Offen zum Scharfschalten** (steht in OPEN-ITEMS „SI1"): Zahl auf
+Production im Log lesen, Davids Ja dazu, Zeile `apply` in
+`apps/control/app/app.config.ts`.
+
+**Gelernt:** Ein Dev-Server, der nach einer Datei-Änderung neu lädt, meldet
+den Lauf neu an, aber der erste Takt kommt erst nach einem sauberen Neustart
+— für den lokalen Beweis eines Zeit-Laufs den Server neu starten, nicht auf
+das Neuladen warten.
 
 ---
 
@@ -81,6 +282,73 @@ ist zu; Community-Moderator (Rolle) und Betreiber 200/200/200.
 **Gelernt:** Eine Wache, die HINTER der Core-Wache ablehnt, sieht der
 Prüfstand als „Wache passiert" — der Test braucht dafür eine eigene,
 ausdrückliche Liste statt eines aufgeweichten `denied`.
+
+---
+
+### IN1 (a) — Knopf „KI-Prüfung" in der Insights-Redaktion: berät, sperrt nichts, Lauf im Hintergrund ✅ 2026-11-22
+
+**Was.** Davids Antwort vom 2026-11-21: „Ja, jetzt bauen". Im Editor eines
+Artikels liest der Knopf die AKTUELLE (auch ungespeicherte) Grundfassung und
+meldet in drei Arten, was unstimmig wirkt, was inhaltlich fehlt und was den
+Artikel für Leser und Suche besser machte. Er schreibt nichts in den Artikel
+und sperrt nichts; die festen Prüfregeln bleiben die Sperre.
+
+**Wie.** `POST /api/insights/posts/:id/review` (`insights.manage`): erst
+alles Kostenlose (Beitrag da, Fliesstext nicht leer ⇒ sonst 409
+`nothing_to_review`), dann die Lauf-Sperre in `insights_runs` (Art `review`,
+Gegenstand = Beitrag; belegt ⇒ 409 `review_running`, die Seite zeigt einen
+ruhigen Hinweis), dann Kill-Switch und eigenes Kontingent (`review`;
+Ablehnung ⇒ die Sperre fällt), `paid`-Vermerk vor dem bezahlten Schritt,
+`202` und `runDetached`. Nach dem Aufruf wird geklemmt (höchstens 12 Punkte,
+unbekannte Art fällt weg). `GET …/review` liefert den Lauf-Stand gegen die
+Server-Uhr und das Ergebnis. **Das Ergebnis liegt im Speicher des Prozesses**
+(Map je Lauf-Zeile, 60 min, Deckel 200): `insights_runs` hat keine
+Ergebnis-Spalte, und eine neue wäre eine Production-Migration gewesen; nach
+einem Neustart sagt die Seite ehrlich „Ergebnis nicht mehr da". Bremsen-Liste
+(`insights:ai`), Fristen-Buch (`detached`), Rollen-Tests beider Routen,
+Protokoll nur mit Kennungen und Zahlen.
+
+**Beweis.** `packages/insights/tests/insightsAiReviewRoutes.test.ts` (26
+Fälle, gestellte KI) mit zehn Gegenproben (Sperre, Rückgabe der Sperre bei
+Kontingent-Ablehnung, Kill-Switch, Klemme, Neustart, Ablage, `paid`,
+Protokoll ohne Text, Bremsen-Liste, Fristen-Buch — je rot). Lokal geklickt
+(Branding-App aus dem Worktree, Wegwerf-Betreiberkonto, gestellter
+OpenAI-kompatibler Server auf localhost): Knopf sperrt während des Laufs, ein
+zweiter Klick schickt keinen zweiten Start, nach dem gestellten Lauf stehen
+drei Funde nach Art, der vierte (unbekannte Art) ist weggeklemmt; genau EIN
+Aufruf am gestellten Server. Konto und vier Lauf-Zeilen danach gelöscht.
+
+**Nicht belegt:** ein Lauf mit echtem Modell (Prompt-Güte, Kosten je Klick) —
+auf Production wurde der Knopf nicht ausgelöst.
+
+**Gelernt:** In `apps/branding/app/app.config.ts` steht `pukalani.ai` als
+eigener Block weiter unten; ein zweiter `ai`-Schlüssel oben im selben Objekt
+wird still überschrieben. Eine lokale Probe mit gestelltem Server deshalb mit
+einem Schein-Schlüssel fahren — der erste Versuch ging an den echten
+Anbieter und scheiterte dort nur dank des Schein-Schlüssels (401, kostenlos).
+
+---
+### BK1 K7 — Brand Book & Kit: öffentliches Beispiel-Kit und Copy (Bahn 9, Paket 3) ✅ 2026-11-22
+
+**Was.** Kailua Coffee Co. hat ein öffentliches Kit: `GET /api/brand/example/kit/:file`
+und `…/kit.zip` (ohne Konto, `public, max-age=3600`), gerechnet aus dem
+eingefrorenen Beispiel mit denselben Erzeugern wie das Kit einer Marke, fester
+Stand ⇒ byte-gleiches Bündel. Die Anatomie `/discover/kailua-coffee-co` zeigt
+den Abschnitt „Das Kit" mit vier Kacheln. Die Copy aus
+`docs/plans/BRAND-BOOK-KIT.md` §2.14 steht auf Startseite, Team-Seite und im
+Produkt-Menü. `verify:kit` deckt K7 ab (Abschnitt 10, 65/65 lokal).
+Einzelheiten und Abweichungen vom Prototyp: Plan §2.18 „Stand K7". Offen
+bleiben K8 und Davids Wort zur Copy (KR1 Block F).
+
+**Gelernt:** Ein Beispiel, das dieselben Erzeuger wie das Produkt fährt, braucht
+einen FESTEN Stand — mit „jetzt" trüge jede Datei täglich einen anderen Namen,
+und `public, max-age` träfe nie. Und `curl -I` ist kein Beweis für eine
+`.get.ts`-Route: HEAD trifft sie nicht und liefert eine JSON-404 mit eigenem
+Inhaltstyp — geprüft wird mit GET und `-D -`. Und vor dem Push ALLE
+Wächter-Tests fahren (`pnpm -r test`), nicht nur die des Pakets: der
+SEC-021-Wächter in `packages/core` zählt jede neue `:href`-Bindung, auch in
+`packages/brand` — die CI war deshalb im ersten Lauf rot.
+
 ### SU1 (a) — Hauptsprache der Demo-Community: bleibt englisch; Runbooks nennen die Migrations-Env `admin.env` ✅ 2026-11-22
 
 **Was.** (a) Davids Antwort vom 2026-11-21: „Sie bleibt englisch". Die

@@ -598,6 +598,26 @@
         "needsChange": "Change something in the article first — then there is something to describe.",
         "suggested": "Suggestion added. Please read and adjust it — it only appears once you save.",
         "unsaved": "New notes and edits only appear once you save."
+      },
+      "aiReview": {
+        "title": "AI review",
+        "hint": "Reads the current version in the editor, even if unsaved, and reports what seems inconsistent, what is missing and what would make the article better for readers and search. The review only advises: it changes nothing in the article and can be wrong. What is blocked is still decided by the review rules.",
+        "start": "Start AI review",
+        "cost": "A paid AI run, about 1 to 5 cents. The base version is reviewed.",
+        "needsText": "Write some body text first — then there is something to review.",
+        "running": "The review is running, usually under a minute. You can keep working.",
+        "alreadyRunning": "A review is already running for this article. The result will appear here.",
+        "stalled": "The review did not come back. Please start it again.",
+        "failed": "The review did not work. Please start it again.",
+        "failedEmpty": "The model returned no usable feedback. Please start it again.",
+        "failedDisabled": "AI is switched off right now.",
+        "gone": "Result no longer available — please review again.",
+        "staleHint": "The points refer to the version at the start of the review. None of it has been changed in the article.",
+        "kinds": {
+          "inconsistency": "Seems inconsistent",
+          "missing": "Missing content",
+          "improvement": "Better for readers and search"
+        }
       }
     },
     "admin": {

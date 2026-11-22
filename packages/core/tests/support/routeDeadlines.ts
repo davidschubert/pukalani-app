@@ -211,6 +211,7 @@ export const ROUTE_DEADLINES: Readonly<Record<string, RouteDeadlineEntry>> = {
     form: 'inline',
     deadlines: [{ ...INSIGHTS_GATE, times: 1, what: 'nur neue Belege lesen, nacheinander — EIN Zeitdeckel über alle (höchstens 20)' }],
   },
+  'packages/insights/server/api/insights/posts/[id]/review.post.ts': { form: 'detached' },
   'packages/insights/server/api/insights/radar/run.post.ts': { form: 'detached' },
   'packages/insights/server/api/insights/watchlist/[videoId]/brief.post.ts': { form: 'detached' },
   'packages/insights/server/api/insights/watchlist/index.post.ts': {

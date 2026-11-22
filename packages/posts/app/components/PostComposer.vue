@@ -61,9 +61,16 @@ watch(() => props.presetCategoryId, (value) => {
 // BEWUSST OHNE `await`: der Composer soll kein async-setup bekommen. Er hängt
 // im Feed hinter einem `v-if="isLoggedIn"`, und eine Komponente, die nach der
 // Hydration erst noch suspendieren muss, erscheint sichtbar verzögert.
-const { data: categoryData } = useFetch<CategoryListResponse>('/api/posts/categories', {
+const { data: categoryData, error: categoryError, refresh: refreshCategories } = useFetch<CategoryListResponse>('/api/posts/categories', {
   lazy: true,
   server: false,
+})
+// Nur ein ECHTER Ausfall (Status ab 500 oder kein Status = Netz) zeigt den
+// kleinen Fehler-Zustand; eine erwartete Ablehnung (4xx) lässt die Auswahl
+// wie bisher still weg.
+const categoriesFailed = computed(() => {
+  if (!categoryError.value) return false
+  return isFetchOutage(categoryError.value)
 })
 const { categoryName } = useCategoryText()
 
@@ -244,7 +251,8 @@ async function submit() {
         </div>
       </div>
 
-      <div v-if="hasCategories" class="flex flex-wrap items-center gap-2 text-sm text-muted" data-composer-category>
+      <CoreInlineLoadError v-if="categoriesFailed" :retry="refreshCategories" data-composer-category-error />
+      <div v-else-if="hasCategories" class="flex flex-wrap items-center gap-2 text-sm text-muted" data-composer-category>
         <span>{{ t('posts.composer.category') }}</span>
         <USelect
           v-model="categorySelection"

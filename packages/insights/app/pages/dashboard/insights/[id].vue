@@ -2,7 +2,11 @@
 import type { InsightsPost, InsightsPostEdit, InsightsReviewIssue, InsightsState } from '../../../../shared/insightsPost'
 import { insightsIsPublic, insightsPostDeletable } from '../../../../shared/insightsPost'
 import { insightsNewsletterEnabled } from '../../../../shared/insightsPublic'
+import type { InsightsAiReviewView } from '../../../../shared/insightsAiReview'
+import { INSIGHTS_AI_REVIEW_POLL_TIMEOUT_MS, INSIGHTS_AI_REVIEW_RUNNING_CODE } from '../../../../shared/insightsAiReview'
+import { RUN_LEASE_POLL_MS } from '../../../../../core/shared/runLease'
 import type {
+  InsightsAiReviewResponse,
   InsightsBrandCreatedResponse,
   InsightsBrandListItem,
   InsightsChangeNoteSuggestionResponse,
@@ -46,14 +50,14 @@ definePageMeta({
   dashboardScope: 'operator',
 })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const toast = useToast()
 const route = useRoute()
 const localePath = useLocalePath()
 
 const id = computed(() => String(route.params.id ?? ''))
 
-const { data, refresh, status } = await useFetch<InsightsPostDetailResponse>(
+const { data, refresh, status, error } = await useFetch<InsightsPostDetailResponse>(
   () => `/api/insights/posts/${id.value}`,
   { lazy: true, server: false },
 )
@@ -69,6 +73,9 @@ const { data, refresh, status } = await useFetch<InsightsPostDetailResponse>(
 const hydrated = ref(false)
 onMounted(() => { hydrated.value = true })
 const pending = computed(() => hydrated.value && status.value === 'pending')
+/** Ein AUSFALL (kein Status oder 5xx) ist nicht „Beitrag nicht gefunden" (LZ1);
+ *  ein 404 bleibt der leere Zustand. Erst nach dem Mounten, wie `pending`. */
+const loadFailed = computed(() => hydrated.value && !pending.value && isFetchOutage(error.value))
 
 /**
  * DER STAND, DEN DER EDITOR SIEHT. Er kommt aus der Abfrage, wird aber von
@@ -141,6 +148,8 @@ const REASON_KEY: Record<string, string> = {
   no_change: 'insights.editor.error.noChange',
   not_published: 'insights.editor.error.notPublished',
   ai_empty: 'insights.editor.error.aiEmpty',
+  // Die KI-Prüfung (IN1 a): VOR dem Lauf abgelehnt, nichts bezahlt.
+  nothing_to_review: 'insights.editor.aiReview.needsText',
 }
 
 function reasonOf(error: unknown): string {
@@ -347,6 +356,67 @@ async function suggestChangeNote(payload: InsightsPostEdit): Promise<void> {
   }
   finally {
     suggestingNote.value = false
+  }
+}
+
+// ── KI-Prüfung (IN1 a) ─────────────────────────────────────────────────────
+
+/**
+ * DIE PRÜFUNG BERÄT, SIE SCHREIBT NICHTS.
+ *
+ * Der Start antwortet sofort (`202`), gerechnet wird im Hintergrund; die
+ * Seite fragt alle `RUN_LEASE_POLL_MS` den Stand ab (`useRunPolling`, ruht
+ * bei verstecktem Reiter, jede Abfrage mit Frist). Das Ergebnis reist als
+ * Prop in den Editor und wird dort nur angezeigt — kein neuer `post`, die
+ * ungespeicherten Änderungen bleiben stehen.
+ *
+ * Der Stand wird erst im Browser geholt (nach dem Mounten): auf dem Server
+ * gibt es ihn nicht, und dieselbe Wahrheit auf beiden Seiten heisst hier
+ * „noch kein Stand" (`null`).
+ */
+const aiReview = ref<InsightsAiReviewView | null>(null)
+const aiReviewStarting = ref(false)
+const aiReviewRunning = computed(() => aiReview.value?.state === 'running')
+const aiReviewBusy = computed(() => aiReviewStarting.value || aiReviewRunning.value)
+
+async function loadAiReview(): Promise<void> {
+  const result = await $fetch<InsightsAiReviewResponse>(`/api/insights/posts/${id.value}/review`, {
+    timeout: INSIGHTS_AI_REVIEW_POLL_TIMEOUT_MS,
+  })
+  aiReview.value = result.run
+}
+
+onMounted(() => {
+  // Ein fehlgeschlagenes erstes Laden lässt die Karte ohne Stand — der Knopf
+  // geht trotzdem, und ein Fehler beim Start meldet sich dort.
+  loadAiReview().catch(() => {})
+})
+
+useRunPolling({ active: aiReviewRunning, intervalMs: RUN_LEASE_POLL_MS, tick: loadAiReview })
+
+async function startAiReview(payload: InsightsPostEdit): Promise<void> {
+  if (aiReviewBusy.value) return
+  aiReviewStarting.value = true
+  try {
+    const result = await $fetch<InsightsAiReviewResponse>(`/api/insights/posts/${id.value}/review`, {
+      method: 'POST',
+      body: { post: payload, locale: locale.value === 'en' ? 'en' : 'de' },
+    })
+    aiReview.value = result.run
+  }
+  catch (error) {
+    // Läuft schon eine (zweiter Reiter, Doppelklick): ein ruhiger Hinweis,
+    // kein Fehler — und den laufenden Stand holen, damit abgefragt wird.
+    if (reasonOf(error) === INSIGHTS_AI_REVIEW_RUNNING_CODE) {
+      toast.add({ title: t('insights.editor.aiReview.alreadyRunning'), color: 'info' })
+      await loadAiReview().catch(() => {})
+    }
+    else {
+      fail(error)
+    }
+  }
+  finally {
+    aiReviewStarting.value = false
   }
 }
 
@@ -575,6 +645,8 @@ async function createBrand(input: { name: string, homepage: string, industry: st
           :newsletter-progress="newsletterProgress"
           :note-suggestion="noteSuggestion"
           :suggesting-note="suggestingNote"
+          :ai-review="aiReview"
+          :ai-review-busy="aiReviewBusy"
           @save="save"
           @send-newsletter="sendNewsletter"
           @change-state="changeState"
@@ -583,6 +655,11 @@ async function createBrand(input: { name: string, homepage: string, industry: st
           @draft="runDraft"
           @create-brand="createBrand"
           @suggest-change-note="suggestChangeNote"
+          @ai-review="startAiReview"
+        />
+        <CoreLoadError
+          v-else-if="loadFailed"
+          :retry="refresh"
         />
         <CoreEmptyState
           v-else-if="hydrated && !pending"

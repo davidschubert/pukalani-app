@@ -3,6 +3,7 @@ import { pruneInviteRequests } from '../utils/inviteRequestPrune'
 import { runPastDueSweep } from '../utils/pastDueSweep'
 import { eraseStaleReporterEmails } from '../utils/abuseReportPrune'
 import { customDomainSweepConfiguredMode, runCustomDomainSweep } from '../utils/customDomainSweep'
+import { disabledMembershipSweepConfiguredMode, runDisabledMembershipSweep } from '../utils/disabledMembershipSweep'
 
 /**
  * Testphasen-Automatik: abgelaufene Trials werden nur-lesend (F49 vom
@@ -109,6 +110,25 @@ export default defineNitroPlugin(() => {
         if ('skipped' in result) return 'skipped'
         if (result.counts.failed > 0) {
           throw new Error(`custom-domain-sweep: ${result.counts.failed} Fehlschläge`)
+        }
+      },
+    })
+  }
+
+  // Sechster Lauf (SI1 b): `active`-Zeilen in stillgelegten Communities.
+  // Schalter `pukalani.control.disabledMembershipSweep`, Layer-Vorgabe
+  // `dry-run` — live zählt er nur (Davids Ja 2026-11-21: „nur zählend").
+  // `off` ⇒ keine Anmeldung (sonst hielte ihn der Wächter für überfällig).
+  const disabledMembershipMode = disabledMembershipSweepConfiguredMode()
+  if (disabledMembershipMode !== 'off') {
+    defineTimedJob({
+      name: 'disabled-member-sweep',
+      everyMs: SWEEP_INTERVAL_MS,
+      firstRunMs: CUSTOM_DOMAIN_FIRST_RUN_DELAY_MS,
+      run: async () => {
+        const result = await runDisabledMembershipSweep({ mode: disabledMembershipMode })
+        if (result.failed > 0) {
+          throw new Error(`disabled-member-sweep: ${result.failed} Fehlschläge`)
         }
       },
     })

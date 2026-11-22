@@ -248,6 +248,32 @@ export interface TenantPlanRow extends Models.Row {
 
 export const COMMUNITY_PLANS_TABLE = 'community_plans'
 
+/**
+ * PURE (KK1 c, 2026-11-22): eine Änderung an den Grenzen eines Plans mit dem
+ * gespeicherten Stand zusammenführen. Vorher schrieb die Plan-Route die GANZE
+ * Zeile neu — wer die Kommentar-Grenzen speicherte, löschte damit jede andere
+ * Art (Seiten, Termine, Mediathek) aus dem Katalog, und dort galt danach
+ * still wieder die Zahl aus der Konfiguration.
+ *
+ * Je Art im Körper: ein Objekt ersetzt die Grenzen DIESER Art, `null` nimmt
+ * die Art aus dem Katalog (dann gilt wieder die Konfiguration). Arten, die der
+ * Körper nicht nennt, bleiben, wie sie sind.
+ */
+export function mergeTenantPlanLimits(
+  stored: Record<string, TenantPlanLimits>,
+  patch: Record<string, TenantPlanLimits | null>,
+): Record<string, TenantPlanLimits> {
+  const removed = new Set(Object.entries(patch).filter(([, limits]) => limits === null).map(([kind]) => kind))
+  const merged: Record<string, TenantPlanLimits> = {}
+  for (const [kind, limits] of Object.entries(stored)) {
+    if (!removed.has(kind)) merged[kind] = limits
+  }
+  for (const [kind, limits] of Object.entries(patch)) {
+    if (limits !== null) merged[kind] = { ...limits }
+  }
+  return merged
+}
+
 /** PURE (unit-getestet): limits-JSON defensiv parsen — kaputte/fremde Werte
  *  fallen auf {} zurück (Quota greift dann via app.config-Fallback). */
 export function parseTenantPlanLimits(raw: string): Record<string, TenantPlanLimits> {

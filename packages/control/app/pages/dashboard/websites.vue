@@ -21,7 +21,13 @@ useBrandTitle(() => t('control.websites.title'))
 type WebsiteWithEntitlements = WebsiteRow & { entitlements: string[], domain: SiteDomainState }
 const { data, error, refresh } = await useFetch<{ websites: WebsiteWithEntitlements[] }>('/api/control/websites')
 const { data: jobsData, error: jobsError, refresh: refreshJobs } = await useFetch<{ jobs: JobRow[] }>('/api/control/jobs')
-const { data: catalogData } = await useFetch<{ products: ProductCatalogEntry[] }>('/api/control/products')
+const { data: catalogData, error: catalogError, refresh: refreshCatalog } = await useFetch<{ products: ProductCatalogEntry[] }>('/api/control/products')
+// Nur ein ECHTER Ausfall (Status ab 500 oder kein Status = Netz) zeigt in der
+// Produkt-Auswahl den kleinen Fehler-Zustand statt „Katalog leer".
+const catalogFailed = computed(() => {
+  if (!catalogError.value) return false
+  return isFetchOutage(catalogError.value)
+})
 
 // Die Spalte „Workspace" (Zuordnung Site → abrechnender Workspace, M8-T2) ist
 // mit A6 Schritt 5 gefallen: es gibt kein Workspace-Objekt mehr, dem man eine
@@ -531,7 +537,8 @@ const appUrlPlaceholder = 'http://localhost:3003'
       <UModal :open="!!entitlementSite" :title="t('control.entitlements.title', { name: entitlementSite?.name ?? '' })" @update:open="() => { entitlementSite = null }">
         <template #body>
           <UFormField :label="t('control.jobs.fieldProducts')" :help="t('control.entitlements.help')">
-            <p v-if="!selectableProducts.length" class="text-sm text-muted">{{ t('control.jobs.catalogEmpty') }}</p>
+            <CoreInlineLoadError v-if="catalogFailed" :retry="refreshCatalog" />
+            <p v-else-if="!selectableProducts.length" class="text-sm text-muted">{{ t('control.jobs.catalogEmpty') }}</p>
             <div v-else class="max-h-72 space-y-2 overflow-y-auto pr-1">
               <UCheckbox
                 v-for="product in selectableProducts"
@@ -548,7 +555,7 @@ const appUrlPlaceholder = 'http://localhost:3003'
         <template #footer>
           <div class="flex w-full justify-end gap-2">
             <UButton color="neutral" variant="ghost" @click="() => { entitlementSite = null }">{{ t('control.websites.cancel') }}</UButton>
-            <UButton :loading="savingGrants" :disabled="!selectableProducts.length" data-grant-save @click="saveEntitlements">
+            <UButton :loading="savingGrants" :disabled="!selectableProducts.length || catalogFailed" data-grant-save @click="saveEntitlements">
               {{ t('control.entitlements.save') }}
             </UButton>
           </div>
@@ -670,7 +677,8 @@ CNAME  {{ domainState.instructions.wwwForm }}  {{ domainState.instructions.cname
               <UInput v-model="createName" class="w-full" placeholder="portfolio" data-create-name />
             </UFormField>
             <UFormField :label="t('control.jobs.fieldProducts')" :help="t('control.jobs.fieldProductsHelp')">
-              <p v-if="!selectableProducts.length" class="text-sm text-muted">{{ t('control.jobs.catalogEmpty') }}</p>
+              <CoreInlineLoadError v-if="catalogFailed" :retry="refreshCatalog" />
+              <p v-else-if="!selectableProducts.length" class="text-sm text-muted">{{ t('control.jobs.catalogEmpty') }}</p>
               <div v-else class="max-h-72 space-y-2 overflow-y-auto pr-1">
                 <UCheckbox
                   v-for="product in selectableProducts"

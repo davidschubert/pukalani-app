@@ -6,7 +6,7 @@ import { INSIGHTS_MANAGE_ONLY, fakeInsightsTables, insightsRouteGlobals, postRow
 /**
  * DIE REDAKTION DER BEITRÄGE HINTER IHREM ROLLEN-TOR (OPS-009, BT1 b).
  *
- * Sechs Routen an `insights.manage` (Instanz-Recht): nur der Betreiber. Je
+ * Acht Routen an `insights.manage` (Instanz-Recht): nur der Betreiber. Je
  * Route Gast ⇒ 401, fremdes/entferntes Konto und jede Community-Rolle ⇒ 403,
  * Datentür zu; der Betreiber erreicht sie. Entwurf und Beleg-Prüfung rufen
  * hinter der Tür ein Modell bzw. eine fremde Seite — die Probe endet VORHER
@@ -44,6 +44,28 @@ describeRoleGateToDoor('POST /api/insights/posts/[id]/draft', () => import('../s
 describeRoleGateToDoor('POST /api/insights/posts/[id]/evidence', () => import('../server/api/insights/posts/[id]/evidence.post'), INSIGHTS_MANAGE_ONLY, {
   params: { id: 'p1' },
   body: { sourceIndex: 0 },
+  globals: insightsRouteGlobals(),
+})
+
+// IN1 a: die KI-Prüfung — Start (Modell-Aufruf hinter Sperre und Kontingent)
+// und Abfrage. Die Probe endet an der Datentür, VOR Sperre und Modell.
+describeRoleGateToDoor('POST /api/insights/posts/[id]/review', () => import('../server/api/insights/posts/[id]/review.post'), INSIGHTS_MANAGE_ONLY, {
+  params: { id: 'p1' },
+  body: {
+    post: {
+      format: 'article',
+      slug: 'beitrag-p1',
+      baseLocale: 'de',
+      titleDe: 'Was kostet ein Rebranding?',
+      bodyDe: 'Text auf Deutsch.',
+    },
+    locale: 'de',
+  },
+  globals: insightsRouteGlobals(),
+})
+
+describeRoleGateToDoor('GET /api/insights/posts/[id]/review', () => import('../server/api/insights/posts/[id]/review.get'), INSIGHTS_MANAGE_ONLY, {
+  params: { id: 'p1' },
   globals: insightsRouteGlobals(),
 })
 

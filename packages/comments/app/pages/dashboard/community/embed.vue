@@ -42,8 +42,9 @@ useBrandTitle(() => t('comments.embedAdmin.title'))
 
 interface EmbedSiteDto { id: string, host: string, label: string, targetTypes: string[], active: boolean }
 
-const { data, refresh } = await useFetch<{ total: number, sites: EmbedSiteDto[] }>('/api/admin/embed-sites', { lazy: true, server: false })
+const { data, status, error, refresh } = await useFetch<{ total: number, sites: EmbedSiteDto[] }>('/api/admin/embed-sites', { lazy: true, server: false })
 const sites = computed(() => data.value?.sites ?? [])
+const sitesState = computed(() => listState({ status: status.value, error: error.value, empty: !sites.value.length }))
 
 const HIDE_SM = { td: 'hidden sm:table-cell', th: 'hidden sm:table-cell' }
 
@@ -161,52 +162,52 @@ async function removeSite(site: EmbedSiteDto) {
       <UButton icon="i-ph-plus" data-embed-sites-create :label="t('comments.embedAdmin.new')" @click="openCreate" />
     </div>
 
-    <UTable :data="sites" :columns="columns" data-embed-sites-list>
-      <template #host-cell="{ row }">
-        <span class="font-mono font-medium" :data-embed-site="row.original.host">{{ row.original.host }}</span>
-      </template>
-      <template #label-cell="{ row }">
-        <span class="text-sm text-muted">{{ row.original.label || '—' }}</span>
-      </template>
-      <template #targets-cell="{ row }">
-        <span class="text-sm text-muted">
-          {{ row.original.targetTypes.length ? row.original.targetTypes.join(', ') : t('comments.embedAdmin.allTargetTypes') }}
-        </span>
-      </template>
-      <template #active-cell="{ row }">
-        <USwitch
-          :model-value="row.original.active"
-          :disabled="pending === row.original.id"
-          :aria-label="row.original.active ? t('comments.embedAdmin.disable') : t('comments.embedAdmin.enable')"
-          :data-embed-site-toggle="row.original.host"
-          @update:model-value="() => toggleActive(row.original)"
-        />
-      </template>
-      <template #actions-cell="{ row }">
-        <div class="flex justify-end">
-          <UButton
-            color="error"
-            variant="ghost"
-            size="xs"
-            icon="i-ph-trash"
-            :aria-label="t('comments.embedAdmin.delete')"
-            @click="() => removeSite(row.original)"
+    <CoreListState
+      :state="sitesState"
+      :retry="refresh"
+      empty-icon="i-ph-code"
+      :empty-title="t('comments.embedAdmin.emptyTitle')"
+      :empty-description="t('comments.embedAdmin.empty')"
+      :empty-action-label="t('comments.embedAdmin.new')"
+      empty-action-icon="i-ph-plus"
+      data-embed-sites-empty
+      @empty-action="openCreate"
+    >
+      <UTable :data="sites" :columns="columns" :loading="isFetchLoading(status)" data-embed-sites-list>
+        <template #host-cell="{ row }">
+          <span class="font-mono font-medium" :data-embed-site="row.original.host">{{ row.original.host }}</span>
+        </template>
+        <template #label-cell="{ row }">
+          <span class="text-sm text-muted">{{ row.original.label || '—' }}</span>
+        </template>
+        <template #targets-cell="{ row }">
+          <span class="text-sm text-muted">
+            {{ row.original.targetTypes.length ? row.original.targetTypes.join(', ') : t('comments.embedAdmin.allTargetTypes') }}
+          </span>
+        </template>
+        <template #active-cell="{ row }">
+          <USwitch
+            :model-value="row.original.active"
+            :disabled="pending === row.original.id"
+            :aria-label="row.original.active ? t('comments.embedAdmin.disable') : t('comments.embedAdmin.enable')"
+            :data-embed-site-toggle="row.original.host"
+            @update:model-value="() => toggleActive(row.original)"
           />
-        </div>
-      </template>
-
-      <template #empty>
-        <CoreEmptyState
-          icon="i-ph-code"
-          :title="t('comments.embedAdmin.emptyTitle')"
-          :description="t('comments.embedAdmin.empty')"
-          :action-label="t('comments.embedAdmin.new')"
-          action-icon="i-ph-plus"
-          data-embed-sites-empty
-          @action="openCreate"
-        />
-      </template>
-    </UTable>
+        </template>
+        <template #actions-cell="{ row }">
+          <div class="flex justify-end">
+            <UButton
+              color="error"
+              variant="ghost"
+              size="xs"
+              icon="i-ph-trash"
+              :aria-label="t('comments.embedAdmin.delete')"
+              @click="() => removeSite(row.original)"
+            />
+          </div>
+        </template>
+      </UTable>
+    </CoreListState>
   </div>
 
   <UModal v-model:open="showCreate" :title="t('comments.embedAdmin.new')">

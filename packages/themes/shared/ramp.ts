@@ -1,4 +1,5 @@
-import { neutralTextCssBlocks, neutralTextTokens } from './textContrast'
+import { neutralTextCssBlocks, neutralTextTokens, primaryFillCssBlocks, primaryTokens, primaryValue, type NeutralRamp } from './textContrast'
+import { NEUTRAL_PALETTES } from './neutralPalettes.gen'
 import { oklchToHex, rgbToOklch } from './oklch'
 
 /**
@@ -237,7 +238,7 @@ const SAFE_VARIANT_ID = /^[a-z0-9-]{1,24}$/
 
 /**
  * CSS-Block eines Custom Themes — gleiche Struktur wie die statischen Themes
- * (Ramp + --ui-primary 600 hell / 400 dunkel). Farbwerte sind validierte
+ * (Ramp + --ui-primary 600 hell / 400 dunkel, als Schrift auf 4,5 zu 1 gerückt). Farbwerte sind validierte
  * Hex-Farben aus generateRamp; String-IDs laufen zusätzlich durch die
  * SAFE_*-Spiegel-Allowlists (s. o.).
  */
@@ -255,9 +256,35 @@ export function customThemeCss(theme: CustomThemeDto, attrOverride?: string): st
   // Dark-Stufe: welcher Ramp-Wert im Dark-Mode --ui-primary stellt (Feintuning
   // gegen zu grelle/zu matte Primaries; nur validierte Literale)
   const darkAlias = config.darkAlias === 300 || config.darkAlias === 500 ? config.darkAlias : 400
+  // Schrift-Kontrast der Hauptfarbe (Bahn 7): die Farbe des Owners bleibt als
+  // FLÄCHE, wie er sie gewählt hat; als Schrift (Links, Text in der
+  // Hauptfarbe) rückt sie, bis sie 4,5 zu 1 erreicht, und auf der Fläche
+  // steht die Schrift, die dort besteht (Weiß oder dunkel). Geprüft gegen
+  // die Flächen aller neun Paletten, mit getönter Palette auch gegen diese.
+  const tinted = config.neutral === 'tinted' ? generateNeutralRamp(theme.primary) : null
+  const ramps: NeutralRamp[] = [...Object.values(NEUTRAL_PALETTES), ...(tinted ? [tinted] : [])]
+  const attrs = `[data-theme='${attr}']`
+  const primaryBlocks = (r: Record<Shade, string>, scope: string, base?: ReturnType<typeof primaryTokens>) => {
+    const tokens = primaryTokens(r, { lightShade: 600, darkShade: darkAlias, keepFill: true, ramps, fillNonText: false })
+    if (!tokens) return { tokens: null, root: '', dark: '', fills: [] as string[] }
+    const fills: string[] = []
+    for (const mode of ['light', 'dark'] as const) {
+      const shade = mode === 'light' ? 600 : darkAlias
+      if (tokens[mode].fill) fills.push(primaryFillCssBlocks(scope, mode, tokens[mode], shade, r))
+      else if (base?.[mode].fill) fills.push(primaryFillCssBlocks(scope, mode, 'cancel', shade, r))
+    }
+    return {
+      tokens,
+      root: `  --ui-primary: ${primaryValue(tokens.light.text, r, 600)};`,
+      dark: `  --ui-primary: ${primaryValue(tokens.dark.text, r, darkAlias)};`,
+      fills,
+    }
+  }
+  const basePrimary = primaryBlocks(ramp, attrs)
   const blocks = [
-    `:root[data-theme='${attr}'] {\n${vars}\n  --ui-primary: var(--ui-color-primary-600);${radius}\n}`,
-    `.dark[data-theme='${attr}'] {\n  --ui-primary: var(--ui-color-primary-${darkAlias});\n}`,
+    `:root[data-theme='${attr}'] {\n${vars}\n${basePrimary.root || '  --ui-primary: var(--ui-color-primary-600);'}${radius}\n}`,
+    `.dark[data-theme='${attr}'] {\n${basePrimary.dark || `  --ui-primary: var(--ui-color-primary-${darkAlias});`}\n}`,
+    ...basePrimary.fills,
   ]
   // Varianten: eigene Ramp aus der Varianten-Farbe (gleiche Generator-Config)
   for (const variant of theme.variants ?? []) {
@@ -265,7 +292,13 @@ export function customThemeCss(theme: CustomThemeDto, attrOverride?: string): st
     const variantRamp = generateRamp(variant.color, config)
     if (!variantRamp) continue
     const variantVars = SHADES.map(shade => `  --ui-color-primary-${shade}: ${variantRamp[shade]};`).join('\n')
-    blocks.push(`:root[data-theme='${attr}'][data-variant='${variant.id}'] {\n${variantVars}\n}`)
+    const variantAttrs = `${attrs}[data-variant='${variant.id}']`
+    const v = primaryBlocks(variantRamp, variantAttrs, basePrimary.tokens)
+    // Nur abweichende Werte überschreiben — der Basis-Block liefert den Default
+    const ownRoot = v.root && v.root !== basePrimary.root ? `\n${v.root}` : ''
+    blocks.push(`:root${variantAttrs} {\n${variantVars}${ownRoot}\n}`)
+    if (v.dark && v.dark !== basePrimary.dark) blocks.push(`.dark${variantAttrs} {\n${v.dark}\n}`)
+    blocks.push(...v.fills)
   }
   // Überschriften-Feintuning: EIN h1–h6-Block je Theme. Der Style ist
   // unlayered und gewinnt damit gegen Tailwind-Utilities (@layer utilities) —
@@ -288,7 +321,7 @@ export function customThemeCss(theme: CustomThemeDto, attrOverride?: string): st
   // Tinted Neutral: eigener data-neutral-Block (gleiche Selektor-Form wie
   // neutral.css) — angewendet nur, wenn data-neutral auf dem Theme steht
   if (config.neutral === 'tinted') {
-    const neutralRamp = generateNeutralRamp(theme.primary)
+    const neutralRamp = tinted
     if (neutralRamp) {
       const neutralVars = SHADES.map(shade => `  --ui-color-neutral-${shade}: ${neutralRamp[shade]};`).join('\n')
       blocks.push(`:root[data-neutral='${attr}'] {\n${neutralVars}\n}`)

@@ -19,14 +19,14 @@ Protokoll in [`docs/archiv/PRODUKT-BILANZ-2026-07-27.md`](../archiv/PRODUKT-BILA
 | --- | --- | --- | --- | --- | --- |
 | **activity** | ✅ | comments | 2/2 über `tenantDb` | — | basic |
 | **analytics** | ✅ | comments, portfolio | 3/3 über `tenantDb` | ✅ | personal |
-| **brand** | — | branding | 0/101 über `tenantDb` · 47 roh | ✅ | — |
+| **brand** | — | branding | 0/103 über `tenantDb` · 47 roh | ✅ | — |
 | **comments** | ✅ | _template, branding, comments | 18/19 über `tenantDb` | ✅ | — |
 | **control** | — | control | 0/89 über `tenantDb` · 61 roh | ✅ | — |
 | **courses** | ✅ | _template, comments | 14/15 über `tenantDb` | ✅ | pro |
 | **domains** | — | comments, portfolio | 0/5 über `tenantDb` | — | — |
 | **events** | ✅ | _template, comments | 16/18 über `tenantDb` | ✅ | pro |
 | **feedback** | ✅ | control | 0/8 über `tenantDb` | — | — |
-| **insights** | — | branding | 0/42 über `tenantDb` · 6 roh | ✅ | — |
+| **insights** | — | branding | 0/44 über `tenantDb` · 6 roh | ✅ | — |
 | **market** | — | branding | 0/12 über `tenantDb` · 1 roh | ✅ | — |
 | **media** | ✅ | comments, photos | 5/5 über `tenantDb` | ✅ | personal |
 | **messages** | ✅ | comments | 0/13 über `tenantDb` | ✅ | personal |
