@@ -380,8 +380,8 @@
       "product": {
         "wizard": "Die Marke entsteht im Gespräch mit einem persönlichen Markenberater.",
         "design": "Drei Moodboards aus der Visual DNA.",
-        "book": "Book, Tokens, brand.json + Strategy Playbook.",
-        "experience": "Assets und Pläne entlang des 90-Tage-Plans.",
+        "book": "Book, Tokens, brand.md + brand.json.",
+        "experience": "Content-Kompass und 90-Tage-Plan, Woche für Woche.",
         "monitoring": "Wöchentlicher Blick von außen, mit Alerts.",
         "score": "40 Prüfkriterien, reproduzierbar gerechnet.",
         "benchmark": "Wettbewerber im selben Raster."
@@ -3063,7 +3063,32 @@
         "copied": "Link kopiert",
         "notFoundTitle": "Diese Marke gibt es hier nicht.",
         "notFoundBody": "Vielleicht ist die Adresse falsch — oder das Branding ist nicht mehr öffentlich.",
-        "notFoundCta": "Zur Galerie"
+        "notFoundCta": "Zur Galerie",
+        "kit": {
+          "title": "Das Kit",
+          "lead": "Beispiel-Kit — öffentlich, aus diesem Beispiel-Branding gerechnet. Dieselben Dateien bekommt jede Marke mit Book & Kit: bei jedem Abruf neu gerechnet, nirgends gespeichert.",
+          "all": "Ganzes Kit laden (.zip)",
+          "open": "Ansehen",
+          "download": "Laden",
+          "tiles": {
+            "context": {
+              "title": "brand.md",
+              "body": "Der Brand Context als Markdown — als System-Prompt für jede KI einsetzbar."
+            },
+            "tokens": {
+              "title": "tokens.json",
+              "body": "Design-Tokens im DTCG-Format, hell und dunkel in einer Datei."
+            },
+            "css": {
+              "title": "tokens.css",
+              "body": "Dieselben Tokens als CSS-Variablen, bereit zum Einbinden."
+            },
+            "marks": {
+              "title": "Zeichen (SVG)",
+              "body": "Wortmarke und Monogramm, je hell, dunkel und einfarbig — im ganzen Kit."
+            }
+          }
+        }
       },
       "teaser": {
         "eyebrow": "Marken entdecken",

@@ -21,7 +21,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { generateTheme, buildRegistryModule, generateContrastCss, parseNeutralPalettes, type GeneratedTheme } from '../shared/themeGen'
+import { generateTheme, buildRegistryModule, buildNeutralPalettesModule, generateContrastCss, parseNeutralPalettes, STATUS_BASES, type GeneratedTheme } from '../shared/themeGen'
 import { THEME_CATALOG } from '../theme.catalog'
 
 const PKG_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -51,18 +51,43 @@ function checkFile(path: string, expected: string, label: string) {
 }
 
 if (!check) mkdirSync(outDir, { recursive: true })
+
+/**
+ * Die neutralen Paletten (handgepflegt in neutral.css) braucht schon die
+ * Hauptfarbe jeder Farbwelt: sie muss als Schrift auf den Flächen JEDER
+ * Palette bestehen (Bahn 7). Dieselben Werte gehen als
+ * shared/neutralPalettes.gen.ts an die Laufzeit-Rechnung der Custom Themes.
+ */
+let palettes: ReturnType<typeof parseNeutralPalettes>
+try {
+  palettes = parseNeutralPalettes(readFileSync(resolve(PKG_DIR, 'public/themes/neutral.css'), 'utf8'))
+}
+catch (error) {
+  console.error(`✗ ${(error as Error).message}`)
+  process.exit(1)
+}
+const palettesOut = write
+  ? resolve(PKG_DIR, 'shared/neutralPalettes.gen.ts')
+  : resolve(PKG_DIR, '.generated/neutralPalettes.gen.ts')
+const palettesModule = buildNeutralPalettesModule(palettes)
+if (check) checkFile(resolve(PKG_DIR, 'shared/neutralPalettes.gen.ts'), palettesModule, 'shared/neutralPalettes.gen.ts')
+else {
+  mkdirSync(dirname(palettesOut), { recursive: true })
+  writeFileSync(palettesOut, palettesModule)
+}
+
 const generated: GeneratedTheme[] = []
 for (const spec of THEME_CATALOG) {
   try {
-    const theme = generateTheme(spec)
+    const theme = generateTheme(spec, palettes)
     generated.push(theme)
     if (check) {
       checkFile(resolve(PKG_DIR, 'public/themes', `${spec.id}.css`), theme.css, `public/themes/${spec.id}.css`)
       continue
     }
     writeFileSync(resolve(outDir, `${spec.id}.css`), theme.css)
-    const note = theme.adjustments.length ? ` (Kontrast-Gate: ${theme.adjustments.join(', ')})` : ''
-    console.log(`✔ ${spec.id}.css — ${1 + spec.variants.length} Ramps${note}`)
+    console.log(`✔ ${spec.id}.css — ${1 + spec.variants.length} Ramps`)
+    for (const note of theme.adjustments) console.log(`    ${note}`)
   }
   catch (error) {
     console.error(`✗ ${(error as Error).message}`)
@@ -85,14 +110,13 @@ const HAND_MAINTAINED_CSS = new Set(['neutral.css'])
  */
 const CONTRAST_CSS = 'contrast.css'
 try {
-  const palettes = parseNeutralPalettes(readFileSync(resolve(PKG_DIR, 'public/themes/neutral.css'), 'utf8'))
   const contrast = generateContrastCss(palettes)
   if (check) {
     checkFile(resolve(PKG_DIR, 'public/themes', CONTRAST_CSS), contrast.css, `public/themes/${CONTRAST_CSS}`)
   }
   else {
     writeFileSync(resolve(outDir, CONTRAST_CSS), contrast.css)
-    console.log(`✔ ${CONTRAST_CSS} — ${Object.keys(palettes).length} Paletten, 2 Statusfarben`)
+    console.log(`✔ ${CONTRAST_CSS} — ${Object.keys(palettes).length} Paletten, ${Object.keys(STATUS_BASES).length} Statusfarben, Fokus-Rahmen`)
     for (const note of contrast.notes) console.log(`    ${note}`)
   }
 }

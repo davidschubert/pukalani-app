@@ -380,8 +380,8 @@
       "product": {
         "wizard": "Your brand takes shape in conversation with your brand advisor.",
         "design": "Three moodboards from your visual DNA.",
-        "book": "Book, tokens, brand.json + strategy playbook.",
-        "experience": "Assets and plans along the 90-day plan.",
+        "book": "Book, tokens, brand.md + brand.json.",
+        "experience": "Content compass and 90-day plan, week by week.",
         "monitoring": "A weekly look from the outside, with alerts.",
         "score": "40 criteria, scored reproducibly.",
         "benchmark": "Competitors in the same grid."
@@ -3063,7 +3063,32 @@
         "copied": "Link copied",
         "notFoundTitle": "This brand does not exist here.",
         "notFoundBody": "The address may be wrong — or the brand is no longer public.",
-        "notFoundCta": "To the gallery"
+        "notFoundCta": "To the gallery",
+        "kit": {
+          "title": "The kit",
+          "lead": "Example kit — public, built from this example branding. Every brand with Book & Kit gets the same files: rebuilt on every download, stored nowhere.",
+          "all": "Download the whole kit (.zip)",
+          "open": "View",
+          "download": "Download",
+          "tiles": {
+            "context": {
+              "title": "brand.md",
+              "body": "The brand context as Markdown — ready to use as a system prompt for any AI."
+            },
+            "tokens": {
+              "title": "tokens.json",
+              "body": "Design tokens in DTCG format, light and dark in one file."
+            },
+            "css": {
+              "title": "tokens.css",
+              "body": "The same tokens as CSS variables, ready to include."
+            },
+            "marks": {
+              "title": "Marks (SVG)",
+              "body": "Wordmark and monogram, each light, dark and single-colour — in the whole kit."
+            }
+          }
+        }
       },
       "teaser": {
         "eyebrow": "Discover Brands",

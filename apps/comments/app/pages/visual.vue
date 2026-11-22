@@ -80,6 +80,11 @@ const stats = [
       </div>
       <p class="text-sm"><span class="text-muted">Text muted</span> · <span class="text-dimmed">Text dimmed</span></p>
       <UAlert color="primary" variant="subtle" icon="i-ph-info" title="Alert" description="Theme-Token-Probe." />
+      <!-- Gelb und Blau als Schrift (Bahn 7, Rest von UX-002) -->
+      <div class="grid gap-2 sm:grid-cols-2">
+        <UAlert color="warning" variant="subtle" icon="i-ph-warning" title="Warning" description="Status-Probe." />
+        <UAlert color="info" variant="subtle" icon="i-ph-info" title="Info" description="Status-Probe." />
+      </div>
       <div class="flex max-w-md gap-2">
         <UInput placeholder="Input" class="flex-1" />
         <UButton color="neutral" variant="subtle">OK</UButton>

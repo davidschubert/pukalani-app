@@ -3,6 +3,7 @@ import { BRAND_CHECK_CATEGORIES } from '../../../shared/brandCheck'
 import { brandChoiceDisplayLabel } from '../../../shared/brandChoiceOptions'
 import { brandDiscoverOgPath, discoverPurposeLine, discoverVoiceLine } from '../../../shared/brandDiscover'
 import { BRAND_PALETTES } from '../../../shared/brandPalette'
+import { KAILUA_COFFEE_KIT, KAILUA_COFFEE_KIT_TILES, kailuaCoffeeKitHref } from '../../../shared/examples/kailuaCoffeeKit'
 import { resolvePrimaryLocale } from '../../../../core/shared/primaryLocale'
 import type { BrandDiscoverEntryResponse } from '../../../shared/types/brand'
 
@@ -277,6 +278,16 @@ const fingerprint = computed(() => {
   }]
 })
 
+/**
+ * DAS BEISPIEL-KIT (BK1 Paket K7, §2.7 „Beispiel") — nur auf der Anatomie
+ * des Beispiel-Brandings. Die Dateien sind öffentlich und aus demselben
+ * Snapshot gerechnet wie dieses Beispiel (`server/utils/brandKitExample.ts`);
+ * auf einer anderen Marke wären sie die falschen, darum fragt die Seite die
+ * Adresse UND das Beispiel-Abzeichen.
+ */
+const showExampleKit = computed(() =>
+  Boolean(publication.value?.example) && slug.value === KAILUA_COFFEE_KIT.discoverSlug)
+
 // ── Handlungen ─────────────────────────────────────────────────────────────
 
 const startTarget = computed(() =>
@@ -436,6 +447,44 @@ async function share(): Promise<void> {
             </section>
           </article>
         </div>
+
+        <!-- DAS KIT (BK1 K7) — nur am Beispiel-Branding, Dateien öffentlich. -->
+        <section v-if="showExampleKit" id="kit" class="mt-16" data-discover-kit>
+          <div class="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 class="text-lg font-medium">{{ t('brand.discover.entry.kit.title') }}</h2>
+            <a
+              :href="kailuaCoffeeKitHref('bundle')"
+              class="bw-label inline-flex items-center gap-1.5"
+              style="color: var(--bw-muted)"
+              download
+            >
+              {{ t('brand.discover.entry.kit.all') }} <UIcon name="i-ph-download-simple" class="size-3.5" />
+            </a>
+          </div>
+          <p class="mt-2 max-w-2xl text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
+            {{ t('brand.discover.entry.kit.lead') }}
+          </p>
+          <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <a
+              v-for="tile in KAILUA_COFFEE_KIT_TILES"
+              :key="tile.key"
+              :href="kailuaCoffeeKitHref(tile.file)"
+              class="bw-card bw-card--hover flex flex-col p-6"
+              :data-kit-tile="tile.key"
+              v-bind="tile.file === 'bundle' ? { download: '' } : { target: '_blank', rel: 'noopener' }"
+            >
+              <UIcon :name="tile.icon" class="size-5" style="color: var(--bw-muted)" />
+              <p class="mt-3 text-sm font-medium">{{ t(`brand.discover.entry.kit.tiles.${tile.key}.title`) }}</p>
+              <p class="mt-1.5 flex-1 text-sm leading-relaxed" style="color: var(--bw-ink-soft)">
+                {{ t(`brand.discover.entry.kit.tiles.${tile.key}.body`) }}
+              </p>
+              <p class="bw-label mt-4 inline-flex items-center gap-1.5" style="color: var(--bw-muted)">
+                {{ tile.file === 'bundle' ? t('brand.discover.entry.kit.download') : t('brand.discover.entry.kit.open') }}
+                <UIcon :name="tile.file === 'bundle' ? 'i-ph-download-simple' : 'i-ph-arrow-up-right'" class="size-3.5" />
+              </p>
+            </a>
+          </div>
+        </section>
 
         <!-- ÄHNLICHE MARKEN — die zwei Facetten, die nur wir haben. -->
         <section v-if="similar.length" class="mt-16" data-discover-similar>

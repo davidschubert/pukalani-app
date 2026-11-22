@@ -13,7 +13,7 @@
  * Unit-Test nicht zeigen kann: dass Regel, Routen, Journey, Werkstatt und
  * Marktvergleich DIESELBE Antwort geben.
  *
- * ── DIE ACHT ZUSAGEN ─────────────────────────────────────────────────────
+ * ── DIE ZEHN ZUSAGEN ─────────────────────────────────────────────────────
  *  1. OHNE FREISCHALTUNG IST SCHICHT 3 NICHT AUF DEM WEG: die drei Kapitel
  *     stehen in der Journey auf `skipped` mit Grund `derivation_locked`
  *     (NICHT `locked` — sonst zählten sie im Fortschritt mit, D0-Lehre), jede
@@ -44,6 +44,11 @@
  *     ein fremdes Konto bekommt überall 404, eine gesperrte Marke 403; das
  *     Bündel zählt FÜNFFACH (nach zwölf Zips ist das dreizehnte 429); und die
  *     Lieferseite rendert serverseitig mit Cookie und ist ohne Cookie 404.
+ * 10. DAS BEISPIEL (K7): die Dateien von Kailua Coffee Co. kommen ohne
+ *     Anmeldung mit `public, max-age=3600`, eine erfundene Datei ist 404, das
+ *     Bündel ist ein Zip mit README und Zeichen und byte-gleich bei jedem
+ *     Abruf; ist die Kailua-Anatomie veröffentlicht, trägt sie den Abschnitt
+ *     „Das Kit" mit vier Kacheln.
  *
  * ── `--keep-kailua` ──────────────────────────────────────────────────────
  * Legt am Ende zusätzlich ein Beta-Konto mit der Marke „Kailua Coffee Co."
@@ -818,9 +823,59 @@ try {
   check('… und ohne Anmeldung ist sie 404 (Datentür)',
     pageGuest.status === 404, String(pageGuest.status))
 
-  // ══ 10 · DER BLICK IM BROWSER (nur mit --keep-kailua) ═══════════════════
+  // ══ 10 · DAS ÖFFENTLICHE BEISPIEL-KIT (K7) ═════════════════════════════
+  console.log('\n10 · Das öffentliche Beispiel-Kit (K7)')
+  const exampleFiles = ['brand.md', 'brand.json', 'tokens.json', 'tokens.css', 'licenses.md', 'readme.md']
+  const exampleResults = await Promise.all(exampleFiles.map(file => call(`/api/brand/example/kit/${file}`)))
+  check('jede Datei des Beispiels kommt OHNE Anmeldung, öffentlich zwischenspeicherbar',
+    exampleResults.every(res => res.status === 200
+      && res.headers['cache-control'] === 'public, max-age=3600'
+      && /^inline; filename="kailua-coffee-co-/.test(String(res.headers['content-disposition']))),
+    JSON.stringify(exampleResults.map(res => [res.status, res.headers['cache-control']])))
+  const exampleMd = exampleResults[0]
+  check('… brand.md ist das Beispiel (Kailua) und trägt den Design-Abschnitt',
+    exampleMd.text.includes('Kailua Coffee Co.') && exampleResults[3].text.includes('--'),
+    `${exampleMd.text.length} Zeichen`)
+  const exampleUnknown = await call('/api/brand/example/kit/secret.txt')
+  const exampleTraversal = await call('/api/brand/example/kit/..%2Fbrand.md')
+  check('… eine erfundene Datei und ein Pfad-Versuch sind 404',
+    exampleUnknown.status === 404 && exampleTraversal.status === 404,
+    `${exampleUnknown.status} ${exampleTraversal.status}`)
+  const exampleZip = await fetchZip('/api/brand/example/kit.zip')
+  const exampleZip2 = await fetchZip('/api/brand/example/kit.zip')
+  let exampleNames = []
+  try {
+    exampleNames = Object.keys(unzipSync(new Uint8Array(exampleZip.body)))
+  }
+  catch { /* kein gültiges Zip — die Prüfung darunter wird rot */ }
+  check('das Beispiel-Bündel ist ein gültiges Zip mit README und Zeichen, öffentlich',
+    exampleZip.status === 200
+    && exampleZip.headers['cache-control'] === 'public, max-age=3600'
+    && exampleNames.includes('README.md')
+    && exampleNames.some(name => name.startsWith('marks/') && name.endsWith('.svg')),
+    `${exampleZip.status} ${exampleNames.length} Einträge`)
+  check('… und byte-gleich bei jedem Abruf (fester Stand)',
+    Buffer.compare(exampleZip.body, exampleZip2.body) === 0)
+  /* Die Gegenprobe gegen „die öffentliche Route liefert irgendeine Marke":
+   * das Beispiel darf nie eine Datei der eben angelegten Probe-Marke sein. */
+  check('… es ist NICHT die Marke dieses Laufs (keine Konto-Daten im Beispiel)',
+    !exampleMd.text.includes(String(stamp)), 'Stempel des Laufs gefunden')
+  const anatomy = await call('/de/discover/kailua-coffee-co')
+  if (anatomy.status === 200) {
+    check('die Kailua-Anatomie zeigt den Abschnitt „Das Kit" mit vier Kacheln',
+      anatomy.text.includes('data-discover-kit')
+      && (anatomy.text.match(/data-kit-tile=/g) ?? []).length === 4,
+      `${(anatomy.text.match(/data-kit-tile=/g) ?? []).length} Kacheln`)
+  }
+  else {
+    // Lokal ist die Beispiel-Veröffentlichung nicht immer gesät — dann gibt es
+    // die Seite nicht, und das ist kein Fehler dieses Pakets.
+    console.log(`  · Kailua-Anatomie lokal nicht veröffentlicht (${anatomy.status}) — Abschnitt im Browser prüfen`)
+  }
+
+  // ══ 11 · DER BLICK IM BROWSER (nur mit --keep-kailua) ═══════════════════
   if (KEEP_KAILUA) {
-    console.log('\n10 · Eine Marke zum Ansehen (--keep-kailua)')
+    console.log('\n11 · Eine Marke zum Ansehen (--keep-kailua)')
     /* Alles, was AB HIER angelegt wird, bleibt stehen: die Listen werden am
      * Ende dieses Blocks auf ihre Länge von jetzt zurückgeschnitten. Das ist
      * genauer als „die letzten drei entfernen" — es bleibt richtig, wenn hier
