@@ -37,6 +37,10 @@
   --ui-primary: #216f6a;
 }
 
+.dark[data-theme='lagoon'][data-variant='soft'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='lagoon'][data-variant='muted'] {
@@ -52,6 +56,10 @@
   --ui-color-primary-900: #192e2c;
   --ui-color-primary-950: #04100f;
   --ui-primary: #466b67;
+}
+
+.dark[data-theme='lagoon'][data-variant='muted'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -107,6 +115,10 @@
   --ui-primary: #007069;
 }
 
+.dark[data-theme='lagoon'][data-variant='bright'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='lagoon'][data-variant='warm'] {
@@ -122,6 +134,10 @@
   --ui-color-primary-900: #003136;
   --ui-color-primary-950: #001113;
   --ui-primary: #006f7a;
+}
+
+.dark[data-theme='lagoon'][data-variant='warm'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -141,6 +157,10 @@
   --ui-primary: #007258;
 }
 
+.dark[data-theme='lagoon'][data-variant='cool'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='lagoon'][data-variant='dawn'] {
@@ -156,6 +176,10 @@
   --ui-color-primary-900: #003617;
   --ui-color-primary-950: #001204;
   --ui-primary: #007439;
+}
+
+.dark[data-theme='lagoon'][data-variant='dawn'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -175,6 +199,10 @@
   --ui-primary: #006d89;
 }
 
+.dark[data-theme='lagoon'][data-variant='dusk'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='lagoon'][data-variant='pastel'] {
@@ -190,4 +218,8 @@
   --ui-color-primary-900: #143533;
   --ui-color-primary-950: #001110;
   --ui-primary: #3a6d69;
+}
+
+.dark[data-theme='lagoon'][data-variant='pastel'] {
+  --ui-primary: var(--ui-color-primary-400);
 }

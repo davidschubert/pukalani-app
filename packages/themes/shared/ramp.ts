@@ -297,7 +297,9 @@ export function customThemeCss(theme: CustomThemeDto, attrOverride?: string): st
     // Nur abweichende Werte überschreiben — der Basis-Block liefert den Default
     const ownRoot = v.root && v.root !== basePrimary.root ? `\n${v.root}` : ''
     blocks.push(`:root${variantAttrs} {\n${variantVars}${ownRoot}\n}`)
-    if (v.dark && v.dark !== basePrimary.dark) blocks.push(`.dark${variantAttrs} {\n${v.dark}\n}`)
+    // Dunkel nennen, sobald hell überschrieben wird — sonst gälte der
+    // spezifischere helle Varianten-Block auch im Dunkeln
+    if (v.dark && (v.dark !== basePrimary.dark || ownRoot)) blocks.push(`.dark${variantAttrs} {\n${v.dark}\n}`)
     blocks.push(...v.fills)
   }
   // Überschriften-Feintuning: EIN h1–h6-Block je Theme. Der Style ist

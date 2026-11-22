@@ -37,6 +37,10 @@
   --ui-primary: #486f26;
 }
 
+.dark[data-theme='spring'][data-variant='soft'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='spring'][data-variant='muted'] {
@@ -54,6 +58,10 @@
   --ui-primary: #546b44;
 }
 
+.dark[data-theme='spring'][data-variant='muted'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='spring'][data-variant='vivid'] {
@@ -69,6 +77,10 @@
   --ui-color-primary-900: #172f00;
   --ui-color-primary-950: #051100;
   --ui-primary: #3f7000;
+}
+
+.dark[data-theme='spring'][data-variant='vivid'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -124,6 +136,10 @@
   --ui-primary: #007436;
 }
 
+.dark[data-theme='spring'][data-variant='warm'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='spring'][data-variant='cool'] {
@@ -139,6 +155,10 @@
   --ui-color-primary-900: #292d00;
   --ui-color-primary-950: #0d0f00;
   --ui-primary: #626a00;
+}
+
+.dark[data-theme='spring'][data-variant='cool'] {
+  --ui-primary: var(--ui-color-primary-400);
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -158,6 +178,10 @@
   --ui-primary: #766400;
 }
 
+.dark[data-theme='spring'][data-variant='dawn'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='spring'][data-variant='dusk'] {
@@ -175,6 +199,10 @@
   --ui-primary: #007257;
 }
 
+.dark[data-theme='spring'][data-variant='dusk'] {
+  --ui-primary: var(--ui-color-primary-400);
+}
+
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
 
 :root[data-theme='spring'][data-variant='pastel'] {
@@ -190,4 +218,8 @@
   --ui-color-primary-900: #233515;
   --ui-color-primary-950: #061101;
   --ui-primary: #506d3b;
+}
+
+.dark[data-theme='spring'][data-variant='pastel'] {
+  --ui-primary: var(--ui-color-primary-400);
 }

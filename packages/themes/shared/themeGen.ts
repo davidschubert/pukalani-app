@@ -194,7 +194,11 @@ export function generateTheme(spec: ThemeSpec, palettes: Record<string, NeutralR
       // Nur abweichende Werte überschreiben — Basis-Block liefert den Default
       ...(v.light !== base.light ? [`  --ui-primary: ${v.light};`] : []),
       `}`,
-      ...(v.dark !== base.dark
+      // Dunkel IMMER nennen, sobald der helle Varianten-Block --ui-primary
+      // setzt: `:root[theme][variant]` ist spezifischer als `.dark[theme]`
+      // und gälte sonst auch im Dunkeln (live gesehen: helle Schriftfarbe
+      // auf dunkler Seite, 2,75 zu 1).
+      ...(v.dark !== base.dark || v.light !== base.light
         ? ['', `.dark${attrs} {`, `  --ui-primary: ${v.dark};`, `}`]
         : []),
     )
