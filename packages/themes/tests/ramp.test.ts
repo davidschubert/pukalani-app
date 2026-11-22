@@ -194,10 +194,13 @@ describe('customThemeCss mit darkAlias', () => {
     const css = customThemeCss({ id: 'x', name: 'X', primary: '#2f7fee', order: 0 })
     expect(css).toContain('--ui-primary: var(--ui-color-primary-400);')
   })
-  it('darkAlias 300/500 → entsprechende Stufe im .dark-Block', () => {
+  it('darkAlias 300/500 → entsprechende Stufe als Fläche im Dunkeln', () => {
+    // 300 besteht als Schrift unverändert (steht direkt im .dark-Block); 500
+    // ist als Schrift zu dunkel — dann rückt nur die Schrift, die FLÄCHE
+    // (Knopf) bleibt die gewählte Stufe (Flächen-Block, Bahn 7).
     for (const alias of [300, 500] as const) {
       const css = customThemeCss({ id: 'x', name: 'X', primary: '#2f7fee', order: 0, config: { darkAlias: alias } })
-      expect(css).toContain(`.dark[data-theme='c-x'] {\n  --ui-primary: var(--ui-color-primary-${alias});`)
+      expect(css).toMatch(new RegExp(`\\.dark\\[data-theme='c-x'\\][^{]*\\{\\n {2}--ui-primary: var\\(--ui-color-primary-${alias}\\);`))
     }
   })
   it('ungültiger darkAlias-Wert fällt auf 400 zurück', () => {

@@ -2,6 +2,11 @@ import { SHADES, type Shade, generateRamp, contrastRatio, HEX_COLOR_RE } from '.
 import { oklchToHex } from './oklch'
 import {
   TEXT_MIN_RATIO,
+  auditPrimaryTokens,
+  focusRingCss,
+  primaryFillCssBlocks,
+  primaryTokens,
+  primaryValue,
   auditNeutralTextTokens,
   auditStatusTokens,
   neutralTextCssBlocks,
@@ -32,6 +37,13 @@ export interface ThemeSpec {
   variants: ThemeSpecVariant[]
   /** Default '0.375rem' (wie Bestands-Themes) */
   radius?: string
+  /**
+   * true = die FLÄCHE der Hauptfarbe (Knopf, Etikett) bleibt, wie sie ist, und
+   * bekommt eine passende Schrift (dunkel statt weiß); nur die Schriftfarbe
+   * rückt. Für Farbwelten, die beim Abdunkeln ihren Charakter verlören (Gelb
+   * und Orange werden Braun). Ohne = die Hauptfarbe rückt als Ganzes.
+   */
+  keepFill?: boolean
 }
 
 export interface GeneratedTheme {
@@ -86,35 +98,82 @@ function rampBlock(ramp: Record<Shade, string>, indent = '  '): string {
   return SHADES.map(shade => `${indent}--ui-color-primary-${shade}: ${ramp[shade]};`).join('\n')
 }
 
-/** Ein Theme (Basis + Varianten) → CSS-Datei-Inhalt + Registry-Daten. */
-export function generateTheme(spec: ThemeSpec): GeneratedTheme {
+/**
+ * Die Hauptfarbe einer Ramp: Stufen wählen (Bauteil-Gate 3 zu 1, wie bisher),
+ * dann die Schrift-Rechnung (Bahn 7) — wirft, wenn eine Paarung durchfällt.
+ */
+function primaryFor(label: string, ramp: Record<Shade, string>, keepFill: boolean, palettes: Record<string, NeutralRamp>) {
+  const lightShade = pickPrimaryShade(ramp, LIGHT_CANDIDATES, LIGHT_BG)
+  const darkShade = pickPrimaryShade(ramp, DARK_CANDIDATES, DARK_BG)
+  if (!lightShade || !darkShade) {
+    throw new Error(`Theme '${label}': Kontrast-Gate nicht erfüllbar (light=${lightShade}, dark=${darkShade}) — Basisfarbe anpassen`)
+  }
+  const tokens = primaryTokens(ramp, { lightShade, darkShade, keepFill, ramps: Object.values(palettes) })
+  if (!tokens) throw new Error(`Theme '${label}': Hauptfarbe erreicht als Schrift ${TEXT_MIN_RATIO}:1 mit keiner Helligkeit`)
+  const failures = auditPrimaryTokens(label, tokens, palettes)
+  if (failures.length) {
+    throw new Error(`Kontrast-Gate (Hauptfarbe, Schrift ${TEXT_MIN_RATIO}:1) nicht bestanden:\n  ${failures.map(f => `${f.where}: ${f.ratio.toFixed(2)}:1`).join('\n  ')}`)
+  }
+  return {
+    lightShade,
+    darkShade,
+    tokens,
+    light: primaryValue(tokens.light.text, ramp, lightShade),
+    dark: primaryValue(tokens.dark.text, ramp, darkShade),
+  }
+}
+
+/** Notiz fürs Log: was die Schrift-Rechnung an einer Stellung bewegt hat. */
+function primaryNote(label: string, ramp: Record<Shade, string>, p: ReturnType<typeof primaryFor>): string[] {
+  const notes: string[] = []
+  const { light, dark } = p.tokens
+  if (light.text !== ramp[p.lightShade]) {
+    notes.push(light.fill
+      ? `${label}: hell Schrift ${ramp[p.lightShade]}→${light.text}, Fläche ${light.fill === ramp[p.lightShade] ? 'bleibt' : `→${light.fill}`}, darauf ${light.onFill}`
+      : `${label}: hell ${ramp[p.lightShade]}→${light.text}`)
+  }
+  if (dark.text !== ramp[p.darkShade]) {
+    notes.push(dark.fill
+      ? `${label}: dunkel Schrift ${ramp[p.darkShade]}→${dark.text}, Fläche ${dark.fill === ramp[p.darkShade] ? 'bleibt' : `→${dark.fill}`}, darauf ${dark.onFill}`
+      : `${label}: dunkel ${ramp[p.darkShade]}→${dark.text}`)
+  }
+  return notes
+}
+
+/**
+ * Ein Theme (Basis + Varianten) → CSS-Datei-Inhalt + Registry-Daten.
+ * `palettes` = die neutralen Paletten aus neutral.css: die Hauptfarbe muss
+ * als Schrift auf den Flächen JEDER Palette bestehen (Bahn 7).
+ */
+export function generateTheme(spec: ThemeSpec, palettes: Record<string, NeutralRamp>): GeneratedTheme {
   const baseHex = specColorToHex(spec.base)
   if (!baseHex) throw new Error(`Theme '${spec.id}': ungültige Basisfarbe '${spec.base}'`)
   const baseRamp = generateRamp(baseHex, RAMP_CONFIG)
   if (!baseRamp) throw new Error(`Theme '${spec.id}': Ramp-Generierung fehlgeschlagen`)
+  const keepFill = spec.keepFill === true
 
+  const base = primaryFor(spec.id, baseRamp, keepFill, palettes)
   const adjustments: string[] = []
-  const lightShade = pickPrimaryShade(baseRamp, LIGHT_CANDIDATES, LIGHT_BG)
-  const darkShade = pickPrimaryShade(baseRamp, DARK_CANDIDATES, DARK_BG)
-  if (!lightShade || !darkShade) {
-    throw new Error(`Theme '${spec.id}': Kontrast-Gate nicht erfüllbar (light=${lightShade}, dark=${darkShade}) — Basisfarbe anpassen`)
-  }
-  if (lightShade !== 600) adjustments.push(`${spec.id}: light 600→${lightShade}`)
-  if (darkShade !== 400) adjustments.push(`${spec.id}: dark 400→${darkShade}`)
+  if (base.lightShade !== 600) adjustments.push(`${spec.id}: light 600→${base.lightShade}`)
+  if (base.darkShade !== 400) adjustments.push(`${spec.id}: dark 400→${base.darkShade}`)
+  adjustments.push(...primaryNote(spec.id, baseRamp, base))
 
+  const themeAttrs = `[data-theme='${spec.id}']`
   const parts: string[] = [
     `/* Pukalani Theme: ${spec.id} — GENERIERT von scripts/generate-themes.ts, nicht von Hand editieren */`,
     '',
-    `:root[data-theme='${spec.id}'] {`,
+    `:root${themeAttrs} {`,
     rampBlock(baseRamp),
-    `  --ui-primary: var(--ui-color-primary-${lightShade});`,
+    `  --ui-primary: ${base.light};`,
     `  --ui-radius: ${spec.radius ?? '0.375rem'};`,
     `}`,
     '',
-    `.dark[data-theme='${spec.id}'] {`,
-    `  --ui-primary: var(--ui-color-primary-${darkShade});`,
+    `.dark${themeAttrs} {`,
+    `  --ui-primary: ${base.dark};`,
     `}`,
   ]
+  if (base.tokens.light.fill) parts.push('', primaryFillCssBlocks(themeAttrs, 'light', base.tokens.light, base.lightShade, baseRamp))
+  if (base.tokens.dark.fill) parts.push('', primaryFillCssBlocks(themeAttrs, 'dark', base.tokens.dark, base.darkShade, baseRamp))
 
   const variants: GeneratedTheme['variants'] = []
   for (const variant of spec.variants) {
@@ -123,27 +182,32 @@ export function generateTheme(spec: ThemeSpec): GeneratedTheme {
     const variantRamp = generateRamp(variantHex, RAMP_CONFIG)
     if (!variantRamp) throw new Error(`Theme '${spec.id}', Variante '${variant.id}': Ramp fehlgeschlagen`)
 
-    const vLight = pickPrimaryShade(variantRamp, LIGHT_CANDIDATES, LIGHT_BG)
-    const vDark = pickPrimaryShade(variantRamp, DARK_CANDIDATES, DARK_BG)
-    if (!vLight || !vDark) {
-      throw new Error(`Theme '${spec.id}', Variante '${variant.id}': Kontrast-Gate nicht erfüllbar`)
-    }
-
+    const label = `${spec.id}/${variant.id}`
+    const v = primaryFor(label, variantRamp, keepFill, palettes)
+    const attrs = `${themeAttrs}[data-variant='${variant.id}']`
     parts.push(
       '',
       `/* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */`,
       '',
-      `:root[data-theme='${spec.id}'][data-variant='${variant.id}'] {`,
+      `:root${attrs} {`,
       rampBlock(variantRamp),
-      // Nur abweichende Stufen überschreiben — Basis-Block liefert den Default
-      ...(vLight !== lightShade ? [`  --ui-primary: var(--ui-color-primary-${vLight});`] : []),
+      // Nur abweichende Werte überschreiben — Basis-Block liefert den Default
+      ...(v.light !== base.light ? [`  --ui-primary: ${v.light};`] : []),
       `}`,
-      ...(vDark !== darkShade
-        ? ['', `.dark[data-theme='${spec.id}'][data-variant='${variant.id}'] {`, `  --ui-primary: var(--ui-color-primary-${vDark});`, `}`]
+      ...(v.dark !== base.dark
+        ? ['', `.dark${attrs} {`, `  --ui-primary: ${v.dark};`, `}`]
         : []),
     )
-    if (vLight !== 600) adjustments.push(`${spec.id}/${variant.id}: light 600→${vLight}`)
-    if (vDark !== 400) adjustments.push(`${spec.id}/${variant.id}: dark 400→${vDark}`)
+    // Flächen-Blöcke: eigene Werte, oder die der Grundfarbwelt aufheben
+    for (const mode of ['light', 'dark'] as const) {
+      const own = v.tokens[mode]
+      const shade = mode === 'light' ? v.lightShade : v.darkShade
+      if (own.fill) parts.push('', primaryFillCssBlocks(attrs, mode, own, shade, variantRamp))
+      else if (base.tokens[mode].fill) parts.push('', primaryFillCssBlocks(attrs, mode, 'cancel', shade))
+    }
+    if (v.lightShade !== 600) adjustments.push(`${label}: light 600→${v.lightShade}`)
+    if (v.darkShade !== 400) adjustments.push(`${label}: dark 400→${v.darkShade}`)
+    adjustments.push(...primaryNote(label, variantRamp, v))
 
     variants.push({ id: variant.id, color: variantRamp[500] })
   }
@@ -183,7 +247,7 @@ export function buildRegistryModule(themes: GeneratedTheme[], specs: ThemeSpec[]
 // ── Schrift-Kontrast der Text- und Statusfarben (Q07) ─────────────────────
 
 /**
- * Ausgangswerte der zwei Statusfarben: Tailwind v4 `red` und `green`, Stufe
+ * Ausgangswerte der Statusfarben: Tailwind v4 `red`, `green`, `yellow`, `blue`, Stufe
  * 500 (hell) und 400 (dunkel) — genau die Stufen, auf die Nuxt UI
  * `--ui-error` und `--ui-success` legt. Hier als Werte statt als
  * `var(--ui-color-error-500)`, weil das Gate die fertige Farbe nachrechnen
@@ -192,7 +256,29 @@ export function buildRegistryModule(themes: GeneratedTheme[], specs: ThemeSpec[]
 export const STATUS_BASES = {
   error: { light: 'oklch(63.7% 0.237 25.331)', dark: 'oklch(70.4% 0.191 22.216)' },
   success: { light: 'oklch(72.3% 0.219 149.579)', dark: 'oklch(79.2% 0.209 151.711)' },
+  // Gelb und Blau (Bahn 7): Tailwind v4 `yellow` und `blue`, dieselben Stufen
+  warning: { light: 'oklch(79.5% 0.184 86.047)', dark: 'oklch(85.2% 0.199 91.936)' },
+  info: { light: 'oklch(62.3% 0.214 259.815)', dark: 'oklch(70.7% 0.165 254.624)' },
 } as const
+
+/**
+ * shared/neutralPalettes.gen.ts: die Paletten aus neutral.css als Daten für
+ * die Laufzeit (Custom Themes rechnen ihre Hauptfarbe gegen dieselben
+ * Flächen wie die Farbwelten). `--check` hält die Datei byte-genau.
+ */
+export function buildNeutralPalettesModule(palettes: Record<string, NeutralRamp>): string {
+  const entries = Object.entries(palettes).map(([name, ramp]) =>
+    `  ${name}: { ${SHADES.map(shade => `${shade}: '${ramp[shade]}'`).join(', ')} },`)
+  return [
+    `// GENERIERT von scripts/generate-themes.ts aus public/themes/neutral.css — nicht von Hand editieren.`,
+    `import type { NeutralRamp } from './textContrast'`,
+    ``,
+    `export const NEUTRAL_PALETTES: Record<string, NeutralRamp> = {`,
+    ...entries,
+    `}`,
+    ``,
+  ].join('\n')
+}
 
 /** neutral.css → { mist: { 50: '#…', … }, … }; wirft bei einer unvollständigen Palette. */
 export function parseNeutralPalettes(css: string): Record<string, NeutralRamp> {
@@ -221,7 +307,8 @@ export interface GeneratedContrast {
 
 /**
  * public/themes/contrast.css: die zwei blassen Textfarben je neutraler
- * Palette und die zwei Statusfarben, jeweils hell und dunkel. Immer geladen,
+ * Palette und die vier Statusfarben, jeweils hell und dunkel, dazu die
+ * Fokus-Rahmen in voller Deckkraft (`focusRingCss`). Immer geladen,
  * NACH neutral.css. Die Datei ist unlayered und schlägt damit die Vorgaben
  * von Nuxt UI (`@layer theme`) — deshalb nennt JEDER helle Block sein dunkles
  * Gegenstück: ein unlayered `:root` gewänne sonst auch gegen `.dark`.
@@ -235,7 +322,7 @@ export function generateContrastCss(palettes: Record<string, NeutralRamp>): Gene
   const notes: string[] = []
   const parts: string[] = [
     `/* Pukalani Schrift-Kontrast — GENERIERT von scripts/generate-themes.ts, nicht von Hand editieren.`,
-    `   Die zwei blassen Textfarben je neutraler Palette und die zwei Statusfarben: Farbton wie`,
+    `   Die zwei blassen Textfarben je neutraler Palette, die vier Statusfarben und die Fokus-Rahmen: Farbton wie`,
     `   in neutral.css bzw. Tailwind, Helligkeit so weit verschoben, dass sie als Schrift`,
     `   ${String(TEXT_MIN_RATIO).replace('.', ',')} zu 1 erreichen (Logik + Gate: shared/textContrast.ts). Immer geladen. */`,
   ]
@@ -252,14 +339,14 @@ export function generateContrastCss(palettes: Record<string, NeutralRamp>): Gene
   parts.push(
     '',
     `:root {`,
-    `  --ui-error: ${status.error.light};`,
-    `  --ui-success: ${status.success.light};`,
+    ...Object.entries(status).map(([name, t]) => `  --ui-${name}: ${t.light};`),
     `}`,
     '',
     `.dark {`,
-    `  --ui-error: ${status.error.dark};`,
-    `  --ui-success: ${status.success.dark};`,
+    ...Object.entries(status).map(([name, t]) => `  --ui-${name}: ${t.dark};`),
     `}`,
+    '',
+    focusRingCss(),
   )
 
   for (const [name, ramp] of Object.entries(palettes)) {

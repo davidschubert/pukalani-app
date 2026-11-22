@@ -12,12 +12,18 @@
   --ui-color-primary-800: #684000;
   --ui-color-primary-900: #422600;
   --ui-color-primary-950: #170a00;
-  --ui-primary: var(--ui-color-primary-600);
+  --ui-primary: #8d5900;
   --ui-radius: 0.375rem;
 }
 
 .dark[data-theme='citrus'] {
   --ui-primary: var(--ui-color-primary-400);
+}
+
+:root[data-theme='citrus']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: #c17b00;
+  --ui-text-inverted: #170a00;
+  --ui-primary-focus: #8d5900;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -34,6 +40,13 @@
   --ui-color-primary-800: #644111;
   --ui-color-primary-900: #412701;
   --ui-color-primary-950: #170a00;
+  --ui-primary: #8a5a17;
+}
+
+:root[data-theme='citrus'][data-variant='soft']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: #b38143;
+  --ui-text-inverted: #170a00;
+  --ui-primary-focus: #8a5a17;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -50,6 +63,13 @@
   --ui-color-primary-800: #5a462e;
   --ui-color-primary-900: #392a18;
   --ui-color-primary-950: #150b02;
+  --ui-primary: #7c6042;
+}
+
+:root[data-theme='citrus'][data-variant='muted']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: #a28565;
+  --ui-text-inverted: #150b02;
+  --ui-primary-focus: #7c6042;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -66,6 +86,13 @@
   --ui-color-primary-800: #623c00;
   --ui-color-primary-900: #3f2500;
   --ui-color-primary-950: #170a00;
+  --ui-primary: #8e5900;
+}
+
+:root[data-theme='citrus'][data-variant='vivid']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #170a00;
+  --ui-primary-focus: #8e5900;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -82,6 +109,13 @@
   --ui-color-primary-800: #593600;
   --ui-color-primary-900: #3b2200;
   --ui-color-primary-950: #170a00;
+  --ui-primary: #8e5900;
+}
+
+:root[data-theme='citrus'][data-variant='deep']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #ffffff;
+  --ui-primary-focus: #8e5900;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -98,7 +132,13 @@
   --ui-color-primary-800: #71480b;
   --ui-color-primary-900: #472a00;
   --ui-color-primary-950: #170a00;
+  --ui-primary: #8c5a11;
+}
+
+:root[data-theme='citrus'][data-variant='bright']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-700);
+  --ui-text-inverted: #ffffff;
+  --ui-primary-focus: #8c5a11;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -115,6 +155,13 @@
   --ui-color-primary-800: #5c4600;
   --ui-color-primary-900: #3a2b00;
   --ui-color-primary-950: #130c00;
+  --ui-primary: #7d6000;
+}
+
+:root[data-theme='citrus'][data-variant='warm']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: #ac8500;
+  --ui-text-inverted: #130c00;
+  --ui-primary-focus: #7d6000;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -131,6 +178,13 @@
   --ui-color-primary-800: #743600;
   --ui-color-primary-900: #4a2000;
   --ui-color-primary-950: #1b0700;
+  --ui-primary: #a04d00;
+}
+
+:root[data-theme='citrus'][data-variant='cool']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #1b0700;
+  --ui-primary-focus: #a04d00;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -147,6 +201,13 @@
   --ui-color-primary-800: #753b2e;
   --ui-color-primary-900: #4c2117;
   --ui-color-primary-950: #1e0401;
+  --ui-primary: #9c4e3d;
+}
+
+:root[data-theme='citrus'][data-variant='dawn']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: #c67461;
+  --ui-text-inverted: #1e0401;
+  --ui-primary-focus: #9c4e3d;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -163,6 +224,13 @@
   --ui-color-primary-800: #494600;
   --ui-color-primary-900: #2e2c00;
   --ui-color-primary-950: #0f0e00;
+  --ui-primary: #6c6700;
+}
+
+:root[data-theme='citrus'][data-variant='dusk']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-text-inverted: #0f0e00;
+  --ui-primary-focus: #6c6700;
 }
 
 /* Farbvariation via CSS-Variablen: data-variant überschreibt die Primary-Ramp */
@@ -179,5 +247,11 @@
   --ui-color-primary-800: #6b4e2b;
   --ui-color-primary-900: #432d12;
   --ui-color-primary-950: #170a00;
+  --ui-primary: #815e33;
+}
+
+:root[data-theme='citrus'][data-variant='pastel']:not(.dark) :is([class~='bg-primary'], [class~='data-selected:bg-primary'], [class~='data-[state=checked]:bg-primary'], [class~='group-hover:bg-primary'], [class~='group-data-[state=completed]:bg-primary'], [class~='group-data-[state=active]:bg-primary'], [class~='after:bg-primary'], [class~='data-[state=active]:text-inverted'][class~='outline-primary/25']) {
   --ui-primary: var(--ui-color-primary-700);
+  --ui-text-inverted: #000000;
+  --ui-primary-focus: #815e33;
 }
