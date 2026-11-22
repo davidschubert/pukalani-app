@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { H3Event } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -16,7 +16,8 @@ import {
   staysOnPukalaniAddress,
 } from '../shared/customDomainScope'
 import { realtimeTokenWanted } from '../shared/realtimeGate'
-import { capCommunityRoleOnCustomDomain } from '../shared/communityAuthz'
+import { CUSTOM_DOMAIN_CAPABILITIES, communityCapabilitiesFor, communityRoleHasCapability } from '../shared/communityAuthz'
+import { decideCommunityAccess } from '../shared/communityAccess'
 import type { ProductManifest } from '../shared/types/manifest'
 import type { TenantContext } from '../shared/types/tenant'
 
@@ -242,15 +243,63 @@ describe('Verwaltungs-Seiten und Ausnahmen der Umleitung', () => {
     expect(accountMenuLinks({ scope: true, canDashboard: true, accountUrl: '' })).toEqual({ manage: null, accountHref: null })
   })
 
-  it('Rolle: owner/admin gelten auf der eigenen Domain als moderator, sonst unverändert', () => {
-    expect(capCommunityRoleOnCustomDomain('owner', true)).toBe('moderator')
-    expect(capCommunityRoleOnCustomDomain('admin', true)).toBe('moderator')
-    expect(capCommunityRoleOnCustomDomain('moderator', true)).toBe('moderator')
-    expect(capCommunityRoleOnCustomDomain('editor', true)).toBe('editor')
-    expect(capCommunityRoleOnCustomDomain('viewer', true)).toBe('viewer')
-    expect(capCommunityRoleOnCustomDomain(null, true)).toBeNull()
-    expect(capCommunityRoleOnCustomDomain('owner', false)).toBe('owner')
-    expect(capCommunityRoleOnCustomDomain('admin', false)).toBe('admin')
+  it('Rechte auf der eigenen Domain: owner/admin nur Redakteur ∪ Moderator, die anderen unverändert', () => {
+    const owner = communityCapabilitiesFor('owner', true)
+    const admin = communityCapabilitiesFor('admin', true)
+    // Schreiben (Redakteur) und Moderieren bleiben — ausgeschrieben.
+    for (const capability of ['pages.manage', 'events.manage', 'courses.manage', 'posts.write', 'media.manage', 'comments.moderate', 'reports.moderate', 'posts.moderate'] as const) {
+      expect(owner.has(capability), capability).toBe(true)
+      expect(admin.has(capability), capability).toBe(true)
+    }
+    // Verwalten fällt weg — ausgeschrieben.
+    for (const capability of ['team.manage', 'branding.manage', 'posts.manage', 'posts.revise', 'community.billing', 'community.domain', 'community.export', 'community.delete', 'messages.manage'] as const) {
+      expect(owner.has(capability), capability).toBe(false)
+      expect(communityRoleHasCapability('owner', capability, true), capability).toBe(false)
+    }
+    for (const role of ['editor', 'moderator', 'viewer'] as const) {
+      expect([...communityCapabilitiesFor(role, true)].sort(), role).toEqual([...communityCapabilitiesFor(role)].sort())
+    }
+    // Gegenprobe: ohne Merkmal hat der Owner alles wie bisher.
+    expect(communityRoleHasCapability('owner', 'team.manage')).toBe(true)
+    expect(communityCapabilitiesFor('owner').has('branding.manage')).toBe(true)
+    expect(CUSTOM_DOMAIN_CAPABILITIES.has('team.manage')).toBe(false)
+  })
+
+  it('Wache (decideCommunityAccess): dieselbe Begrenzung, Betreiber-Not-Zugang bleibt', () => {
+    const base = { labels: [] as string[], tenantScoped: true, role: 'owner' as const }
+    expect(decideCommunityAccess({ ...base, capability: 'branding.manage', customDomainScope: true }).allowed).toBe(false)
+    expect(decideCommunityAccess({ ...base, capability: 'pages.manage', customDomainScope: true }).allowed).toBe(true)
+    expect(decideCommunityAccess({ ...base, capability: 'branding.manage', customDomainScope: false }).allowed).toBe(true)
+    expect(decideCommunityAccess({ ...base, capability: 'branding.manage' }).allowed).toBe(true)
+    expect(decideCommunityAccess({ ...base, labels: ['admin'], capability: 'branding.manage', customDomainScope: true })).toEqual({ allowed: true, via: 'operator' })
+  })
+
+  it('Wächter: jede Rechte-Frage unter server/ gibt das Merkmal mit (oder steht mit Grund in der Liste)', () => {
+    const exempt: Record<string, string> = {
+      'packages/admin/server/api/admin/search.get.ts': 'Dashboard-Route unter /api/admin — auf einer eigenen Domain ohnehin 404.',
+      'packages/admin/server/api/admin/stats.get.ts': 'Dashboard-Route unter /api/admin — auf einer eigenen Domain ohnehin 404.',
+      'packages/comments/server/plugins/dashboard-stats.ts': 'Beitrag zu /api/admin/stats — auf einer eigenen Domain ohnehin 404.',
+    }
+    const offenders: string[] = []
+    const used = new Set<string>()
+    for (const group of ['packages', 'apps']) {
+      for (const layer of readdirSync(join(REPO, group)).sort()) {
+        if (`${group}/${layer}` === 'packages/control') continue // Control Plane: eigener Server ohne eigene Domains der Communities
+        for (const file of walk(join(REPO, group, layer, 'server'))) {
+          const rel = `${group}/${layer}/server/${file}`
+          const text = readFileSync(join(REPO, rel), 'utf8')
+          const calls = [...text.matchAll(/(decideCommunityAccess\(\{[\s\S]*?\}\)|communityRoleHasCapability\([^)]*\))/g)].map(m => m[0])
+          if (!calls.length) continue
+          if (exempt[rel]) {
+            used.add(rel)
+            continue
+          }
+          if (calls.some(call => !call.includes('customDomainScope'))) offenders.push(rel)
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+    expect([...used].sort()).toEqual(Object.keys(exempt).sort())
   })
 
   it('Live-Verbindung: Token nur mit Sitzung und nicht auf der eigenen Domain', () => {

@@ -225,6 +225,22 @@ const OWNER: readonly Capability[] = [
   ]),
 ]
 
+/**
+ * EIGENE DOMAIN: MITMACHEN JA, VERWALTEN NEIN (PK1 E1b-2, Davids Entscheidung:
+ * „lesen, schreiben, moderieren wie bisher; nur Verwalten nicht").
+ *
+ * Auf der eigenen Domain einer Community im Modus `write`
+ * (`customDomainScope`, gesetzt von `01.custom-domain-scope.ts`, im Browser
+ * `useCustomDomainScope()`) gilt für JEDE Rolle nur der Schnitt mit den
+ * Rechten von Redakteur UND Moderator. Für editor, moderator und viewer
+ * ändert das nichts; owner und admin verlieren genau die Verwaltung (Team,
+ * Branding, Struktur, Abo, Domain, Export …). Die ROLLE bleibt, wie sie ist —
+ * begrenzt werden die Rechte, an beiden Enden über dieselben zwei Funktionen
+ * unten (`decideCommunityAccess` auf dem Server, `useCommunityRole` im
+ * Browser).
+ */
+export const CUSTOM_DOMAIN_CAPABILITIES: ReadonlySet<Capability> = new Set<Capability>([...EDITOR, ...MODERATOR])
+
 /** Rolle → ihre Capabilities. Single Source of Truth für Community-Autorisierung. */
 export const COMMUNITY_ROLE_CAPABILITIES: Record<CommunityRole, readonly Capability[]> = {
   owner: OWNER,
@@ -235,33 +251,19 @@ export const COMMUNITY_ROLE_CAPABILITIES: Record<CommunityRole, readonly Capabil
 }
 
 /** Type-Guard: ist der String eine bekannte Community-Rolle? */
-/**
- * EIGENE DOMAIN: MITMACHEN JA, VERWALTEN NEIN (PK1 E1b-2, Davids Entscheidung
- * im Gesamtkonzept). Auf der eigenen Domain einer Community im Modus `write`
- * gelten `owner` und `admin` als `moderator`: moderieren bleibt, verwalten
- * (Team, Einstellungen, Plan, Branding, Struktur, Seiten …) nicht — das geht
- * unter der Pukalani-Adresse. Alle anderen Rollen bleiben, wie sie sind;
- * `editor` steht NEBEN `moderator` (nicht darunter) und behält seine Rechte.
- *
- * Angewandt an der EINEN Stelle, die die Rolle für Server UND Browser
- * bestimmt (`resolveCommunityRole`, `core/server/utils/communityPermission.ts`).
- */
-export function capCommunityRoleOnCustomDomain(role: CommunityRole | null, customDomainScope: boolean): CommunityRole | null {
-  if (!customDomainScope) return role
-  return role === 'owner' || role === 'admin' ? 'moderator' : role
-}
-
 export function isCommunityRole(value: string): value is CommunityRole {
   return (COMMUNITY_ROLES as readonly string[]).includes(value)
 }
 
 /** Hat GENAU DIESE Rolle die gefragte Capability? (eine Rolle je User/Community) */
-export function communityRoleHasCapability(role: CommunityRole, capability: Capability): boolean {
+export function communityRoleHasCapability(role: CommunityRole, capability: Capability, customDomainScope = false): boolean {
+  if (customDomainScope && !CUSTOM_DOMAIN_CAPABILITIES.has(capability)) return false
   return COMMUNITY_ROLE_CAPABILITIES[role].includes(capability)
 }
 
 /** Capabilities einer Community-Rolle als Set (für UI/Aggregation). */
-export function communityCapabilitiesFor(role: CommunityRole | null | undefined): Set<Capability> {
+export function communityCapabilitiesFor(role: CommunityRole | null | undefined, customDomainScope = false): Set<Capability> {
   if (!role || !isCommunityRole(role)) return new Set()
-  return new Set(COMMUNITY_ROLE_CAPABILITIES[role])
+  const all = COMMUNITY_ROLE_CAPABILITIES[role]
+  return new Set(customDomainScope ? all.filter(capability => CUSTOM_DOMAIN_CAPABILITIES.has(capability)) : all)
 }

@@ -28,6 +28,7 @@ export function useCommunityRole() {
    * verstecken, was die Rolle schon erlaubt.
    */
   const trustLevel = useState<TrustLevel>('pukalani-community-trust-level', () => 0)
+  const customDomainScope = useCustomDomainScope()
   /**
    * Capabilities aus BEIDEN Quellen — VEREINIGUNG, nie Ersetzung.
    *
@@ -38,7 +39,9 @@ export function useCommunityRole() {
    * sich nur, ob ein Knopf angeboten wird, der ohnehin geprüft wird.
    */
   const capabilities = computed<Set<Capability>>(() => new Set<Capability>([
-    ...communityCapabilitiesFor(role.value),
+    // PK1 E1b-2: dieselbe Begrenzung wie auf dem Server (eigene Domain im
+    // Modus `write` ⇒ nur Rechte von Redakteur und Moderator).
+    ...communityCapabilitiesFor(role.value, customDomainScope.value),
     ...trustLevelCapabilitiesFor(trustLevel.value),
   ]))
   return { role, trustLevel, capabilities }

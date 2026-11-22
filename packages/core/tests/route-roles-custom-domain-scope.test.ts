@@ -166,7 +166,7 @@ describe('Mitmach-Routen', () => {
   }
 })
 
-describe('Rolle auf der eigenen Domain: owner/admin gelten als moderator (Knopf = Wache)', () => {
+describe('Rolle auf der eigenen Domain bleibt, die Rechte werden begrenzt', () => {
   const loadRole = () => import('../server/api/community/role.get')
 
   async function roleOf(who: Who, context: Record<string, unknown>): Promise<unknown> {
@@ -174,19 +174,16 @@ describe('Rolle auf der eigenen Domain: owner/admin gelten als moderator (Knopf 
     return (run.result as { role?: unknown } | undefined)?.role
   }
 
-  it('write + eigene Domain: owner und admin ⇒ moderator, die anderen unverändert', async () => {
+  it('write + eigene Domain: die gemeldete Rolle bleibt owner/admin (Anzeige, Mitgliedschaft)', async () => {
     const context = await customDomainContext('write', OWN_DOMAIN, '/api/community/role')
     expect(context.customDomainScope).toBe(true)
-    expect(await roleOf('owner', context)).toBe('moderator')
-    expect(await roleOf('admin', context)).toBe('moderator')
-    expect(await roleOf('moderator', context)).toBe('moderator')
-    expect(await roleOf('editor', context)).toBe('editor')
+    expect(await roleOf('owner', context)).toBe('owner')
+    expect(await roleOf('admin', context)).toBe('admin')
     expect(await roleOf('member', context)).toBe('viewer')
   })
 
-  it('Gegenprobe: Pukalani-Adresse im Modus write und eigene Domain im Modus read ⇒ owner bleibt owner', async () => {
-    expect(await roleOf('owner', await customDomainContext('write', PUKALANI_ADDRESS, '/api/community/role'))).toBe('owner')
-    expect(await roleOf('owner', await customDomainContext('read', OWN_DOMAIN, '/api/community/role'))).toBe('owner')
-    expect(await roleOf('admin', await customDomainContext('off', OWN_DOMAIN, '/api/community/role'))).toBe('admin')
+  it('Gegenprobe: Pukalani-Adresse und read setzen kein Merkmal', async () => {
+    expect((await customDomainContext('write', PUKALANI_ADDRESS, '/api/community/role')).customDomainScope).toBeUndefined()
+    expect((await customDomainContext('read', OWN_DOMAIN, '/api/community/role')).customDomainScope).toBeUndefined()
   })
 })

@@ -63,6 +63,14 @@ export interface CommunityAccessInput {
    * stellt, bekommt hier Stufe 0 — also exakt das Verhalten von vorher.
    */
   trustLevel?: number | null
+  /**
+   * Eigene Domain im Modus `write` (PK1 E1b-2, `event.context.customDomainScope`):
+   * die Rolle zählt dort nur mit den Rechten von Redakteur und Moderator
+   * (`CUSTOM_DOMAIN_CAPABILITIES`). Jeder Aufrufer unter `server/` gibt es mit
+   * (Wächter `customDomainScope.test.ts`); fehlt es, gilt das Verhalten von
+   * vorher.
+   */
+  customDomainScope?: boolean
 }
 
 /**
@@ -171,7 +179,7 @@ export function decideCommunityAccess(input: CommunityAccessInput): CommunityAcc
     return trusted ? { allowed: true, via: 'trust', trustLevel } : { allowed: false, reason: 'forbidden' }
   }
 
-  if (input.role && communityRoleHasCapability(input.role, input.capability)) {
+  if (input.role && communityRoleHasCapability(input.role, input.capability, input.customDomainScope === true)) {
     return { allowed: true, via: 'role', role: input.role }
   }
 

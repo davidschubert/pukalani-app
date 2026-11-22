@@ -7,7 +7,7 @@ import {
   isCommunityMember,
   type CommunityAccessVia,
 } from '../../shared/communityAccess'
-import { capCommunityRoleOnCustomDomain, isCommunityRole, type CommunityRole } from '../../shared/communityAuthz'
+import { isCommunityRole, type CommunityRole } from '../../shared/communityAuthz'
 import { COMMUNITY_NOT_A_MEMBER_CODE } from '../../shared/communityParticipation'
 import { trustLevelGrantsCapability } from '../../shared/trustLevel'
 
@@ -102,12 +102,7 @@ export async function resolveCommunityRole(event: H3Event): Promise<CommunityRol
     runtimeProjectId: tenant.projectId,
     runtimeUserId: user.$id,
   })
-  const known = role && isCommunityRole(role) ? role : null
-  // PK1 E1b-2: auf der eigenen Domain im Modus `write` (Merkmal aus
-  // `01.custom-domain-scope.ts`) gelten owner/admin als moderator — hier, damit
-  // Wache (requireCommunityPermission) und Knopf (07.community-role.ts →
-  // Browser, /api/community/role) dieselbe Rolle sehen.
-  return capCommunityRoleOnCustomDomain(known, event.context.customDomainScope === true)
+  return role && isCommunityRole(role) ? role : null
 }
 
 /**
@@ -239,6 +234,9 @@ export async function requireCommunityPermission(
     tenantScoped,
     role,
     trustLevel,
+    // PK1 E1b-2: eigene Domain im Modus `write` — nur Rechte von Redakteur
+    // und Moderator (`CUSTOM_DOMAIN_CAPABILITIES`).
+    customDomainScope: event.context.customDomainScope === true,
   })
 
   if (!decision.allowed) {

@@ -106,7 +106,7 @@ export default defineEventHandler(async (event) => {
      */
     if (resolved) {
       await setCommunityModeratorLabel(
-        event, tenant.communityId, communityRoleHasCapability(role, 'reports.moderate'),
+        event, tenant.communityId, communityRoleHasCapability(role, 'reports.moderate', event.context.customDomainScope === true),
       )
     }
     return
