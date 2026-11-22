@@ -141,3 +141,17 @@ export function passwordPolicyReason(error: unknown): PasswordPolicyReason | nul
 export function isAuthUnavailable(error: unknown): boolean {
   return (error as { data?: { reason?: unknown } } | null)?.data?.reason === AUTH_UNAVAILABLE_CODE
 }
+
+/**
+ * EIN ECHTER AUSFALL eines Abrufs (LZ1, 2026-11-22): kein Status (Netz,
+ * Abbruch) oder 5xx. 401, 403 und 404 sind an vielen Stellen ERWARTET (Gast,
+ * keine Rolle, kein Mandant, Produkt aus) und bleiben dort still; ein Ausfall
+ * dagegen bekommt einen sichtbaren Zustand mit „Noch einmal versuchen"
+ * (`CoreInlineLoadError`, `CoreLoadError`) statt stillem Ausblenden.
+ */
+export function isFetchOutage(error: unknown): boolean {
+  if (!error) return false
+  const status = (error as { statusCode?: number, status?: number }).statusCode
+    ?? (error as { status?: number }).status
+  return !status || status >= 500
+}
