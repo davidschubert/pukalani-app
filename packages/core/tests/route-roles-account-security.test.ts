@@ -264,14 +264,21 @@ describe('GET /api/auth/export — exportiert nur das eigene Konto', () => {
   })
 })
 
-function deleteGlobals(deleted: string[]) {
+function lastAdminRefusal() {
+  return Object.assign(new Error('At least one admin must remain'), { status: 409, statusCode: 409, data: { code: 'last_admin' } })
+}
+
+function deleteGlobals(deleted: string[], overrides: Record<string, unknown> = {}) {
   return {
     ...coreKit().globals,
     requireRecentAuth,
+    isActiveAdmin: () => false,
+    assertNotLastAdmin: async () => {},
     deleteUserCompletely: async (_event: unknown, userId: string) => {
       deleted.push(userId)
       return { ok: true, results: [] }
     },
+    ...overrides,
   }
 }
 
@@ -303,6 +310,39 @@ describe('DELETE /api/auth/account — nur das eigene Konto, nur mit frischer An
     expect(run.error?.data?.code).toBe('reauth_required')
     expect(deleted).toEqual([])
     expect(appwriteFake.cookiesCleared()).toBe(0)
+  })
+
+  it('letzter aktiver Admin: 409 last_admin VOR der frischen Anmeldung, nichts gelöscht, Cookie bleibt', async () => {
+    appwriteFake.reply('session.account.getSession', () => ({ $id: 's-aktuell', $createdAt: minutesAgo(60 * 24) }))
+    const deleted: string[] = []
+    const run = await probeRoute(load, {
+      who: 'member',
+      globals: deleteGlobals(deleted, { isActiveAdmin: () => true, assertNotLastAdmin: async () => { throw lastAdminRefusal() } }),
+    })
+    expect(run.status).toBe(409)
+    expect(run.error?.data).toEqual({ code: 'last_admin' })
+    expect(deleted).toEqual([])
+    expect(appwriteFake.cookiesCleared()).toBe(0)
+  })
+
+  it('letzter Admin erst unter der Sperre erkannt: 409 geht unverändert hinaus, Cookie bleibt (nichts gesperrt)', async () => {
+    appwriteFake.reply('session.account.getSession', () => ({ $id: 's-aktuell', $createdAt: minutesAgo(1) }))
+    const run = await probeRoute(load, {
+      who: 'member',
+      globals: deleteGlobals([], { deleteUserCompletely: async () => { throw lastAdminRefusal() } }),
+    })
+    expect(run.status).toBe(409)
+    expect(run.error?.data).toEqual({ code: 'last_admin' })
+    expect(appwriteFake.cookiesCleared()).toBe(0)
+  })
+
+  it('Gegenprobe: Admin mit einem zweiten Admin daneben löscht sich', async () => {
+    appwriteFake.reply('session.account.getSession', () => ({ $id: 's-aktuell', $createdAt: minutesAgo(1) }))
+    const deleted: string[] = []
+    const run = await probeRoute(load, { who: 'member', globals: deleteGlobals(deleted, { isActiveAdmin: () => true }) })
+    expect(run.status).toBe(200)
+    expect(deleted).toEqual([userIdOf('member')])
+    expect(appwriteFake.cookiesCleared()).toBe(1)
   })
 
   it('Sitzung nicht lesbar: gilt als nicht frisch (403), nichts gelöscht', async () => {
