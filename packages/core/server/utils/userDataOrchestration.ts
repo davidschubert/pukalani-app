@@ -6,6 +6,7 @@ import { createSessionClient } from '../lib/appwrite'
 import type { UserDataAudience, UserDataExportContext } from './userData'
 import { softFail, softFailWith } from './softFail'
 import { forgetAccountSessions } from './sessionAccount'
+import { assertNotLastAdmin, isActiveAdmin, withLastAdminGuard } from './lastAdmin'
 
 /**
  * GDPR-Orchestrierung (Plan: docs/archiv/GDPR-DELETE-AND-EXPORT.md §4.3).
@@ -328,6 +329,10 @@ export async function deleteUserCompletely(
 
   let exportFileId: string | undefined
   if (user) {
+    // (0b) LETZTER AKTIVER ADMIN? Vorab ohne Sperre — die frühe Antwort spart
+    // den Snapshot. Die verbindliche Prüfung steht unter der Sperre in (2).
+    if (isActiveAdmin(user)) await assertNotLastAdmin(event, userId)
+
     // (1) SNAPSHOT — Fehler hier = Abbruch (ohne Snapshot keine Löschung).
     // Die Kopie liest der BETREIBER (30 Tage im Bucket) — sie ist deshalb ein
     // Betreiber-Export ohne Nachrichtentexte (SEC-034, Davids Ja 2026-11-16).
@@ -339,7 +344,22 @@ export async function deleteUserCompletely(
     // STRIKT: ohne erfolgreichen Block keine destruktiven Schritte — sonst
     // könnte ein Teilfehler einen UNgesperrten, halb bereinigten Account
     // hinterlassen. Re-Run nach Fehler ist gefahrlos (alles idempotent).
-    await admin.users.updateStatus({ userId, status: false })
+    //
+    // „NIE DER LETZTE AKTIVE ADMIN" (lastAdmin.ts): das Sperren nimmt das
+    // Konto aus der Menge der aktiven Admins — genau dieser Schritt läuft
+    // unter der Projekt-Sperre und nur, wenn ein anderer aktiver Admin
+    // bleibt. Bei 409 ist nichts gelöscht; der eben geschriebene Snapshot
+    // wird wieder entfernt (best effort, sonst räumt ihn der Fristen-Lauf).
+    try {
+      await withLastAdminGuard(event, userId, () => admin.users.updateStatus({ userId, status: false }))
+    }
+    catch (error) {
+      if (exportFileId) {
+        await admin.storage.deleteFile({ bucketId: useRuntimeConfig(event).public.appwriteGdprBucket, fileId: exportFileId })
+          .catch(softFail('core:utils/userDataOrchestration:deleteSnapshot', undefined))
+      }
+      throw error
+    }
     // Session-Kill bleibt best effort: der Block macht bestehende Sessions
     // ohnehin handlungsunfähig.
     await admin.users.deleteSessions({ userId }).catch(softFail('core:utils/userDataOrchestration:deleteSessions', undefined))

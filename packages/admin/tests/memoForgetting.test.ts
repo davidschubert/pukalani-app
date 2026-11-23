@@ -29,6 +29,7 @@ function stubRouteGlobals(users: Record<string, unknown>, body: unknown = undefi
   vi.stubGlobal('createError', (init: Record<string, unknown>) => Object.assign(new Error(String(init.statusText)), init))
   vi.stubGlobal('toH3Error', (error: unknown) => error)
   vi.stubGlobal('assertNotLastAdmin', async () => {})
+  vi.stubGlobal('withLastAdminGuard', (_event: unknown, _id: string, work: () => Promise<unknown>) => work())
   vi.stubGlobal('createAdminClient', () => ({ users }))
   vi.stubGlobal('recordAudit', async () => {})
   vi.stubGlobal('auditIdList', auditIdList)

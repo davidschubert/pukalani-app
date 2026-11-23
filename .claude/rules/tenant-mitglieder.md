@@ -46,6 +46,10 @@ Datentür, „DER SERVER SCHREIBT", Sperre und Mitmach-Wachen:
   fail-soft; `revokeCommunityLabel` gibt `{ revoked }` zurück, „Zugang
   entziehen" antwortet bei `false` mit 502 `label_revoke_failed`, Stilllegen
   zählt `labels.failed`.
+- NIE DER LETZTE AKTIVE ADMIN (SA1): Löschen, Sperren und Entzug von `admin`
+  laufen über `withLastAdminGuard` (`core/server/utils/lastAdmin.ts`, frisch
+  gezählt, unter der Regel-Sperre `core/server/utils/ruleLock.ts`) ⇒ 409
+  `last_admin`. Neuer Weg, der ein Konto sperrt oder löscht ⇒ derselbe Wächter.
 - LABEL-ABGLEICH zwischen Prozessen: stündlicher Lauf der Platform-App
   (`onboarding/server/utils/labelReconcile.ts`, Schalter
   `pukalani.community.labelReconcile` off/dry-run/apply). Er nimmt nur Labels

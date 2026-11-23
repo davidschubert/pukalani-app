@@ -395,6 +395,8 @@
       "success": "Konto gelöscht.",
       "failed": "Löschen fehlgeschlagen — bitte erneut versuchen.",
       "failedDescription": "Die Löschung wurde nicht abgeschlossen. Dein Konto kann schon gesperrt und zum Teil geleert sein. Versuche es später noch einmal – klappt es dann nicht, melde dich bei uns.",
+      "lastAdmin": "Du bist der letzte Admin.",
+      "lastAdminDescription": "Ohne Admin ließe sich niemand mehr verwalten. Mach zuerst eine andere Person zum Admin – danach kannst du dein Konto löschen. Gelöscht wurde nichts.",
       "reauthText": "Deine letzte Anmeldung ist länger als 10 Minuten her. Melde dich kurz neu an — danach kommst du hierher zurück und kannst dein Konto löschen. Es wurde nichts gelöscht.",
       "notice": {
         "title": "Was beim Löschen geschieht",
