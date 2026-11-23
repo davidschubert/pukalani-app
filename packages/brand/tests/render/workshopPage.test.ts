@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { mountSuspended, registerEndpoint } from '@nuxt/test-utils/runtime'
 import type { VueWrapper } from '@vue/test-utils'
 import { flushPromises } from '@vue/test-utils'
-import { createError, getQuery, readBody } from 'h3'
+import { createError, getQuery, readBody, setResponseHeader } from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { NuxtLayout, NuxtPage, UApp } from '#components'
@@ -19,9 +19,14 @@ import {
   designProfileList,
   designSave,
   designStepDetail,
+  WORKSHOP_CHOICE_ANSWER,
+  WORKSHOP_CHOICE_SLOT,
   WORKSHOP_CONFIRM_SLOT,
   WORKSHOP_CONFIRM_VALUE,
   WORKSHOP_FIRST_DRAFT,
+  WORKSHOP_GEORGE_REPLY,
+  WORKSHOP_HINT,
+  WORKSHOP_NEW_DRAFT,
   WORKSHOP_FOREIGN_SLOT,
   WORKSHOP_FOREIGN_STEP,
   WORKSHOP_FOREIGN_VALUE,
@@ -38,6 +43,8 @@ import {
   workshopSave,
   workshopSiteAnalyzed,
   workshopStepDetail,
+  workshopConverseStream,
+  workshopGenerateStream,
   workshopVersions,
 } from './support/workshopFixtures'
 
@@ -77,12 +84,18 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
     steps: Record<string, string>
     brands: { card: Record<'remaining', string> }
     labels: Record<string, unknown>
+    example: Record<string, Record<string, Record<'solo' | 'team', string> | undefined> | undefined>
     workspace: {
+      example: Record<'show' | 'hide' | 'take' | 'quoted', string>
       site: Record<'never' | 'start' | 'consent' | 'confirm' | 'done', string>
       regions: Record<'rail' | 'log', string>
       advisorInfo: Record<'open' | 'desc', string>
       answerSlot: string
       slotActionName: string
+      submitChoice: string
+      sendOwnAnswer: string
+      retryWithHint: string
+      generate: Record<'hintLabel', string>
       reviseSlot: string
       reviseApply: string
       reviseDiscard: string
@@ -98,7 +111,11 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
 const site = de.brand.workspace.site
 const base = `/api/brand/profiles/${WORKSHOP_PROFILE_ID}`
 
-const calls = { analyze: 0, ai: 0, versions: 0, foreign: 0 }
+const calls = { analyze: 0, ai: 0, versions: 0, foreign: 0, converse: 0, generate: 0 }
+/** Welche KI-Route ein Fall ausdrücklich mit einem GESTELLTEN Strom bedient (s. unten). */
+const aiStub = { converse: false, generate: false }
+/** Was die Seite an die gestellte Route geschickt hat. */
+const aiBodies: { converse: Record<string, unknown> | null, generate: Record<string, unknown> | null } = { converse: null, generate: null }
 /**
  * Der Konflikt-Fall lässt das NÄCHSTE Speichern mit 409 enden — so entsteht
  * der Dialog auch im Betrieb (`applyConflict` im 409-Zweig des Autosave).
@@ -119,9 +136,16 @@ registerEndpoint(`${designBase}/steps/${DESIGN_STEP_KEY}`, {
   method: 'GET',
   handler: () => designStepDetail(),
 })
+/** Was das letzte gestellte Speichern der Farbwelt für `h.base` bekam (s. dort). */
+const designSaved = { base: '' }
 registerEndpoint(`${designBase}/steps/${DESIGN_STEP_KEY}`, {
   method: 'PATCH',
-  handler: async event => designSave(await readBody(event)),
+  handler: async (event) => {
+    const body = await readBody(event)
+    const base = body?.slots?.['h.base']?.value
+    if (typeof base === 'string') designSaved.base = base
+    return designSave(body)
+  },
 })
 registerEndpoint(`${designBase}/messages`, event => designMessages(String(getQuery(event).session ?? '')))
 for (const route of ['converse', 'generate']) {
@@ -168,13 +192,28 @@ registerEndpoint(`${base}/analyze`, {
     return workshopSiteAnalyzed()
   },
 })
-// KI-Routen: ein Rauch-Test darf sie NIE auslösen (der Eröffnungszug bleibt
-// aus, weil der Verlauf schon einen Zug von George hat). Sie zählen mit und
-// antworten mit einem Fehler, statt still etwas zu liefern.
-for (const route of ['converse', 'generate']) {
-  registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}/${route}`, () => {
-    calls.ai += 1
-    throw new Error('KI im Rauch-Test aufgerufen')
+// KI-Routen: ein Rauch-Test löst sie NIE ungestellt aus (der Eröffnungszug
+// bleibt aus, weil der Verlauf schon einen Zug von George hat). Ein Fall, der
+// den Klick eines Moduls prüft, der zu George führt, SCHARF-SCHALTET genau eine
+// Route (`aiStub`) und bekommt einen gestellten Strom
+// (`workshopConverseStream`/`workshopGenerateStream`, ohne KI); das zählt
+// `calls.converse`/`calls.generate`. Jeder Aufruf OHNE Schalter zählt weiter
+// in `calls.ai` und antwortet mit einem Fehler — `calls.ai === 0` am Ende
+// jedes Falls heisst also weiterhin: kein ungestellter KI-Aufruf.
+for (const route of ['converse', 'generate'] as const) {
+  registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}/${route}`, {
+    method: 'POST',
+    handler: async (event) => {
+      if (!aiStub[route]) {
+        calls.ai += 1
+        throw new Error('KI im Rauch-Test aufgerufen')
+      }
+      const body = await readBody(event)
+      calls[route] += 1
+      aiBodies[route] = body
+      setResponseHeader(event, 'content-type', 'text/event-stream')
+      return route === 'converse' ? workshopConverseStream() : workshopGenerateStream(String(body.slotId ?? ''))
+    },
   })
 }
 
@@ -234,6 +273,12 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     calls.ai = 0
     calls.versions = 0
     calls.foreign = 0
+    calls.converse = 0
+    calls.generate = 0
+    aiStub.converse = false
+    aiStub.generate = false
+    aiBodies.converse = null
+    aiBodies.generate = null
     saveConflict.armed = false
     saveConflict.served = false
     saveConflict.sent = null
@@ -488,6 +533,141 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     await flushPromises()
     expect(store.slotValue('h.base')).toBe(target)
     expect(baseCards().filter(card => card.getAttribute('aria-pressed') === 'true').map(hexOf)).toEqual([target])
+
+    // DEN FALL VOLLSTÄNDIG VERLASSEN (FL1-Falle, PR 563): die Wahl speichert
+    // der Autosave verzögert. Endet der Fall vorher, kommt die Antwort unter
+    // Last erst im NÄCHSTEN Fall an und schreibt die Felder dieses Profils in
+    // den Store, der schon das andere Kapitel zeigt (gemessen: `a.category`
+    // fehlte, im Store standen `h.*`). Gewartet wird auf das Ereignis: die
+    // Wahl ist beim Server angekommen, verbucht, und nichts ist mehr offen.
+    await vi.waitFor(() => {
+      expect(designSaved.base).toBe(target)
+      expect(store.hasPendingWork).toBe(false)
+      expect(store.syncState).toBe('saved')
+    }, { timeout: 10_000 })
+
+    expect(calls.ai).toBe(0)
+    expect(unexpected(warn)).toEqual([])
+    expect(unexpected(error)).toEqual([])
+  })
+
+  /*
+   * DIE ZWEI MODULE IM ZUG, DIE ZU GEORGE FÜHREN (WS1 c-Rest). Beide laufen
+   * NACH der Farbwelt: der Wechsel zurück auf das erste Probe-Profil lädt das
+   * Kapitel frisch (Revision 1, die erste Fassung in `a.category`) — kein Fall
+   * davor hinterlässt hier einen halben Stand. Die KI-Route ist je Fall
+   * ausdrücklich gestellt (`aiStub`), `calls.ai` bleibt 0.
+   */
+  it('Options-Modul: die eigene Antwort geht als Zug an George (WS1 c-Rest)', async () => {
+    designProfileListed.on = false
+    aiStub.converse = true
+    const wrapper = await mountSuspended(Shell, {
+      route: `/brand/${WORKSHOP_PROFILE_ID}/${WORKSHOP_STEP_KEY}?s=${WORKSHOP_CHOICE_SLOT}`,
+    })
+    await flushPromises()
+    const ws = de.brand.workspace
+    const main = () => wrapper.find('main')
+
+    // Das Modul: ein Feld für die eigene Formulierung, „Übermitteln" gesperrt,
+    // solange es leer ist; das Prompt unten ist für eine Auswahl gesperrt.
+    const own = () => main().find(`input[aria-label="${ws.sendOwnAnswer}"]`)
+    expect(own().exists()).toBe(true)
+    const submit = () => buttonNamed(wrapper, ws.submitChoice)
+    expect(submit().attributes('disabled')).toBeDefined()
+    await own().setValue(WORKSHOP_CHOICE_ANSWER)
+    expect(submit().attributes('disabled')).toBeUndefined()
+
+    // Der Klick: eigene Blase, Zug an George (mit der Session), seine Antwort.
+    await submit().trigger('click')
+    await vi.waitFor(() => expect(main().text()).toContain(WORKSHOP_GEORGE_REPLY))
+    expect(calls.converse).toBe(1)
+    expect(aiBodies.converse).toMatchObject({ text: WORKSHOP_CHOICE_ANSWER, sessionKey: WORKSHOP_CHOICE_SLOT })
+    expect(main().text()).toContain(WORKSHOP_CHOICE_ANSWER)
+    expect((own().element as HTMLInputElement).value).toBe('')
+
+    expect(calls.ai).toBe(0)
+    expect(unexpected(warn)).toEqual([])
+    expect(unexpected(error)).toEqual([])
+  })
+
+  it('Antwort-Modul: das Beispiel auf- und zuklappen und ins Prompt übernehmen (WS1 c-Rest)', async () => {
+    designProfileListed.on = false
+    const wrapper = await mountSuspended(Shell, {
+      route: `/brand/${WORKSHOP_PROFILE_ID}/${WORKSHOP_STEP_KEY}?s=a.customerPraise`,
+    })
+    await flushPromises()
+    const example = de.brand.workspace.example
+    // Solo-Fassung (`teamExample`, das Probe-Profil ist `solo`).
+    const text = de.brand.example.a!.customerPraise!.solo
+    const toggle = () => wrapper.find('main').findAll('button[aria-expanded]')
+      .find(entry => [example.show, example.hide].includes(entry.text().trim()))
+    expect(toggle()?.text().trim()).toBe(example.show)
+    expect(toggle()?.attributes('aria-expanded')).toBe('false')
+    await toggle()!.trigger('click')
+    expect(toggle()?.text().trim()).toBe(example.hide)
+    const quoted = buttonNamed(wrapper, example.quoted.replace('{text}', text).replace('{hint}', example.take))
+    await quoted.trigger('click')
+    expect((wrapper.find('main textarea').element as HTMLTextAreaElement).value).toBe(text)
+    await toggle()!.trigger('click')
+    expect(toggle()?.text().trim()).toBe(example.show)
+    expect(wrapper.text()).not.toContain(example.take)
+
+    expect(calls.ai).toBe(0)
+    expect(unexpected(warn)).toEqual([])
+    expect(unexpected(error)).toEqual([])
+  })
+
+  it('Entwurfs-Modul: korrigieren, verwerfen, nochmal mit Hinweis (WS1 c-Rest)', async () => {
+    designProfileListed.on = false
+    aiStub.generate = true
+    const wrapper = await mountSuspended(Shell, {
+      route: `/brand/${WORKSHOP_PROFILE_ID}/${WORKSHOP_STEP_KEY}?s=${WORKSHOP_VERSIONS_SLOT}`,
+    })
+    await flushPromises()
+    const ws = de.brand.workspace
+    const store = useBrandWorkspaceStore()
+    const main = () => wrapper.find('main')
+    // Ohne George-Entwurf trägt die Karte keinen gestrichelten Rahmen; der
+    // Editor ist die Textbox, die den Wert des Felds zeigt (das Prompt
+    // darunter ist leer).
+    const editor = () => main().findAll('textarea')
+      .find(entry => (entry.element as HTMLTextAreaElement).value === store.slotValue(WORKSHOP_VERSIONS_SLOT))
+
+    // Die Karte: Feld-Name, die erste Fassung, die Weiter-Wege. Auf den
+    // geladenen Stand WARTEN (Ende des gestellten Abrufs): unter Last in der
+    // CI stand das Feld nach einem `flushPromises` noch leer (PR 563).
+    await vi.waitFor(() => expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_FIRST_DRAFT), { timeout: 10_000 })
+    await vi.waitFor(() => expect(main().text()).toContain(WORKSHOP_FIRST_DRAFT))
+    expect(editor()).toBeUndefined()
+    expect(buttonNamed(wrapper, ws.versions.open).exists()).toBe(true)
+
+    // Korrigieren öffnet das Feld, Verwerfen stellt die Fassung wieder her.
+    await buttonNamed(wrapper, ws.reviseSlot).trigger('click')
+    expect(editor()).toBeDefined()
+    await editor()!.setValue('Etwas ganz anderes')
+    expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe('Etwas ganz anderes')
+    await buttonNamed(wrapper, ws.reviseDiscard).trigger('click')
+    await flushPromises()
+    expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_FIRST_DRAFT)
+    expect(editor()).toBeUndefined()
+
+    // „Nochmal, mit Hinweis" klappt die Hinweis-Zeile auf; der Hinweis reist
+    // mit dem Erzeugen-Aufruf, der gestellte Entwurf landet im Feld, und die
+    // Zeile schliesst sich wieder.
+    const retry = () => buttonNamed(wrapper, ws.retryWithHint)
+    expect(retry().attributes('aria-expanded')).toBe('false')
+    await retry().trigger('click')
+    expect(retry().attributes('aria-expanded')).toBe('true')
+    const hintLabel = ws.generate.hintLabel.replace('{voice}', BRAND_VOICE.name)
+    const hintInput = () => main().find(`input[aria-label="${hintLabel}"]`)
+    await hintInput().setValue(WORKSHOP_HINT)
+    await main().find(`button[aria-label="${hintLabel}"]`).trigger('click')
+    await vi.waitFor(() => expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_NEW_DRAFT))
+    await flushPromises()
+    expect(calls.generate).toBe(1)
+    expect(aiBodies.generate).toMatchObject({ slotId: WORKSHOP_VERSIONS_SLOT, hint: WORKSHOP_HINT })
+    expect(main().text()).toContain(WORKSHOP_NEW_DRAFT)
+    expect(hintInput().exists()).toBe(false)
 
     expect(calls.ai).toBe(0)
     expect(unexpected(warn)).toEqual([])

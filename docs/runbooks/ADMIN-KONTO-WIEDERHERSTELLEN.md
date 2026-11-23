@@ -210,8 +210,11 @@ David, mit eigenem Ja; vorher Weg A, damit die Instanz wieder bedienbar ist.
 - Eine Vertretung oder ein zweites Betreiber-Konto mit Label `admin` je
   Instanz hielte das Dashboard auch nach einem solchen Fehler bedienbar
   (offen unter „VT1" in [OPEN-ITEMS](../OPEN-ITEMS.md)).
-- Der Schutz im Produkt selbst — „das letzte Admin-Konto lässt sich nicht
-  löschen" — ist eine eigene Arbeit am Code, nicht Teil dieses Runbooks.
+- Im Produkt selbst gilt seit dem 2026-11-23: das letzte aktive Konto mit
+  Label `admin` lässt sich weder über „Konto löschen" noch in der
+  Nutzerverwaltung löschen, sperren oder herabstufen (Antwort 409 `last_admin`, `packages/core/server/utils/lastAdmin.ts`).
+  Was in der Appwrite-Konsole oder per Skript geschieht, sieht dieser Schutz
+  nicht — dafür bleibt der Aussperr-Wächter.
 
 ## Protokoll
 

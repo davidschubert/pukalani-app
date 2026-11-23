@@ -4,6 +4,7 @@ import type {
   Comment,
   CommentListResponse,
   CommentNode,
+  DeletedCommentResponse,
   SortMode,
   VoteResponse,
   VoteValue,
@@ -357,8 +358,17 @@ const commentStoreSetup = () => {
   }
 
   async function deleteComment(commentId: string) {
-    const updated = await $fetch<Comment>(`/api/comments/${commentId}`, { method: 'DELETE' })
-    upsertRow(updated)
+    const updated = await $fetch<DeletedCommentResponse>(`/api/comments/${commentId}`, { method: 'DELETE' })
+    const { removedIds, ...row } = updated
+    // KC2: ohne Antworten ist der Kommentar ganz weg (und mit ihm gelöschte
+    // Vorfahren, die dadurch kinderlos wurden) — aus der Liste nehmen statt
+    // einen Platzhalter zu zeigen. `removeWithDescendants` zählt `activeTotal`
+    // und `total` selbst richtig herunter und ist idempotent (Realtime-Echo).
+    if (removedIds?.includes(commentId)) {
+      for (const id of removedIds) removeWithDescendants(id)
+      return
+    }
+    upsertRow(row)
   }
 
   function upsertRow(comment: Comment) {

@@ -92,7 +92,7 @@ Einführung in jedem Lösch-Weg).
 
 | Inhalt | Beim eigenen Löschen | Bei der Kontolöschung |
 | --- | --- | --- |
-| Kommentar | Zeile bleibt als leerer Platzhalter (Text, Name, Konto-Id, Übersetzungen leer; Rechte des Kontos entfernt), damit Antworten darunter nicht zerreißen | derselbe Platzhalter (`commentTombstone.ts`) |
+| Kommentar | MIT Antworten: Zeile bleibt als leerer Platzhalter (Text, Name, Konto-Id, Übersetzungen leer; Rechte des Kontos entfernt), damit Antworten darunter nicht zerreißen. OHNE Antworten (auch keine ausgeblendete) und ohne offene Meldung: die Zeile fällt ganz, dazu gelöschte Vorfahren, die dadurch kinderlos werden (KC2, `commentPrune.ts`) | derselbe Platzhalter (`commentTombstone.ts`), auch ohne Antworten |
 | Beitrag | Status „gelöscht", nur noch die Autorin liest ihn; Ausschnitt im Verlauf und Erwähnungs-Benachrichtigungen fallen | Titel, Text, Umfrage, Übersetzungen, Konto-Id leer; nur die Moderation der Community liest den Rest |
 | Private Nachricht | – | gelöscht; die Vorschau der Unterhaltung zeigt die letzte verbleibende Nachricht. Eine gemeldete Nachricht bleibt bis zu 90 Tage als Beleg |
 | Termin | – | abgesagt und geschwärzt wie durch die Moderation (`eventRedaction.ts`): Titel, Beschreibung, Ort, Link, Bild weg |

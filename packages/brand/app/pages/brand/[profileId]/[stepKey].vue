@@ -49,13 +49,13 @@ import {
   brandChoiceDisplayLabel,
 } from '../../../../shared/brandChoiceOptions'
 import type { BwChoiceCard } from '../../../components/BwChoiceCards.vue'
+import type { BwBoardChoice } from '../../../components/BwStageOptions.vue'
 import type { BwDirectionChoice, BwLogCard, BwLogChapter } from '../../../components/BwWorkshopLog.vue'
 import {
   brandDirectionById,
   suggestBrandDirections,
 } from '../../../../shared/brandDirections'
 import {
-  type BrandDnaBoard,
   type BrandDnaMixSources,
   brandDnaBoardDifferences,
   brandDnaBoardName,
@@ -2557,13 +2557,6 @@ const showDnaMix = computed(() => (
  * sagt die Karte. Ein leeres Array heisst „hier gibt es keine Boards", und die
  * Bühne behält ihr Textfeld.
  */
-interface BwBoardChoice {
-  board: BrandDnaBoard
-  name: string
-  note: string
-  differences: string[]
-}
-
 const boardChoices = computed<BwBoardChoice[]>(() => {
   if (nextSlot.value?.id !== 'g.board') return []
   return dna.boards.value.map(board => ({
@@ -3207,300 +3200,60 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
                  immer ÜBER den Aktionen (Davids Korrekturrunde 1). -->
             <template v-if="index === turns.length - 1 && turn.role === 'george'">
               <!-- ANSWER: nur der Beispiel-Ausweg; geantwortet wird im Prompt. -->
-              <div v-if="stageModule === 'answer' && composerExample" class="mt-2">
-                <!-- Die ANFÜHRUNGSZEICHEN gehören in die Nachricht, nicht ins
-                     Markup (Audit A12): deutsche und englische Oberflächen
-                     setzen sie verschieden, und ein Literal hier hätte auf
-                     der englischen Seite deutsche Zeichen gezeigt. -->
-                <button
-                  type="button" class="bw-label underline" style="color: var(--bw-muted)"
-                  :aria-expanded="exampleOpen" @click="exampleOpen = !exampleOpen"
-                >
-                  {{ exampleOpen ? t('brand.workspace.example.hide') : t('brand.workspace.example.show') }}
-                </button>
-                <button v-if="exampleOpen" type="button" class="bw-pending mt-2 block text-left" @click="takeExample">
-                  {{ t('brand.workspace.example.quoted', { text: composerExample, hint: t('brand.workspace.example.take') }) }}
-                </button>
-              </div>
+              <BwStageAnswer
+                v-if="stageModule === 'answer' && composerExample"
+                v-model:open="exampleOpen"
+                :example="composerExample"
+                @take="takeExample"
+              />
 
-              <!-- OPTIONS: die Auswahl beantwortet sich im eigenen Modul.
-                   Ohne „Überspringen" (Runde 39, David): die Positionierung
-                   ist die Kernentscheidung, nicht eine Frage unter vielen. -->
-              <div v-else-if="stageModule === 'options'" class="mt-3 rounded-2xl p-4" style="background: var(--bw-surface-hi)">
-                <div class="rounded-xl px-4 py-3" style="background: var(--bw-paper)">
-                  <!-- BEFUND 9 (2026-09-10): solange die Sammel-Session läuft,
-                       trägt die Karte die aktuelle TEILfrage — vorher stand
-                       dort der Name der Session („Zahlen & Fakten"), während
-                       George daneben nach einem einzelnen Teil fragte. -->
-                  <span class="block text-sm font-medium">
-                    {{ answerCard.titleKey ? t(answerCard.titleKey) : (nextSlot ? slotLabel(nextSlot) : '') }}
-                  </span>
-                  <!-- GESCHLOSSENE MENGE ⇒ KARTEN (P4): der Klick übermittelt
-                       die stabile Id, „Übermitteln" entfällt — eine Karte IST
-                       die Entscheidung. Offene Auswahl (Positionierungs-
-                       Kategorie) behält ihr Feld. -->
-                  <!-- DIE RICHTUNG (Paket G4): drei Welten statt sechs, und
-                       eine Karte zeigt die Welt statt sie zu beschreiben. Sie
-                       steht VOR dem Text-Karten-Zweig, weil `result.direction`
-                       einen geschlossenen Vertrag HAT und sonst dort landete. -->
-                  <div v-if="directionChoices.length" class="mt-3 grid gap-2 sm:grid-cols-3">
-                    <BwDirectionCard
-                      v-for="choice in directionChoices" :key="choice.direction.id"
-                      :direction="choice.direction"
-                      :name="choice.name" :reason="choice.reason" :match="choice.match"
-                      :selected="nextSlot ? store.slotValue(nextSlot.id) === choice.direction.id : false"
-                      :disabled="conversation.pending.value"
-                      @pick="pickChoice"
-                    />
-                  </div>
-                  <!-- DIE DREI MOODBOARDS (D2c): dieselbe Stelle, dieselbe
-                       Mechanik wie die Richtungen — der Klick übermittelt die
-                       stabile Board-Id. Die Karten zeigen eine gerenderte
-                       SZENE, deshalb stehen sie hier und nicht in
-                       `choiceCards`. -->
-                  <div v-else-if="boardChoices.length" class="mt-3 grid gap-3 lg:grid-cols-3">
-                    <BwBoardCard
-                      v-for="choice in boardChoices" :key="choice.board.id"
-                      :board="choice.board"
-                      :name="choice.name" :note="choice.note" :differences="choice.differences"
-                      :selected="nextSlot ? store.slotValue(nextSlot.id) === choice.board.id : false"
-                      :disabled="conversation.pending.value"
-                      @pick="pickChoice"
-                    />
-                  </div>
-                  <BwChoiceCards
-                    v-else-if="choiceCards.length"
-                    class="mt-3"
-                    :options="choiceCards"
-                    :selected="nextSlot ? store.slotValue(nextSlot.id) : ''"
-                    :disabled="conversation.pending.value"
-                    @pick="pickChoice"
-                  />
-                  <UInput
-                    v-else
-                    v-model="ownChoice" size="sm" class="mt-2 w-full"
-                    :placeholder="t(answerCard.placeholderKey)"
-                    :aria-label="t('brand.workspace.sendOwnAnswer')"
-                    @keydown.enter="submitChoice"
-                  />
-                </div>
-                <div v-if="!choiceCards.length && !directionChoices.length && !boardChoices.length" class="mt-3 flex items-center justify-end gap-2">
-                  <UButton
-                    color="neutral" variant="ghost" class="bw-send rounded-full"
-                    :label="t('brand.workspace.submitChoice')"
-                    :disabled="!ownChoice.trim() || conversation.pending.value"
-                    @click="submitChoice"
-                  />
-                </div>
-              </div>
+              <!-- OPTIONS: die Auswahl beantwortet sich im eigenen Modul. -->
+              <BwStageOptions
+                v-else-if="stageModule === 'options'"
+                v-model:own-choice="ownChoice"
+                :title="answerCard.titleKey ? t(answerCard.titleKey) : (nextSlot ? slotLabel(nextSlot) : '')"
+                :direction-choices="directionChoices"
+                :board-choices="boardChoices"
+                :choice-cards="choiceCards"
+                :selected="nextSlot ? store.slotValue(nextSlot.id) : ''"
+                :disabled="conversation.pending.value"
+                :placeholder="t(answerCard.placeholderKey)"
+                @pick="pickChoice"
+                @submit="submitChoice"
+              />
 
               <!-- DRAFT: der Entwurfs-Moment. Basis-Zeile, gestrichelter
                    Rahmen (fällt mit der Bestätigung), drei Wege heraus. -->
-              <div v-else-if="stageModule === 'draft' && pendingCard" class="mt-3">
-                <div :class="pendingCard.controls.showDraftBadge ? 'bw-draft-frame' : ''">
-                  <div class="flex flex-wrap items-center justify-between gap-2">
-                    <p class="bw-label" style="color: var(--bw-muted)">{{ slotLabel(pendingCard.slot) }}</p>
-                    <span v-if="pendingCard.controls.showDraftBadge" class="bw-state bw-state--draft">
-                      <UIcon name="i-ph-pen-nib" />
-                      {{ t('brand.workspace.draftBadge', { voice: voice.name }) }}
-                    </span>
-                  </div>
-                  <UTextarea
-                    v-if="editingSlotId === pendingCard.slot.id && pendingCard.controls.editable"
-                    class="mt-3 w-full" :rows="4" :maxlength="pendingCard.slot.maxLength"
-                    :model-value="store.slotValue(pendingCard.slot.id)"
-                    @update:model-value="value => onInput(pendingCard!.slot.id, String(value))"
-                    @blur="autosave.flush()"
-                  />
-                  <p
-                    v-else-if="store.slotValue(pendingCard.slot.id) && renderedAbove(pendingCard.slot.id)"
-                    class="bw-pending mt-3"
-                  >
-                    {{ t('brand.dna.card.above') }}
-                  </p>
-                  <!-- BEFUND 1 (2026-09-10): ein `structured`-Wert stand hier
-                       wörtlich in seiner Speicherform („## Team / Nur ich").
-                       Die Form gehört EINER Komponente (s. `BwSlotValue`),
-                       Einzelfelder bleiben unverändert freier Text. -->
-                  <BwSlotValue
-                    v-else-if="store.slotValue(pendingCard.slot.id)"
-                    class="mt-3"
-                    :slot-id="pendingCard.slot.id"
-                    :value="slotDisplayValue(pendingCard.slot.id, store.slotValue(pendingCard.slot.id))"
-                  />
-                  <!-- DAS ANTWORT-MODUL EINER ENTWURFS-SESSION (Kailua-Befund
-                       5, Weg B): „Noch offen — kommt im Gespräch" zeigte auf
-                       ein Gespräch, in dem nichts entstand — für diese Felder
-                       gibt es keine Katalog-Frage, also fragte niemand. Jetzt
-                       steht hier Georges Frage zu GENAU diesem Feld, und die
-                       Antwort darunter steuert den Entwurf. -->
-                  <template v-else-if="stageAwaitsDraftAnswer">
-                    <p class="mt-3">
-                      {{ t('brand.workspace.stage.draftAnswer', { voice: voice.name, field: slotLabel(pendingCard.slot) }) }}
-                    </p>
-                    <p v-if="pendingCard.slot.helpKey" class="bw-msg-help mt-2">{{ t(pendingCard.slot.helpKey) }}</p>
-                  </template>
-                  <p v-else class="bw-pending mt-3">{{ t('brand.workspace.stage.pending') }}</p>
-                  <!-- ABGESCHNITTEN AM FELD (KI1 d): der Wert endet mitten im
-                       Satz, weil der Entwurfs-Zug die Token-Decke gerissen
-                       hat. Eine Anzeige aus dem Verlauf, keine Spalte — sie
-                       fällt mit dem nächsten vollständigen Entwurf und mit der
-                       ersten eigenen Änderung. -->
-                  <div v-if="fieldIsTruncated(pendingCard.slot.id)" class="mt-3 flex flex-wrap items-center gap-2">
-                    <span class="bw-state bw-state--stale">
-                      <UIcon name="i-ph-scissors" />
-                      {{ t('brand.workspace.truncated.fieldBadge') }}
-                    </span>
-                    <p class="bw-msg-help">{{ t('brand.workspace.truncated.fieldHint') }}</p>
-                    <UButton
-                      v-if="truncatedRetryFieldId === pendingCard.slot.id"
-                      size="sm" color="neutral" variant="soft" class="rounded-full" icon="i-ph-arrow-clockwise"
-                      :label="t('brand.workspace.truncated.retry')"
-                      @click="regenerateTruncated(pendingCard!.slot.id)"
-                    />
-                  </div>
-                </div>
-
-                <!-- DIE ANTWORT-ZEILE. Sie steht VOR den Knöpfen, weil sie
-                     hier die Hauptsache ist — bei „Nochmal, mit Hinweis"
-                     (unten) ist es umgekehrt: dort ist der Knopf die
-                     Hauptsache und das Feld sein Ausklapp. Derselbe Weg für
-                     beide: der Text geht als Hinweis in `generateSlot()`,
-                     nie in den Chat und nie als Feldwert. -->
-                <div v-if="stageAwaitsDraftAnswer && pendingCard.controls.showHint" class="mt-3 flex items-center gap-2">
-                  <UInput
-                    size="sm" class="flex-1" maxlength="500"
-                    :model-value="hints[pendingCard.slot.id] ?? ''"
-                    :placeholder="t('brand.workspace.generate.answerPlaceholder')"
-                    :aria-label="t('brand.workspace.generate.answerLabel', { voice: voice.name })"
-                    :disabled="generation.streaming.value"
-                    @update:model-value="value => hints = { ...hints, [pendingCard!.slot.id]: String(value) }"
-                    @keydown.enter="generateSlot(pendingCard!.slot)"
-                  />
-                  <UButton
-                    size="sm" color="neutral" variant="ghost" class="bw-send rounded-full"
-                    icon="i-ph-arrow-right"
-                    :aria-label="t('brand.workspace.generate.answerLabel', { voice: voice.name })"
-                    :disabled="generation.streaming.value"
-                    @click="generateSlot(pendingCard.slot)"
-                  />
-                </div>
-
-                <!-- ZU WENIG IST ZU WENIG: statt eines Knopfes, der in ein 409
-                     läuft, steht hier ruhig, was fehlt. -->
-                <p v-if="pendingCard.note" class="bw-pending mt-2">{{ pendingCard.note }}</p>
-                <!-- NOCH GAR NICHTS DA (Befund 9): der Bestätigen-Knopf ist
-                     abgeschaltet — bis hierher sah man ihm das kaum an, und ein
-                     Klick tat nichts, ohne es zu sagen. Jetzt steht der Grund
-                     daneben. Die Regel ist pur (`showConfirmBlockedNote`) und
-                     schliesst sich mit dem Bedarfs-Satz darüber aus. -->
-                <p v-if="pendingCard.controls.showConfirmBlockedNote" class="bw-pending mt-2">
-                  {{ t('brand.workspace.confirmNeedsValue') }}
-                </p>
-
-                <!-- Links die WEITER-Wege (nochmal, frühere Fassungen),
-                     rechts die ABSCHLUSS-Wege (korrigieren, übernehmen) —
-                     dieselbe Aufteilung wie im Dummy. -->
-                <div class="mt-2 flex flex-wrap items-center gap-2">
-                  <template v-if="generation.isStreamingSlot(pendingCard.slot.id)">
-                    <UButton
-                      size="sm" variant="outline" color="neutral" class="rounded-full"
-                      icon="i-ph-stop" :label="t('brand.workspace.generate.stop')"
-                      @click="generation.stop()"
-                    />
-                  </template>
-                  <template v-else>
-                    <!-- Leerer Slot: die STIMME dieses Kapitels legt vor
-                         („George, entwirf das" — in den Design-Kapiteln
-                         „Frida, entwirf das", D8: der Name kommt aus `voice`,
-                         nicht aus dem Katalogtext). Steht schon etwas da, geht es nur noch
-                         MIT Hinweis weiter — „nochmal genauso" wäre ein Klick
-                         ins Ungefähre. Die Weiche ist der WERT, nicht
-                         `showHint` (das sagt nur „generierbar und bereit"):
-                         mit showHint stand auf jungfräulichen Feldern
-                         „Nochmal, mit Hinweis", obwohl es nie ein erstes Mal
-                         gab (Davids Durchspiel-Audit 2026-09-03). -->
-                    <!-- NACH EINEM GESPRÄCHSZUG TRITT ER HERVOR (Befund 8b):
-                         George hat eben gesagt, dass der Entwurf hier entsteht
-                         — dann darf der Knopf nicht wie ein Nebenweg aussehen.
-                         Eine Fassung, kein zweiter Knopf und kein Blinken; sie
-                         fällt beim Klick und mit dem ersten Wert. -->
-                    <UButton
-                      size="sm" color="neutral" class="rounded-full"
-                      :variant="draftNudge ? 'solid' : 'ghost'"
-                      icon="i-ph-sparkle"
-                      :label="store.slotValue(pendingCard.slot.id)
-                        ? t('brand.workspace.retryWithHint')
-                        : t('brand.workspace.generate.start', { voice: voice.name })"
-                      :loading="generation.streaming.value"
-                      :disabled="generation.streaming.value"
-                      :aria-expanded="store.slotValue(pendingCard.slot.id) ? hintOpen : undefined"
-                      @click="store.slotValue(pendingCard.slot.id) ? (hintOpen = !hintOpen) : generateSlot(pendingCard.slot)"
-                    />
-                    <UButton
-                      v-if="pendingCard.controls.showVersions"
-                      size="sm" variant="ghost" color="neutral" class="rounded-full"
-                      icon="i-ph-clock-counter-clockwise"
-                      :label="t('brand.workspace.versions.open')"
-                      @click="openVersions(pendingCard.slot)"
-                    />
-                    <!-- ZWEI AUSGÄNGE STATT EINEM (Befund 3, 2026-09-10):
-                         „Korrigieren beenden" SPEICHERTE — es gab keinen Weg
-                         zurück. Jetzt entscheidet der Mensch, ob seine
-                         Änderung gilt. -->
-                    <template v-if="pendingCard.controls.editable && editingSlotId === pendingCard.slot.id">
-                      <UButton
-                        size="sm" color="neutral" variant="ghost" class="ml-auto rounded-full"
-                        icon="i-ph-check" :label="t('brand.workspace.reviseApply')"
-                        @click="applyEdit()"
-                      />
-                      <UButton
-                        size="sm" color="neutral" variant="ghost" class="rounded-full"
-                        icon="i-ph-arrow-counter-clockwise" :label="t('brand.workspace.reviseDiscard')"
-                        @click="discardEdit(pendingCard.slot.id)"
-                      />
-                    </template>
-                    <UButton
-                      v-else-if="pendingCard.controls.editable"
-                      size="sm" color="neutral" variant="ghost" class="ml-auto rounded-full"
-                      icon="i-ph-pencil-simple"
-                      :label="t('brand.workspace.reviseSlot')"
-                      @click="openEditor(pendingCard.slot.id)"
-                    />
-                    <button
-                      v-if="pendingCard.controls.showConfirm"
-                      type="button" class="bw-confirm bw-confirm--open"
-                      :class="pendingCard.controls.editable ? '' : 'ml-auto'"
-                      :disabled="!pendingCard.controls.confirmEnabled"
-                      @click="confirmSlot(pendingCard.slot.id)"
-                    >
-                      <UIcon name="i-ph-check" class="size-4" />
-                      {{ t('brand.workspace.acceptAndConfirm') }}
-                    </button>
-                  </template>
-                </div>
-                <!-- Die Hinweis-Zeile des zweiten Anlaufs. `!stageAwaitsDraftAnswer`
-                     schliesst sie gegen die Antwort-Zeile oben aus: zwei
-                     Felder für dieselbe Eingabe wären zwei Wahrheiten
-                     darüber, was gleich in den Entwurf geht. -->
-                <div v-if="hintOpen && pendingCard.controls.showHint && !stageAwaitsDraftAnswer" class="mt-2 flex items-center gap-2">
-                  <UInput
-                    size="sm" class="flex-1" maxlength="500"
-                    :model-value="hints[pendingCard.slot.id] ?? ''"
-                    :placeholder="t('brand.workspace.generate.hintPlaceholder')"
-                    :aria-label="t('brand.workspace.generate.hintLabel', { voice: voice.name })"
-                    :disabled="generation.streaming.value"
-                    @update:model-value="value => hints = { ...hints, [pendingCard!.slot.id]: String(value) }"
-                    @keydown.enter="generateSlot(pendingCard!.slot)"
-                  />
-                  <UButton
-                    size="sm" color="neutral" variant="ghost" class="bw-send rounded-full"
-                    icon="i-ph-arrow-right" :aria-label="t('brand.workspace.generate.hintLabel', { voice: voice.name })"
-                    :disabled="generation.streaming.value"
-                    @click="generateSlot(pendingCard.slot)"
-                  />
-                </div>
-              </div>
+              <BwStageDraft
+                v-else-if="stageModule === 'draft' && pendingCard"
+                v-model:hint-open="hintOpen"
+                :field="pendingCard.slot"
+                :controls="pendingCard.controls"
+                :note="pendingCard.note"
+                :label="slotLabel(pendingCard.slot)"
+                :voice-name="voice.name"
+                :editing="editingSlotId === pendingCard.slot.id"
+                :rendered-above="renderedAbove(pendingCard.slot.id)"
+                :display="slotDisplayValue(pendingCard.slot.id, store.slotValue(pendingCard.slot.id))"
+                :awaits-answer="stageAwaitsDraftAnswer"
+                :truncated="fieldIsTruncated(pendingCard.slot.id)"
+                :can-retry-truncated="truncatedRetryFieldId === pendingCard.slot.id"
+                :streaming="generation.streaming.value"
+                :streaming-here="generation.isStreamingSlot(pendingCard.slot.id)"
+                :nudge="draftNudge"
+                :hint="hints[pendingCard.slot.id] ?? ''"
+                @input="value => onInput(pendingCard!.slot.id, value)"
+                @flush="autosave.flush()"
+                @retry-truncated="regenerateTruncated(pendingCard!.slot.id)"
+                @update:hint="value => hints = { ...hints, [pendingCard!.slot.id]: value }"
+                @generate="generateSlot(pendingCard!.slot)"
+                @stop="generation.stop()"
+                @versions="openVersions(pendingCard!.slot)"
+                @apply="applyEdit()"
+                @discard="discardEdit(pendingCard!.slot.id)"
+                @edit="openEditor(pendingCard!.slot.id)"
+                @confirm="confirmSlot(pendingCard!.slot.id)"
+              />
 
               <!-- CONFIRM: die Karte trägt als Kopf die URSPRUNGSFRAGE des
                    Inhalts (Runde 37c), die Abschluss-Frage steht über den
