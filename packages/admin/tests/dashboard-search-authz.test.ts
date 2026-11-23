@@ -180,13 +180,14 @@ describe('Die Route: mit comments.moderate kommen Treffer, ohne nicht', () => {
 describe('Die Route selbst: awaited Site-Gate statt label-only', () => {
   const routeSource = source('server/api/admin/search.get.ts')
 
-  it('gatet mit await requireCommunityPermission(..., \'dashboard.access\')', () => {
-    expect(routeSource).toContain(`await requireCommunityPermission(event, 'dashboard.access')`)
+  it('gatet mit await requireCommunityPermission(..., \'dashboard.access\') — über requireOverviewAccess (V2)', () => {
+    expect(routeSource).toContain('await requireOverviewAccess(event)')
+    expect(source('server/utils/overviewAccess.ts')).toContain(`await requireCommunityPermission(event, 'dashboard.access')`)
     // Das label-only `requirePermission` war der halbe Befund — es darf nicht
     // zurückkommen. `requireCommunityPermission` ist bewusst async: ein vergessenes
     // `await` wäre ein nicht abgewartetes Promise, also KEINE Prüfung.
     expect(routeSource).not.toMatch(/(?<!Site)requirePermission\(/)
-    const calls = [...routeSource.matchAll(/(\w+\s+)?requireCommunityPermission\(/g)]
+    const calls = [...routeSource.matchAll(/(\w+\s+)?require(?:CommunityPermission|OverviewAccess)\(/g)]
     expect(calls.length).toBeGreaterThan(0)
     for (const call of calls) expect(call[1]?.trim()).toBe('await')
   })

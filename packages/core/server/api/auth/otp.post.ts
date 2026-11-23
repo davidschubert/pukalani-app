@@ -6,6 +6,7 @@ import { recoverySchema } from '../../../schemas/auth'
 import { AUTH_METHOD_UNAVAILABLE_CODE, instanceAuthFeatureGap } from '../../../shared/authMethodAvailability'
 import { shapeSoftFail } from '../../utils/softFail'
 import { AUTH_UNAVAILABLE_CODE } from '../../../shared/authFailure'
+import { otpDecoyUserId } from '../../utils/otpDecoyUserId'
 
 /**
  * Email-OTP anfordern (passwortloser Login). Appwrite legt unbekannte
@@ -75,8 +76,12 @@ export default defineEventHandler(async (event) => {
       // in derselben Form UND aus derselben Verteilung. Es entsteht
       // kein Konto und es geht keine Mail hinaus; der eingegebene Code läuft
       // danach in dasselbe „Code ungültig" wie ein Tippfehler.
+      // Die Ersatz-Kennung ist eine FESTE Funktion der Adresse
+      // (`otpDecoyUserId.ts`): ein vorhandenes Konto antwortet bei jeder
+      // Anfrage mit derselben Kennung, eine unbekannte Adresse jetzt auch.
+      // Mit `ID.unique()` verriet die zweite Anfrage den Unterschied.
       logEvent('info', 'auth.otp_suppressed_closed_registration', {})
-      return { ok: true, userId: ID.unique(), phrase: decoySecurityPhrase() }
+      return { ok: true, userId: otpDecoyUserId(event, email), phrase: decoySecurityPhrase() }
     }
   }
 
@@ -109,7 +114,9 @@ export default defineEventHandler(async (event) => {
           data: { code: AUTH_UNAVAILABLE_CODE },
         })
       })
-    return { ok: true, userId: existing.users[0]?.$id ?? ID.unique(), phrase: decoySecurityPhrase() }
+    // Unbekannte Adresse: dieselbe feste Ersatz-Kennung wie oben — über
+    // mehrere Anfragen gleich, wie die Kennung eines vorhandenen Kontos.
+    return { ok: true, userId: existing.users[0]?.$id ?? otpDecoyUserId(event, email), phrase: decoySecurityPhrase() }
   }
 
   // Admin-Client (s. Kopf). Appwrites eigene Bremse gilt für Aufrufe mit
