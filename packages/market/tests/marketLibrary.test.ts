@@ -7,6 +7,7 @@ import {
   marketLibraryEntryAge,
   marketLibraryEntryIsStale,
   marketLibraryFields,
+  marketLibraryKeepIsActive,
   marketLibrarySchema,
   marketLibrarySourceOption,
   marketLibraryVersion,
@@ -463,5 +464,42 @@ describe('marketLibrarySourceOption', () => {
     // 2026-09-05 + 90 Tage = 2026-12-04 (noch frisch), + 91 = 2026-12-05.
     expect(marketLibrarySourceOption(entry, am('2026-12-04')).stale).toBeUndefined()
     expect(marketLibrarySourceOption(entry, am('2026-12-05')).stale).toBe(true)
+  })
+})
+
+describe('„bewusst stehen gelassen" (MV1, 2026-11-23)', () => {
+  const am = (date: string) => new Date(`${date}T00:00:00.000Z`)
+  const vermerk = (decidedAt: string) => ({ keptStale: { decidedAt, decidedBy: 'David Schubert', reason: 'Neu-Rechnen ohne Entwurf, vorerst stehen lassen.' } })
+
+  it('gilt ab dem Entscheidungstag 90 Tage — am 91. meldet der Wächter wieder', () => {
+    expect(marketLibraryKeepIsActive(vermerk('2026-11-23'), am('2026-11-23'))).toBe(true)
+    expect(marketLibraryKeepIsActive(vermerk('2026-11-23'), am('2027-02-21'))).toBe(true)
+    expect(marketLibraryKeepIsActive(vermerk('2026-11-23'), am('2027-02-22'))).toBe(false)
+  })
+
+  it('ohne Vermerk, mit unlesbarem oder zukünftigem Datum: KEIN Vermerk (der Wächter meldet)', () => {
+    expect(marketLibraryKeepIsActive({}, am('2026-12-07'))).toBe(false)
+    expect(marketLibraryKeepIsActive({ keptStale: null }, am('2026-12-07'))).toBe(false)
+    expect(marketLibraryKeepIsActive(vermerk('2026-02-31'), am('2026-12-07'))).toBe(false)
+    expect(marketLibraryKeepIsActive(vermerk('2026-12-24'), am('2026-12-07'))).toBe(false)
+  })
+
+  it('ändert NICHT, was der Kunde sieht: `stale` im Quellen-Wähler bleibt', () => {
+    const entry: MarketLibraryEntry = { ...marketLibraryFixtureEntry('demo-atlas-roasters'), ...vermerk('2026-11-23') }
+    expect(marketLibrarySourceOption(entry, am('2026-12-05')).stale).toBe(true)
+  })
+
+  it('das Schema verlangt Name, Datum und einen Grund', () => {
+    const base = marketLibraryFixtureEntry('demo-atlas-roasters')
+    const ok = { version: 'x-1', entries: [{ ...base, ...vermerk('2026-11-23') }] }
+    expect(marketLibrarySchema.safeParse(ok).success).toBe(true)
+    for (const kaputt of [
+      { decidedAt: '23.11.2026', decidedBy: 'David Schubert', reason: 'vorerst stehen lassen, ohne Entwurf' },
+      { decidedAt: '2026-11-23', decidedBy: '', reason: 'vorerst stehen lassen, ohne Entwurf' },
+      { decidedAt: '2026-11-23', decidedBy: 'David Schubert', reason: 'kurz' },
+    ]) {
+      const bad = { version: 'x-1', entries: [{ ...base, keptStale: kaputt }] }
+      expect(marketLibrarySchema.safeParse(bad).success, JSON.stringify(kaputt)).toBe(false)
+    }
   })
 })

@@ -119,6 +119,7 @@ import {
   MARKET_LIBRARY_MAX_AGE_DAYS,
   marketLibraryEntryAge,
   marketLibraryEntryIsStale,
+  marketLibraryKeepIsActive,
 } from '../shared/marketLibraryAge.ts'
 import { MARKET_LIBRARY_ENTRIES, MARKET_LIBRARY_VERSION } from '../shared/library/index.ts'
 
@@ -430,6 +431,8 @@ function libraryAges(now) {
       verifiedAt: String(entry.verifiedAt ?? ''),
       age,
       stale: marketLibraryEntryIsStale(entry, now),
+      // Davids „stehen lassen" (Regel und Frist: `shared/marketLibraryAge.ts`).
+      kept: marketLibraryKeepIsActive(entry, now) ? entry.keptStale : null,
     }
   })
 }
@@ -481,11 +484,22 @@ function printLibraryAges(now, { onlyStale = false } = {}) {
   }
   if (!onlyStale) {
     for (const row of rows) {
-      const mark = row.stale ? '⚠' : '·'
+      const mark = row.stale ? (row.kept ? '⏸' : '⚠') : '·'
       console.log(`  ${mark} ${pad(row.key, 24)} ${pad(row.verifiedAt || '—', 12)} ${ageText(row)}`)
     }
   }
-  const stale = rows.filter(row => row.stale)
+  // ÜBERFÄLLIG UND OHNE VERMERK zählt für den Exit-Code; ein bewusst stehen
+  // gelassener Eintrag bleibt sichtbar, hält den Wächter aber nicht offen —
+  // sonst meldete er nie, wenn DANACH ein anderer Eintrag überfällig wird.
+  const kept = rows.filter(row => row.stale && row.kept)
+  const stale = rows.filter(row => row.stale && !row.kept)
+  if (kept.length) {
+    console.log(`\n${kept.length} Eintrag/Einträge sind überfällig, aber BEWUSST STEHEN GELASSEN (kein Handlungsbedarf bis zum genannten Tag):`)
+    for (const row of kept) {
+      const until = new Date(Date.parse(`${row.kept.decidedAt}T00:00:00.000Z`) + MARKET_LIBRARY_MAX_AGE_DAYS * 86_400_000).toISOString().slice(0, 10)
+      console.log(`  ⏸ ${row.key}: ${ageText(row)} — Entscheidung ${row.kept.decidedAt} (${row.kept.decidedBy}): ${row.kept.reason} Ruhig bis ${until}.`)
+    }
+  }
   if (stale.length) {
     console.log(`\n${stale.length} Eintrag/Einträge sind überfällig — neu rechnen und von Hand prüfen:`)
     for (const row of stale) {
@@ -495,7 +509,7 @@ function printLibraryAges(now, { onlyStale = false } = {}) {
     console.log('  Danach: Handprüfung (Runbook Schritt 4), --promote, Fassung steigt.')
   }
   else {
-    console.log(`\nNichts überfällig (${rows.length} Eintrag/Einträge geprüft).`)
+    console.log(`\nNichts überfällig ohne Entscheidung (${rows.length} Eintrag/Einträge geprüft).`)
   }
   return stale
 }

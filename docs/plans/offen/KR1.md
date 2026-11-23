@@ -228,12 +228,10 @@ G1. **Handprüfung je Feld** ([Runbook §4](../../runbooks/MARKTVERGLEICH-BIBLIO
     nächsten Sitzung sagen „übernehmen" — sie fährt `--promote` und liefert
     aus. *Sonst:* Feld löschen; bleiben weniger als drei, den Entwurf
     verwerfen.
-G2. **Drei Marken ohne neuen Entwurf** · deine Entscheidung, ohne Klick auf
-    einer Seite. `apple` und `the-barn` lieferten diesmal „kein Text" (die
-    Startseite gab dem Abruf keinen lesbaren Text, am 2026-09-06 ging es
-    noch), `meta` hatte wieder kein belegtes Feld. Die zwei Einträge `apple`
-    und `the-barn` in der Bibliothek werden um den 2026-12-05 überfällig; der
-    Montags-Wächter öffnet dann ein Issue. *Entscheiden:* (a) mit einer
-    anderen Startadresse neu versuchen (wie bei anthropic `/company`),
-    (b) aus der Bibliothek nehmen (Runbook §6), oder (c) vorerst stehen
-    lassen und das Issue offen lassen.
+G2. **Drei Marken ohne neuen Entwurf** · ENTSCHIEDEN (David, 2026-11-23):
+    stehen lassen. `apple` und `the-barn` tragen in der Bibliothek den
+    Vermerk `keptStale`; der Montags-Wächter listet sie als „bewusst stehen
+    gelassen" und meldet sich erst nach dem 2027-02-21 wieder; `meta` bleibt
+    draußen. Kein Klick nötig. *Achtung:* `nike` und `anthropic` werden am
+    2026-12-06 ebenfalls überfällig — ohne G1 öffnet der Wächter am
+    2026-12-07 ein Issue für beide.

@@ -92,3 +92,42 @@ export function marketLibraryEntryIsStale(entry: MarketLibraryVerified, now: Dat
   const age = marketLibraryEntryAge(entry, now)
   return age === null || age > MARKET_LIBRARY_MAX_AGE_DAYS
 }
+
+/**
+ * BEWUSST STEHEN GELASSEN (MV1, Davids Entscheidung 2026-11-23).
+ *
+ * Für `apple` und `the-barn` lieferte das Neu-Rechnen am 2026-11-22 keinen
+ * Entwurf (die Startseiten gaben dem Abruf keinen lesbaren Text). David hat
+ * entschieden: STEHEN LASSEN. Ohne Vermerk hielte der Montags-Wächter
+ * (`.github/workflows/market-library-watch.yml`) dafür ein Issue offen, das
+ * „neu rechnen" verlangt — und solange es offen ist, meldet er auch keinen
+ * ANDEREN Eintrag, der danach überfällig wird. Der Vermerk stellt den Wächter
+ * für DIESEN Eintrag ruhig, aber:
+ *
+ * - SICHTBAR: das Werkzeug listet ihn weiter (eigene Zeile „bewusst stehen
+ *   gelassen"), und die Oberfläche zeigt dem Kunden das Alter wie bisher
+ *   (`stale` im Quellen-Wähler rechnet ohne den Vermerk).
+ * - BEFRISTET: die Entscheidung altert wie eine Prüfung. 90 Tage nach
+ *   `decidedAt` meldet sich der Wächter wieder — „vorerst" heisst nicht
+ *   „für immer".
+ * - NUR MIT NAME UND GRUND: wer, wann, warum — wie `verifiedAt`/`verifiedBy`.
+ */
+export interface MarketLibraryKeptStale {
+  readonly decidedAt: string
+  readonly decidedBy: string
+  readonly reason: string
+}
+
+/**
+ * Trägt der überfällige Eintrag einen GÜLTIGEN Vermerk? Unlesbares oder
+ * zukünftiges Datum gilt als kein Vermerk (fail-closed: der Wächter meldet).
+ */
+export function marketLibraryKeepIsActive(
+  entry: { readonly keptStale?: MarketLibraryKeptStale | null },
+  now: Date,
+): boolean {
+  const kept = entry.keptStale
+  if (!kept) return false
+  const age = marketLibraryEntryAge({ verifiedAt: kept.decidedAt }, now)
+  return age !== null && age >= 0 && age <= MARKET_LIBRARY_MAX_AGE_DAYS
+}

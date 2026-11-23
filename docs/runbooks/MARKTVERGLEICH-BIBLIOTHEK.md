@@ -134,7 +134,14 @@ Für **jedes** Feld im Entwurf:
       endet mit Exit 1. Seit 2026-11-09 läuft `--stale` jeden Montag in der CI
       (`.github/workflows/market-library-watch.yml`) und öffnet bei Überfälligen
       EIN Issue mit Label `marktvergleich-pflege`, das sich nach dem Neurechnen
-      selbst schließt.
+      selbst schließt. Entscheidet David, einen überfälligen Eintrag BEWUSST
+      STEHEN ZU LASSEN (z. B. weil das Neu-Rechnen keinen Entwurf liefert), bekommt
+      der Eintrag `keptStale: { decidedAt, decidedBy, reason }` (Regel in
+      `shared/marketLibraryAge.ts`): `--stale` listet ihn als „⏸ bewusst stehen
+      gelassen" und zählt ihn nicht, 90 Tage ab `decidedAt` meldet er sich wieder.
+      Der Kunde sieht das Alter weiter; die Fassung steigt dafür nicht. Ohne den
+      Vermerk hielte ein solcher Eintrag das Issue dauerhaft offen — und der
+      Wächter meldete keinen ANDEREN Eintrag mehr, der danach überfällig wird.
 
 Für den **Eintrag**:
 
