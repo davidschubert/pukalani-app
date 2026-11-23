@@ -62,6 +62,7 @@ beforeAll(async () => {
   vi.stubGlobal('defineEventHandler', (fn: unknown) => fn)
   vi.stubGlobal('readValidatedBody', async (event: FakeEvent, parse: (body: unknown) => unknown) => parse(event.body))
   vi.stubGlobal('requireTurnstile', async () => {})
+  vi.stubGlobal('useRuntimeConfig', () => ({ appwriteKey: 'test-server-secret', public: {} }))
   vi.stubGlobal('useRateLimitStore', () => ({ store, prefix: 'rl:test:' }))
   vi.stubGlobal('logEvent', vi.fn())
   vi.stubGlobal('logAuthEvent', async () => {})
@@ -155,6 +156,17 @@ describe('POST /api/auth/otp — Grenze je Empfänger', () => {
     const answer = await otp(ask('andere@example.com'))
     expect(createEmailToken).toHaveBeenCalledTimes(6)
     expect(answer.userId).toBe('user-andere')
+  })
+
+  it('V1: unbekannte Adresse über der Grenze ⇒ bei jeder Anfrage DIESELBE Kennung, wie ein vorhandenes Konto', async () => {
+    const ids = new Set<unknown>()
+    for (let i = 0; i < 8; i++) {
+      const answer = await otp(ask('niemand@example.com'))
+      if (i >= 5) ids.add(answer.userId)
+    }
+    // Gegenprobe zur alten Fassung: `ID.unique()` hätte hier drei Kennungen geliefert.
+    expect(ids.size).toBe(1)
+    expect(String([...ids][0])).toMatch(/^[0-9a-f]{20}$/)
   })
 
   it('zählt die stille Antwort bei geschlossener Registrierung nicht (dort geht keine Mail hinaus)', async () => {
@@ -251,5 +263,33 @@ describe('POST /api/auth/verification — Grenze je Empfänger (AB1 g)', () => {
     )
     expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(5)
     expect(createVerification).toHaveBeenCalledTimes(5)
+  })
+})
+
+describe('POST /api/auth/otp — V1: geschlossene Registrierung verrät nicht, ob es die Adresse gibt', () => {
+  it('unbekannte Adresse: dieselbe Kennung bei jeder Anfrage, in Appwrites Form', async () => {
+    registrationEnabled = false
+    const first = await otp(ask('niemand@example.com'))
+    const second = await otp(ask('niemand@example.com'))
+    const third = await otp(ask('Niemand@Example.com'))
+    expect(first.userId).toBe(second.userId)
+    expect(third.userId).toBe(first.userId)
+    expect(String(first.userId)).toMatch(/^[0-9a-f]{20}$/)
+    expect(Object.keys(first).sort()).toEqual(['ok', 'phrase', 'userId'])
+    expect(createEmailToken).not.toHaveBeenCalled()
+  })
+
+  it('vorhandenes Konto: weiter die echte Kennung (der zugestellte Code bleibt einlösbar)', async () => {
+    registrationEnabled = false
+    expect((await otp(ask('person@example.com'))).userId).toBe('user-person')
+    expect((await otp(ask('person@example.com'))).userId).toBe('user-person')
+    expect(createEmailToken).toHaveBeenCalledTimes(2)
+  })
+
+  it('Gegenprobe: zwei unbekannte Adressen bekommen VERSCHIEDENE Kennungen', async () => {
+    registrationEnabled = false
+    const a = await otp(ask('niemand@example.com'))
+    const b = await otp(ask('jemand-anderes@example.com'))
+    expect(a.userId).not.toBe(b.userId)
   })
 })

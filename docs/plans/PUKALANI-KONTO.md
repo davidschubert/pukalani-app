@@ -527,6 +527,8 @@ Jede Etappe ist für sich nützlich und einzeln rückholbar. Vor jeder steht nac
 
 Das Konzept der ersten Etappe (E1 samt E0) steht in
 [PUKALANI-KONTO-E1.md](PUKALANI-KONTO-E1.md).
+Das Konzept der zweiten (E2, zentrale Anmeldung) steht in
+[PUKALANI-KONTO-E2.md](PUKALANI-KONTO-E2.md).
 
 E1 und E2 gehören fachlich zusammen, werden aber getrennt ausgerollt: E1 ändert
 nur, **was im Cookie liegt** — die Formulare bleiben, wo sie sind. Erst E2
