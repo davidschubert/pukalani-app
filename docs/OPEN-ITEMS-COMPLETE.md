@@ -30,6 +30,53 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### FL2 — Zwei wacklige Tests mit gefundener Ursache: Zeit-Test der KI-Modelllisten und zwei Anwesenheits-Browser-Tests ✅ 2026-11-23
+
+**Was.** Zwei Nebenfunde aus PR 545 (Rauch-Test der Werkstatt, Notiz FL1).
+
+- **`packages/core/tests/aiModelEndpoints.test.ts` „beide Listen unter EINER
+  Frist"** maß die Wanduhr: zwei gestellte Abrufe à 40 ms mussten zusammen
+  unter 75 ms bleiben. Unter Last rot (lokal 6 von 48 Läufen mit zwölf
+  parallelen Prozessen: 78 bis 147 ms), obwohl beide Abrufe gleichzeitig
+  liefen. Jetzt entscheidet ein Ereignis: jeder gestellte Abruf wartet, bis
+  auch der zweite begonnen hat (Notbremse 1 s), und meldet, wie viele er dann
+  gesehen hat — erwartet `[2, 2]`. Keine Frist hochgesetzt.
+- **`apps/comments/e2e/presence-open-and-reconnect.spec.ts` (a) und
+  `presence-shared-poll.spec.ts`** hängten ihre Zähler schon VOR
+  `page.reload()` an die Aufwärm-Seite. In der langsamen CI steckt die noch in
+  ihrer eigenen Öffnung (`networkidle` wartet auf keinen Zeitgeber): ihre
+  Herzschläge bzw. ihr Abruf zählten mit. Beleg im CI-Lauf vom 2026-11-22
+  (`0.1 0.6 3.6 4.1`): ein Herzschlag 0,1 s nach dem Neuladen kann nicht vom
+  neuen Dokument kommen, dessen Antwort lokal frühestens nach 0,4 s da ist.
+  Jetzt wird die Aufwärm-Seite geschlossen und auf einem frischen Reiter
+  gemessen; das Fenster beginnt beim ersten Herzschlag bzw. ersten Abruf
+  DIESES Reiters (Ereignis statt Uhr). Die Grenzen (≤ 2 Herzschläge, ≤ 3
+  Abrufe in 45 s) sind unverändert.
+
+**Beweis.** Lokal nachgestellt mit sechsfach gedrosselter CPU
+(`Emulation.setCPUThrottlingRate`, nur in Wegwerf-Kopien der Specs): die alte
+Fassung rot im CI-Muster (`0.7 4.0 4.9`; `3.0 3.6 23.6 43.6`), die neue grün
+— 50 Fälle des Herzschlag-Tests und 50 des Abruf-Tests, gedrosselt, dazu der
+Zeit-Test 60-mal grün unter zwölffacher Last (vorher 6/48 rot), die
+Gegenprobe (Abrufe nacheinander statt gleichzeitig) rot mit `[1, 2]`.
+
+**Nicht gefunden.** Der Exit 141 von `ops/rollback.sh` im Rückweg-Test (FL1,
+MG1) zeigte sich in keiner Probe: 1.800 Fälle der Test-Datei unter
+zwanzigfacher Last, neun volle Core-Läufe zu dritt, viermal die ganze Suite
+zu zweit, dabei eine ERR-Falle im Skript (nur lokal, nicht eingecheckt), die
+jede scheiternde Zeile mit Exit-Code mitschrieb: nur die erwarteten Codes 4
+und 5 aus dem Umstellen. MG1 bleibt offen. Nebenbei unter dieser
+künstlichen Dreifach-Last (zwei Suiten plus gedrosselter Browser) lief
+einmal `serverConfigCheck.test.ts` (Cron-Prüfung, vier Skript-Läufe) in die
+30-s-Frist — reine Überlast der Probe, nicht angefasst.
+
+**Gelernt:** Ein Zähler, der VOR einem Neuladen an der Seite hängt, zählt die
+alte Seite mit — und die ist in einer langsamen CI noch nicht fertig. Messen
+auf einem frischen Reiter, Fenster ab dem ersten eigenen Ereignis. Langsame
+CI lokal nachstellen: CPU über CDP drosseln, nicht raten.
+
+---
+
 ### KK1 (c) — Kontingent-Zahlen in den Katalog: Daten-Migration control-042 aus der app.config, Konsole je Art, auf Production gefahren ✅ 2026-11-22
 
 **Was.** Davids Antworten vom 2026-11-22 zum Plan

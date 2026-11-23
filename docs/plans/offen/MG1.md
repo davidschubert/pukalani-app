@@ -34,3 +34,15 @@ jetzt spaltengenau, je App nur die Layer, die sie nutzt.
   Meldung), dann die Ursache suchen.
   Der rote Lauf vom 2026-11-20 war keiner von beiden: dort wackelte ein
   Test mit Zufallswerten, Ursache gefunden und behoben (COMPLETE „N20").
+
+- **(c) Probe vom 2026-11-23 (COMPLETE „FL2").** Der Exit 141 im Rückweg-Test
+  kam am 2026-11-22 zweimal lokal (macOS) unter zwei parallelen
+  `pnpm -r test`. Nachgestellt wurde mit einer ERR-Falle im Skript, die jede
+  scheiternde Zeile mitschreibt: 1.800 Fälle der Test-Datei unter
+  zwanzigfacher Last, neun volle Core-Läufe zu dritt, viermal die ganze Suite
+  zu zweit — kein 141, nur die erwarteten Codes 4 und 5. Auch die einzelnen
+  Pipe-Muster des Skripts (`printf | awk '… exit'`, die App-Liste über zwei
+  awk) blieben in je 3.000 bis 8.000 Läufen ohne 141. Auf macOS fehlt die
+  bash-Spur (bash 3.2 kennt `BASH_XTRACEFD` nicht); in der CI ist sie da.
+  Die zwei anderen Wackler aus derselben Notiz (Zeit-Test der
+  KI-Modelllisten, Anwesenheit im Browser) sind gefunden und behoben.
