@@ -159,7 +159,8 @@ describe('pruneDeletedComment — Wettlauf mit einer Antwort', () => {
       },
       get: async () => { throw new Error('unused') },
     }
-    const result = await pruneDeletedComment({} as H3Event, ops as never, tombstone, async () => false)
+    vi.stubGlobal('tenantDb', () => ops)
+    const result = await pruneDeletedComment({} as H3Event, tombstone, async () => false)
     expect(result).toEqual([])
     expect(created).toHaveLength(1)
     expect(created[0]).toMatchObject({ rowId: 'k-1', permissions: [readAny], data: { status: 'deleted', content: '', targetId: 'p-1' } })
@@ -172,7 +173,8 @@ describe('pruneDeletedComment — Wettlauf mit einer Antwort', () => {
     const tombstone = comment({ status: 'deleted' }) as unknown as Comment
     const create = vi.fn()
     const ops = { count: async () => 0, remove: async () => {}, create, get: async () => null }
-    expect(await pruneDeletedComment({} as H3Event, ops as never, tombstone, async () => false)).toEqual(['k-1'])
+    vi.stubGlobal('tenantDb', () => ops)
+    expect(await pruneDeletedComment({} as H3Event, tombstone, async () => false)).toEqual(['k-1'])
     expect(create).not.toHaveBeenCalled()
   })
 })

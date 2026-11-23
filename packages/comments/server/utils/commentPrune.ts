@@ -62,10 +62,12 @@ async function hasChildren(ops: TenantDb, commentId: string): Promise<boolean> {
  */
 export async function pruneDeletedComment(
   event: H3Event,
-  ops: TenantDb,
   tombstone: Comment,
   probe: OpenReportsProbe = defaultOpenReportsProbe,
 ): Promise<string[]> {
+  // Operator-Klinke wie das Löschen selbst (`actor: 'member'`: gehandelt hat
+  // die Autorin, die Inhalts-Sperre M13 gilt) — DER SERVER SCHREIBT (SEC-002).
+  const ops = tenantDb(event, { as: 'operator', actor: 'member' })
   const removed: string[] = []
   let current: Comment | null = tombstone
   while (current && current.status === 'deleted') {

@@ -135,7 +135,7 @@ export default defineEventHandler(async (event): Promise<DeletedCommentResponse>
    * deren Aufräumen den Kommentar noch findet. `removedIds` sagt dem Browser,
    * was er aus der Liste nimmt; leer = der Platzhalter bleibt (mit Antworten).
    */
-  const removedIds = await pruneDeletedComment(event, ops, tombstone)
+  const removedIds = await pruneDeletedComment(event, tombstone)
 
   return { ...toPublicCommentRow(tombstone), removedIds }
 })
