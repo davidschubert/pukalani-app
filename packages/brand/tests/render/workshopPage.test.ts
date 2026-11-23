@@ -136,9 +136,16 @@ registerEndpoint(`${designBase}/steps/${DESIGN_STEP_KEY}`, {
   method: 'GET',
   handler: () => designStepDetail(),
 })
+/** Was das letzte gestellte Speichern der Farbwelt für `h.base` bekam (s. dort). */
+const designSaved = { base: '' }
 registerEndpoint(`${designBase}/steps/${DESIGN_STEP_KEY}`, {
   method: 'PATCH',
-  handler: async event => designSave(await readBody(event)),
+  handler: async (event) => {
+    const body = await readBody(event)
+    const base = body?.slots?.['h.base']?.value
+    if (typeof base === 'string') designSaved.base = base
+    return designSave(body)
+  },
 })
 registerEndpoint(`${designBase}/messages`, event => designMessages(String(getQuery(event).session ?? '')))
 for (const route of ['converse', 'generate']) {
@@ -527,6 +534,18 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     expect(store.slotValue('h.base')).toBe(target)
     expect(baseCards().filter(card => card.getAttribute('aria-pressed') === 'true').map(hexOf)).toEqual([target])
 
+    // DEN FALL VOLLSTÄNDIG VERLASSEN (FL1-Falle, PR 563): die Wahl speichert
+    // der Autosave verzögert. Endet der Fall vorher, kommt die Antwort unter
+    // Last erst im NÄCHSTEN Fall an und schreibt die Felder dieses Profils in
+    // den Store, der schon das andere Kapitel zeigt (gemessen: `a.category`
+    // fehlte, im Store standen `h.*`). Gewartet wird auf das Ereignis: die
+    // Wahl ist beim Server angekommen, verbucht, und nichts ist mehr offen.
+    await vi.waitFor(() => {
+      expect(designSaved.base).toBe(target)
+      expect(store.hasPendingWork).toBe(false)
+      expect(store.syncState).toBe('saved')
+    }, { timeout: 10_000 })
+
     expect(calls.ai).toBe(0)
     expect(unexpected(warn)).toEqual([])
     expect(unexpected(error)).toEqual([])
@@ -614,9 +633,11 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     const editor = () => main().findAll('textarea')
       .find(entry => (entry.element as HTMLTextAreaElement).value === store.slotValue(WORKSHOP_VERSIONS_SLOT))
 
-    // Die Karte: Feld-Name, die erste Fassung, die Weiter-Wege.
-    expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_FIRST_DRAFT)
-    expect(main().text()).toContain(WORKSHOP_FIRST_DRAFT)
+    // Die Karte: Feld-Name, die erste Fassung, die Weiter-Wege. Auf den
+    // geladenen Stand WARTEN (Ende des gestellten Abrufs): unter Last in der
+    // CI stand das Feld nach einem `flushPromises` noch leer (PR 563).
+    await vi.waitFor(() => expect(store.slotValue(WORKSHOP_VERSIONS_SLOT)).toBe(WORKSHOP_FIRST_DRAFT), { timeout: 10_000 })
+    await vi.waitFor(() => expect(main().text()).toContain(WORKSHOP_FIRST_DRAFT))
     expect(editor()).toBeUndefined()
     expect(buttonNamed(wrapper, ws.versions.open).exists()).toBe(true)
 
