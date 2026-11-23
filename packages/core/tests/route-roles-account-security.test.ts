@@ -8,6 +8,7 @@ import {
 import { appwriteFake } from './support/appwriteFake'
 import { AVATARS_BUCKET, coreKit } from './support/coreRouteKit'
 import { requireRecentAuth } from '../server/utils/recentAuth'
+import { registerUserDataContributor } from '../server/utils/userData'
 
 /**
  * SITZUNGEN, ZWEI-FAKTOR, EXPORT/LÖSCHUNG, ABLAGE — ROLLEN-TESTS AN DER
@@ -353,6 +354,79 @@ describe('DELETE /api/auth/account — nur das eigene Konto, nur mit frischer An
     const run = await probeRoute(load, { who: 'member', globals: deleteGlobals(deleted) })
     expect(run.status).toBe(403)
     expect(deleted).toEqual([])
+  })
+})
+
+// ── Vorher sagen, was das Löschen nicht darf oder zurücklässt (LA1) ───────
+
+describeAccountRoute('GET /api/auth/account/deletion-check', () => import('../server/api/auth/account/deletion-check.get'), {
+  globals: coreKit().globals,
+})
+
+describe('GET /api/auth/account/deletion-check — nur das eigene Konto', () => {
+  const load = () => import('../server/api/auth/account/deletion-check.get')
+  type Check = { lastAdmin: boolean, warnings: Array<{ key: string, textKey: string, items: string[] }>, incomplete: boolean }
+  const quietContributor = () => registerUserDataContributor({ id: 'probe-warnings', exportUserData: async () => ({}), deleteUserData: async () => ({ deleted: 0, anonymized: 0 }) })
+
+  afterEach(quietContributor)
+
+  it('einziger aktiver Admin: lastAdmin true', async () => {
+    appwriteFake.reply('admin.users.list', () => ({ total: 1, users: [{ $id: userIdOf('operator') }] }))
+    const run = await probeRoute(load, { who: 'operator', globals: coreKit().globals })
+    expect(run.status).toBe(200)
+    expect((run.result as Check).lastAdmin).toBe(true)
+  })
+
+  it('Gegenprobe: ein zweiter aktiver Admin ⇒ lastAdmin false', async () => {
+    appwriteFake.reply('admin.users.list', () => ({ total: 2, users: [{ $id: userIdOf('operator') }, { $id: 'u-anderer-admin' }] }))
+    const run = await probeRoute(load, { who: 'operator', globals: coreKit().globals })
+    expect((run.result as Check).lastAdmin).toBe(false)
+  })
+
+  it('kein Admin: fragt gar nicht nach Admins, lastAdmin false', async () => {
+    const run = await probeRoute(load, { who: 'member', globals: coreKit().globals })
+    expect((run.result as Check).lastAdmin).toBe(false)
+    expect(appwriteFake.argsOf('admin.users.list')).toEqual([])
+  })
+
+  it('fragt die Warnungen der Layer mit der Konto-Id aus der SITZUNG, nie aus der Anfrage', async () => {
+    const asked: string[] = []
+    registerUserDataContributor({
+      id: 'probe-warnings',
+      exportUserData: async () => ({}),
+      deleteUserData: async () => ({ deleted: 0, anonymized: 0 }),
+      deletionWarnings: async (_event, userId) => {
+        asked.push(userId)
+        return [{ key: 'probe.title', textKey: 'probe.text', items: ['Probe-Community'] }, { key: 'probe.empty', textKey: 'probe.text', items: [] }]
+      },
+    })
+    const run = await probeRoute(load, { who: 'stranger', query: { userId: userIdOf('owner') }, globals: coreKit().globals })
+    expect(run.status).toBe(200)
+    expect(asked).toEqual([userIdOf('stranger')])
+    expect(run.result).toEqual({ lastAdmin: false, warnings: [{ key: 'probe.title', textKey: 'probe.text', items: ['Probe-Community'] }], incomplete: false })
+  })
+
+  it('ein Layer gestört: incomplete statt „nichts betroffen“', async () => {
+    registerUserDataContributor({
+      id: 'probe-warnings',
+      exportUserData: async () => ({}),
+      deleteUserData: async () => ({ deleted: 0, anonymized: 0 }),
+      deletionWarnings: async () => {
+        throw new Error('naht down')
+      },
+    })
+    const run = await probeRoute(load, { who: 'member', globals: coreKit().globals })
+    expect(run.status).toBe(200)
+    expect((run.result as Check).incomplete).toBe(true)
+  })
+
+  it('Admin-Zählung gestört: incomplete, lastAdmin false (die Löschung prüft selbst unter der Sperre)', async () => {
+    appwriteFake.reply('admin.users.list', () => {
+      throw new Error('appwrite down')
+    })
+    const run = await probeRoute(load, { who: 'operator', globals: coreKit().globals })
+    expect(run.status).toBe(200)
+    expect(run.result).toMatchObject({ lastAdmin: false, incomplete: true })
   })
 })
 

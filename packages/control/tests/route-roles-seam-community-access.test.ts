@@ -44,6 +44,7 @@ const preview = () => import('../server/api/control/community/invites/preview.po
 const team = () => import('../server/api/control/community/team.post')
 const userData = () => import('../server/api/control/community/members/user-data.post')
 const userErase = () => import('../server/api/control/community/members/user-erase.post')
+const userErasePreview = () => import('../server/api/control/community/members/user-erase-preview.post')
 
 /** Eine Community, die zu einem ANDEREN Projekt gehört. */
 const SILO_COMMUNITY = 'c-silo'
@@ -232,6 +233,7 @@ describe('POST /api/control/community/team — das Projekt muss das der Naht sei
 for (const [name, load] of [
   ['POST /api/control/community/members/user-data', userData],
   ['POST /api/control/community/members/user-erase', userErase],
+  ['POST /api/control/community/members/user-erase-preview', userErasePreview],
 ] as const) {
   describeSeamSecret(name, load, {
     body: { runtimeProjectId: POOL_PROJECT, runtimeUserId: runtimeUserIdOf('viewer') },
@@ -258,5 +260,42 @@ describe('POST /api/control/community/members/user-erase — trifft nur das gena
     expect(run.status, run.error?.statusText).toBe(200)
     expect(memberRowsOf(run, runtimeUserIdOf('viewer'))).toEqual([])
     expect(memberRowsOf(run, runtimeUserIdOf('owner'))).toHaveLength(1)
+  })
+})
+
+describe('POST /api/control/community/members/user-erase-preview — sagt vorher, was ohne Inhaber dastünde', () => {
+  type Preview = { retained: Array<{ communityId: string, communityName: string, role: string, reason: string }> }
+
+  it('der einzige Owner: seine Community steht in der Liste, NICHTS geändert', async () => {
+    const run = await probeControlRoute(userErasePreview, {
+      secret: 'right',
+      body: { runtimeProjectId: POOL_PROJECT, runtimeUserId: runtimeUserIdOf('owner') },
+    })
+    expect(run.status, run.error?.statusText).toBe(200)
+    const retained = (run.result as Preview).retained
+    expect(retained.map(entry => [entry.communityId, entry.role, entry.reason])).toEqual([[COMMUNITY_ID, 'owner', 'last_owner']])
+    // Gegenprobe: die Vorschau schreibt nicht — die Owner-Zeile trägt ihre Adresse weiter.
+    const [ownerRow] = memberRowsOf(run, runtimeUserIdOf('owner'))
+    expect(ownerRow?.email).toBe('owner@example.test')
+  })
+
+  it('ein viewer: leere Liste (seine Zeile dürfte einfach gehen)', async () => {
+    const run = await probeControlRoute(userErasePreview, {
+      secret: 'right',
+      body: { runtimeProjectId: POOL_PROJECT, runtimeUserId: runtimeUserIdOf('viewer') },
+    })
+    expect(run.status, run.error?.statusText).toBe(200)
+    expect((run.result as Preview).retained).toEqual([])
+    expect(memberRowsOf(run, runtimeUserIdOf('viewer'))).toHaveLength(1)
+  })
+
+  it('kündigt genau an, was die Löschung danach zurückhält', async () => {
+    const body = { runtimeProjectId: POOL_PROJECT, runtimeUserId: runtimeUserIdOf('owner') }
+    const preview = await probeControlRoute(userErasePreview, { secret: 'right', body })
+    resetControlWorld()
+    const erased = await probeControlRoute(userErase, { secret: 'right', body })
+    expect(erased.status, erased.error?.statusText).toBe(200)
+    const retainedByErase = (erased.result as Preview).retained.map(entry => entry.communityId)
+    expect((preview.result as Preview).retained.map(entry => entry.communityId)).toEqual(retainedByErase)
   })
 })

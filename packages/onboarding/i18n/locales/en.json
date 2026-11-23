@@ -759,6 +759,10 @@
         "copyright": "Copyright",
         "other": "Something else"
       }
+    },
+    "accountDelete": {
+      "soleOwner": "You are the only owner of this community | You are the only owner of these {count} communities",
+      "soleOwnerText": "Transfer ownership first under “Members” in the community. Otherwise it is left without an owner, and nobody can manage or pay for it any more."
     }
   },
   "admin": {

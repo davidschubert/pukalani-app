@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { isLastAdminError } from '../../../shared/lastAdmin'
+import type { AccountDeletionCheck } from '../../../shared/accountDeletion'
 
 const { t } = useI18n()
 const localePath = useLocalePath()
@@ -35,6 +36,22 @@ const notices = computed<string[]>(() => {
   return lines
 })
 
+/**
+ * VORHER SAGEN, WAS DAS LÖSCHEN NICHT DARF ODER ZURÜCKLÄSST (LA1): der letzte
+ * aktive Admin sieht den Hinweis schon vor dem Klick und einen gesperrten
+ * Knopf (die Route lehnt ohnehin mit 409 `last_admin` ab), jede Warnung eines
+ * Layers (z. B. „einziger Inhaber") steht über dem Knopf. Nur im Browser
+ * gefragt — die Antwort gehört dem angemeldeten Konto.
+ */
+const { data: check, error: checkError, refresh: refreshCheck } = useFetch<AccountDeletionCheck>('/api/auth/account/deletion-check', {
+  server: false,
+  lazy: true,
+})
+const blockedAsLastAdmin = computed(() => check.value?.lastAdmin === true)
+// Prüfung nicht erreichbar: der Knopf bleibt (die Route prüft selbst unter der
+// Sperre), die Karte sagt aber, dass die Liste fehlen kann.
+const checkIncomplete = computed(() => Boolean(checkError.value) || check.value?.incomplete === true)
+
 async function deleteAccount() {
   try {
     const ok = await confirm({
@@ -53,6 +70,7 @@ async function deleteAccount() {
     // Der letzte aktive Admin löscht sich nicht (409 `last_admin`) — gelöscht
     // und gesperrt wurde nichts, also NICHT der Text „vielleicht halb".
     if (isLastAdminError(error)) {
+      await refreshCheck()
       toast.add({
         title: t('account.delete.lastAdmin'),
         description: t('account.delete.lastAdminDescription'),
@@ -98,7 +116,45 @@ async function deleteAccount() {
           </ul>
         </section>
 
-        <UButton :label="t('account.delete.button')" color="error" @click="deleteAccount" />
+        <UAlert
+          v-if="blockedAsLastAdmin"
+          color="warning"
+          variant="subtle"
+          icon="i-ph-shield-warning"
+          :title="t('account.delete.lastAdmin')"
+          :description="t('account.delete.lastAdminDescription')"
+        />
+
+        <UAlert
+          v-for="warning in check?.warnings ?? []"
+          :key="warning.key"
+          color="warning"
+          variant="subtle"
+          icon="i-ph-warning"
+          :title="t(warning.key, { count: warning.items.length }, warning.items.length)"
+        >
+          <template #description>
+            <ul class="mt-1 list-disc ps-5">
+              <li v-for="item in warning.items" :key="item">
+                {{ item }}
+              </li>
+            </ul>
+            <p class="mt-2">
+              {{ t(warning.textKey) }}
+            </p>
+          </template>
+        </UAlert>
+
+        <p v-if="checkIncomplete" class="text-sm text-muted">
+          {{ t('account.delete.checkIncomplete') }}
+        </p>
+
+        <UButton
+          :label="t('account.delete.button')"
+          color="error"
+          :disabled="blockedAsLastAdmin"
+          @click="deleteAccount"
+        />
       </div>
     </template>
   </UPageCard>

@@ -1,4 +1,4 @@
-import { communityDeleteUserData, communityExportUserData } from '../utils/communityUserData'
+import { communityDeleteUserData, communityDeletionWarnings, communityExportUserData } from '../utils/communityUserData'
 
 /**
  * Registriert den GDPR-Contributor des onboarding-Layers beim core-Vertrag
@@ -14,5 +14,6 @@ export default defineNitroPlugin(() => {
     id: 'onboarding',
     exportUserData: communityExportUserData,
     deleteUserData: communityDeleteUserData,
+    deletionWarnings: communityDeletionWarnings,
   })
 })

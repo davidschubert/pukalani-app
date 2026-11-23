@@ -417,7 +417,8 @@
         "now": "Gone right away: your account, your profile and all sign-ins. What you wrote is emptied – where a conversation would otherwise fall apart, a placeholder without your name stays. Your votes, reactions and sign-ups are removed.",
         "backup": "For 30 days: we keep a backup copy of your data. Only the operator can open it. After that, it is deleted automatically.",
         "irreversible": "This cannot be undone. Your account cannot be restored."
-      }
+      },
+      "checkIncomplete": "Part of the check could not be reached just now. Something may be missing above – try again later."
     },
     "twoFactor": {
       "title": "Two-factor",

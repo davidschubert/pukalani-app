@@ -12,6 +12,7 @@ import {
   type CommunityUserDataExport,
   type InviteCodeExport,
   type InviteRequestExport,
+  type MembershipErasureDecision,
   type RetainedMembership,
   type TrialClaimExport,
 } from '../../shared/communityTeam'
@@ -417,22 +418,20 @@ export async function exportCommunityUserData(
  * auf den Voll-Erfolg aller Contributors — ein stillgelegter Fehler hier wäre
  * genau die Lücke, die dieses Gate verhindern soll.
  */
-export async function eraseCommunityUserData(
+/**
+ * Jede Mitgliedschaft des Kontos mit der Entscheidung `decideMembershipErasure`
+ * — EINE Rechnung für die Löschung UND die Vorschau davor
+ * (`previewCommunityErasure`), damit „was die Seite ankündigt" und „was die
+ * Löschung tut" nicht auseinanderlaufen.
+ */
+async function decideOwnMemberships(
   event: H3Event,
   runtimeProjectId: string,
   runtimeUserId: string,
-  email: string,
-): Promise<CommunityErasureResult> {
-  const databaseId = useRuntimeConfig(event).public.appwriteDatabaseId
-  const admin = createAdminClient(event)
+): Promise<Array<{ row: CommunityMemberRow, community: TenantRow | null, decision: MembershipErasureDecision }>> {
   const loadCommunity = communityLoader(event)
-
-  const rows = await listOwnMemberships(event, runtimeProjectId, runtimeUserId)
-  const retained: RetainedMembership[] = []
-  let deleted = 0
-  let anonymized = 0
-
-  for (const row of rows) {
+  const decided: Array<{ row: CommunityMemberRow, community: TenantRow | null, decision: MembershipErasureDecision }> = []
+  for (const row of await listOwnMemberships(event, runtimeProjectId, runtimeUserId)) {
     const community = await loadCommunity(row.communityId)
     // Community weg (Row gelöscht) ⇒ die Mitgliedschaft schützt nichts mehr.
     // Die Owner-Zählung braucht ALLE Zeilen DIESER Community, nicht nur die
@@ -445,19 +444,58 @@ export async function eraseCommunityUserData(
       members: members.map(memberFacts),
       communityStatus: community?.status ?? 'disabled',
     })
+    decided.push({ row, community, decision })
+  }
+  return decided
+}
 
+function retainedMembership(row: CommunityMemberRow, community: TenantRow | null): RetainedMembership {
+  return {
+    communityId: row.communityId,
+    communityName: communityLabel(community, row.communityId),
+    role: row.role,
+    reason: 'last_owner',
+  }
+}
+
+/**
+ * VORSCHAU VOR DER LÖSCHUNG (2026-11-23): welche Communities nach dem Löschen
+ * dieses Kontos ohne Inhaber dastünden. Nur lesen. Dieselbe Rechnung wie die
+ * Löschung (`decideOwnMemberships`).
+ */
+export async function previewCommunityErasure(
+  event: H3Event,
+  runtimeProjectId: string,
+  runtimeUserId: string,
+): Promise<RetainedMembership[]> {
+  const decided = await decideOwnMemberships(event, runtimeProjectId, runtimeUserId)
+  return decided
+    .filter(entry => entry.decision.action !== 'delete')
+    .map(entry => retainedMembership(entry.row, entry.community))
+}
+
+export async function eraseCommunityUserData(
+  event: H3Event,
+  runtimeProjectId: string,
+  runtimeUserId: string,
+  email: string,
+): Promise<CommunityErasureResult> {
+  const databaseId = useRuntimeConfig(event).public.appwriteDatabaseId
+  const admin = createAdminClient(event)
+  const loadCommunity = communityLoader(event)
+
+  const retained: RetainedMembership[] = []
+  let deleted = 0
+  let anonymized = 0
+
+  for (const { row, community, decision } of await decideOwnMemberships(event, runtimeProjectId, runtimeUserId)) {
     if (decision.action === 'delete') {
       await admin.tablesDB.deleteRow({ databaseId, tableId: COMMUNITY_MEMBERS_TABLE, rowId: row.$id })
       deleted++
       continue
     }
 
-    retained.push({
-      communityId: row.communityId,
-      communityName: communityLabel(community, row.communityId),
-      role: row.role,
-      reason: 'last_owner',
-    })
+    retained.push(retainedMembership(row, community))
     if (row.email === '') continue // schon entpersonalisiert (Re-Run)
     await admin.tablesDB.updateRow<CommunityMemberRow>({
       databaseId, tableId: COMMUNITY_MEMBERS_TABLE, rowId: row.$id, data: { email: '' },
