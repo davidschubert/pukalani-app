@@ -30,6 +30,44 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### MV1-S — Marktvergleich: „stehen lassen" als Vermerk, damit der Montags-Wächter nicht erblindet ✅ 2026-11-23
+
+**Was.** David hat für `apple`, `the-barn` und `meta` entschieden: stehen
+lassen (das Neu-Rechnen am 2026-11-22 lieferte keinen Entwurf). Geklärt, was
+ohne Änderung passiert wäre: alle VIER Einträge der Bibliothek (`lib-5`, alle
+geprüft am 2026-09-06) werden am 2026-12-06 überfällig. Der Wächter
+`.github/workflows/market-library-watch.yml` hätte am Montag, 2026-12-07,
+EIN Issue geöffnet und es danach Woche für Woche nur offen gelassen („schon
+offen — nichts zu tun") — kein Issue je Woche, aber eins, das „neu rechnen"
+verlangt, obwohl entschieden ist, und das nie zugeht. Solange es offen ist,
+meldet der Wächter keinen ANDEREN Eintrag mehr, der überfällig wird. Im
+Produkt ändert sich durch „überfällig" nur der Hinweis im Quellen-Wähler.
+
+**Gebaut.** Ein Feld `keptStale: { decidedAt, decidedBy, reason }` am
+Bibliotheks-Eintrag (Schema in `packages/market/shared/marketLibrary.ts`,
+Regel `marketLibraryKeepIsActive` in `shared/marketLibraryAge.ts`); gesetzt an
+`apple` und `the-barn`. `market-library-compute.mjs --stale` listet solche
+Einträge in einer eigenen Zeile („⏸ … Ruhig bis 2027-02-21") und zählt sie
+nicht für den Exit-Code; 90 Tage nach der Entscheidung meldet er sie wieder.
+Der Kunde sieht das Alter unverändert, die Fassung steigt nicht (das Feld geht
+in keinen Bericht ein). `meta` steht nicht in der Bibliothek — nichts zu tun.
+Keine Daten auf Production geändert, kein KI-Lauf.
+
+**Beweis.** `--stale --now 2026-12-07`: apple/the-barn als ⏸, nike/anthropic
+als ⚠, Exit 1; `--now 2027-02-22`: alle vier ⚠. Tests in
+`marketLibrary.test.ts` (Frist, unlesbares/zukünftiges Datum, Kunde sieht
+`stale` weiter, Schema) und `marketLibraryScript.test.ts`; Gegenprobe (Regel
+gibt immer „kein Vermerk") ⇒ beide Fälle rot. Offen bleibt nike/anthropic:
+ohne Davids Handprüfung (KR1 G1) öffnet der Wächter am 2026-12-07 ein Issue —
+das ist dann echter Handlungsbedarf.
+
+**Gelernt:** Ein Wächter mit „ein offenes Issue reicht" erblindet, sobald ein
+Befund dauerhaft gewollt ist. Eine Entscheidung gegen den Wächter gehört als
+befristeter, begründeter Vermerk an den Gegenstand — nicht als Issue, das man
+offen lässt.
+
+---
+
 ### SA1 — Nie der letzte aktive Admin: Löschen, Sperren und Entzug von `admin` unter einer Projekt-Sperre ✅ 2026-11-23
 
 **Anlass.** Am 2026-11-22 wurde auf Production über „Konto löschen" das einzige
