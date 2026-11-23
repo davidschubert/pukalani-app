@@ -53,6 +53,7 @@ export const ENV_NOT_REQUIRED = {
   NUXT_CONTACT_EMAIL: 'Empfänger des Kontaktformulars von apps/photos; die App wird nicht ausgerollt, und der Code hat einen Standard.',
 
   // Eintrittskarte je Seite (PK1 E1a): optional, ohne Werte gilt „off" wie vor E1.
+  NUXT_PUBLIC_CENTRAL_LOGIN: 'Schalter der zentralen Anmeldung, Prototyp PK1 E2 (off | on); leer heißt off, der Code läuft dann wie vorher. Rückweg ohne Ausliefern: auf off setzen und neu starten (Kopf von core/shared/centralLogin.ts).',
   NUXT_SITE_CARD_MODE: 'Schalter der Eintrittskarte je Seite (off | read | write); leer heißt off, der Code läuft dann wie vor E1. Rückweg ohne Ausliefern: auf off setzen und neu starten (Kopf von core/server/utils/siteCard.ts).',
   NUXT_SITE_CARD_KEY: 'Schlüssel der Eintrittskarte (32 Byte base64); nur nötig, wenn NUXT_SITE_CARD_MODE nicht off ist — ohne ihn gilt off und eine Log-Zeile site_card.config_invalid.',
   NUXT_SITE_CARD_PREVIOUS_KEY: 'Nur während eines Tauschs des Karten-Schlüssels gesetzt (nur zum Lesen); leer heißt „kein Tausch".',
