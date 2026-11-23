@@ -1,5 +1,7 @@
 import type { H3Event } from 'h3'
 import { forgetAccountSessions } from './sessionAccount'
+import { ADMIN_LABEL, LAST_ADMIN_CODE } from '../../shared/lastAdmin'
+import { lastAdminDeps, withLastAdminGuard, type LastAdminDeps } from './lastAdmin'
 
 /**
  * DER EINE SCHREIBER FÜR KONTO-LABELS (SEC-024, seit 2026-11-13).
@@ -33,6 +35,10 @@ import { forgetAccountSessions } from './sessionAccount'
  *  3. NACHLESEN: steht ein zu entfernendes Label noch da (oder fehlt ein
  *     hinzuzufügendes), wird EINMAL wiederholt. Höchstens zwei
  *     Schreibvorgänge, drei Lesevorgänge.
+ *  3b. LETZTER AKTIVER ADMIN: wer `admin` ENTZIEHT, schreibt unter der
+ *     Projekt-Sperre und nur, wenn ein anderer aktiver Admin bleibt
+ *     (`lastAdmin.ts`) — sonst `{ ok: false, reason: 'last_admin' }`. Ohne
+ *     Request (Users-API-Attrappe, Lauf) nur mit eingespritzter Prüfung.
  *  4. Das ERGEBNIS zurückgeben — nie nur loggen. Was der Aufrufer daraus macht
  *     (Fehler an die Oberfläche, still weiter, zählen), entscheidet er.
  *
@@ -52,7 +58,7 @@ export interface UserLabelChange {
   remove?: readonly string[]
 }
 
-export type UserLabelsFailure = 'not_found' | 'invalid_label' | 'unavailable' | 'verify_failed'
+export type UserLabelsFailure = 'not_found' | 'invalid_label' | 'unavailable' | 'verify_failed' | typeof LAST_ADMIN_CODE
 
 export type UserLabelsResult =
   | { ok: true, changed: boolean, labels: string[] }
@@ -118,6 +124,7 @@ export async function mutateUserLabels(
   source: H3Event | UserLabelsApi | undefined,
   userId: string,
   change: UserLabelChange,
+  options: { lastAdmin?: LastAdminDeps } = {},
 ): Promise<UserLabelsResult> {
   const add = [...new Set(change.add ?? [])]
   const remove = [...new Set(change.remove ?? [])]
@@ -140,7 +147,37 @@ export async function mutateUserLabels(
   // Labels tragen Rollen und Publikum: der Anmelde-Merker (Q12) darf den alten
   // Stand nicht weiterreichen — geräumt wird nach jedem Versuch, auch einem
   // gescheiterten (er kann halb geschrieben haben).
+  // Entzug von `admin` nur unter der Prüfung „letzter aktiver Admin". Eine
+  // Users-API-Attrappe ohne eingespritzte Prüfung darf `admin` nicht entziehen:
+  // eine Sicherung, die nicht prüfen kann, lehnt ab.
+  let guard: LastAdminDeps | null = null
+  if (remove.includes(ADMIN_LABEL)) {
+    if (options.lastAdmin) guard = options.lastAdmin
+    else if (isUsersApi(source)) return { ok: false, reason: 'unavailable', message: 'admin removal needs the last-admin check' }
+    else {
+      try {
+        guard = lastAdminDeps(source)
+      }
+      catch (error) {
+        return { ok: false, reason: 'unavailable', message: messageOf(error) }
+      }
+    }
+  }
+
   return await serialize(userId, async (): Promise<UserLabelsResult> => {
+    if (!guard) return await writeLabels()
+    try {
+      return await withLastAdminGuard(undefined, userId, writeLabels, guard)
+    }
+    catch (error) {
+      if ((error as { data?: { code?: unknown } } | null)?.data?.code === LAST_ADMIN_CODE) {
+        return { ok: false, reason: LAST_ADMIN_CODE }
+      }
+      return { ok: false, reason: 'unavailable', message: messageOf(error) }
+    }
+  }).finally(() => forgetAccountSessions(userId))
+
+  async function writeLabels(): Promise<UserLabelsResult> {
     let changed = false
     let lastError = ''
     for (let attempt = 0; attempt <= MAX_WRITES; attempt++) {
@@ -175,5 +212,5 @@ export async function mutateUserLabels(
     return lastError
       ? { ok: false, reason: 'verify_failed', message: lastError }
       : { ok: false, reason: 'verify_failed' }
-  }).finally(() => forgetAccountSessions(userId))
+  }
 }

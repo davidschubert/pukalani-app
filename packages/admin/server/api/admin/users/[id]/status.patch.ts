@@ -17,14 +17,13 @@ export default defineEventHandler(async (event) => {
   if (blocked && userId === adminUser.$id) {
     throw createError({ status: 400, statusText: 'You cannot block your own account' })
   }
-  // Den letzten Admin nicht aussperren
-  if (blocked) {
-    await assertNotLastAdmin(event, userId)
-  }
-
   const admin = createAdminClient(event)
-  // Appwrite-Semantik: status true = aktiv, false = blockiert
-  const updated = await admin.users.updateStatus({ userId, status: !blocked })
+  // Appwrite-Semantik: status true = aktiv, false = blockiert.
+  // Den letzten aktiven Admin nicht aussperren: das Sperren läuft unter der
+  // Projekt-Sperre und nur, wenn ein anderer aktiver Admin bleibt (409
+  // `last_admin`, core/server/utils/lastAdmin.ts). Entsperren braucht nichts.
+  const write = () => admin.users.updateStatus({ userId, status: !blocked })
+  const updated = await (blocked ? withLastAdminGuard(event, userId, write) : write())
     .catch((error) => { throw toH3Error(error, 'User not found') })
   // Gesperrt heißt sofort gesperrt — auch im Anmelde-Merker (Q12).
   forgetAccountSessions(userId)

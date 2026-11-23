@@ -395,6 +395,8 @@
       "success": "Account deleted.",
       "failed": "Deletion failed — please try again.",
       "failedDescription": "The deletion did not complete. Your account may already be locked and partly emptied. Try again later – if it still does not work, get in touch with us.",
+      "lastAdmin": "You are the last admin.",
+      "lastAdminDescription": "Without an admin, nobody could manage anything any more. Make someone else an admin first – then you can delete your account. Nothing was deleted.",
       "reauthText": "Your last sign-in was more than 10 minutes ago. Sign in again briefly — you will come straight back here and can delete your account. Nothing has been deleted.",
       "notice": {
         "title": "What happens when you delete",
