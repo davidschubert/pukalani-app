@@ -759,6 +759,10 @@
         "copyright": "Urheberrecht",
         "other": "Etwas anderes"
       }
+    },
+    "accountDelete": {
+      "soleOwner": "Du bist der einzige Inhaber dieser Community | Du bist der einzige Inhaber dieser {count} Communities",
+      "soleOwnerText": "Übertrage den Besitz vorher unter „Mitglieder“ der Community. Sonst bleibt sie ohne Inhaber, und niemand kann sie mehr verwalten oder bezahlen."
     }
   },
   "admin": {

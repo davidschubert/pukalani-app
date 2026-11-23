@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import type { AccountDeletionWarning } from '../../shared/accountDeletion'
 
 /**
  * UserDataContributor-Vertrag (GDPR-Export/-Löschung, CONCEPT A14).
@@ -53,6 +54,14 @@ export interface UserDataContributor {
    * (oder nichts) und terminiert erfolgreich.
    */
   deleteUserData(event: H3Event, userId: string): Promise<UserDataDeleteResult>
+  /**
+   * OPTIONAL: was die Person VOR dem Löschen des eigenen Kontos wissen muss
+   * (`GET /api/auth/account/deletion-check`) — z. B. „du bist der einzige
+   * Inhaber von …". Nur lesen, nichts ändern; eine Warnung verhindert die
+   * Löschung nicht. Darf werfen: die Seite sagt dann, dass die Liste
+   * unvollständig ist.
+   */
+  deletionWarnings?(event: H3Event, userId: string): Promise<AccountDeletionWarning[]>
 }
 
 const contributors = new Map<string, UserDataContributor>()

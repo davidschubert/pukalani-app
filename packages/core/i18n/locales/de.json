@@ -417,7 +417,8 @@
         "now": "Sofort weg: dein Konto, dein Profil und alle Anmeldungen. Was du geschrieben hast, wird geleert – wo ein Gespräch sonst zerreißen würde, bleibt ein Platzhalter ohne deinen Namen. Deine Stimmen, Reaktionen und Teilnahmen werden entfernt.",
         "backup": "30 Tage: Wir bewahren eine Sicherungskopie deiner Daten auf. Nur der Betreiber kann sie öffnen. Danach wird sie automatisch gelöscht.",
         "irreversible": "Das lässt sich nicht rückgängig machen. Dein Konto kann nicht wiederhergestellt werden."
-      }
+      },
+      "checkIncomplete": "Ein Teil der Prüfung war gerade nicht erreichbar. Vielleicht fehlt oben etwas – versuche es später noch einmal."
     },
     "twoFactor": {
       "title": "Zwei-Faktor",

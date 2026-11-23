@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
-import type { CommunityErasureResult, CommunityUserDataExport } from '../../../control/shared/communityTeam'
+import type { CommunityErasureResult, CommunityUserDataExport, RetainedMembership } from '../../../control/shared/communityTeam'
+import type { AccountDeletionWarning } from '../../../core/shared/accountDeletion'
 import { callControlPlane } from './controlPlane'
 import { softFail } from '../../../core/server/utils/softFail'
 
@@ -40,6 +41,11 @@ import { softFail } from '../../../core/server/utils/softFail'
 
 const USER_DATA_PATH = '/api/control/community/members/user-data'
 const USER_ERASE_PATH = '/api/control/community/members/user-erase'
+const USER_ERASE_PREVIEW_PATH = '/api/control/community/members/user-erase-preview'
+
+/** i18n-Schlüssel der Warnung „einziger Inhaber" (Locale dieses Layers). */
+export const SOLE_OWNER_WARNING_KEY = 'onboarding.accountDelete.soleOwner'
+const SOLE_OWNER_WARNING_TEXT_KEY = 'onboarding.accountDelete.soleOwnerText'
 
 /**
  * Wer wird hier gelöscht — und unter welcher Adresse?
@@ -113,4 +119,26 @@ export async function communityDeleteUserData(event: H3Event, userId: string): P
     deleted: result.deleted + result.invitesDeleted + result.inviteRequestsDeleted + (result.trialClaimsDeleted ?? 0),
     anonymized: result.anonymized + result.invitesAnonymized + result.inviteCodesAnonymized,
   }
+}
+
+/**
+ * VOR DEM LÖSCHEN SAGEN, WAS OHNE INHABER DASTEHT (2026-11-23): die
+ * Communities, in denen dieses Konto der letzte aktive Owner ist. Die
+ * Löschung bleibt erlaubt; der Owner-Platz bliebe ohne Personenbezug stehen,
+ * und niemand könnte mehr übertragen oder abrechnen. Darum der Hinweis
+ * „übertrage vorher den Besitz".
+ *
+ * Ohne Naht (Silo) gibt es keine Mitgliedschaften ⇒ keine Warnung. Ist die
+ * Naht nicht erreichbar, WIRFT die Funktion: der core meldet die Liste dann
+ * als unvollständig, statt „nichts betroffen" zu behaupten.
+ */
+export async function communityDeletionWarnings(event: H3Event, userId: string): Promise<AccountDeletionWarning[]> {
+  if (!await controlServiceAvailable(event)) return []
+  const runtimeProjectId = useRuntimeConfig(event).public.appwriteProjectId
+  const result = await callControlPlane<{ retained: RetainedMembership[] }>(event, USER_ERASE_PREVIEW_PATH, {
+    runtimeProjectId,
+    runtimeUserId: userId,
+  })
+  const names = [...new Set(result.retained.map(entry => entry.communityName))]
+  return names.length ? [{ key: SOLE_OWNER_WARNING_KEY, textKey: SOLE_OWNER_WARNING_TEXT_KEY, items: names }] : []
 }

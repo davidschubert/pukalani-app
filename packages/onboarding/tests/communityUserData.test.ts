@@ -19,12 +19,15 @@ import { isAppwriteUserMissing } from '../../core/server/utils/userDataOrchestra
 
 let getUser: () => Promise<unknown>
 let controlError: unknown
+let previewRetained: Array<{ communityId: string, communityName: string, role: string, reason: string }> = []
+let controlAvailable = true
 const controlCalls: { path: string, body: Record<string, unknown> }[] = []
 
 vi.mock('../server/utils/controlPlane', () => ({
   callControlPlane: async (_event: H3Event, path: string, body: Record<string, unknown>) => {
     controlCalls.push({ path, body })
     if (controlError) throw controlError
+    if (path.endsWith('user-erase-preview')) return { retained: previewRetained }
     if (path.endsWith('user-erase')) {
       return { deleted: 1, invitesDeleted: 0, inviteRequestsDeleted: 0, anonymized: 0, invitesAnonymized: 0, inviteCodesAnonymized: 2, retained: [] }
     }
@@ -34,11 +37,11 @@ vi.mock('../server/utils/controlPlane', () => ({
 
 vi.stubGlobal('useRuntimeConfig', () => ({ public: { appwriteProjectId: 'account' } }))
 vi.stubGlobal('createAdminClient', () => ({ users: { get: async () => getUser() } }))
-vi.stubGlobal('controlServiceAvailable', async () => true)
+vi.stubGlobal('controlServiceAvailable', async () => controlAvailable)
 vi.stubGlobal('isAppwriteUserMissing', isAppwriteUserMissing)
 vi.stubGlobal('logEvent', () => {})
 
-const { communityDeleteUserData, communityExportUserData } = await import('../server/utils/communityUserData')
+const { communityDeleteUserData, communityDeletionWarnings, communityExportUserData, SOLE_OWNER_WARNING_KEY } = await import('../server/utils/communityUserData')
 
 const event = { context: {} } as unknown as H3Event
 
@@ -46,6 +49,8 @@ beforeEach(() => {
   getUser = async () => ({ $id: 'u1', email: 'a@example.com', emailVerification: true })
   controlError = undefined
   controlCalls.length = 0
+  previewRetained = []
+  controlAvailable = true
 })
 
 describe('communityDeleteUserData', () => {
@@ -75,5 +80,37 @@ describe('communityExportUserData', () => {
   it('Control Plane nicht erreichbar ⇒ sichtbar „nicht verfügbar"', async () => {
     controlError = new Error('fetch failed')
     expect(await communityExportUserData(event, 'u1')).toEqual({ unavailable: true })
+  })
+})
+
+describe('communityDeletionWarnings — vorher sagen, was ohne Inhaber dastünde', () => {
+  it('einziger Owner: eine Warnung mit den Namen, je Community einmal', async () => {
+    previewRetained = [
+      { communityId: 'c1', communityName: 'Probe Eins', role: 'owner', reason: 'last_owner' },
+      { communityId: 'c2', communityName: 'Probe Zwei', role: 'owner', reason: 'last_owner' },
+    ]
+    expect(await communityDeletionWarnings(event, 'u1')).toEqual([
+      { key: SOLE_OWNER_WARNING_KEY, textKey: 'onboarding.accountDelete.soleOwnerText', items: ['Probe Eins', 'Probe Zwei'] },
+    ])
+    // fragt für GENAU dieses Konto im eigenen Projekt — ohne Adresse, die Vorschau braucht keine
+    expect(controlCalls).toEqual([{
+      path: '/api/control/community/members/user-erase-preview',
+      body: { runtimeProjectId: 'account', runtimeUserId: 'u1' },
+    }])
+  })
+
+  it('Gegenprobe: nichts zurückgehalten ⇒ keine Warnung', async () => {
+    expect(await communityDeletionWarnings(event, 'u1')).toEqual([])
+  })
+
+  it('ohne Naht (Silo): keine Warnung und kein Ruf', async () => {
+    controlAvailable = false
+    expect(await communityDeletionWarnings(event, 'u1')).toEqual([])
+    expect(controlCalls).toEqual([])
+  })
+
+  it('Naht gestört: wirft (der core meldet die Liste dann als unvollständig)', async () => {
+    controlError = new Error('naht down')
+    await expect(communityDeletionWarnings(event, 'u1')).rejects.toThrow('naht down')
   })
 })

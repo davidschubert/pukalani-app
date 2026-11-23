@@ -216,6 +216,19 @@ Entwurf auf pukalani.app (`apps/marketing/i18n/locales/*.json`, Abschnitt „Spe
 Vorlage für Communities (`packages/pages/shared/legalTemplates.ts`). Die verbindlichen Fassungen
 prüft Davids Anwalt.
 
+**Was das Löschen nicht darf oder zurücklässt (LA1, seit 2026-11-23).** Die Karte fragt
+`GET /api/auth/account/deletion-check` (Vertrag `core/shared/accountDeletion.ts`):
+
+- **Der letzte aktive Admin** (Label `admin`, Konto nicht gesperrt) kann sein Konto nicht löschen:
+  der Knopf ist gesperrt, und `DELETE /api/auth/account` antwortet 400 `last_admin`, ohne etwas
+  anzufassen. Erst bekommt ein anderes Konto das Admin-Recht. Dieselbe Prüfung
+  (`core/server/utils/lastAdmin.ts`) gilt in der Nutzerverwaltung des Betreibers.
+- **Warnungen** melden Layer über `UserDataContributor.deletionWarnings`; sie verhindern nichts.
+  Heute: onboarding meldet die Communities, in denen das Konto der letzte aktive Owner ist —
+  dieselbe Rechnung wie die Löschung (`previewCommunityErasure`, Naht
+  `/api/control/community/members/user-erase-preview`). Ist eine Frage gestört, sagt die Karte, dass
+  die Liste unvollständig sein kann.
+
 ## Bewusst ausgenommen
 
 - **Vertragsdaten einer Community** (`communities`: Name, Abo) – Aufbewahrungspflicht, gehört nicht
