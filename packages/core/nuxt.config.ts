@@ -429,6 +429,13 @@ export default defineNuxtConfig({
       // verhalten sich wie vor dem Vorfall 2026-10-27. Gegenstück zum
       // server-only `turnstileSecret` oben.
       turnstileSiteKey: '',
+      // Zentrale Anmeldung (PK1 E2, PROTOTYP der Variante A) — Kopf von
+      // shared/centralLogin.ts. Env: NUXT_PUBLIC_CENTRAL_LOGIN (off | on,
+      // leer/alles andere = off). OPTIONAL, Vorgabe aus: ohne den Wert läuft
+      // alles wie vorher. Öffentlich, weil die Anmeldeseite einer Community
+      // daran entscheidet, ob sie in den Kundenbereich weiterleitet; die
+      // Prüfung des Rücksprung-Ziels liegt allein auf dem Server.
+      centralLogin: 'off',
       // Storage-Bucket für Profilfotos (gehört der App). Leer = Foto-Upload-UI
       // ausgeblendet, bis der Bucket existiert (NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET).
       appwriteAvatarsBucket: '',

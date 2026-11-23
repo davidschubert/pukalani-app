@@ -167,6 +167,20 @@
       "later": "Später",
       "success": "Danke, deine Zustimmung ist gespeichert.",
       "failed": "Das hat nicht geklappt. Bitte versuche es noch einmal."
+    },
+    "central": {
+      "title": "Anmelden bei {name}",
+      "description": "Mit deinem Pukalani-Konto. Danach geht es zurück zu {host}.",
+      "remember": "Auf diesem Gerät angemeldet bleiben",
+      "rememberHint": "Ohne Haken endet die Anmeldung hier, wenn du den Browser schließt.",
+      "continueAs": "Weiter als {name}",
+      "otherAccount": "Mit einem anderen Konto anmelden",
+      "unknownSite": "Diese Seite kennen wir nicht",
+      "unknownSiteHint": "Der Link nennt keine Community von Pukalani. Öffne die Anmeldung direkt auf der Seite, auf der du dich anmelden willst.",
+      "toAccount": "Zu deinem Konto",
+      "returnFailed": "Der Weg zurück hat nicht geklappt. Versuch es bitte noch einmal.",
+      "manageAccount": "Konto verwalten",
+      "manageAccountHint": "Passwort, Zwei-Faktor, Geräte, Export und Löschen verwaltest du zentral in deinem Pukalani-Konto."
     }
   },
   "validation": {

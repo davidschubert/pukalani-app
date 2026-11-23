@@ -42,10 +42,15 @@ export function sessionCookieName(event: H3Event): string {
  * `write` wird daraus die Eintrittskarte dieses Hosts; bei `off`/`read`
  * steht im Cookie genau das Geheimnis wie vor E1 (`sessionCookieValue`).
  */
-export function setSessionCookie(event: H3Event, secret: string, expire: string, options: { partitioned?: boolean, card: SessionCookieCard }) {
+/**
+ * `browserSession` (PK1 E2, Kästchen „Auf diesem Gerät angemeldet bleiben"
+ * ohne Haken): das Cookie bekommt KEIN `expires` und endet, wenn der Browser
+ * schließt. Der Ablauf in der Karte und bei Appwrite bleibt derselbe.
+ */
+export function setSessionCookie(event: H3Event, secret: string, expire: string, options: { partitioned?: boolean, browserSession?: boolean, card: SessionCookieCard }) {
   const partitioned = options.partitioned === true
   setCookie(event, sessionCookieName(event), sessionCookieValue(event, secret, expire, options.card), {
-    expires: new Date(expire),
+    expires: options.browserSession === true ? undefined : new Date(expire),
     path: '/',
     httpOnly: true,
     secure: partitioned ? true : !import.meta.dev,

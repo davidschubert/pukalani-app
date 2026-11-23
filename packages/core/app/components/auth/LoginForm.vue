@@ -4,6 +4,17 @@ import { createLoginSchema, type LoginInput } from '../../../schemas/auth'
 import { OAUTH_UNAVAILABLE_CODE } from '../../../shared/oauthProviders'
 import type { LoginResponse } from '../../../shared/types/auth-responses'
 
+/**
+ * `central` (PK1 E2, Prototyp): das Formular steht auf der zentralen Seite
+ * `/login/continue` im Kundenbereich. Dann zeigt es das Kästchen „Auf diesem
+ * Gerät angemeldet bleiben" (voreingestellt an, Entscheidung 2), meldet den
+ * Erfolg per `signed-in` an die Seite (die springt zurück zur Community)
+ * statt selbst zu navigieren, und blendet Google und den Code-Weg aus — die
+ * führen im Prototyp noch nicht zurück (E2a).
+ */
+const props = defineProps<{ central?: boolean }>()
+const emit = defineEmits<{ 'signed-in': [] }>()
+
 const { t } = useI18n()
 const pukalaniSpeaks = usePukalaniSpeaks()
 const { afterAuthTarget, authLinkTarget } = useAuthRedirect()
@@ -41,7 +52,7 @@ const formRoot = ref<HTMLElement | null>(null)
 const mfaRequired = ref(false)
 
 // Code-Login-Link nur, wenn Email-OTP aktiviert ist (config-gated)
-const otpEnabled = computed(() => appConfig.pukalani?.auth?.otp === true)
+const otpEnabled = computed(() => !props.central && appConfig.pukalani?.auth?.otp === true)
 
 /**
  * Ein gescheiterter Social-Login kommt als WEITERLEITUNG zurück, nicht als
@@ -57,12 +68,20 @@ const oauthError = computed(() =>
 
 // Eingegebene E-Mail überlebt den Wechsel Login ↔ Register ↔ Code
 const sharedEmail = useState('pukalani-auth-email', () => '')
-const state = reactive<LoginInput>({ email: sharedEmail.value, password: '' })
+const state = reactive<LoginInput>(props.central ? { email: sharedEmail.value, password: '', remember: true } : { email: sharedEmail.value, password: '' })
 watch(() => state.email, (value) => { sharedEmail.value = value })
 
 const schema = computed(() => createLoginSchema(t))
 
 async function finishLogin() {
+  // Zentrale Seite: zuerst melden, OHNE `auth.refresh()` — mit gesetztem
+  // Nutzer tauscht die Seite das Formular gegen „Weiter als …" aus, und das
+  // Ereignis einer schon entfernten Komponente käme nie an. Die Seite
+  // verlässt den Kundenbereich ohnehin.
+  if (props.central) {
+    emit('signed-in')
+    return
+  }
   await auth.refresh()
   // Embed-Popup (E2): Session ans iframe übergeben statt zu navigieren
   if (await completeEmbedLogin()) return
@@ -106,7 +125,8 @@ function onMfaCancelled() {
   <AuthMfaChallengeForm v-if="mfaRequired" @solved="finishLogin" @cancel="onMfaCancelled" />
 
   <div v-else ref="formRoot" class="w-full max-w-sm space-y-4" data-login-form>
-    <div class="text-center">
+    <!-- Auf der zentralen Seite trägt die Seite selbst die Überschrift („Anmelden bei …"). -->
+    <div v-if="!central" class="text-center">
       <!-- Wo Pukalani spricht, steht darüber schon das Zeichen (AuthBrandHeader, Q24) — ein zweites Symbol wäre ein drittes Gesicht. -->
       <UIcon v-if="!pukalaniSpeaks" name="i-ph-user-circle" class="mx-auto size-8 text-primary" />
       <h1 class="mt-2 text-xl font-semibold">{{ t('auth.login.title') }}</h1>
@@ -116,7 +136,7 @@ function onMfaCancelled() {
     <UAlert v-if="errorMessage" role="alert" color="error" variant="subtle" :title="errorMessage" />
     <UAlert v-else-if="oauthError" role="alert" color="error" variant="subtle" :title="oauthError" data-oauth-error />
 
-    <AuthOauthButtons />
+    <AuthOauthButtons v-if="!central" />
 
     <UForm :schema="schema" :validate-on="[]" :state="state" class="space-y-4" @error="focusFirstFormError" @submit="onSubmit">
       <UFormField :label="t('auth.fields.email')" name="email" required>
@@ -156,6 +176,15 @@ function onMfaCancelled() {
           {{ t('auth.login.forgot') }}
         </ULink>
       </UFormField>
+
+      <UCheckbox
+        v-if="central"
+        v-model="state.remember"
+        name="remember"
+        :label="t('auth.central.remember')"
+        :description="t('auth.central.rememberHint')"
+        data-login-remember
+      />
 
       <UButton type="submit" block size="lg" :loading="loading">{{ t('auth.login.submit') }}</UButton>
     </UForm>
