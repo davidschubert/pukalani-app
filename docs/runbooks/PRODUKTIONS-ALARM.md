@@ -1110,8 +1110,14 @@ gestartet. Beide Handgriffe und ihre Reihenfolge:
 [DEPLOYMENT.md](DEPLOYMENT.md), Abschnitt A4. Es eilt nicht — die Apps
 laufen; nur beweisen die Prüfungen bis dahin nicht genau das, was live läuft.
 
-**Env / Zugänge / Admin-Konto rot.** `docs/runbooks/ZUGAENGE-AUFRAEUMEN.md`
+**Env / Zugänge rot.** `docs/runbooks/ZUGAENGE-AUFRAEUMEN.md`
 bzw. die Pflichtliste in `scripts/ops/verify-site-env.mjs`.
+
+**Admin-Konto rot** (eine Instanz hat kein Konto mit Label `admin` mehr).
+[ADMIN-KONTO-WIEDERHERSTELLEN.md](ADMIN-KONTO-WIEDERHERSTELLEN.md): Konto neu
+anlegen, Label in der Appwrite-Konsole setzen, Lauf von Hand. Lehre aus dem
+Vorfall vom 2026-11-22: vor jedem Löschen im Browser prüfen, welches Konto
+angemeldet ist.
 
 **Probealarm vergessen aufzuräumen?** Ein Lauf von Hand ohne Haken
 (`gh workflow run production-watch.yml`) schließt das Issue. Von selbst geht
