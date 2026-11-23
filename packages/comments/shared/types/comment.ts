@@ -128,6 +128,16 @@ export interface Comment extends Models.Row {
    */
 }
 
+/**
+ * Antwort von `DELETE /api/comments/:id` (KC2): der Platzhalter wie bisher,
+ * dazu die Ids der Zeilen, die ganz entfernt wurden (der Kommentar selbst,
+ * wenn er keine Antworten hatte, und gelöschte Vorfahren, die dadurch
+ * kinderlos wurden). Leer = der Platzhalter bleibt stehen.
+ */
+export interface DeletedCommentResponse extends Comment {
+  removedIds: string[]
+}
+
 export interface CommentVote extends Models.Row {
   commentId: string
   userId: string

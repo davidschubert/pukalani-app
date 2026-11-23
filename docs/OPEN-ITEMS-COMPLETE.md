@@ -30,6 +30,50 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KC2 — Gelöschter Kommentar ohne Antworten verschwindet ganz; mit Antworten bleibt der Platzhalter ✅ 2026-11-23
+
+**Was.** Bis hierher blieb nach dem eigenen Löschen IMMER ein Platzhalter
+„[gelöscht]" stehen, auch ohne eine einzige Antwort darunter, und er zählte in
+„X Kommentare" (`count.get`/`counts.get` zählen alles außer `hidden`). Jetzt
+schreibt `DELETE /api/comments/:id` zuerst wie bisher den leeren Grabstein
+(SEC-032) und ruft danach `pruneDeletedComment`
+(`packages/comments/server/utils/commentPrune.ts`):
+- keine Antwort (gezählt wird JEDE, auch eine ausgeblendete — die Moderation
+  kann sie wiederherstellen) und keine offene Meldung (sonst stünde die Meldung
+  ohne Zeile in der Warteschlange) ⇒ die Zeile fällt ganz;
+- danach dieselbe Frage für einen schon gelöschten Eltern-Kommentar, nach
+  oben, bis einer Kinder hat oder aktiv ist;
+- Wettlauf mit einer Antwort (die vor dem Grabstein ihren Eltern-Kommentar
+  las): Nachzählung nach dem Löschen, dann entsteht der Grabstein mit Id und
+  Rechten wieder;
+- jede Störung lässt den Platzhalter stehen (der alte, sichere Zustand).
+Die Antwort trägt `removedIds`; der Browser nimmt diese Zeilen aus der Liste
+(`removeWithDescendants` zählt `activeTotal` und `total` richtig herunter),
+andere Fenster bekommen das Löschen über Realtime (`delete`-Ereignis, das der
+Store schon kannte). Unverändert: Row-Level-Rechte und das zweiphasige
+Ausblenden (betrifft nur `hidden`). Die Kontolöschung lässt ihre Platzhalter
+wie bisher stehen.
+
+**Beweis.** `packages/comments/tests/comment-prune.test.ts` (ohne Antwort weg
+und Zähler sinkt; mit aktiver oder ausgeblendeter Antwort bleibt der
+Platzhalter; offene Meldung bleibt; letzte Antwort unter gelöschtem Eltern
+⇒ beide weg, mit zweiter Antwort nur die eine; Wettlauf ⇒ wiederhergestellt;
+Gegenprobe gegen die alte Route ⇒ 7 Fälle rot). Lokal im Browser
+(`apps/comments`, lokale Appwrite, Wegwerf-Konto): A ohne Antwort gelöscht ⇒
+verschwindet; B mit Antwort ⇒ „[gelöscht]" bleibt; die Antwort gelöscht ⇒
+Antwort UND Platzhalter weg; Zähler 31 ⇒ 28, in der Datenbank keine
+Probe-Zeile und kein Grabstein übrig, Konto gelöscht.
+
+**Nicht geprüft.** Ein zweites Browser-Fenster (Realtime-Weg) nur über den
+schon vorhandenen Store-Zweig, nicht neu im Browser.
+
+**Gelernt:** Der Platzhalter war eine Antwort auf „was hält den Faden
+zusammen?" — wo nichts dranhängt, ist er nur noch ein Zähler-Fehler. Wer eine
+Zeile endgültig entfernt, fragt vorher alle, die sie als ANKER brauchen
+(Antworten, auch ausgeblendete, und offene Meldungen), nicht nur die Liste.
+
+---
+
 ### SA2 — Zwei Vermutungen aus dem Review: Code-Anmeldung gleichförmig, Suche im Not-Zugang nur für den Betreiber ✅ 2026-11-23
 
 **V1 — stimmte.** `POST /api/auth/otp` antwortete für eine Adresse ohne Konto

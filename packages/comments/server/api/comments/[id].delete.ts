@@ -1,11 +1,13 @@
-import { COMMENTS_TABLE, type Comment } from '../../../shared/types/comment'
+import { COMMENTS_TABLE, type Comment, type DeletedCommentResponse } from '../../../shared/types/comment'
 import { COMMENT_TOMBSTONE_DATA, commentTombstonePermissions, toPublicCommentRow } from '../../utils/commentTombstone'
 import { commentNotificationCommunityId, removeCommentNotifications } from '../../utils/commentNotifications'
 import { softFailWith } from '../../../../core/server/utils/softFail'
+import { pruneDeletedComment } from '../../utils/commentPrune'
 
 /**
- * Soft-Delete (Spec): die Row bleibt erhalten — Antworten darunter bleiben
- * erreichbar, die UI zeigt einen "[gelöscht]"-Platzhalter.
+ * Soft-Delete (Spec): MIT Antworten bleibt die Row erhalten — Antworten
+ * darunter bleiben erreichbar, die UI zeigt einen "[gelöscht]"-Platzhalter.
+ * OHNE Antworten fällt sie danach ganz (KC2, `utils/commentPrune.ts`).
  *
  * WIRKLICH GELEERT (SEC-032, 2026-11-15 — Davids Entscheidung „Gelöschte
  * Kommentare, Übersetzungen und Vorschauen werden wirklich geleert"): bis
@@ -24,7 +26,7 @@ import { softFailWith } from '../../../../core/server/utils/softFail'
  * Kontolöschung findet einen schon geleerten Kommentar nicht mehr, muss es
  * aber auch nicht: es gibt nichts mehr zu leeren.
  */
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<DeletedCommentResponse> => {
   // SEC-030: nur Mitglieder dieser Community (ein Pool-Konto ist auf jedem
   // Community-Host angemeldet). Bewusst KEIN Beitritt — den eigenen Kommentar zu löschen macht
   // niemanden zum Mitglied. 401 ohne Konto, 403 `not_a_member` für Fremde.
@@ -126,5 +128,14 @@ export default defineEventHandler(async (event) => {
     authorId: existing.authorId,
   })
 
-  return toPublicCommentRow(tombstone)
+  /**
+   * OHNE ANTWORTEN GANZ WEG (KC2, `utils/commentPrune.ts`): hängt nichts am
+   * Grabstein, fällt die Zeile — und ein gelöschter Eltern-Kommentar, der
+   * dadurch kinderlos wird, gleich mit. Erst NACH Feed und Glocke oben, damit
+   * deren Aufräumen den Kommentar noch findet. `removedIds` sagt dem Browser,
+   * was er aus der Liste nimmt; leer = der Platzhalter bleibt (mit Antworten).
+   */
+  const removedIds = await pruneDeletedComment(event, tombstone)
+
+  return { ...toPublicCommentRow(tombstone), removedIds }
 })
