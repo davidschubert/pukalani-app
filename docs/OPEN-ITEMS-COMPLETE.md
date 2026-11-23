@@ -30,6 +30,34 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### LA1 — Konto löschen: die Seite warnt VOR dem Klick (letzter Admin, einziger Inhaber) ✅ 2026-11-23
+
+**Anlass:** Am 2026-11-22 um 23:52 UTC hat David sein einziges Admin-Konto der Platform (Projekt
+`account`) über „Einstellungen › Daten › Konto löschen" gelöscht, ohne Hinweis vorher. Der
+Aussperr-Wächter meldete am Morgen 0 Admins (Alarm #555), zwei Communities standen ohne Inhaber da
+(`gdpr.community_owner_retained`). David hat sich neu registriert und das Label `admin` gesetzt; ein
+Wächter-Lauf von Hand war grün und schloss #555. Die SPERRE selbst baute parallel SA1
+(`withLastAdminGuard`, 409 `last_admin`).
+
+**Gebaut (der Teil, den SA1 nicht hat):** `GET /api/auth/account/deletion-check` (Vertrag
+`core/shared/accountDeletion.ts`) sagt der Karte VOR dem Klick, ob das Konto der letzte aktive Admin
+ist (Knopf gesperrt) und was Layer über `UserDataContributor.deletionWarnings` melden. onboarding
+meldet die Communities, in denen das Konto der letzte aktive Owner ist, aus
+`previewCommunityErasure` im Control Plane (dieselbe Rechnung wie die Löschung,
+`decideOwnMemberships`; Naht `user-erase-preview.post.ts`). Eine Störung macht die Antwort
+„unvollständig", nie „nichts betroffen".
+
+**Beweis:** Rollen-Tests an den echten Routen (core, control mit „Vorschau schreibt nicht" und
+„Vorschau = was die Löschung zurückhält", onboarding).
+
+**Offen geblieben:** LA2 (verwaisten Inhaber-Platz neu vergeben).
+
+**Gelernt:** Zwei Sitzungen bauten am selben Vormittag dieselbe Sperre. Erst `git fetch` und ein Blick
+auf `main` VOR dem Bauen hätte das gezeigt (CLAUDE.md „ERST main PRÜFEN") — beim Merge fiel die eigene
+Fassung, nur der fehlende Teil kam neu auf `main`.
+
+---
+
 ### GA1 — Gesamtaudit 2026-11: umgesetzt und durchgesehen; offen bleibt nur Davids Klick-Runde KR1 ✅ 2026-11-23
 
 **Was.** Der zweite Durchlauf des Gesamtaudits (Runbook

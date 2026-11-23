@@ -220,9 +220,9 @@ prüft Davids Anwalt.
 `GET /api/auth/account/deletion-check` (Vertrag `core/shared/accountDeletion.ts`):
 
 - **Der letzte aktive Admin** (Label `admin`, Konto nicht gesperrt) kann sein Konto nicht löschen:
-  der Knopf ist gesperrt, und `DELETE /api/auth/account` antwortet 400 `last_admin`, ohne etwas
-  anzufassen. Erst bekommt ein anderes Konto das Admin-Recht. Dieselbe Prüfung
-  (`core/server/utils/lastAdmin.ts`) gilt in der Nutzerverwaltung des Betreibers.
+  die Karte sagt es vorher und sperrt den Knopf; `DELETE /api/auth/account` antwortet 409
+  `last_admin` (SA1, `withLastAdminGuard` in `core/server/utils/lastAdmin.ts`). Erst bekommt ein
+  anderes Konto das Admin-Recht.
 - **Warnungen** melden Layer über `UserDataContributor.deletionWarnings`; sie verhindern nichts.
   Heute: onboarding meldet die Communities, in denen das Konto der letzte aktive Owner ist —
   dieselbe Rechnung wie die Löschung (`previewCommunityErasure`, Naht
