@@ -5,16 +5,30 @@
 > Ist der Punkt erledigt, zieht der Eintrag nach
 > [OPEN-ITEMS-COMPLETE.md](../../OPEN-ITEMS-COMPLETE.md) und diese Datei wird gelöscht.
 
-**KR1 — Davids Klick-Runde auf den echten Seiten.** Eine Sitzung, etwa 70 bis
-80 Minuten. Die Proben sind nach Anmeldung sortiert: du wechselst das Konto
-nur dreimal. Jede Probe sagt: wo, mit wem, was du klickst, was du sehen musst,
-und was du tust, wenn nicht. „Wortlaut kann abweichen" heißt: die Beschreibung
-stammt aus dem Code oder der Sprachdatei, nicht aus einem Blick auf die
-echte Seite — gilt der Sinn, nicht das Wort.
+**KR1 — Davids Klick-Runde auf den echten Seiten.** Stand 2026-11-23: acht
+Blöcke, zusammen gut zwei Stunden — am besten in ZWEI Sitzungen (Teil 1 ohne
+und mit Wegwerf-Konto, Teil 2 als Owner und Betreiber). Die Proben sind nach
+Anmeldung sortiert: du wechselst das Konto so selten wie möglich. Jede Probe
+sagt: wo, mit wem, was du klickst, was du sehen musst, und was du tust, wenn
+nicht. „Wortlaut kann abweichen" heißt: die Beschreibung stammt aus dem Code
+oder der Sprachdatei, nicht aus einem Blick auf die echte Seite — gilt der
+Sinn, nicht das Wort.
 
-**Zeit je Block:** A ohne Anmeldung ≈ 20 Min · B als Wegwerf-Konto ≈ 15 Min ·
-C als Owner mit Wegwerf-Konto zugleich ≈ 25 Min · D als Betreiber ≈ 15 Min ·
-E Neues seit den Paketen (hängt in A–D mit drin, nur Blick) ≈ 10 Min.
+**Reihenfolge und Zeit je Block** (die Buchstaben bleiben, andere Einträge
+verweisen darauf):
+
+| Sitzung | Block | Mit wem | Zeit |
+|---|---|---|---|
+| 1 | G — Marktvergleich-Entwürfe prüfen (Datei, kein Konto) | niemand | ≈ 15 Min |
+| 1 | A — ohne Anmeldung | Gast, privates Fenster | ≈ 20 Min |
+| 1 | F — branding.supply: Beispiel-Kit und Texte | Gast | ≈ 5 Min |
+| 1 | B — Wegwerf-Konto | privates Fenster | ≈ 15 Min |
+| 2 | C — Owner mit dem Wegwerf-Konto zugleich | du + Wegwerf-Konto | ≈ 25 Min |
+| 2 | H — neu seit dem 2026-11-22 (H1–H2 als Owner, H3–H6 als Betreiber) | du (+ Wegwerf-Konto bei H3) | ≈ 30 Min |
+| 2 | D — Betreiber | du, `admin.pukalani.app` | ≈ 15 Min |
+| — | E — Neues aus den Paketen Q01–Q26 (hängt in A–D mit drin, nur Blick) | wie dort | ≈ 10 Min |
+
+Sitzung 1 ≈ 55 Min, Sitzung 2 ≈ 80 Min.
 
 **Vorher einmal (5 Min):** ein Wegwerf-Konto auf `account.pukalani.app`
 anlegen (eigene Mail-Adresse mit Postfach, Wegwerf-Passwort, das du sonst nirgends
@@ -181,6 +195,53 @@ E11. **Dashboard ohne Flackern** (Q15) · eine Dashboard-Seite hart neu laden
 E12. **Suchseiten** (Q10) · als Gast eine Diskussion der Demo aufrufen,
     Quelltext ansehen: `canonical` einmal, auf der Konto-Seite
     `noindex`. Wortlaut kann abweichen.
+
+## Block H — Neu seit dem 2026-11-22, noch nie hinter der Anmeldung gesehen · ≈ 30 Min
+
+Alles hier ist gebaut, getestet und live, aber noch von keinem Menschen auf
+Production hinter der Anmeldung angesehen. H1–H2 als Owner (passt an Block C),
+H3–H6 als Betreiber (passt an Block D). Nichts dauerhaft umstellen: was du
+umlegst, legst du zurück.
+
+H1. **Listen mit Ausfall** (LZ1, COMPLETE „LZ1" und „LZ1 Bahn 8") · als
+    Owner im Dashboard der Demo-Community: eine Liste öffnen (Kategorien,
+    Nachrichten). In den Entwickler-Werkzeugen des Browsers
+    (Reiter Netzwerk) auf „Offline" stellen, dann in der Seitenleiste eine
+    ANDERE Liste anklicken. *Sehen:* statt „Keine Einträge" ein Satz, dass
+    das Laden nicht geklappt hat, mit Knopf „Noch einmal versuchen";
+    wieder „Online", Knopf drücken ⇒ die Liste kommt. Wortlaut kann
+    abweichen. *Sonst:* Seite und Satz melden.
+H2. **KI-Training je Community** (KC1) · als Owner: Dashboard → „Community"
+    → „Sichtbarkeit". *Sehen:* der Schalter steht nur bei öffentlicher
+    Sichtbarkeit, Vorgabe aus, daneben der Satz „eine Bitte an Crawler,
+    kein Schloss". Einschalten, `<community>/robots.txt` neu laden: die
+    Trainings-Crawler sind jetzt erlaubt; ausschalten, neu laden: wieder
+    gesperrt. *Zum Schluss:* Schalter AUS.
+H3. **Moderator im Not-Zugang: Übersicht und Statistik zu** (BT1 e) · in der
+    Appwrite-Konsole (Projekt `account`) dem Wegwerf-Konto das Label
+    `moderator` geben. Mit ihm auf `demo.pukalani.app` (es ist KEIN Mitglied)
+    das Dashboard öffnen. *Sehen:* Übersicht und Statistik zeigen „kein
+    Zugang"; die Moderations-Liste der Kommentare öffnet. Du als Betreiber
+    siehst alle drei. *Zum Schluss:* Label wieder entfernen.
+H4. **Kontingent-Katalog in der Konsole** (KK1 c) · `admin.pukalani.app` →
+    Konsole → Kasten „Pläne & Limits". *Sehen:* je Plan (Basic, Personal,
+    Pro) eine Zeile je Art — Kommentare, Seiten, Termine, Mediathek —; bei
+    Pro Kommentare 5000 je Seite und 250.000 gesamt. Nichts speichern.
+    *Sonst:* welche Art fehlt oder welche Zahl abweicht.
+H5. **Der zählende Sicherungs-Lauf: die drei Mitgliedschaften** (SI1 b) ·
+    Appwrite-Konsole, Projekt `admin` (Control Plane): Tabelle
+    `communities`, Filter Status „disabled" — die Ids notieren; dann
+    Tabelle `community_members`, Filter `communityId` = eine dieser Ids UND
+    Status `active`. *Sehen:* genau die Zeilen, die der Lauf zählt (lokal am
+    Spiegel waren es drei, in drei Communities). Für jede: soll die Person
+    in der stillgelegten Community wirklich entfernt werden? *Dann:* dein Ja
+    oder Nein zur Zahl dem Leitstand sagen — erst danach wird `apply`
+    geschaltet (SI1). Nichts in der Konsole ändern.
+H6. **Insights: Knopf „KI-Prüfung"** (IN1 a) · `branding.supply`, Redaktion
+    der Insights, einen Artikel öffnen, „KI-Prüfung" drücken. *Achtung:* das
+    ist ein ECHTER KI-Lauf (wenige Cent). *Sehen:* der Knopf sperrt während
+    des Laufs, ein zweiter Klick startet nichts; danach Hinweise je Abschnitt,
+    nichts wird gesperrt oder geändert. *Sonst:* Satz und Uhrzeit melden.
 
 ## Block F — branding.supply: Beispiel-Kit und neue Texte (BK1 K7) · ≈ 5 Min
 

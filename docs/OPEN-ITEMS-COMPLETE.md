@@ -30,6 +30,28 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### GA1 — Gesamtaudit 2026-11: umgesetzt und durchgesehen; offen bleibt nur Davids Klick-Runde KR1 ✅ 2026-11-23
+
+**Was.** Der zweite Durchlauf des Gesamtaudits (Runbook
+`docs/runbooks/GESAMTAUDIT.md`): alle 26 Pakete Q01–Q26 sind zusammengeführt,
+beide Reviews danach sind abgeschlossen (Review nach der Umsetzung, Befunde
+B1–B4 und B6, COMPLETE „Review nach der Umsetzung"; PK1-Review vor Schritt
+B). Die Ergebnisse liegen im privaten Audit-Ordner außerhalb des Repos (das
+Repo ist öffentlich). Was davon nur ein Mensch auf den echten Seiten sehen
+kann, steht in der Klick-Runde KR1 (Blöcke E und H) und bleibt dort offen;
+die Reste einzelner Pakete haben eigene Zeilen (WA1, SE1, SI1, BT1 …).
+
+**Aufgeräumt.** Die Zeile GA1 ist aus `docs/OPEN-ITEMS.md` genommen; KR1
+nennt jetzt alle Blöcke A–H mit Reihenfolge und Zeit. Kürzel der offenen
+Liste vor dem Aufräumen 48, danach 47 — nur GA1 fiel weg; jede andere Zeile
+hat laut dieser Datei noch einen offenen Teil.
+
+**Gelernt:** Ein Audit ist erst zu, wenn das, was nur ein Mensch prüfen kann,
+eine eigene, sortierte Klick-Liste hat — sonst bleibt die Audit-Zeile ewig
+„Review offen" stehen, obwohl nichts mehr zu bauen ist.
+
+---
+
 ### MV1-S — Marktvergleich: „stehen lassen" als Vermerk, damit der Montags-Wächter nicht erblindet ✅ 2026-11-23
 
 **Was.** David hat für `apple`, `the-barn` und `meta` entschieden: stehen

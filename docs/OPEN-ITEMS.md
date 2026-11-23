@@ -46,7 +46,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Die Proben aus AB1, PB1, MM1, SI1, SR1, SV1, zwei aus P29 (Anmelde-Mail, gestohlenes Passwort) und seit dem 2026-11-18 das Erstgespräch auf pukalani.studio. Die Einzel-Einträge verweisen hierher. KI-Einschätzung und Runner-Lauf sind seit dem 2026-11-21 geklickt (COMPLETE „KR1 — Teil 1"); der Rest braucht Passwort, Mail-Code oder die Bot-Prüfung und damit David selbst. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](plans/offen/KR1.md) |
+| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Die Proben aus AB1, PB1, MM1, SI1, SR1, SV1, zwei aus P29 (Anmelde-Mail, gestohlenes Passwort) seit dem 2026-11-18 das Erstgespräch auf pukalani.studio, dazu Beispiel-Kit (F), Marktvergleich-Entwürfe (G) und seit dem 2026-11-23 alles, was seit dem 2026-11-22 neu und hinter der Anmeldung noch ungesehen ist (H). Zwei Sitzungen, zusammen gut zwei Stunden. Die Einzel-Einträge verweisen hierher. KI-Einschätzung und Runner-Lauf sind seit dem 2026-11-21 geklickt (COMPLETE „KR1 — Teil 1"); der Rest braucht Passwort, Mail-Code oder die Bot-Prüfung und damit David selbst. **Wartet auf:** nichts, nur auf Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](plans/offen/KR1.md) |
 
 ### Schritt 3 — Baut Claude allein
 
@@ -145,7 +145,6 @@ den ersten zahlenden Kunden, also vor A2.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| GA1 | **Gesamtaudit 2026-11: umgesetzt, Review offen.** Alle 26 Pakete des zweiten Durchlaufs (Q01–Q26) sind zusammengeführt; die Ergebnisse liegen im privaten Ordner außerhalb des Repos (das Repo ist öffentlich). **Wartet auf:** Davids Review. | Mittel | L (viele Sessions) | **Ja: Review der Pakete** | [GESAMTAUDIT.md](runbooks/GESAMTAUDIT.md) |
 | BW1 | **Brand-Wizard Phase 1 „Fundament".** Gebaut und live auf branding.supply. Offen: Davids eigener Durchgang (ein Solo-Branding in der Werkstatt), sein Gegenlesen der Solo-Fassungen, und eine Liste kleinerer Reste. **Wartet auf:** David. | Mittel | M (Reste) | **Ja: Durchgang, Gegenlesen** | [BRAND-WIZARD-PHASE-1.md](archiv/BRAND-WIZARD-PHASE-1.md) · [Reste](plans/offen/BW1.md) |
 | W2–W4 | **Studio-Funnel ausbauen.** (a) Die fünf `studio_*`-Goals in Plausible anlegen (nur David), (b) W3 ist gebaut (2026-11-22), die Texte liest David noch gegen, (c) W4 echte Kennzahlen in die Cases. **Wartet auf:** David (Goals, Zahlen). | Mittel | S–M je Paket | **Ja: Goals, Texte, Zahlen** | [STUDIO-ERSTGESPRAECH-FUNNEL.md](plans/STUDIO-ERSTGESPRAECH-FUNNEL.md) |
 | RS1 | **Resend besser nutzen.** Die Newsletter-Adresse `mail.branding.supply` steht. Offen: ein eigener Sende-Schlüssel dafür und die Adresse in der Config (erst nötig, wenn der Newsletter aufgeht), DMARC für `branding.supply` (ein Klick bei Cloudflare), später DMARC auf `p=quarantine`. Rechtstext-Satz: DT1. **Wartet auf:** David (Klick, Schlüssel). | Mittel | S | **Ja: Cloudflare, Schlüssel** | [Notiz RS1](plans/offen/RS1.md) |
