@@ -26,7 +26,10 @@ import {
   WORKSHOP_FIRST_DRAFT,
   WORKSHOP_GEORGE_REPLY,
   WORKSHOP_HINT,
+  WORKSHOP_IMPACT_ACK,
   WORKSHOP_NEW_DRAFT,
+  WORKSHOP_REVISE_SLOT,
+  WORKSHOP_REVISE_VALUE,
   WORKSHOP_FOREIGN_SLOT,
   WORKSHOP_FOREIGN_STEP,
   WORKSHOP_FOREIGN_VALUE,
@@ -45,6 +48,8 @@ import {
   workshopStepDetail,
   workshopConverseStream,
   workshopGenerateStream,
+  workshopImpact,
+  workshopReviseSlotConfirmed,
   workshopVersions,
 } from './support/workshopFixtures'
 
@@ -85,6 +90,7 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
     brands: { card: Record<'remaining', string> }
     labels: Record<string, unknown>
     example: Record<string, Record<string, Record<'solo' | 'team', string> | undefined> | undefined>
+    impact: Record<'title' | 'accept' | 'cancel', string>
     workspace: {
       example: Record<'show' | 'hide' | 'take' | 'quoted', string>
       site: Record<'never' | 'start' | 'consent' | 'confirm' | 'done', string>
@@ -111,7 +117,9 @@ const de = JSON.parse(readFileSync(join(process.cwd(), 'i18n/locales/de.json'), 
 const site = de.brand.workspace.site
 const base = `/api/brand/profiles/${WORKSHOP_PROFILE_ID}`
 
-const calls = { analyze: 0, ai: 0, versions: 0, foreign: 0, converse: 0, generate: 0 }
+const calls = { analyze: 0, ai: 0, versions: 0, foreign: 0, converse: 0, generate: 0, impact: 0 }
+/** Was der gestellte Autosave des Kontext-Kapitels bekommen hat (ohne den 409-Fall). */
+const saves: { slots?: Record<string, { value?: string, confirmed?: boolean }>, impactAck?: string }[] = []
 /** Welche KI-Route ein Fall ausdrücklich mit einem GESTELLTEN Strom bedient (s. unten). */
 const aiStub = { converse: false, generate: false }
 /** Was die Seite an die gestellte Route geschickt hat. */
@@ -181,10 +189,16 @@ registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}`, {
       saveConflict.sent = body.slots
       throw createError({ status: 409, statusText: 'Conflict' })
     }
+    saves.push(body)
     return workshopSave(body)
   },
 })
 registerEndpoint(`${base}/messages`, event => workshopMessages(String(getQuery(event).session ?? '')))
+// Der Impact-Hinweis vor einer Korrektur (WS1 f): die Hülle des Felds.
+registerEndpoint(`${base}/steps/${WORKSHOP_STEP_KEY}/sessions/${WORKSHOP_REVISE_SLOT}/impact`, () => {
+  calls.impact += 1
+  return workshopImpact(WORKSHOP_REVISE_SLOT)
+})
 registerEndpoint(`${base}/analyze`, {
   method: 'POST',
   handler: () => {
@@ -275,6 +289,8 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
     calls.foreign = 0
     calls.converse = 0
     calls.generate = 0
+    calls.impact = 0
+    saves.length = 0
     aiStub.converse = false
     aiStub.generate = false
     aiBodies.converse = null
@@ -552,11 +568,72 @@ describe('Werkstatt-Seite (Rauch-Test, Q21)', () => {
   })
 
   /*
-   * DIE ZWEI MODULE IM ZUG, DIE ZU GEORGE FÜHREN (WS1 c-Rest). Beide laufen
-   * NACH der Farbwelt: der Wechsel zurück auf das erste Probe-Profil lädt das
-   * Kapitel frisch (Revision 1, die erste Fassung in `a.category`) — kein Fall
-   * davor hinterlässt hier einen halben Stand. Die KI-Route ist je Fall
-   * ausdrücklich gestellt (`aiStub`), `calls.ai` bleibt 0.
+   * DIE KORREKTUR-REGEL (WS1 f): „Korrigieren" an einem BESTÄTIGTEN Feld im
+   * Log holt erst die Hülle (Impact-Hinweis). Abbrechen lässt das Feld zu;
+   * Annehmen öffnet den Editor, und die Zustimmung (`impactAck`) reist mit dem
+   * nächsten Speichern. Läuft direkt NACH der Farbwelt; er hinterlässt das Feld
+   * geändert und unbestätigt, aber gespeichert (vollständiger Stand), und der
+   * Schalter `workshopReviseSlotConfirmed` bleibt an: der gestellte Server
+   * hat das Feld ab hier, für Lesen UND Speichern.
+   */
+  it('Korrektur-Regel: Impact-Hinweis, abbrechen, annehmen, die Zustimmung reist mit (WS1 f)', async () => {
+    // Erst NACH der Farbwelt (anderes Profil) eingeschaltet: der Wechsel zurück
+    // lädt das Kontext-Kapitel frisch, jetzt mit dem bestätigten Feld.
+    workshopReviseSlotConfirmed.on = true
+    designProfileListed.on = false
+    const wrapper = await mountSuspended(Shell, { route: `/brand/${WORKSHOP_PROFILE_ID}/${WORKSHOP_STEP_KEY}` })
+    await flushPromises()
+    const ws = de.brand.workspace
+    const impact = de.brand.impact
+    const store = useBrandWorkspaceStore()
+    const changed = 'Alle sehen gleich aus.'
+    expect(store.slotConfirmed(WORKSHOP_REVISE_SLOT)).toBe(true)
+    const revise = () => wrapper.find(`button[aria-label="${ws.slotActionName
+      .replace('{action}', ws.reviseSlot).replace('{field}', fieldLabel(WORKSHOP_REVISE_SLOT)!)}"]`)
+    const editor = () => wrapper.findAll('textarea')
+      .find(entry => (entry.element as HTMLTextAreaElement).value === store.slotValue(WORKSHOP_REVISE_SLOT))
+
+    // Abbrechen: der Hinweis war da, das Feld bleibt zu.
+    expect(revise().exists()).toBe(true)
+    await revise().trigger('click')
+    await vi.waitFor(() => expect(bodyText()).toContain(impact.title))
+    expect(calls.impact).toBe(1)
+    await clickInBody(impact.cancel)
+    expect(editor()).toBeUndefined()
+    expect(store.slotConfirmed(WORKSHOP_REVISE_SLOT)).toBe(true)
+
+    // Annehmen: der Editor geht auf; erst die Eingabe hebt die Bestätigung auf.
+    await revise().trigger('click')
+    await vi.waitFor(() => expect(bodyText()).toContain(impact.title))
+    expect(calls.impact).toBe(2)
+    await clickInBody(impact.accept)
+    await vi.waitFor(() => expect(editor()).toBeDefined())
+    expect(store.slotConfirmed(WORKSHOP_REVISE_SLOT)).toBe(true)
+    await editor()!.setValue(changed)
+    expect(store.slotConfirmed(WORKSHOP_REVISE_SLOT)).toBe(false)
+
+    // Auf das Speichern warten (Autosave 750 ms), nicht auf Zeit.
+    await vi.waitFor(() => expect(saves.some(body => body.slots?.[WORKSHOP_REVISE_SLOT]?.value === changed)).toBe(true), { timeout: 10_000 })
+    const sent = saves.find(body => body.slots?.[WORKSHOP_REVISE_SLOT]?.value === changed)!
+    expect(sent.impactAck).toBe(WORKSHOP_IMPACT_ACK)
+    expect(WORKSHOP_REVISE_VALUE).not.toBe(changed)
+
+    // Übernehmen schliesst den Editor, der neue Wert bleibt.
+    await buttonNamed(wrapper, ws.reviseApply).trigger('click')
+    expect(editor()).toBeUndefined()
+    expect(store.slotValue(WORKSHOP_REVISE_SLOT)).toBe(changed)
+
+    expect(calls.ai).toBe(0)
+    expect(unexpected(warn)).toEqual([])
+    expect(unexpected(error)).toEqual([])
+  })
+
+  /*
+   * DIE MODULE IM ZUG (WS1 c-Rest). Sie laufen nach der Farbwelt und der
+   * Korrektur-Regel: das Kontext-Kapitel ist dort frisch geladen, und die
+   * Korrektur berührt nur `a.challenge` — `a.category` trägt weiter die erste
+   * Fassung, `a.facts` ist leer. Die KI-Route ist je Fall ausdrücklich
+   * gestellt (`aiStub`), `calls.ai` bleibt 0.
    */
   it('Options-Modul: die eigene Antwort geht als Zug an George (WS1 c-Rest)', async () => {
     designProfileListed.on = false
