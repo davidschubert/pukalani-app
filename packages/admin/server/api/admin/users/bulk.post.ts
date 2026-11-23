@@ -29,12 +29,16 @@ export default defineEventHandler(async (event) => {
   const targets = [...new Set(ids)]
   for (const id of targets) {
     try {
+      const write = () => admin.users.updateStatus({ userId: id, status: action !== 'block' })
       if (action === 'block') {
         if (id === adminUser.$id) { failed.push(id); continue }
-        // Den letzten Admin nicht aussperren — wirft 400 mit code last_admin
-        await assertNotLastAdmin(event, id)
+        // Den letzten aktiven Admin nicht aussperren — unter der
+        // Projekt-Sperre geprüft, 409 `last_admin` landet in `failed`.
+        await withLastAdminGuard(event, id, write)
       }
-      await admin.users.updateStatus({ userId: id, status: action !== 'block' })
+      else {
+        await write()
+      }
       forgetAccountSessions(id) // Anmelde-Merker (Q12): gilt sofort
       done.push(id)
     }

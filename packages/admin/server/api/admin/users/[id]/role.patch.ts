@@ -50,7 +50,8 @@ export default defineEventHandler(async (event) => {
   if (removingAdmin && userId === actor.$id) {
     throw createError({ status: 400, statusText: 'You cannot revoke your own admin role' })
   }
-  // Es muss immer mindestens ein Admin übrig bleiben
+  // Es muss immer mindestens ein Admin übrig bleiben — Vorab-Prüfung; die
+  // verbindliche läuft im Label-Schreiber unter der Projekt-Sperre.
   if (removingAdmin) {
     await assertNotLastAdmin(event, userId)
   }
@@ -66,6 +67,10 @@ export default defineEventHandler(async (event) => {
     add: nextRoles,
   })
   if (!result.ok) {
+    // `last_admin`: unter der Projekt-Sperre erkannt, dass niemand sonst
+    // aktiver Admin ist (die Vorab-Prüfung oben kann ein gleichzeitiger
+    // Entzug überholt haben) — nichts geschrieben.
+    if (result.reason === 'last_admin') throw lastAdminError()
     throw result.reason === 'not_found'
       ? createError({ status: 404, statusText: 'User not found' })
       : createError({ status: 502, statusText: 'Roles could not be updated' })

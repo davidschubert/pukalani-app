@@ -237,8 +237,8 @@ Labels-Update: `neueLabels = (bestehende Labels − alle Rollen-Labels) ∪ ausg
 1. **Keine Eskalation:** der Handelnde darf nur Rollen vergeben, deren Capability-Menge
    ⊆ seiner eigenen ist. (Ein Moderator könnte ohnehin nicht hierher — `users.manage`
    ist admin-only — aber die Regel ist zukunftssicher.)
-2. **Last-Admin-Garantie:** Entzug von `admin` beim letzten Admin → 400 `last_admin`
-   ([assertNotLastAdmin](../../packages/admin/server/utils/admins.ts) bleibt, prüft weiter das `admin`-Label).
+2. **Last-Admin-Garantie:** Entzug von `admin` beim letzten Admin → 409 `last_admin` (auch Löschen und Sperren, selbst oder durch den Betreiber; unter der Projekt-Sperre, `core/server/utils/lastAdmin.ts`)
+   ([assertNotLastAdmin](../../packages/core/server/utils/lastAdmin.ts) bleibt, prüft weiter das `admin`-Label).
 3. **Kein Selbst-Lockout:** eigene `admin`-Rolle nicht entziehbar (wie heute).
 
 ## Audit & i18n
