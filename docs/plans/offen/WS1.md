@@ -38,8 +38,7 @@ Balken → `useBrandWorkshopRail`, `useBrandWorkshopLayout`, `BwStageBar`;
 (d) Design-Werkzeuge → `useBrandDesignToolSync`; (c, Teil) Bestätigungs-Modul
 → `BwStageConfirm`.
 
-**Geschnitten** (Bahn C, 2026-11-23, Zweige `claude/bahnc-ws1-c` und darauf
-`claude/bahnc-ws1-f`, noch nicht auf `main`):
+**Geschnitten** (Bahn C, 2026-11-23, zwei Pull Requests nacheinander):
 - **(c, Rest)** → `BwStageAnswer` (Beispiel-Ausweg), `BwStageOptions`
   (Richtungen, Boards, Text-Karten, eigene Formulierung; `BwBoardChoice` wohnt
   jetzt dort), `BwStageDraft` (Entwurfs-Modul) — Muster `BwStageConfirm`. Der
