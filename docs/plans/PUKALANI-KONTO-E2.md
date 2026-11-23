@@ -1,9 +1,9 @@
 # Pukalani-Konto, Etappe 2 — die zentrale Anmeldung
 
-> **Plan-Status (2026-11-23):** nicht gebaut — entschieden, Prototyp in Arbeit; der Bau wartet auf Schritt B von E1 ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
+> **Plan-Status (2026-11-23):** nicht gebaut — entschieden, Prototyp gebaut (§ 13, Schalter aus), wartet auf Davids Freigabe; der Bau wartet auf Schritt B von E1 ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
 
 **Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-23 · Status:
-entschieden, Prototyp in Arbeit.** Davids sechs Antworten stehen in § 12;
+entschieden, Prototyp gebaut (§ 13).** Davids sechs Antworten stehen in § 12;
 nichts an Production.
 
 Dieses Dokument vertieft die **zweite** Etappe des Gesamtkonzepts
@@ -170,12 +170,12 @@ Session. Einzeln:
 
 | # | Was | Wo | Klick? |
 | --- | --- | --- | --- |
-| 1 | **Keine Migration** für Variante A. Für E2d (Entscheidung 5: ja): eine Spalte oder Zeile „Löschung vorgemerkt" — eine Migration auf Production. | — | E2d **Klick** | **Variante A**: zentrale Seite auf `account.pukalani.app` mit Rücksprung. |
-| 2 | **Schalter** für die zentrale Anmeldung (Name im Bau, z. B. `NUXT_CENTRAL_LOGIN_MODE`: `off` · `on`, Core-Vorgabe `off`), je App mit Anmeldung. Zurück ohne Ausliefern. | `.env` der Platform auf Production | **Klick** | **Wie empfohlen:** Wiedererkennen so lange wie eine Sitzung heute, Kästchen „Auf diesem Gerät angemeldet bleiben" voreingestellt an; ohne Haken endet die zentrale Sitzung beim Schließen des Browsers. |
-| 3 | **Google:** die Rückkehr-Adresse der zentralen Stelle in der Google-Console und in Appwrite eintragen (meist schon da, weil `account.pukalani.app` heute ein Host der Platform ist — vorher nachsehen); erst nach dem Einschalten die übrigen entfernen. | Google-Console, Appwrite-Konsole Projekt `account` | **Klick** | **Ja, in E2:** Passwort, Zwei-Faktor, Geräte, Export und „Konto löschen" verschwinden aus den Dashboards unter `*.pukalani.app`; dort bleibt nur der Link „Konto verwalten". |
-| 4 | **Sitzungs-Obergrenze** im Projekt `account` mit der zentralen Sitzung neu rechnen (eine je Gerät mehr); steht sie auf `0`, nichts tun. | Appwrite-Konsole | **Klick** nur, wenn sie geändert werden muss | **Nein, eigener Schritt nach E2** — Plan und Zahlung bleiben in E2 im Dashboard der Community; E2e entfällt. |
-| 5 | **Bot-Prüfung (Turnstile):** die zentrale Stelle braucht den Hostnamen `account.pukalani.app` im Widget; vorher nachsehen, ob er schon drin ist. | Cloudflare | **Klick** nur, wenn er fehlt | **Ja, in E2:** 30 Tage Bedenkzeit, ein Weg „jetzt endgültig" bleibt (Schritt E2d, braucht eine Migration). |
-| 6 | **Mail-Vorlagen von Appwrite** (Bestätigen, Passwort, Code): Links zeigen auf die zentrale Stelle. Der Link entsteht in unserem Code; die Vorlagen selbst ändern sich nur, wenn ein Text „auf dieser Seite" sagt. | `scripts/ops/appwrite-mail/templates/` | **Klick** nur bei Text-Änderung (Einspielen je Projekt) | **Wie empfohlen:** Prototyp sofort; Bau nach Schritt B auf der Platform mit bestandener Klick-Probe; Einschalten erst nach Schritt C und einer Woche ohne Befund. |
+| 1 | **Keine Migration** für Variante A. Für E2d (Entscheidung 5: ja): eine Spalte oder Zeile „Löschung vorgemerkt" — eine Migration auf Production. | — | E2d **Klick** |
+| 2 | **Schalter** für die zentrale Anmeldung (Name im Bau, z. B. `NUXT_CENTRAL_LOGIN_MODE`: `off` · `on`, Core-Vorgabe `off`), je App mit Anmeldung. Zurück ohne Ausliefern. | `.env` der Platform auf Production | **Klick** |
+| 3 | **Google:** die Rückkehr-Adresse der zentralen Stelle in der Google-Console und in Appwrite eintragen (meist schon da, weil `account.pukalani.app` heute ein Host der Platform ist — vorher nachsehen); erst nach dem Einschalten die übrigen entfernen. | Google-Console, Appwrite-Konsole Projekt `account` | **Klick** |
+| 4 | **Sitzungs-Obergrenze** im Projekt `account` mit der zentralen Sitzung neu rechnen (eine je Gerät mehr); steht sie auf `0`, nichts tun. | Appwrite-Konsole | **Klick** nur, wenn sie geändert werden muss |
+| 5 | **Bot-Prüfung (Turnstile):** die zentrale Stelle braucht den Hostnamen `account.pukalani.app` im Widget; vorher nachsehen, ob er schon drin ist. | Cloudflare | **Klick** nur, wenn er fehlt |
+| 6 | **Mail-Vorlagen von Appwrite** (Bestätigen, Passwort, Code): Links zeigen auf die zentrale Stelle. Der Link entsteht in unserem Code; die Vorlagen selbst ändern sich nur, wenn ein Text „auf dieser Seite" sagt. | `scripts/ops/appwrite-mail/templates/` | **Klick** nur bei Text-Änderung (Einspielen je Projekt) |
 | 7 | **nginx, TLS, DNS:** nichts — `account.pukalani.app` ist schon ein Host der Platform. | — | nein |
 | 8 | **Klick-Probe** in Davids Browser nach dem Einschalten (§ 9). | Production | **Klick** |
 
@@ -294,3 +294,67 @@ nein unter eigenen Domains, die Konsole mit eigenen Konten (Gesamtkonzept
 | 4 | Ziehen Plan und Zahlung der Communities schon in E2 an die zentrale Stelle? | **Nein, eigener Schritt nach E2** (vor oder mit E3). | E2 bleibt eine reine Anmelde-Etappe und einzeln rückholbar. Owner zahlen bis dahin weiter im Dashboard ihrer Community; die Rückkehr von Stripe bleibt unverändert. | **Nein, eigener Schritt nach E2** — Plan und Zahlung bleiben in E2 im Dashboard der Community; E2e entfällt. |
 | 5 | Bekommt „Konto löschen" mit dem Umzug an die zentrale Stelle eine **Bedenkzeit von 30 Tagen** (Gesamtkonzept § 8, [WIEDERHERSTELLUNG.md](WIEDERHERSTELLUNG.md) „Für später")? | **Ja, in E2** — der Vorfall vom 2026-11-22 zeigt, wie teuer ein endgültiges Löschen im falschen Moment ist. | Ein Schritt mehr (E2d), eine Migration auf Production, Datenschutz- und Lösch-Texte ändern sich (Anwalt). Ein Weg „jetzt endgültig" bleibt. Der letzte Owner einer Community und der Kunde bei Stripe brauchen dabei eigene Regeln. | **Ja, in E2:** 30 Tage Bedenkzeit, ein Weg „jetzt endgültig" bleibt (Schritt E2d, braucht eine Migration). |
 | 6 | Wann darf der Bau beginnen? | **Prototyp sofort; Bau nach Schritt B auf der Platform mit bestandener Klick-Probe; Einschalten erst nach Schritt C und einer Woche ohne Befund.** | E2 baut auf einer bewiesenen Karte auf; der Prototyp kann David vorher gezeigt werden. Bis Schritt B läuft, wartet E2. | **Wie empfohlen:** Prototyp sofort; Bau nach Schritt B auf der Platform mit bestandener Klick-Probe; Einschalten erst nach Schritt C und einer Woche ohne Befund. |
+
+## 13. Prototyp der Variante A (2026-11-23)
+
+Gebaut hinter dem Schalter **`NUXT_PUBLIC_CENTRAL_LOGIN`** (`off` · `on`,
+Core-Vorgabe `off`, jeder andere Wert ist `off`). Mit `off` antworten die neuen
+Routen 404 und alles läuft wie vorher; auf Production ist der Wert nicht
+gesetzt. Keine Tabelle, keine Migration, keine neuen Pakete.
+
+| Teil | Wo | Was es tut |
+| --- | --- | --- |
+| Weiterleitung | `packages/core/app/pages/login/index.vue` | Auf einem Community-Host führt „Anmelden" in den Kundenbereich: `/login/continue?site=<Host>&to=<Pfad>`. |
+| Zentrale Seite | `packages/core/app/pages/login/continue.vue` | „Anmelden bei <Community>"; angemeldet „Weiter als …" und „Mit einem anderen Konto anmelden"; sonst das Formular mit dem Kästchen „Auf diesem Gerät angemeldet bleiben" (an). |
+| Ziel prüfen | `GET /api/auth/central/target`, `packages/core/server/utils/centralLogin.ts` | Ein Host gilt nur mit Schalter `on`, nur auf einem Kontroll-Host, nur in Host-Form (kein Schema, Port, Pfad) und nur, wenn die Mandanten-Auflösung ihn als Community kennt; kein Kontroll-Host. Zurück geht es auf deren kanonischen Host. Fehlgriffe zählen in der Bremse. |
+| Rücksprung | `POST /api/auth/central/return` | Siegel aus `requestHandoffGrant()` (liest `readRequestSession()`), an den geprüften Host gebunden; die Community löst es über `/api/auth/site-session` ein (`establishSiteSession`). `to` nur als relativer Pfad. |
+| Kästchen | `remember` in `POST /api/auth/login` | Ohne Haken bekommt das Cookie keinen Ablauf und endet mit dem Browser — nur im Kundenbereich mit Schalter `on` (Entscheidung 2). |
+| Konto verwalten | `packages/admin/app/pages/dashboard/settings.vue` | Hinweis mit Link in den Kundenbereich über allen Konto-Reitern. Die Reiter bleiben im Prototyp stehen (Entscheidung 3 baut E2c). |
+
+**Bewiesen** (2026-11-23): Rollen-Tests an der echten Route
+(`packages/core/tests/route-roles-central-login.test.ts`: Schalter aus, Gast,
+fremder und Kontroll-Host, kanonischer Host, Siegel nur für den eigenen Host,
+Kästchen nur im Kundenbereich). Lokal auf der Bühne (`kunde-a`, `kunde-b`):
+Anmelden auf A ⇒ Kundenbereich ⇒ zurück auf A angemeldet; auf B ohne Passwort
+„Weiter als …"; Siegel von A auf B ⇒ 401; ohne Haken ein Cookie ohne Ablauf,
+mit Haken mit Ablauf.
+
+**Was der Prototyp noch nicht kann** (gehört in E2a–E2c): Google und der
+Anmelde-Code führen noch nicht zurück und sind auf der zentralen Seite
+ausgeblendet; Registrieren, „Passwort vergessen" und Zwei-Faktor laufen auf
+der zentralen Seite, springen danach aber nicht zurück; die Anmelde-Routen
+antworten auf den Community-Hosts weiter; kein Kleid der Community (Logo,
+Farbwelt). Lokal läuft die Eintrittskarte im Modus `off`: die Seite bekommt
+eine KOPIE der zentralen Sitzung, „Mit einem anderen Konto" meldet darum auch
+die Seite ab, und ein Siegel lässt sich zweimal einlösen. Beides endet erst mit
+`write` — der Grund, warum der Bau auf Schritt B wartet (§ 4).
+
+## 14. Schritt E2d — Bedenkzeit beim Löschen (nur Konzept)
+
+Davids Entscheidung 5: „Konto löschen" bekommt 30 Tage Bedenkzeit, ein Weg
+„jetzt endgültig" bleibt. Das braucht eine Migration und ist darum **nicht**
+im Prototyp.
+
+- **Ablauf:** „Konto löschen" im Kundenbereich (frische Anmeldung wie heute)
+  merkt die Löschung vor, beendet alle Sitzungen und schickt eine Mail mit dem
+  Datum. In den 30 Tagen kann man sich anmelden und sieht nur „Dein Konto wird
+  am … gelöscht — zurückholen?"; Schreiben ist gesperrt. Nach der Frist löscht
+  der bestehende Export-und-Lösch-Weg (`users.delete` nur bei Voll-Erfolg).
+- **„Jetzt endgültig":** dieselbe Bestätigung wie heute, sofort über den
+  bestehenden Weg.
+- **Speicher:** eine Tabelle im Layer `system` (Konto, Zeitpunkt, Frist,
+  Stand) — Migration, Eintrag in `scripts/lib/server-written-tables.mjs`,
+  Entscheidung in `core/tests/support/userDataTables.ts`. Nicht in den Prefs:
+  die kann jedes Konto direkt bei Appwrite ändern, und ein Lauf findet sie
+  nicht.
+- **Fristen-Lauf** auf dem Gerüst `rowRetention`: Schalter-Vorgabe `off`, live
+  erst `count`, `apply` nur mit Davids Ja zur gezählten Zahl.
+- **Eigene Regeln:** der letzte Owner einer Community kann nicht vormerken
+  (heutiger Grund `last_owner`, beim Vormerken und beim Löschen geprüft); ein
+  Abo bei Stripe endet beim Vormerken zum Periodenende, der Kunde bei Stripe
+  geht erst mit dem Löschen.
+- **Texte:** Datenschutzerklärung und Lösch-Texte ändern sich (Anwalt).
+- **Rückweg:** Schalter aus ⇒ wieder sofort endgültig; vorgemerkte Konten
+  entscheidet David je Fall, nie ein Lauf.
+- **Klick:** die Migration auf Production und der Lauf auf `apply`, je mit
+  Davids Ja. Größe: eine Session, nach E2c.
