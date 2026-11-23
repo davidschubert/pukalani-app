@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { isLastAdminError } from '../../../shared/lastAdmin'
+
 const { t } = useI18n()
 const localePath = useLocalePath()
 const toast = useToast()
@@ -48,6 +50,16 @@ async function deleteAccount() {
   }
   catch (error) {
     if (await promptFreshSignIn(error, t('account.delete.reauthText'))) return
+    // Der letzte aktive Admin löscht sich nicht (409 `last_admin`) — gelöscht
+    // und gesperrt wurde nichts, also NICHT der Text „vielleicht halb".
+    if (isLastAdminError(error)) {
+      toast.add({
+        title: t('account.delete.lastAdmin'),
+        description: t('account.delete.lastAdminDescription'),
+        color: 'warning',
+      })
+      return
+    }
     toast.add({
       title: isNetworkError(error) ? t('auth.networkError') : t('account.delete.failed'),
       // Der Titel nennt nur den Fehlschlag — die für den Nutzer entscheidende

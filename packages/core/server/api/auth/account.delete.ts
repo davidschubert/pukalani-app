@@ -1,4 +1,10 @@
 import { clearSessionCookie } from '../../lib/appwrite'
+import { LAST_ADMIN_CODE } from '../../../shared/lastAdmin'
+
+
+function isLastAdminRefusal(error: unknown): boolean {
+  return (error as { data?: { code?: unknown } } | null)?.data?.code === LAST_ADMIN_CODE
+}
 
 /**
  * Eigenen Account VOLLSTÄNDIG löschen (Art. 17 DSGVO) — orchestriert über
@@ -18,21 +24,35 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 401, statusText: 'Unauthorized' })
   }
 
+  const userId = event.context.user.$id
+  // Der letzte aktive Admin löscht sich nicht (lastAdmin.ts) — VOR der
+  // frischen Anmeldung: den fachlichen Grund braucht niemand erst nach einem
+  // neuen Login zu erfahren (wie die Betreiber-Route). Verbindlich prüft
+  // `deleteUserCompletely` unter der Sperre noch einmal.
+  if (isActiveAdmin(event.context.user)) await assertNotLastAdmin(event, userId)
+
   await requireRecentAuth(event)
 
-  const userId = event.context.user.$id
   let result: Awaited<ReturnType<typeof deleteUserCompletely>>
+  let refused = false
   try {
     result = await deleteUserCompletely(event, userId, { actor: 'self' })
   }
   catch (error) {
+    // Letzter aktiver Admin (unter der Sperre erkannt): nichts gelöscht,
+    // nichts gesperrt — der fachliche Grund geht unverändert hinaus.
+    if (isLastAdminRefusal(error)) {
+      refused = true
+      throw error
+    }
     // z. B. Snapshot fehlgeschlagen → es wurde noch NICHTS gelöscht
     console.error('[gdpr] Self-Delete fehlgeschlagen (vor Cleanup):', error)
     throw createError({ status: 500, statusText: 'Account deletion failed' })
   }
   finally {
-    // Session ist durch das Sperren ohnehin tot — Cookie IMMER entfernen
-    clearSessionCookie(event)
+    // Session ist durch das Sperren ohnehin tot — Cookie entfernen. Nur die
+    // Ablehnung „letzter Admin" hat NICHT gesperrt: dort bleibt die Sitzung.
+    if (!refused) clearSessionCookie(event)
   }
 
   if (!result.ok) {

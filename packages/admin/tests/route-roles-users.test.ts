@@ -46,13 +46,13 @@ const TARGET = 'u-ziel'
 
 describeAdminRoute('DELETE /api/admin/users/:id', () => import('../server/api/admin/users/[id]/index.delete'), OPERATOR_ONLY, {
   params: { id: TARGET },
-  globals: { requireRecentAuth, assertNotLastAdmin: async () => {} },
+  globals: { requireRecentAuth, assertNotLastAdmin: async () => {}, withLastAdminGuard: (_event: unknown, _id: string, work: () => Promise<unknown>) => work() },
 }, { recentAuth: true })
 
 describeAdminRoute('PATCH /api/admin/users/:id/status', () => import('../server/api/admin/users/[id]/status.patch'), OPERATOR_ONLY, {
   params: { id: TARGET },
   body: { blocked: true },
-  globals: { assertNotLastAdmin: async () => {} },
+  globals: { assertNotLastAdmin: async () => {}, withLastAdminGuard: (_event: unknown, _id: string, work: () => Promise<unknown>) => work() },
 })
 
 describeAdminRoute('DELETE /api/admin/users/:id/sessions', () => import('../server/api/admin/users/[id]/sessions.delete'), OPERATOR_ONLY, {
@@ -112,11 +112,11 @@ describe('DELETE /api/admin/users/:id — die Reihenfolge der zwei Prüfungen', 
   it('letzter Admin: abgelehnt, bevor nach der Anmeldung gefragt wird — nichts gelesen, nichts gelöscht', async () => {
     const { touched, globals } = world({
       assertNotLastAdmin: async () => {
-        throw Object.assign(new Error('At least one admin must remain'), { status: 400, data: { code: 'last_admin' } })
+        throw Object.assign(new Error('At least one admin must remain'), { status: 409, data: { code: 'last_admin' } })
       },
     })
     const run = await probeAdminRoute(load, 'operator', { params: { id: TARGET }, globals })
-    expect(run.status).toBe(400)
+    expect(run.status).toBe(409)
     expect(run.error?.data).toEqual({ code: 'last_admin' })
     expect(touched).toEqual([])
   })
@@ -159,6 +159,7 @@ describe('Personendaten: der Eingriff des Betreibers steht im Protokoll', () => 
       globals: {
         requireRecentAuth,
         assertNotLastAdmin: async () => {},
+        withLastAdminGuard: (_event: unknown, _id: string, work: () => Promise<unknown>) => work(),
         createAdminClient: () => ({ users: { get: async () => ({ $id: TARGET }) } }),
         deleteUserCompletely: async () => ({ ok: true, results: [], exportFileId: '' }),
         recordAudit: audit.recordAudit,
@@ -175,6 +176,7 @@ describe('Personendaten: der Eingriff des Betreibers steht im Protokoll', () => 
       body: { blocked: true },
       globals: {
         assertNotLastAdmin: async () => {},
+        withLastAdminGuard: (_event: unknown, _id: string, work: () => Promise<unknown>) => work(),
         createAdminClient: () => ({ users: { updateStatus: async () => ({ $id: TARGET, name: 'Ziel', status: false }) } }),
         recordAudit: audit.recordAudit,
       },

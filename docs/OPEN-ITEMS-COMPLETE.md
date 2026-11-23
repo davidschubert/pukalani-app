@@ -77,6 +77,61 @@ CI lokal nachstellen: CPU über CDP drosseln, nicht raten.
 
 ---
 
+### SA1 — Nie der letzte aktive Admin: Löschen, Sperren und Entzug von `admin` unter einer Projekt-Sperre ✅ 2026-11-23
+
+**Anlass.** Am 2026-11-22 wurde auf Production über „Konto löschen" das einzige
+Konto mit dem Label `admin` im Projekt `account` gelöscht (Alarm-Issue 555).
+Die Selbst-Löschung (`DELETE /api/auth/account`) prüfte das gar nicht; die
+Betreiber-Wege prüften ohne Sperre („zählen, dann handeln") und antworteten
+400.
+
+**Was.**
+- Die vier Schreibstellen, die einen aktiven Admin wegnehmen können:
+  `deleteUserCompletely` (Schritt „Sperren", trifft Selbst- und
+  Betreiber-Löschung), `PATCH /api/admin/users/:id/status`,
+  `POST /api/admin/users/bulk` (Sperren) und `mutateUserLabels` (Entzug von
+  `admin`, damit die Rollen-Route). Sie laufen über
+  `withLastAdminGuard` (`packages/core/server/utils/lastAdmin.ts`): Ziel frisch
+  lesen; ist es kein aktiver Admin, keine Sperre; sonst UNTER der Projekt-Sperre
+  frisch zählen (nur aktive Konten) und nur dann schreiben ⇒ sonst 409
+  `data: { code: 'last_admin' }`.
+- Die Sperre: `withControlLock` zog als `withRuleLock` in den Core
+  (`packages/core/server/utils/ruleLock.ts`, Tabelle `system_runs`, feste Id je
+  Projekt); `control/server/utils/controlLock.ts` ist nur noch der alte Name.
+  Unter der Sperre läuft nur der eine schnelle Schritt (Sperren oder Label
+  schreiben); die lange Löschung danach ohne Sperre — der gesperrte Admin zählt
+  ab da nicht mehr.
+- Vorab-Prüfung ohne Sperre (`assertNotLastAdmin`, jetzt im Core, 409 statt
+  400) bleibt für die frühe Antwort: vor der frischen Anmeldung und vor dem
+  Snapshot. Wird erst unter der Sperre abgelehnt, räumt die Löschung den eben
+  geschriebenen Snapshot wieder ab, und die Selbst-Löschung lässt das Cookie
+  stehen (nichts gesperrt).
+- Browser: die Daten-Seite des Kontos zeigt „Du bist der letzte Admin." mit
+  Ausweg (de + en, `account.delete.lastAdmin*`); die Betreiber-Seiten lasen
+  `last_admin` schon.
+
+**Beweis.** `packages/core/tests/lastAdmin.test.ts` (letzter Admin ⇒ 409 und
+nichts geschrieben; zwei Admins ⇒ geht, danach nicht mehr; gleichzeitig zwei
+Sperren, Label-Entzug neben Sperren, zwei Selbst-Löschungen ⇒ genau eine gelingt;
+GEGENPROBE: dieselbe Zählung ohne Sperre lässt beide durch),
+`route-roles-account-security.test.ts` (Route: 409 vor der frischen Anmeldung,
+Cookie bleibt; Gegenprobe zwei Admins ⇒ 200), admin-Tests auf 409. Lokal im
+Browser (`apps/comments`, lokale Appwrite): zwei Wegwerf-Admins; ein
+Zwischen-Server ließ die Admin-Zählung nur diese beiden sehen (die drei
+vorhandenen lokalen Admins blieben unberührt). Konto 1 löschte sich (200,
+Abmeldung), Konto 2 bekam den Hinweis und blieb angemeldet; danach aufgeräumt
+und nachgezählt (0 Probe-Konten, 3 aktive Admins wie vorher).
+
+**Nicht geprüft.** Die Sperre auf Production unter echter Last; ob jede
+Production-Instanz `system_runs` hat, zeigt erst der erste Admin-Fall (ohne
+Tabelle antwortet die Prüfung 503 und der Admin bleibt — fail-closed).
+
+**Gelernt:** Ein Wächter, der nur an den Betreiber-Routen steht, schützt nicht
+den Weg, den der Betroffene selbst geht — die Regel gehört an die SCHREIBSTELLE
+(Sperren, Label), nicht an die Route. Und „zählen, dann handeln" ohne Sperre
+ist mit zwei gleichzeitigen Anfragen nachweisbar falsch: die Gegenprobe im Test
+zeigt das Fenster, statt es nur zu behaupten.
+
 ### KK1 (c) — Kontingent-Zahlen in den Katalog: Daten-Migration control-042 aus der app.config, Konsole je Art, auf Production gefahren ✅ 2026-11-22
 
 **Was.** Davids Antworten vom 2026-11-22 zum Plan

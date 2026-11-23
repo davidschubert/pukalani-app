@@ -246,6 +246,7 @@ describe('Sammel-Sperre: Ziel-Ids im Protokoll, sicher unter der Spaltengröße'
     stubCommon({
       readValidatedBody: async (_event: unknown, parse: (body: unknown) => unknown) => parse({ action: 'block', ids: ['u1', 'u2', 'u1'] }),
       assertNotLastAdmin: async () => {},
+      withLastAdminGuard: (_event: unknown, _id: string, work: () => Promise<unknown>) => work(),
     })
     const run = await handler('../server/api/admin/users/bulk.post.ts')
     await expect(run(event())).resolves.toMatchObject({ ok: true, done: ['u1', 'u2'] })
@@ -352,7 +353,7 @@ describe('Letzter Admin: es zählen nur aktive Konten', () => {
       },
     }
     stubCommon()
-    const { assertNotLastAdmin } = await import('../server/utils/admins')
+    const { assertNotLastAdmin } = await import('../../core/server/utils/lastAdmin')
     await expect(assertNotLastAdmin({} as never, 'admin-1')).rejects.toMatchObject({ data: { code: 'last_admin' } })
     const parsed = seen[0]!.map(q => JSON.parse(q) as { method: string, attribute?: string, values?: unknown[] })
     expect(parsed).toContainEqual(expect.objectContaining({ method: 'equal', attribute: 'status', values: [true] }))
