@@ -198,17 +198,26 @@ describe('checkAiModelEndpoints (gestelltes fetch)', () => {
   })
 
   it('beide Listen unter EINER Frist, nicht nacheinander', async () => {
-    const started: number[] = []
+    // MG1 (2026-11-23): früher maß der Test die Wanduhr (< 75 ms bei zwei
+    // Abrufen à 40 ms) und war unter Last rot (78–156 ms), obwohl beide
+    // Abrufe gleichzeitig liefen. Jetzt entscheidet ein EREIGNIS: jeder Abruf
+    // wartet, bis auch der zweite begonnen hat. Laufen sie nacheinander,
+    // beginnt der zweite nie, solange der erste wartet — der erste sieht nach
+    // der Notbremse nur sich selbst, und der Test ist rot.
+    const started: string[] = []
+    const seenByEach: number[] = []
+    let release!: () => void
+    const bothStarted = new Promise<void>((resolve) => { release = resolve })
     fetchMock.mockImplementation(async (url) => {
-      started.push(Date.now())
-      await new Promise(resolve => setTimeout(resolve, 40))
+      started.push(String(url))
+      if (started.length === 2) release()
+      await Promise.race([bothStarted, new Promise(resolve => setTimeout(resolve, 1000))])
+      seenByEach.push(started.length)
       return json(200, endpoints(...(String(url).startsWith(AI_BROKER_EU_BASE_URL) ? EUROPE_2026_11_18 : WORLD_2026_11_18)))
     })
-    const before = Date.now()
     await expect(checkAiModelEndpoints('anthropic/claude-haiku-4.5', base)).resolves.toBe('ok')
     expect(started).toHaveLength(2)
-    expect(Math.abs(started[0]! - started[1]!)).toBeLessThan(30)
-    expect(Date.now() - before).toBeLessThan(75)
+    expect(seenByEach).toEqual([2, 2])
   })
 
   it('404 ⇒ unknown_model', async () => {

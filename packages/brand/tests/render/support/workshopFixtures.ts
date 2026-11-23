@@ -9,6 +9,7 @@ import type {
   BrandProfileDetailResponse,
   BrandProfileListResponse,
   BrandProfileSummary,
+  BrandSessionImpactResponse,
   BrandSessionView,
   BrandSiteAnalyzeResponse,
   BrandSlotView,
@@ -144,6 +145,20 @@ export function workshopStepDetail(): BrandStepDetailResponse {
       confidence: null,
       updatedAt: NOW,
     },
+    // Ein BESTÄTIGTES Feld, nur wenn der Fall es einschaltet (es verändert
+    // Fortschritt und Restzeit der anderen Fälle): im Log trägt seine Karte
+    // „Korrigieren", davor steht der Impact-Hinweis (Korrektur-Regel, WS1 f).
+    ...(workshopReviseSlotConfirmed.on
+      ? {
+          [WORKSHOP_REVISE_SLOT]: {
+            firstDraft: WORKSHOP_REVISE_VALUE,
+            latestDraft: WORKSHOP_REVISE_VALUE,
+            confirmed: WORKSHOP_REVISE_VALUE,
+            confidence: null,
+            updatedAt: NOW,
+          },
+        }
+      : {}),
     [WORKSHOP_VERSIONS_SLOT]: {
       firstDraft: WORKSHOP_FIRST_DRAFT,
       latestDraft: WORKSHOP_FIRST_DRAFT,
@@ -401,4 +416,27 @@ export function workshopGenerateStream(slotId: string): string {
     + serializeBrandGenerationEvent('message.delta', { generationId, text: WORKSHOP_NEW_DRAFT })
     + serializeBrandGenerationEvent('slot.ready', { generationId, slotId, draft: WORKSHOP_NEW_DRAFT })
     + completedFrame(generationId, slotId)
+}
+
+// ── Die Korrektur-Regel (WS1, Kapitel f) ──────────────────────────────────
+
+/** Ein bestätigtes Feld des Kontext-Kapitels — „Korrigieren" holt erst den Impact-Hinweis. */
+export const WORKSHOP_REVISE_SLOT = 'a.challenge'
+export const WORKSHOP_REVISE_VALUE = 'Zu viele sehen gleich aus.'
+export const WORKSHOP_IMPACT_ACK = 'render-ack-1'
+/** Schaltet das bestätigte Feld in die gestellten Kapitel-Antworten (Lesen UND Speichern). */
+export const workshopReviseSlotConfirmed = { on: false }
+
+/** Die Hülle des Felds (`GET …/sessions/<id>/impact`): ein bestätigtes Feld hängt daran. */
+export function workshopImpact(slotId: string): BrandSessionImpactResponse {
+  return {
+    slotId,
+    stepKey: WORKSHOP_STEP_KEY,
+    revision: 1,
+    direct: [WORKSHOP_FOREIGN_SLOT],
+    transitive: [],
+    byStep: { [WORKSHOP_FOREIGN_STEP]: [WORKSHOP_FOREIGN_SLOT] },
+    count: 1,
+    ack: WORKSHOP_IMPACT_ACK,
+  }
 }

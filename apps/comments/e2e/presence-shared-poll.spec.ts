@@ -114,16 +114,24 @@ test.describe('Anwesenheit: ein Abruf je Takt und Reiter (Q23)', () => {
     await page.goto(target.path)
     await expect(page.locator(target.ready).first()).toBeVisible({ timeout: 60_000 })
     await page.waitForLoadState('networkidle')
-    const at = recordPresenceLists(page)
-    const foreign = recordForeignPresenceEvents(page, userId)
-    await page.reload()
-    await expect(page.locator(target.ready).first()).toBeVisible({ timeout: 60_000 })
+    // FRISCHER REITER (MG1, 2026-11-23): die Zähler hingen vorher schon vor
+    // `page.reload()` an der Aufwärm-Seite. Steckt die in der langsamen CI
+    // noch in ihrer eigenen Öffnung, zählte ihr Abruf als „erster" — das
+    // Fenster begann zu früh, und die zwei Abrufe beim Öffnen der neuen Seite
+    // lagen beide darin (CI 2026-11-22: 2.4 3.0 23.0 43.0). Jetzt ist sie
+    // geschlossen, und das Fenster beginnt am ersten Abruf DIESES Reiters.
+    await page.close()
+    const fresh = await context.newPage()
+    const at = recordPresenceLists(fresh)
+    const foreign = recordForeignPresenceEvents(fresh, userId)
+    await fresh.goto(target.path)
+    await expect(fresh.locator(target.ready).first()).toBeVisible({ timeout: 60_000 })
 
     // Der erste Abruf beim Laden zeigt, dass die Seite überhaupt liest — ohne
     // ihn wäre „kein Bündel" auch bei null Abrufen grün.
     await expect.poll(() => at.length, { timeout: 30_000 }).toBeGreaterThan(0)
     const start = Date.now()
-    await page.waitForTimeout(WINDOW_MS)
+    await fresh.waitForTimeout(WINDOW_MS)
     const inWindow = at.filter(t => t >= start && t < start + WINDOW_MS)
     const own = inWindow.filter(t => !foreign.some(e => e <= t && t - e <= EXPLAINED_MS))
     const secs = (list: number[]) => list.map(t => ((t - start) / 1000).toFixed(1)).join(' ')
