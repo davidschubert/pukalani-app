@@ -1,5 +1,6 @@
 import { resolveBrandJourney, resolveSessionStates } from '../../../shared/brandJourney'
 import type { BrandProfileFacts } from '../../../shared/brandJourney'
+import { serializeBrandGenerationEvent } from '../../../shared/brandGeneration'
 import { affectsView } from '../../../shared/brandSessions'
 import { BRAND_DESIGN_STEP_KEYS, BRAND_FOUNDATION_STEP_KEYS, type BrandStepKey, slotsForStep } from '../../../shared/slotRegistry'
 import type {
@@ -130,6 +131,9 @@ export function workshopStepDetail(): BrandStepDetailResponse {
   // Das Entwurfs-Feld ist offen (sonst führt die Adresse `?s=` nicht
   // hinein) und trägt ihre erste Fassung.
   sessions[WORKSHOP_VERSIONS_SLOT] = { ...sessions[WORKSHOP_VERSIONS_SLOT]!, state: 'open' }
+  // Die Sammel-Session (eine Auswahl) ebenso: über `?s=a.facts` zeigt die
+  // Bühne für sie das Options-Modul (WS1 c-Rest).
+  sessions[WORKSHOP_CHOICE_SLOT] = { ...sessions[WORKSHOP_CHOICE_SLOT]!, state: 'open' }
   const slots: BrandStepDetailResponse['slots'] = {
     // Eine beantwortete, noch nicht bestätigte Frage: die Bühne zeigt für sie
     // das Bestätigungs-Modul (`?s=a.oneThing`).
@@ -349,4 +353,52 @@ export function workshopSave(body: { revision: number, slots: Record<string, { v
     slots[slotId] = { firstDraft: slots[slotId]?.firstDraft ?? value, latestDraft: value, confirmed: patch.confirmed ? value : null, confidence: null, updatedAt: NOW }
   }
   return { revision: body.revision + 1, slots }
+}
+
+// ── Gestellte KI-Ströme (WS1, Kapitel c-Rest) ─────────────────────────────
+
+/**
+ * GESTELLTE STRÖME FÜR `…/converse` UND `…/generate`.
+ *
+ * Keine KI: die Frames baut dieselbe Schreib-Regel, mit der die echten Routen
+ * senden (`serializeBrandGenerationEvent`) — die Seite liest die Form des
+ * Betriebs. `revision: 0` im Abschluss-Frame heisst „der Zug hat keine neue
+ * Fassung geschrieben": die Seite liest nichts nach, und der Store behält die
+ * Fassung, die der gestellte Autosave ihm gemeldet hat.
+ */
+export const WORKSHOP_CHOICE_SLOT = 'a.facts'
+export const WORKSHOP_CHOICE_ANSWER = 'Seit 2019, in Deutschland und Österreich.'
+export const WORKSHOP_GEORGE_REPLY = 'Danke, das hilft mir weiter.'
+export const WORKSHOP_HINT = 'kürzer'
+export const WORKSHOP_NEW_DRAFT = 'Markenberatung'
+
+function completedFrame(generationId: string, slotId: string): string {
+  return serializeBrandGenerationEvent('generation.completed', {
+    generationId,
+    slotId,
+    revision: 0,
+    messageId: null,
+    model: 'render-model',
+    promptVersion: 'v1',
+    createdAt: NOW,
+    reused: false,
+    outcome: 'draft',
+  })
+}
+
+/** Ein Gesprächszug von George: Anfang, ein Satz, Abschluss. */
+export function workshopConverseStream(): string {
+  const generationId = 'render-turn-1'
+  return serializeBrandGenerationEvent('generation.started', { generationId, slotId: '', stepKey: WORKSHOP_STEP_KEY })
+    + serializeBrandGenerationEvent('message.delta', { generationId, text: WORKSHOP_GEORGE_REPLY })
+    + completedFrame(generationId, '')
+}
+
+/** Ein Entwurf für ein Feld: Anfang, Satz, der fertige Wert, Abschluss. */
+export function workshopGenerateStream(slotId: string): string {
+  const generationId = 'render-gen-2'
+  return serializeBrandGenerationEvent('generation.started', { generationId, slotId, stepKey: WORKSHOP_STEP_KEY })
+    + serializeBrandGenerationEvent('message.delta', { generationId, text: WORKSHOP_NEW_DRAFT })
+    + serializeBrandGenerationEvent('slot.ready', { generationId, slotId, draft: WORKSHOP_NEW_DRAFT })
+    + completedFrame(generationId, slotId)
 }
