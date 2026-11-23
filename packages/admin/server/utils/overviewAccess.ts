@@ -13,7 +13,9 @@ import type { H3Event } from 'h3'
  *
  * Unberührt bleiben: alle Rollen der Community selbst (`via: 'role'` /
  * `'trust'`) und die Einzel-Instanz (`via: 'single-tenant'`), wo das
- * Instanz-Label die Mannschaft der eigenen Site ist. Wächter:
+ * Instanz-Label die Mannschaft der eigenen Site ist. Seit V2 (2026-11-23)
+ * gilt das für ALLE Routen mit `dashboard.access` als Site-Gate: Übersicht,
+ * Statistik und die Suche der Befehlspalette (`search.get`). Wächter:
  * `tests/route-roles-overview.test.ts`.
  */
 export async function requireOverviewAccess(event: H3Event) {
