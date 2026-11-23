@@ -52,6 +52,12 @@ export function createLoginSchema(t: TranslateFn = identity) {
   return z.object({
     email: normalizedEmail(t),
     password: z.string(t('validation.required')).min(8, t('validation.passwordMin')),
+    /**
+     * Zentrale Anmeldung (PK1 E2): Kästchen „Auf diesem Gerät angemeldet
+     * bleiben". Wirkt nur im Kundenbereich mit eingeschaltetem Schalter
+     * (`isCentralLoginHost`), sonst ignoriert.
+     */
+    remember: z.boolean().optional(),
   })
 }
 

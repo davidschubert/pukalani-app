@@ -106,6 +106,9 @@ const FAILURE_LIMITED = new Set([
   // Site-Handoff (O6): dito — der Token IST der Beweis, also nur Fehlversuche
   // zählen (ein erfolgreicher Sprung in die eigene Community kostet nichts).
   'GET /api/auth/site-session',
+  // Zentrale Anmeldung (PK1 E2, Prototyp): wer Hosts rät, läuft in 404 —
+  // nur die Fehlgriffe zählen, eine echte Anmeldung kostet nichts.
+  'GET /api/auth/central/target',
   // Zwei-Faktor (U15 Teil 4) — die drei Stellen, an denen ein CODE geraten
   // werden kann. Hier zählen bewusst nur FEHLversuche: ein TOTP-Code lebt 30 s,
   // wer sich vertippt und sofort korrigiert, darf nicht am eigenen Budget

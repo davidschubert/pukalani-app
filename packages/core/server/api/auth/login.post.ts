@@ -1,4 +1,5 @@
 import { createAdminClient, createSessionClient, setSessionCookie } from '../../lib/appwrite'
+import { isCentralLoginHost } from '../../utils/centralLogin'
 import { freshSignInCard } from '../../utils/requestSession'
 import { loginSchema } from '../../../schemas/auth'
 import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage } from '../../../shared/authFailure'
@@ -6,7 +7,7 @@ import { secondFactorPending } from '../../../shared/mfa'
 import type { LoginResponse } from '../../../shared/types/auth-responses'
 
 export default defineEventHandler(async (event): Promise<LoginResponse> => {
-  const { email, password } = await readValidatedBody(event, loginSchema.parse)
+  const { email, password, remember } = await readValidatedBody(event, loginSchema.parse)
   // Fehlversuche je KONTO, über alle IPs (SEC-003) — vor der Prüfung des
   // Passworts; ein Erfolg bucht sich selbst zurück.
   await limitAccountAttempts(event, 'login', email)
@@ -43,7 +44,10 @@ export default defineEventHandler(async (event): Promise<LoginResponse> => {
   // keinen Träger. Gefährlich ist sie nicht: solange der zweite Faktor fehlt,
   // beantwortet Appwrite JEDEN Konto-Aufruf mit 401, `event.context.user`
   // bleibt leer und der Nutzer ist überall ausgeloggt.
-  setSessionCookie(event, session.secret, session.expire, { card: freshSignInCard(session) })
+  // Ohne Haken bei „angemeldet bleiben" endet die ZENTRALE Sitzung mit dem
+  // Browser (PK1 E2, Entscheidung 2) — nur im Kundenbereich mit Schalter `on`.
+  const browserSession = remember === false && isCentralLoginHost(event)
+  setSessionCookie(event, session.secret, session.expire, { card: freshSignInCard(session), browserSession })
 
   // Ob ein zweiter Faktor nötig ist, sagt APPWRITE — nicht wir (Begründung
   // an der Weiche selbst, shared/mfa.ts). Die Frage kostet einen Aufruf:

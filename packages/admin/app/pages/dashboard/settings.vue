@@ -58,6 +58,13 @@ const links = computed<NavigationMenuItem[]>(() => [
 // nur die Sessions-Route auf — der Hub sprang damit bei jedem Reiter-Wechsel
 // in der Breite. Formulare begrenzen sich über ihre Felder, nicht über die Hülle.
 const containerWidth = 'lg:max-w-7xl'
+
+// „Konto verwalten" (PK1 E2, Prototyp, Schalter `centralLogin`, Vorgabe aus):
+// auf einer Community führt der Link ins Pukalani-Konto. Die Reiter selbst
+// bleiben im Prototyp stehen; dass sie in E2 verschwinden (Entscheidung 3),
+// baut E2c.
+const central = useCentralLogin()
+const manageAccountHref = central.enabled ? `${central.accountUrl}${localePath('/settings')}` : ''
 </script>
 
 <template>
@@ -76,6 +83,16 @@ const containerWidth = 'lg:max-w-7xl'
 
     <template #body>
       <div class="mx-auto flex w-full flex-col gap-4 sm:gap-6 lg:gap-12" :class="containerWidth">
+        <UAlert
+          v-if="manageAccountHref"
+          color="neutral"
+          variant="subtle"
+          icon="i-ph-user-circle-gear"
+          :title="t('auth.central.manageAccount')"
+          :description="t('auth.central.manageAccountHint')"
+          :actions="[{ label: t('auth.central.manageAccount'), to: manageAccountHref, external: true, color: 'neutral', variant: 'outline', trailingIcon: 'i-ph-arrow-square-out' }]"
+          data-manage-account-hint
+        />
         <NuxtPage />
       </div>
     </template>

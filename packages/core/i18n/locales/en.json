@@ -167,6 +167,20 @@
       "later": "Later",
       "success": "Thank you, your consent has been saved.",
       "failed": "That did not work. Please try again."
+    },
+    "central": {
+      "title": "Sign in to {name}",
+      "description": "With your Pukalani account. Afterwards you go back to {host}.",
+      "remember": "Stay signed in on this device",
+      "rememberHint": "Without the tick, signing in here ends when you close the browser.",
+      "continueAs": "Continue as {name}",
+      "otherAccount": "Sign in with a different account",
+      "unknownSite": "We don't know this site",
+      "unknownSiteHint": "The link doesn't name a Pukalani community. Open sign-in directly on the site you want to sign in to.",
+      "toAccount": "Go to your account",
+      "returnFailed": "Going back didn't work. Please try again.",
+      "manageAccount": "Manage account",
+      "manageAccountHint": "Password, two-factor, devices, export and deletion are managed centrally in your Pukalani account."
     }
   },
   "validation": {
