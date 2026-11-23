@@ -77,6 +77,46 @@ CI lokal nachstellen: CPU über CDP drosseln, nicht raten.
 
 ---
 
+### SA2 — Zwei Vermutungen aus dem Review: Code-Anmeldung gleichförmig, Suche im Not-Zugang nur für den Betreiber ✅ 2026-11-23
+
+**V1 — stimmte.** `POST /api/auth/otp` antwortete für eine Adresse ohne Konto
+(geschlossene Registrierung) und über der Grenze je Empfänger mit
+`ID.unique()` — je Anfrage NEU —, für ein vorhandenes Konto immer mit dessen
+Kennung. Zweimal fragen zeigte also, ob es die Adresse gibt. Jetzt ist die
+Ersatz-Kennung eine feste Funktion der Adresse
+(`packages/core/server/utils/otpDecoyUserId.ts`: HMAC mit einem aus dem
+Server-Geheimnis abgeleiteten Schlüssel, geformt wie eine Appwrite-Kennung,
+Zeit-Teil in einem festen Fenster der Vergangenheit). Für echte Nutzer ändert
+sich nichts: ein vorhandenes Konto bekommt weiter seine Kennung, ein
+zugestellter Code bleibt einlösbar. Bewusst getragen: ein Konto, das nach dem
+Fenster-Ende angelegt wurde, trägt eine jüngere Zeit als jede Attrappe.
+
+**V2 — stimmte für eine Route.** Von allen Routen mit `dashboard.access`
+(gesucht: jede Nennung des Rechts in `server/`, jeder
+`requireCommunityPermission`-Aufruf mit einer Variablen) liefen über den
+Pool-Not-Zugang noch eine ohne die Betreiber-Pflicht: die Suche der
+Befehlspalette `GET /api/admin/search` (Kommentartexte JEDER Community für ein
+Konto mit dem Instanz-Label `moderator`). Sie nutzt jetzt
+`requireOverviewAccess` wie Übersicht und Statistik (BT1 e). Nicht betroffen:
+die `feedback`-Routen (`requirePermission`, das gemeinsame Kunden-Feedback an
+Pukalani, keine Daten einer Community) und `comments/index.post.ts` (nur
+Betreiber-Ziele). Die Moderations-Routen bleiben für das Label offen — so
+entschieden in BT1 e.
+
+**Beweis.** `authMailRecipientLimit.test.ts` (dieselbe Kennung bei jeder
+Anfrage, geschlossen und über der Grenze; vorhandenes Konto echte Kennung;
+zwei Adressen verschieden) und `otpDecoyUserId.test.ts`;
+`route-roles-overview.test.ts` um die Suche ergänzt. Gegenprobe je
+Vermutung: die alte Route gegen die neuen Tests ⇒ genau die neuen Fälle rot.
+
+**Gelernt:** „Gleiche Antwort" heißt auch „gleich über MEHRERE Anfragen":
+eine Attrappe, die bei jedem Aufruf neu würfelt, unterscheidet sich von einem
+echten Wert, der stehen bleibt. Und eine Entscheidung, die an einem Recht
+hängt („nur der Betreiber"), gehört an alle Routen dieses Rechts — die Liste
+entsteht aus einer Suche im Code, nicht aus der Erinnerung.
+
+---
+
 ### SA1 — Nie der letzte aktive Admin: Löschen, Sperren und Entzug von `admin` unter einer Projekt-Sperre ✅ 2026-11-23
 
 **Anlass.** Am 2026-11-22 wurde auf Production über „Konto löschen" das einzige

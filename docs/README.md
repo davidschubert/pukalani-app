@@ -104,7 +104,8 @@ verlangt sie. Offene Punkte stehen trotzdem nur in [OPEN-ITEMS.md](OPEN-ITEMS.md
 | Datei | Zustand |
 | --- | --- |
 | [plans/PUKALANI-KONTO.md](plans/PUKALANI-KONTO.md) | Pukalani-Konto (PK1): ein Konto für alle Seiten — Konzept geschrieben und entschieden 2026-11-12, nichts gebaut; Bau erst nach dem Gesamtaudit |
-| [plans/PUKALANI-KONTO-E1.md](plans/PUKALANI-KONTO-E1.md) | Pukalani-Konto, Etappe 1 (Eintrittskarte je Seite, mit dem Beweis E0): Konzept 2026-11-22, nichts gebaut; wartet auf sechs Entscheidungen
+| [plans/PUKALANI-KONTO-E1.md](plans/PUKALANI-KONTO-E1.md) | Pukalani-Konto, Etappe 1 (Eintrittskarte je Seite, mit dem Beweis E0): gebaut (E1a–E1d), Production im Modus `read`; offen: Einschalten (PK1-EIN) |
+| [plans/PUKALANI-KONTO-E2.md](plans/PUKALANI-KONTO-E2.md) | Pukalani-Konto, Etappe 2 (zentrale Anmeldung auf `account.pukalani.app`): Konzept 2026-11-23, nichts gebaut; wartet auf sechs Entscheidungen und auf Schritt B von E1 |
 | [plans/ACCOUNT-HORIZONT.md](plans/ACCOUNT-HORIZONT.md) | Account-Horizont (AH-1 … AH-7): teils gebaut; die Fortsetzung ist das Pukalani-Konto |
 | [plans/WIEDERHERSTELLUNG.md](plans/WIEDERHERSTELLUNG.md) | Gelöschtes zurückholen (WH1): nicht gebaut, wartet auf die Freigabe des Prototyps |
 | [plans/SEMANTISCHE-SUCHE.md](plans/SEMANTISCHE-SUCHE.md) | Semantische Suche (VDB1): neue Prüfung 2026-11-22, drei Varianten und Empfehlung, nichts gebaut |

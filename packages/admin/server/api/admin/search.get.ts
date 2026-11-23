@@ -2,6 +2,7 @@ import { Query } from 'node-appwrite'
 import type { Models } from 'node-appwrite'
 import { decideCommunityAccess } from '../../../../core/shared/communityAccess'
 import { softFail } from '../../../../core/server/utils/softFail'
+import { requireOverviewAccess } from '../../utils/overviewAccess'
 
 interface SearchResult {
   users: { $id: string, name: string, email: string }[]
@@ -26,7 +27,8 @@ type CommentRow = Models.Row & { content: string, authorId: string, authorName: 
  *    die leere Gruppe ohnehin aus. Silo/Einzelbetrieb unverändert.
  *
  * AUTORISIERUNG (Befund B7, 2026-07-29 — Davids Entscheidung): der Gate ist
- * `await requireCommunityPermission(event, 'dashboard.access')` statt des
+ * `await requireCommunityPermission(event, 'dashboard.access')` (seit V2 in
+ * `requireOverviewAccess`, wie Übersicht und Statistik) statt des
  * label-only `requirePermission`. Vorher kam ein Kunden-Owner ohne globales
  * Label hier gar nicht durch — die Palette lief für JEDES Site-Mitglied ins
  * 403 und blieb stumm (dieselbe Klasse wie C1 bei stats/analytics).
@@ -44,7 +46,11 @@ type CommentRow = Models.Row & { content: string, authorId: string, authorName: 
  * erscheint.
  */
 export default defineEventHandler(async (event): Promise<SearchResult> => {
-  const { user, role } = await requireCommunityPermission(event, 'dashboard.access')
+  // Seit V2 (2026-11-23) über `requireOverviewAccess`: dasselbe Site-Gate,
+  // aber im Pool-Not-Zugang nur mit dem Betreiber-Label `admin` — sonst fände
+  // ein Konto mit dem Instanz-Label `moderator` hier Kommentartexte JEDER
+  // Community (Davids Entscheidung BT1 e: „Nur ich als Betreiber").
+  const { user, role } = await requireOverviewAccess(event)
   const labels = user.labels ?? []
   // E-Mail ist PII: nur mit users.manage in der Antwort (RBAC-CONCEPT —
   // dashboard.access-Gate gilt nur ohne PII). Moderatoren sehen nur Namen.
