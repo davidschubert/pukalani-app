@@ -136,6 +136,16 @@ export const marketLibraryEntrySchema = z.object({
   /** WER — ein Kürzel genügt, aber niemand darf es leer lassen. */
   verifiedBy: z.string().trim().min(2).max(80),
   fields: z.array(marketLibraryFieldSchema).min(1).max(MARKET_FIELD_IDS.length),
+  /**
+   * BEWUSST STEHEN GELASSEN (Regel und Befristung: `marketLibraryAge.ts`).
+   * Er ändert nichts an dem, was der Kunde sieht, und geht nicht in den
+   * Bericht ein — die Fassung steigt deshalb nicht, wenn er dazukommt.
+   */
+  keptStale: z.object({
+    decidedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    decidedBy: z.string().trim().min(2).max(80),
+    reason: z.string().trim().min(10).max(300),
+  }).optional(),
 })
 
 /**
@@ -239,6 +249,7 @@ export {
   MARKET_LIBRARY_MAX_AGE_DAYS,
   marketLibraryEntryAge,
   marketLibraryEntryIsStale,
+  marketLibraryKeepIsActive,
 } from './marketLibraryAge'
 
 /** Die überfälligen Einträge der ausgelieferten Bibliothek — für den Wächter. */

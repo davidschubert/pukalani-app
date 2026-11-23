@@ -41,4 +41,23 @@ describe('market-library-compute.mjs --stale', () => {
     expect(result.status).toBe(1)
     expect(result.stdout).toContain('überfällig')
   })
+
+  it('Davids „stehen lassen" (2026-11-23): apple und the-barn sichtbar, aber ohne Alarm — befristet', () => {
+    // Am 2026-12-07 sind alle vier Einträge älter als 90 Tage. apple und
+    // the-barn tragen den Vermerk: sie stehen in der eigenen Zeile, nicht
+    // unter „neu rechnen". Ob der Lauf insgesamt rot ist, hängt an den
+    // ANDEREN Einträgen und wird hier bewusst nicht festgelegt.
+    const quiet = run('2026-12-07')
+    expect(quiet.stdout).toContain('BEWUSST STEHEN GELASSEN')
+    expect(quiet.stdout).toMatch(/⏸ apple: .*Ruhig bis 2027-02-21\./)
+    expect(quiet.stdout).toMatch(/⏸ the-barn: /)
+    expect(quiet.stdout).not.toMatch(/⚠ apple:/)
+    expect(quiet.stdout).not.toMatch(/⚠ the-barn:/)
+
+    // 90 Tage nach der Entscheidung meldet der Wächter sie wieder.
+    const back = run('2027-02-22')
+    expect(back.status).toBe(1)
+    expect(back.stdout).toMatch(/⚠ apple:/)
+    expect(back.stdout).toMatch(/⚠ the-barn:/)
+  })
 })

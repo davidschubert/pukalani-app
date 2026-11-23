@@ -71,6 +71,12 @@ export const MARKET_LIBRARY_ENTRIES = [
     category: 'Kaffeerösterei',
     verifiedAt: '2026-09-06',
     verifiedBy: 'David Schubert',
+    // MV1 (2026-11-23): neu rechnen lieferte keinen Entwurf — David: stehen lassen.
+    keptStale: {
+      decidedAt: '2026-11-23',
+      decidedBy: 'David Schubert',
+      reason: 'Neu-Rechnen am 2026-11-22 ohne Entwurf (Startseite ohne lesbaren Text); vorerst stehen lassen.',
+    },
     fields: [
       {
         fieldId: 'categoryLanguage',
@@ -164,6 +170,12 @@ export const MARKET_LIBRARY_ENTRIES = [
     category: 'Technologie-Plattform',
     verifiedAt: '2026-09-06',
     verifiedBy: 'David Schubert',
+    // MV1 (2026-11-23): neu rechnen lieferte keinen Entwurf — David: stehen lassen.
+    keptStale: {
+      decidedAt: '2026-11-23',
+      decidedBy: 'David Schubert',
+      reason: 'Neu-Rechnen am 2026-11-22 ohne Entwurf (Startseite ohne lesbaren Text); vorerst stehen lassen.',
+    },
     fields: [
       {
         fieldId: 'categoryLanguage',
