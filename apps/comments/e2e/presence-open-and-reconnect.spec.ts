@@ -19,7 +19,8 @@ import { Client, Users, ID } from 'node-appwrite'
  *     geschlossen; gezählt werden die Versuche in 20 s.
  *
  * GEMESSEN (lokal, Dev-Server, 2026-11-21): (a) vorher 3 Herzschläge auf
- * beiden Seiten, nachher 1 (CI: höchstens 2); (b) vorher 39 Versuche in 20 s (zwei je
+ * beiden Seiten, nachher 1 (CI: höchstens 2; gezählt auf einem frischen
+ * Reiter ab seinem ersten Herzschlag, MG1); (b) vorher 39 Versuche in 20 s (zwei je
  * Sekunde), nachher 6 (bei 0, 1, 3, 8, 17 s und ein Abo-Anstoß). Die
  * Gegenprobe gegen den Stand davor ist damit rot. Messwerte stehen im Bericht
  * (`annotations`).
@@ -80,27 +81,37 @@ test.describe('Anwesenheit: Öffnen und Neuversuch (Q23-Rest)', () => {
     { name: 'Dashboard-Übersicht', path: '/dashboard', ready: 'main#dashboard-main h1' },
     { name: 'Beitrags-Seite', path: '/', ready: '[data-comment-section]' },
   ]) {
-    test(`(a) ${target.name}: ein Herzschlag beim Öffnen`, async ({ page, baseURL }) => {
+    test(`(a) ${target.name}: ein Herzschlag beim Öffnen`, async ({ page, context, baseURL }) => {
       test.setTimeout(120_000)
       await signIn(page, baseURL!)
       // Erster Aufruf wärmt den Dev-Server.
       await page.goto(target.path)
       await expect(page.locator(target.ready).first()).toBeVisible({ timeout: 60_000 })
       await page.waitForLoadState('networkidle')
+      // GEMESSEN WIRD AUF EINEM FRISCHEN REITER (MG1, 2026-11-23): vorher hing
+      // der Zähler schon VOR `page.reload()` an der Aufwärm-Seite. In der
+      // langsamen CI steckt die noch in ihrer EIGENEN Öffnung (`networkidle`
+      // wartet auf keinen Zeitgeber) — ihre Herzschläge zählten mit (CI
+      // 2026-11-22: 0.1 0.6 3.6 4.1 s; die ersten zwei kamen, bevor das neue
+      // Dokument überhaupt eine Antwort hatte). Jetzt ist sie geschlossen, und
+      // der Zähler sieht nur den neuen Reiter.
+      await page.close()
+      const fresh = await context.newPage()
+      const at = countHeartbeats(fresh)
+      await fresh.goto(target.path)
+      await expect(fresh.locator(target.ready).first()).toBeVisible({ timeout: 60_000 })
+      // Das Fenster beginnt beim ERSTEN Herzschlag (ein Ereignis, nicht die
+      // Uhr): unter Last kann das Laden selbst länger als das Fenster dauern.
+      await expect.poll(() => at.length, { timeout: 30_000 }).toBeGreaterThan(0)
+      const first = at[0]!
+      await fresh.waitForTimeout(Math.max(0, first + OPEN_WINDOW_MS - Date.now()))
+      const inWindow = at.filter(t => t - first < OPEN_WINDOW_MS)
+      const secs = inWindow.map(t => ((t - first) / 1000).toFixed(1)).join(' ')
+      test.info().annotations.push({ type: 'heartbeats-on-open', description: `${inWindow.length} in ${OPEN_WINDOW_MS / 1000} s ab dem ersten: ${secs}` })
 
-      const at = countHeartbeats(page)
-      const start = Date.now()
-      await page.reload()
-      await expect(page.locator(target.ready).first()).toBeVisible({ timeout: 60_000 })
-      await page.waitForTimeout(Math.max(0, OPEN_WINDOW_MS - (Date.now() - start)))
-      const inWindow = at.filter(t => t - start < OPEN_WINDOW_MS)
-      const secs = inWindow.map(t => ((t - start) / 1000).toFixed(1)).join(' ')
-      test.info().annotations.push({ type: 'heartbeats-on-open', description: `${inWindow.length} in ${OPEN_WINDOW_MS / 1000} s: ${secs}` })
-
-      // Gegenprobe im selben Fall: es WIRD geschrieben (sonst wäre die Grenze
-      // auch bei 0 grün). Lokal 1; in der langsameren CI kann ein später
-      // Anlass (Fokus) ein zweites Fenster öffnen — vorher waren es 3.
-      expect(inWindow.length).toBeGreaterThanOrEqual(1)
+      // Gegenprobe im selben Fall: es WIRD geschrieben (die Abfrage oben).
+      // Lokal 1; in der langsameren CI kann ein später Anlass (Fokus) ein
+      // zweites Fenster öffnen — vorher waren es 3.
       expect(inWindow.length, secs).toBeLessThanOrEqual(2)
     })
   }
