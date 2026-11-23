@@ -132,6 +132,8 @@ den Weg, den der Betroffene selbst geht — die Regel gehört an die SCHREIBSTEL
 ist mit zwei gleichzeitigen Anfragen nachweisbar falsch: die Gegenprobe im Test
 zeigt das Fenster, statt es nur zu behaupten.
 
+---
+
 ### KK1 (c) — Kontingent-Zahlen in den Katalog: Daten-Migration control-042 aus der app.config, Konsole je Art, auf Production gefahren ✅ 2026-11-22
 
 **Was.** Davids Antworten vom 2026-11-22 zum Plan
