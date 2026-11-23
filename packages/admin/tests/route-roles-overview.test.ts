@@ -1,3 +1,4 @@
+import { hasCapability } from '../../core/shared/authz'
 import { throughDoor, type AdminExpectation, describeAdminRoute } from './support/adminRouteHarness'
 
 /**
@@ -38,3 +39,10 @@ describeAdminRoute('GET /api/admin/stats', () => import('../server/api/admin/sta
 }, BEHIND_GATE)
 
 describeAdminRoute('GET /api/admin/analytics', () => import('../server/api/admin/analytics.get'), DASHBOARD, {}, BEHIND_GATE)
+
+// V2 (2026-11-23): die Suche der Befehlspalette hängt am selben Gate der
+// Seite — im Pool-Not-Zugang ebenfalls nur der Betreiber.
+describeAdminRoute('GET /api/admin/search', () => import('../server/api/admin/search.get'), DASHBOARD, {
+  query: { q: 'stein' },
+  globals: { hasCapability },
+}, BEHIND_GATE)
