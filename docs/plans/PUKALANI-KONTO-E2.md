@@ -1,10 +1,10 @@
 # Pukalani-Konto, Etappe 2 — die zentrale Anmeldung
 
-> **Plan-Status (2026-11-23):** nicht gebaut — Konzept, wartet auf Davids Entscheidungen (§ 12) und auf Schritt B von E1 ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
+> **Plan-Status (2026-11-23):** nicht gebaut — entschieden, Prototyp in Arbeit; der Bau wartet auf Schritt B von E1 ([OPEN-ITEMS](../OPEN-ITEMS.md) „PK1“).
 
-**Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-23 · Status: Konzept
-geschrieben, keine Entscheidung gefallen, nichts gebaut, nichts an
-Production.**
+**Sorte:** Plan (noch nicht gebaut). **Stand: 2026-11-23 · Status:
+entschieden, Prototyp in Arbeit.** Davids sechs Antworten stehen in § 12;
+nichts an Production.
 
 Dieses Dokument vertieft die **zweite** Etappe des Gesamtkonzepts
 [PUKALANI-KONTO.md](PUKALANI-KONTO.md) und baut auf der ersten auf
@@ -76,8 +76,8 @@ dann von selbst verdächtig.
 
 - Nichts Neues beim Verwalten: das Dashboard bleibt unter der
   Pukalani-Adresse der Community (seit E1).
-- Plan und Zahlung: ob sie in E2 an die zentrale Stelle ziehen, ist
-  Entscheidung 4 (§ 12). Ohne diese Entscheidung bleiben sie, wo sie sind.
+- Plan und Zahlung bleiben in E2 im Dashboard der Community (Entscheidung 4);
+  sie ziehen in einem eigenen Schritt nach E2 um.
 - Einladungen funktionieren wie bisher; wer eine Einladung annimmt und kein
   Konto hat, registriert sich an der zentralen Stelle und kommt in die
   Community zurück.
@@ -170,12 +170,12 @@ Session. Einzeln:
 
 | # | Was | Wo | Klick? |
 | --- | --- | --- | --- |
-| 1 | **Keine Migration** (Variante A). Bei Entscheidung 5 „ja" (Bedenkzeit): eine Spalte oder Zeile „Löschung vorgemerkt" — dann eine Migration auf Production. | — | bei 5 **Klick** |
-| 2 | **Schalter** für die zentrale Anmeldung (Name im Bau, z. B. `NUXT_CENTRAL_LOGIN_MODE`: `off` · `on`, Core-Vorgabe `off`), je App mit Anmeldung. Zurück ohne Ausliefern. | `.env` der Platform auf Production | **Klick** |
-| 3 | **Google:** die Rückkehr-Adresse der zentralen Stelle in der Google-Console und in Appwrite eintragen (meist schon da, weil `account.pukalani.app` heute ein Host der Platform ist — vorher nachsehen); erst nach dem Einschalten die übrigen entfernen. | Google-Console, Appwrite-Konsole Projekt `account` | **Klick** |
-| 4 | **Sitzungs-Obergrenze** im Projekt `account` mit der zentralen Sitzung neu rechnen (eine je Gerät mehr); steht sie auf `0`, nichts tun. | Appwrite-Konsole | **Klick** nur, wenn sie geändert werden muss |
-| 5 | **Bot-Prüfung (Turnstile):** die zentrale Stelle braucht den Hostnamen `account.pukalani.app` im Widget; vorher nachsehen, ob er schon drin ist. | Cloudflare | **Klick** nur, wenn er fehlt |
-| 6 | **Mail-Vorlagen von Appwrite** (Bestätigen, Passwort, Code): Links zeigen auf die zentrale Stelle. Der Link entsteht in unserem Code; die Vorlagen selbst ändern sich nur, wenn ein Text „auf dieser Seite" sagt. | `scripts/ops/appwrite-mail/templates/` | **Klick** nur bei Text-Änderung (Einspielen je Projekt) |
+| 1 | **Keine Migration** für Variante A. Für E2d (Entscheidung 5: ja): eine Spalte oder Zeile „Löschung vorgemerkt" — eine Migration auf Production. | — | E2d **Klick** | **Variante A**: zentrale Seite auf `account.pukalani.app` mit Rücksprung. |
+| 2 | **Schalter** für die zentrale Anmeldung (Name im Bau, z. B. `NUXT_CENTRAL_LOGIN_MODE`: `off` · `on`, Core-Vorgabe `off`), je App mit Anmeldung. Zurück ohne Ausliefern. | `.env` der Platform auf Production | **Klick** | **Wie empfohlen:** Wiedererkennen so lange wie eine Sitzung heute, Kästchen „Auf diesem Gerät angemeldet bleiben" voreingestellt an; ohne Haken endet die zentrale Sitzung beim Schließen des Browsers. |
+| 3 | **Google:** die Rückkehr-Adresse der zentralen Stelle in der Google-Console und in Appwrite eintragen (meist schon da, weil `account.pukalani.app` heute ein Host der Platform ist — vorher nachsehen); erst nach dem Einschalten die übrigen entfernen. | Google-Console, Appwrite-Konsole Projekt `account` | **Klick** | **Ja, in E2:** Passwort, Zwei-Faktor, Geräte, Export und „Konto löschen" verschwinden aus den Dashboards unter `*.pukalani.app`; dort bleibt nur der Link „Konto verwalten". |
+| 4 | **Sitzungs-Obergrenze** im Projekt `account` mit der zentralen Sitzung neu rechnen (eine je Gerät mehr); steht sie auf `0`, nichts tun. | Appwrite-Konsole | **Klick** nur, wenn sie geändert werden muss | **Nein, eigener Schritt nach E2** — Plan und Zahlung bleiben in E2 im Dashboard der Community; E2e entfällt. |
+| 5 | **Bot-Prüfung (Turnstile):** die zentrale Stelle braucht den Hostnamen `account.pukalani.app` im Widget; vorher nachsehen, ob er schon drin ist. | Cloudflare | **Klick** nur, wenn er fehlt | **Ja, in E2:** 30 Tage Bedenkzeit, ein Weg „jetzt endgültig" bleibt (Schritt E2d, braucht eine Migration). |
+| 6 | **Mail-Vorlagen von Appwrite** (Bestätigen, Passwort, Code): Links zeigen auf die zentrale Stelle. Der Link entsteht in unserem Code; die Vorlagen selbst ändern sich nur, wenn ein Text „auf dieser Seite" sagt. | `scripts/ops/appwrite-mail/templates/` | **Klick** nur bei Text-Änderung (Einspielen je Projekt) | **Wie empfohlen:** Prototyp sofort; Bau nach Schritt B auf der Platform mit bestandener Klick-Probe; Einschalten erst nach Schritt C und einer Woche ohne Befund. |
 | 7 | **nginx, TLS, DNS:** nichts — `account.pukalani.app` ist schon ein Host der Platform. | — | nein |
 | 8 | **Klick-Probe** in Davids Browser nach dem Einschalten (§ 9). | Production | **Klick** |
 
@@ -204,11 +204,9 @@ Session. Einzeln:
 - **Schalter zurück auf `off`**, App neu laden: die Formulare der Seiten sind
   wieder da, die Routen antworten wieder. Wer angemeldet ist, bleibt es (die
   Karten aus E1 gelten weiter). Die zentrale Sitzung stört nicht.
-- **Bedenkzeit beim Löschen** (falls Entscheidung 5 „ja"): zurück heißt
+- **Bedenkzeit beim Löschen** (E2d): zurück heißt
   „sofort endgültig wie heute"; vorgemerkte Konten werden dann sofort
   gelöscht oder zurückgeholt — das entscheidet David je Fall, nie ein Lauf.
-- **Zahlung zentral** (falls Entscheidung 4 „in E2"): die Weiterleitung vom
-  alten Plan-Reiter bleibt; zurück heißt Plan-Reiter wieder im Dashboard.
 - Die alten Formulare bleiben bis E5 im Code — erst dann ist der Rückweg ein
   Rückbau.
 
@@ -272,24 +270,27 @@ eigener Domain):
 | E2a | Beweis § 7, Rücksprung-Siegel, Schalter, zentrale Seite (Anmelden, Code, Zwei-Faktor, Google) | 1 |
 | E2b | Registrieren, Passwort vergessen, Bestätigen, Einladungen und Mail-Links über die zentrale Stelle; Einbettung umgehängt | 1 |
 | E2c | Kontoweites nur zentral auch unter `*.pukalani.app`, Links in den Dashboards, Wächter-Tests, Bühne, Runbook-Teil zum Einschalten | 1 |
-| (E2d) | nur bei Entscheidung 5 „ja": Bedenkzeit beim Löschen samt Fristen-Lauf und Texten | 1 |
-| (E2e) | nur bei Entscheidung 4 „in E2": Plan und Zahlung an die zentrale Stelle, Weiterleitung für die Rückkehr von Stripe | 1–2 |
+| E2d | Bedenkzeit beim Löschen samt Fristen-Lauf und Texten (Entscheidung 5: ja) | 1 |
+| ~~(E2e)~~ | entfällt (Entscheidung 4: nein) — Plan und Zahlung werden ein eigener Schritt nach E2 | — |
 
-**Zusammen 4 Sessions** (Größe L), mit beiden Zusätzen bis 7. Jede mit
+**Zusammen 5 Sessions** (Größe L) mit E2d. Jede mit
 eigenem Pull Request; Einschalten erst danach, mit Davids Ja.
 
 ## 12. Entscheidungen für David
+
+**Alle sechs am 2026-11-23 beantwortet, jeweils mit der Empfehlung** (letzte
+Spalte). Damit gilt: Variante A, E2d gehört zu E2, E2e entfällt.
 
 Bereits entschieden und hier nicht neu gefragt: Weg (a), „Passwort immer auf
 `account.pukalani.app`", „Heikles nur zentral", mitmachen ja und verwalten
 nein unter eigenen Domains, die Konsole mit eigenen Konten (Gesamtkonzept
 § 10); Zwei-Faktor-Konten mit Kopie im Umschlag (E1 § 13.4).
 
-| # | Frage | Empfehlung | Folge |
-| --- | --- | --- | --- |
-| 1 | Welche Variante für die zentrale Anmeldung? | **A — zentrale Seite mit Rücksprung.** | Man sieht bei jeder Anmeldung `account.pukalani.app` in der Adresszeile; keine Tabelle, keine Migration. B nur für die Einbettung; C ließe zwei Wege dauerhaft stehen. |
-| 2 | Wie lange bleibt man an der zentralen Stelle wiedererkannt? | **So lange wie eine Sitzung heute, mit Kästchen „Auf diesem Gerät angemeldet bleiben" (an); ohne Haken endet die zentrale Sitzung, wenn der Browser schließt.** | Bequem auf dem eigenen Gerät, sicher auf einem geteilten. Die Seiten-Karten sind davon unabhängig — wer sich zentral abmeldet, bleibt auf den Seiten angemeldet, bis er dort oder unter „Überall abmelden" abmeldet. |
-| 3 | Fallen Passwort, Zwei-Faktor, Geräte, Export und „Konto löschen" in E2 auch aus den Dashboards unter `*.pukalani.app` (nur noch Link „Konto verwalten")? | **Ja, in E2.** | Setzt „Heikles nur zentral" ganz um, ein Klick mehr für diese seltenen Handlungen. Sprache und Benachrichtigungen bleiben bei der Seite (E3 macht sie je Seite). |
-| 4 | Ziehen Plan und Zahlung der Communities schon in E2 an die zentrale Stelle? | **Nein, eigener Schritt nach E2** (vor oder mit E3). | E2 bleibt eine reine Anmelde-Etappe und einzeln rückholbar. Owner zahlen bis dahin weiter im Dashboard ihrer Community; die Rückkehr von Stripe bleibt unverändert. |
-| 5 | Bekommt „Konto löschen" mit dem Umzug an die zentrale Stelle eine **Bedenkzeit von 30 Tagen** (Gesamtkonzept § 8, [WIEDERHERSTELLUNG.md](WIEDERHERSTELLUNG.md) „Für später")? | **Ja, in E2** — der Vorfall vom 2026-11-22 zeigt, wie teuer ein endgültiges Löschen im falschen Moment ist. | Ein Schritt mehr (E2d), eine Migration auf Production, Datenschutz- und Lösch-Texte ändern sich (Anwalt). Ein Weg „jetzt endgültig" bleibt. Der letzte Owner einer Community und der Kunde bei Stripe brauchen dabei eigene Regeln. |
-| 6 | Wann darf der Bau beginnen? | **Prototyp sofort; Bau nach Schritt B auf der Platform mit bestandener Klick-Probe; Einschalten erst nach Schritt C und einer Woche ohne Befund.** | E2 baut auf einer bewiesenen Karte auf; der Prototyp kann David vorher gezeigt werden. Bis Schritt B läuft, wartet E2. |
+| # | Frage | Empfehlung | Folge | Davids Antwort (2026-11-23) |
+| --- | --- | --- | --- | --- |
+| 1 | Welche Variante für die zentrale Anmeldung? | **A — zentrale Seite mit Rücksprung.** | Man sieht bei jeder Anmeldung `account.pukalani.app` in der Adresszeile; keine Tabelle, keine Migration. B nur für die Einbettung; C ließe zwei Wege dauerhaft stehen. | **Variante A**: zentrale Seite auf `account.pukalani.app` mit Rücksprung. |
+| 2 | Wie lange bleibt man an der zentralen Stelle wiedererkannt? | **So lange wie eine Sitzung heute, mit Kästchen „Auf diesem Gerät angemeldet bleiben" (an); ohne Haken endet die zentrale Sitzung, wenn der Browser schließt.** | Bequem auf dem eigenen Gerät, sicher auf einem geteilten. Die Seiten-Karten sind davon unabhängig — wer sich zentral abmeldet, bleibt auf den Seiten angemeldet, bis er dort oder unter „Überall abmelden" abmeldet. | **Wie empfohlen:** Wiedererkennen so lange wie eine Sitzung heute, Kästchen „Auf diesem Gerät angemeldet bleiben" voreingestellt an; ohne Haken endet die zentrale Sitzung beim Schließen des Browsers. |
+| 3 | Fallen Passwort, Zwei-Faktor, Geräte, Export und „Konto löschen" in E2 auch aus den Dashboards unter `*.pukalani.app` (nur noch Link „Konto verwalten")? | **Ja, in E2.** | Setzt „Heikles nur zentral" ganz um, ein Klick mehr für diese seltenen Handlungen. Sprache und Benachrichtigungen bleiben bei der Seite (E3 macht sie je Seite). | **Ja, in E2:** Passwort, Zwei-Faktor, Geräte, Export und „Konto löschen" verschwinden aus den Dashboards unter `*.pukalani.app`; dort bleibt nur der Link „Konto verwalten". |
+| 4 | Ziehen Plan und Zahlung der Communities schon in E2 an die zentrale Stelle? | **Nein, eigener Schritt nach E2** (vor oder mit E3). | E2 bleibt eine reine Anmelde-Etappe und einzeln rückholbar. Owner zahlen bis dahin weiter im Dashboard ihrer Community; die Rückkehr von Stripe bleibt unverändert. | **Nein, eigener Schritt nach E2** — Plan und Zahlung bleiben in E2 im Dashboard der Community; E2e entfällt. |
+| 5 | Bekommt „Konto löschen" mit dem Umzug an die zentrale Stelle eine **Bedenkzeit von 30 Tagen** (Gesamtkonzept § 8, [WIEDERHERSTELLUNG.md](WIEDERHERSTELLUNG.md) „Für später")? | **Ja, in E2** — der Vorfall vom 2026-11-22 zeigt, wie teuer ein endgültiges Löschen im falschen Moment ist. | Ein Schritt mehr (E2d), eine Migration auf Production, Datenschutz- und Lösch-Texte ändern sich (Anwalt). Ein Weg „jetzt endgültig" bleibt. Der letzte Owner einer Community und der Kunde bei Stripe brauchen dabei eigene Regeln. | **Ja, in E2:** 30 Tage Bedenkzeit, ein Weg „jetzt endgültig" bleibt (Schritt E2d, braucht eine Migration). |
+| 6 | Wann darf der Bau beginnen? | **Prototyp sofort; Bau nach Schritt B auf der Platform mit bestandener Klick-Probe; Einschalten erst nach Schritt C und einer Woche ohne Befund.** | E2 baut auf einer bewiesenen Karte auf; der Prototyp kann David vorher gezeigt werden. Bis Schritt B läuft, wartet E2. | **Wie empfohlen:** Prototyp sofort; Bau nach Schritt B auf der Platform mit bestandener Klick-Probe; Einschalten erst nach Schritt C und einer Woche ohne Befund. |
