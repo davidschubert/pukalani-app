@@ -9,7 +9,7 @@
 `packages/brand/app/pages/brand/[profileId]/[stepKey].vue`: 5.235 Zeilen vor
 Q21, 5.119 nach Q21, 3.746 nach dem WS1-Lauf (fünf Schnitte, Erledigt-Liste
 „WS1-Lauf"), 3.767 auf `main` vor Bahn C (zwischendurch gewachsen), **3.325
-nach Bahn C** (zwei Schnitte, s. unten). Der Rauch-Test
+nach Bahn C** (zwei Schnitte, s. unten), **3.149 nach dem Schreibfeld-Schnitt** (2026-11-25). Der Rauch-Test
 (`packages/brand/tests/render/workshopPage.test.ts`, Vitest-Projekt `render`)
 hat jetzt acht Fälle: Kontext-Kapitel samt Log, Leiste und Balken; Steckbrief,
 frühere Fassungen und Konflikt; Bestätigungs-Modul; Farbwelt; Korrektur-Regel;
@@ -61,6 +61,13 @@ nachts auf der Bühne; vor und nach jedem Schnitt von (e) lokal:
 `node --env-file=../../apps/branding/.env scripts/verify-workshop-hydration.mjs http://localhost:<port>`
 (aus `packages/brand`). Grenze: nur das erste Kapitel (die übrigen sind bei
 einer neuen Marke gesperrt).
+
+**Geschnitten** (2026-11-25): **(e, Teil) Schreibfeld** → `useBrandWorkshopComposer`
+(Eingabe, Beispiel-Antwort, „Ich ergänze noch etwas", der eine Sende-Pfad
+`answerFromGeorge`, `submitPrompt`). 14 Eingänge, 13 Rückgaben; kein `await`
+in `setup`, kein Abruf beim Aufbau. `confirmDismissed` bleibt Ref der Seite.
+Belegt mit Rauch-Test (10 grün), Hydration-Prüfweg (5 grün, vorher und
+nachher) und Bildern vorher/nachher (gleich). 3.325 → 3.149.
 
 **Offen, jeweils mit gemessenem Grund** (Zählung: Deklarationen eines
 Abschnitts, die außerhalb gelesen werden = Ausgänge; Deklarationen der Seite,
