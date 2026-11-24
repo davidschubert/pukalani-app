@@ -30,6 +30,20 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BT1 (f) — Nacht-Lauf der Bühne seit vier Nächten rot: zwei Skripte nicht je Host angemeldet ✅ 2026-11-25
+
+Die Nacht-Läufe vom 23. und 24.11. scheiterten in `courses/verify-pool-isolation`
+und `events/verify-pool-isolation`: beide schickten das Cookie von kunde-a an
+kunde-b. Seit PK1 E1c gilt eine Anmeldung im Modus `write` nur auf ihrem Host,
+also kam 401 statt 403 bzw. 200. Beide melden sich jetzt auf B eigens an
+(`createHostLogins`), wie die neun Skripte aus a261ffe6. Beweis: Nacht-Lauf
+von Hand auf dem Zweig.
+
+**Gelernt:** Eine Umstellung, die „alle Skripte" betrifft, mit `git grep` nach
+dem Muster (`cookie` an `HOST_B`) abschließen — die Liste aus dem Gedächtnis
+ließ zwei aus, und weil der Nacht-Lauf nur ein Hinweis ist, blieb er vier
+Nächte rot, ohne dass es jemand merkte.
+
 ### MG1 — Shell-Skript-Tests ohne erkennbaren Grund rot: Ursache Exit 141 im Rückweg-Skript ✅ 2026-11-24
 
 Der Test `packages/core/tests/rollbackScript.test.ts` scheiterte selten mit

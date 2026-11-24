@@ -50,6 +50,16 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   Der nächtliche Lauf dauert rund 32 Minuten (gemessen am 2026-11-19 mit 67
   Skripten: 31 min 35 s; davor mit 64 Skripten 29 min 37 s und 31 min 28 s;
   mit drei Servern rund 23, mit zweien 16).
+  **Zwischenstand für die Entscheidung (gezählt am 2026-11-25):** Nacht-Läufe
+  18.–20.11. grün, 21.–24.11. viermal rot — alle vier lagen am SKRIPT, keiner
+  am Programm: 21.11. neue Browser-Test-Datei ungeprüft auf `main` (f),
+  22.11. zwei Zeitüberschreitungen beim Laden einer Seite
+  (`verify-trial-notice`, `verify-handles-mentions`), 23./24.11. zwei
+  Isolations-Skripte (courses, events) nach PK1 E1c nicht auf die Anmeldung
+  je Host umgestellt (behoben am 2026-11-25). Am Pull Request und auf `main`
+  (Modus ohne Browser-Tests): seit dem 20.11. 229 + 142 grün, 3 rot (alle am
+  21.11.), der Rest abgebrochen. Rohzählung: `gh run list --workflow
+  buehne.yml --limit 400`.
 - **(d) Kleinigkeiten.** `verify-custom-domain` braucht eine Betreiber-App im
   Trockenlauf mit eigenem Namens-Server und kennt die Freigabe durch den
   Betreiber noch nicht. `verify-notification-mail-links` stößt den
