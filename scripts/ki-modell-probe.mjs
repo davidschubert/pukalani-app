@@ -256,7 +256,8 @@ async function call(key, model, task) {
   const body = buildAiRequestBody({ model, prompt: task.prompt(), system: task.system, temperature: task.temperature, maxTokens: task.maxTokens })
   if (!isDeepStrictEqual(body.provider, EXPECTED_PROVIDER)) throw new Error('Bindung weicht ab — Abbruch vor dem Senden')
   body.usage = { include: true } // der Vermittler meldet die Kosten je Antwort
-  // NICHT im Transport der App: nur zum Messen, ob das Denken des Modells die Decke frisst.
+  // Seit KM1 setzt der Core-Rumpf für gemessene Modelle selbst `reasoning: none`
+  // (`AI_TEXT_MODELS_REASONING_OFF`); `--reasoning` überschreibt das nur zum Messen.
   if (args.reasoning) body.reasoning = { effort: args.reasoning }
   const started = Date.now()
   const res = await fetch(`${BASE_URL}/chat/completions`, {

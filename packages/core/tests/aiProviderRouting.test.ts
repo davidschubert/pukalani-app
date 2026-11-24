@@ -76,6 +76,17 @@ describe('buildAiRequestBody — die Bindung ist die Voreinstellung', () => {
     })
   })
 
+  it('KM1: Haiku 5.5 bekommt „Denken aus", Haiku 4.5 und andere Modelle nicht', () => {
+    const neu = buildAiRequestBody({ model: 'anthropic/claude-haiku-5.5', prompt: 'p', stream: true })
+    expect(neu.reasoning).toEqual({ effort: 'none' })
+    expect(neu.provider).toEqual(BOUND)
+    expect(neu.stream).toBe(true)
+    // Gegenprobe: das heutige Modell schickt genau den bisherigen Body.
+    const heute = buildAiRequestBody({ model: 'anthropic/claude-haiku-4.5', prompt: 'p' })
+    expect(heute).not.toHaveProperty('reasoning')
+    expect(Object.keys(heute)).toEqual(['model', 'messages', 'temperature', 'max_tokens', 'provider'])
+  })
+
   it('Schlüsselreihenfolge wie bisher bei den brand-Aufrufen (zdr, data_collection, only, allow_fallbacks)', () => {
     const provider = buildAiRequestBody({ model: 'm', prompt: 'p' }).provider as Record<string, unknown>
     expect(Object.keys(provider)).toEqual(['zdr', 'data_collection', 'only', 'allow_fallbacks'])

@@ -163,10 +163,26 @@ export function buildAiRequestBody(input: AiRequestBodyInput): Record<string, un
   if (only.length === 0) throw aiRoutingInvalidError()
   body.provider = { zdr: true, data_collection: 'deny', only: [...only], allow_fallbacks: false }
 
+  // DENKEN AUS, JE MODELL (KM1): manche Modelle „denken" von selbst. Die
+  // Denk-Tokens stehen nicht im Text, werden aber als Ausgabe bezahlt und
+  // füllen `max_tokens` — beim Insights-Entwurf riss die Decke 3 von 3 Mal
+  // (Probe 2026-11-22, `docs/plans/KI-TEXTMODELL-WECHSEL.md`). Hängt am
+  // MODELL, nicht an einem Schalter: wer das Modell auf der Config-Seite
+  // umstellt, bekommt das Feld ohne Ausliefern mit. Für alle anderen Modelle
+  // bleibt der Body unverändert.
+  if (AI_TEXT_MODELS_REASONING_OFF.includes(input.model)) body.reasoning = { effort: 'none' }
+
   if (input.stream) body.stream = true
 
   return body
 }
+
+/**
+ * Modelle, denen der Text-Weg „Denken aus" mitschickt (KM1). Nur GEMESSENE
+ * Modelle: ein neues kommt erst nach einer Probe mit
+ * `scripts/ki-modell-probe.mjs --reasoning none` dazu.
+ */
+export const AI_TEXT_MODELS_REASONING_OFF: readonly string[] = ['anthropic/claude-haiku-5.5']
 
 /** Core-KI-Gate (pukalani.ai) — Konsumenten prüfen enabled, Transport nicht. */
 export function getAiConfig(): AiConfig {
