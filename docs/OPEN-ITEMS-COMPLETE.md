@@ -30,6 +30,22 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### CW1 (a)(d) — Server-Hänger geklärt, kein älterer Commit bei toter App ✅ 2026-11-24
+
+- **(a)** Seit dem 2026-11-18 (Ausgabe des Dev-Servers im Job-Log) liefen
+  300 E2E-Läufe: 275 grün, 22 abgebrochen (Concurrency), 3 rot — in allen
+  drei stand der Test-Server nach Sekunden. Die sieben Hänger vom
+  2026-11-18 (07:54–08:38 UTC) kamen nicht wieder; die Frist bleibt bei
+  120 Sekunden. Ein Zeitfenster, kein Fehler im Programm.
+- **(d)** Der Schritt „Deploy nötig?" in `.github/workflows/deploy.yml`:
+  meldet eine App keinen Build, liefert er sicherheitshalber nur noch aus,
+  wenn sein Commit die Spitze von `origin/main` ist; sonst überspringt er
+  mit Warnung. Ist die Spitze nicht lesbar, liefert er weiter aus
+  (fail-open). Zwei neue Fälle in `packages/core/tests/deployDecision.test.ts`.
+
+**Gelernt:** Ein Wackler, der nur in einem Zeitfenster auftritt, braucht
+zuerst eine Messung über viele Läufe — erst dann ist klar, ob es überhaupt
+etwas zu beheben gibt.
 ### BP2 — Bot-Prüfung hing auf Production: Formulare ließen sich nicht abschicken ✅ 2026-11-24
 
 Gefunden in KR1 Sitzung 1 (2026-11-24): die unsichtbare Turnstile-Prüfung lud,

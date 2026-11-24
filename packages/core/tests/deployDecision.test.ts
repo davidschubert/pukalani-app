@@ -158,6 +158,21 @@ describe('deploy.yml — „Deploy nötig?"', () => {
     expect(skip).toBe('false')
   })
 
+  it('ein Host ohne Antwort und ein älterer Commit als die Spitze: nicht ausgeliefert, mit Warnung (CW1 d)', () => {
+    git('update-ref', 'refs/remotes/origin/main', sha.neu!)
+    const { skip, text } = decide(sha.mitte!, { 'a.test': sha.alt!, 'b.test': '' })
+    expect(text).toContain('::warning::')
+    expect(text).toContain('nicht die Spitze von main')
+    expect(skip).toBe('true')
+  })
+
+  it('ein Host ohne Antwort und die Spitze von main: sicherheitshalber ausgeliefert', () => {
+    git('update-ref', 'refs/remotes/origin/main', sha.neu!)
+    const { skip, text } = decide(sha.neu!, { 'a.test': sha.alt!, 'b.test': '' })
+    expect(text).toContain('deploye sicherheitshalber')
+    expect(skip).toBe('false')
+  })
+
   it('der manuelle Start bleibt frei — der Rückweg auf einen älteren Commit', () => {
     const { skip } = decide(sha.alt!, { 'a.test': sha.neu!, 'b.test': sha.neu! }, 'workflow_dispatch')
     expect(skip).toBe('false')
