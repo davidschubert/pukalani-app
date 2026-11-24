@@ -38,6 +38,8 @@ export function createRaceTablesDB() {
   const tables = new Map<string, Map<string, RaceRow>>()
   /** Zeilen-Ids, deren Schreiben scheitern soll (z. B. der zweite Schritt einer Übergabe). */
   const failingUpdates = new Map<string, (data: Record<string, unknown>) => boolean>()
+  /** Zeilen-Ids, deren Löschen scheitern soll (z. B. der zweite Schritt einer Vergabe, LA2). */
+  const failingDeletes = new Set<string>()
   /** Tabellen, deren Lesen scheitern soll (z. B. die Sperre). */
   const failingReads = new Map<string, () => Error>()
   /** Tabellen, die es (noch) nicht gibt. */
@@ -144,6 +146,7 @@ export function createRaceTablesDB() {
     async deleteRow({ tableId, rowId }: { databaseId?: string, tableId: string, rowId: string }) {
       await handOff()
       assertTable(tableId)
+      if (failingDeletes.has(rowId)) throw new AppwriteException('Server Error', 500, 'general_unknown')
       if (!table(tableId).delete(rowId)) throw notFound()
       return {}
     },
@@ -176,11 +179,13 @@ export function createRaceTablesDB() {
     table,
     seed,
     failingUpdates,
+    failingDeletes,
     failingReads,
     missingTables,
     reset() {
       tables.clear()
       failingUpdates.clear()
+      failingDeletes.clear()
       failingReads.clear()
       missingTables.clear()
       clock = 0

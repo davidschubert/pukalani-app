@@ -229,12 +229,32 @@ prüft Davids Anwalt.
   `/api/control/community/members/user-erase-preview`). Ist eine Frage gestört, sagt die Karte, dass
   die Liste unvollständig sein kann.
 
+**Verwaister Inhaber-Platz neu vergeben (LA2, seit 2026-11-24).** Löscht der einzige Owner sein
+Konto, bleibt seine Zeile ohne Adresse stehen, und „Besitz übertragen" kann niemand mehr. Ein
+Betreiber (`sites.manage`, frische Anmeldung) gibt den Platz auf account.pukalani.app unter
+„Inhaber-Platz" (`/dashboard/community-owner`) einem bestehenden Konto:
+
+1. Community-Id eingeben, „Prüfen": `GET /api/onboarding/operator/community-owner` fragt das Control
+   Plane nach den aktiven Ownern (Naht `members/owner-status`) und prüft JEDES Owner-Konto bei der
+   eigenen Appwrite (`users.get`: nur 404 heißt gelöscht, jede andere Antwort 503).
+2. Bei „Kein lebender Inhaber" die Adresse des neuen Inhabers nennen und bestätigen:
+   `POST /api/onboarding/operator/community-owner` sucht das Konto (404 `account_not_found`), prüft
+   noch einmal (lebt ein Owner, 409 `owner_present`) und ruft die Naht `members/owner-reassign`. Dort
+   unter der Team-Sperre: die aktiven Owner müssen GENAU die geprüften sein (sonst 409
+   `owner_changed`), das neue Konto wird Owner (eine vorhandene Zeile wird umgestellt), DANN werden
+   die verwaisten Zeilen gelöscht. Scheitert das Löschen, wird der erste Schritt zurückgenommen.
+3. Eintrag im Betreiber-Protokoll `community.owner_reassigned` (Ziel: die Community).
+
+Die neue Rolle wirkt nach dem Rollen-Cache (bis 30 s); das Community-Label setzt die Seite beim
+nächsten Besuch des neuen Inhabers selbst.
+
 ## Bewusst ausgenommen
 
 - **Vertragsdaten einer Community** (`communities`: Name, Abo) – Aufbewahrungspflicht, gehört nicht
   dem einzelnen Konto.
 - **Der letzte Owner einer Community** behält seine Mitglieds-Zeile mit Konto-Id (die Adresse wird
-  geleert); welche Community betroffen ist, steht im Log.
+  geleert); welche Community betroffen ist, steht im Log. Vergibt ein Betreiber den Platz neu (LA2,
+  oben), wird diese Zeile gelöscht.
 - **Arbeitsmaterial der Betreiber-Konsole** (Tickets samt Anhängen, Auftragstexte der Runner-Läufe):
   die Inhalte bleiben, der Bezug zur Person wird geleert. Texte und Anhänge der Runner-Läufe fallen
   nach 12 Monaten (oben unter „Fristen").
