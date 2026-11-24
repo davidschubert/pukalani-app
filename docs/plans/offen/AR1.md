@@ -14,13 +14,11 @@ Erledigt am 2026-11-21 (COMPLETE „N22"): der DNS-Eintrag
 `changelog.pukalani.app` ist bei Cloudflare gelöscht.
 
 - **(d) Kleinigkeiten.** Ticket-Kauf (lebt nur in der Test-App): die
-  Rückkehr-Adressen kommen weiter aus dem Host der Anfrage; die Prüfung
-  „schon bezahlt" liest die 100 jüngsten Sitzungen und braucht ein
-  Zeitfenster, sobald es eine Erstattung mit Rücknahme des Tickets gibt; die
-  Route liest den Termin direkt und nicht über die Datentür — zu ändern,
-  bevor der Ticket-Kauf in eine ausgerollte Pool-App zieht (die Prüfungen der
-  Termin-Routen und eine eigene Bremse trägt er seit dem 2026-11-18, COMPLETE
-  „N15").
+  Rückkehr-Adressen kommen seit SE1 f nicht mehr aus dem Host der Anfrage,
+  und seit dem 2026-11-25 liest die Route den Termin über die Datentür
+  (COMPLETE „AR1 (d) — Ticket-Kauf"). Offen: die Prüfung „schon bezahlt"
+  liest die 100 jüngsten Sitzungen und braucht ein Zeitfenster, sobald es
+  eine Erstattung mit Rücknahme des Tickets gibt.
   Auf dem Datenbank-Server liegen fünf Upgrade-Protokolle im Heimatordner
   (bewusst behalten) und vier Sicherheitskopien aus dem Backup-Paket
   (`*.vorher-p11*`, gehören zu BU1 d). Der lokale Lauf der Playwright-Suite

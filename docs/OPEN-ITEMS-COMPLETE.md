@@ -30,6 +30,14 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AR1 (d) — Ticket-Kauf: Termin über die Datentür ✅ 2026-11-25
+
+`apps/comments/server/api/events/[id]/checkout.post.ts` las den Termin mit dem
+Admin-Client an der Datentür vorbei; ein Termin einer anderen Community wäre
+im Pool kaufbar gewesen. Jetzt `tenantDb(event).get(EVENTS_TABLE, …)` wie die
+Zusage; der Rollen-Test prüft „fremder Termin ⇒ 404, kein Stripe-Aufruf".
+Die Rückkehr-Adressen kamen schon seit SE1 f nicht mehr aus dem Host.
+
 ### MG1 — Shell-Skript-Tests ohne erkennbaren Grund rot: Ursache Exit 141 im Rückweg-Skript ✅ 2026-11-24
 
 Der Test `packages/core/tests/rollbackScript.test.ts` scheiterte selten mit
