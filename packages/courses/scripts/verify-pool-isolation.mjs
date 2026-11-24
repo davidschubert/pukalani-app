@@ -292,7 +292,8 @@ try {
   console.log('\n4. Verwaltung: die Site-Rolle reist nicht mit')
   const manageA = await call(HOST_A, '/api/courses/manage', { cookie: ownerCookie })
   check('Owner: GET /api/courses/manage auf A → 200 und enthält den Kurs', manageA.status === 200 && (manageA.json?.rows ?? []).some(r => r.$id === courseId), `Status ${manageA.status}`)
-  const manageBOwner = await call(HOST_B, '/api/courses/manage', { cookie: ownerCookie })
+  // Eigene Anmeldung auf B (PK1 E1c) — die Rolle von A reist nicht mit.
+  const manageBOwner = await call(HOST_B, '/api/courses/manage', { cookie: await login(HOST_B, owner) })
   check('Derselbe Owner auf kunde-b → 403', manageBOwner.status === 403, `Status ${manageBOwner.status}`)
   const manageBStranger = await call(HOST_B, '/api/courses/manage', { cookie: strangerCookie })
   check('Eingeloggt ohne Rolle → 403', manageBStranger.status === 403, `Status ${manageBStranger.status}`)
