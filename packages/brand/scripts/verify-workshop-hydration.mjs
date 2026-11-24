@@ -23,6 +23,8 @@
  * NUR LOKAL (Ziel-Prüfung `assert-target.mjs`). Aus packages/brand, gegen
  * einen LAUFENDEN Dev-Server von apps/branding:
  *   node --env-file=../../apps/branding/.env scripts/verify-workshop-hydration.mjs http://localhost:3010
+ * Mit `--screenshot=<datei.png>` legt es ein Bild des zweiten Besuchs ab
+ * (Vorher/Nachher eines Schnitts; der Titel der Wegwerf-Marke enthält die Zeit).
  *
  * Legt ein Wegwerf-Konto samt Zugangszeile und Marke an und räumt alles
  * wieder weg — auch im Fehlerfall. Ausgabe nennt nie ein Sitzungs-Geheimnis.
@@ -37,7 +39,10 @@ const { chromium } = await import(playwrightEntry.href).catch(() => {
   process.exit(1)
 })
 
-const base = (process.argv[2] ?? process.env.BRANDING_URL ?? `http://localhost:${process.env.BRANDING_PORT ?? 3010}`).replace(/\/$/, '')
+const screenshotArg = process.argv.slice(2).find(arg => arg.startsWith('--screenshot='))
+const screenshotPath = screenshotArg ? screenshotArg.slice('--screenshot='.length) : null
+const positional = process.argv.slice(2).find(arg => !arg.startsWith('--'))
+const base = (positional ?? process.env.BRANDING_URL ?? `http://localhost:${process.env.BRANDING_PORT ?? 3010}`).replace(/\/$/, '')
 const port = Number(new URL(base).port || 80)
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
@@ -161,6 +166,13 @@ try {
     const label = index === visits.length - 1 ? `${stepKey} (zweiter Besuch)` : stepKey
     check(`${label}: Server antwortet 200`, status === 200, `HTTP ${status}`)
     check(`${label}: keine Abweichung zwischen Server und Browser`, messages.length === 0, messages.join('\n    '))
+  }
+  // Optional ein Bild des zweiten Besuchs — für Vorher/Nachher eines Schnitts.
+  if (screenshotPath) {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: screenshotPath, fullPage: false })
+    console.log(`  Bild: ${screenshotPath}`)
   }
   console.log(`  abgefangene KI-Aufrufe: ${aiCalls}`)
 }
