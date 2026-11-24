@@ -14,7 +14,14 @@
   § 5 (Alarm-Mail, UptimeRobot, healthchecks.io), dann die Probe mit einem
   Probealarm. Entschieden: Die Vertretung soll zuerst nur Bescheid wissen;
   eigene Zugänge erst, wenn die Person feststeht.
-- **(b) Mail für Meldungen von außen — braucht Davids Ja.**
+  **Stand 2026-11-24:** Person benannt (Angaben nur im privaten Blatt).
+  Erledigt: Blatt ausgefüllt und gedruckt, `PRODUCTION_ALARM_MAIL_TO` trägt
+  beide Adressen, healthchecks.io hat eine zweite Mail-Integration (die
+  Person muss sie noch bestätigen). **UptimeRobot bewusst weggelassen:** der
+  Gratis-Plan nimmt nur die Mail des Kontos, eine zweite Adresse kostet einen
+  bezahlten „Notify-only seat" (Davids Entscheidung). Offen: die Probe mit
+  der Person, danach schließt VT1.
+- **(b) Mail für Meldungen von außen — entschieden 2026-11-24: nur an David, noch nicht gesetzt.**
   `NUXT_ALERT_EMAIL` ist auf keiner Site gesetzt (nachgesehen am 2026-11-17).
   Missbrauchs-Meldungen, Zugangs-Anfragen und Statuswechsel der Kunden-Sites
   erreichen deshalb heute niemanden per Mail, nur die Glocke im Dashboard.
