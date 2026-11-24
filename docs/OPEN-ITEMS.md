@@ -46,7 +46,7 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Die Proben aus AB1, PB1, MM1, SI1, SR1, SV1, zwei aus P29 (Anmelde-Mail, gestohlenes Passwort) seit dem 2026-11-18 das Erstgespräch auf pukalani.studio, dazu Beispiel-Kit (F), Marktvergleich-Entwürfe (G) und seit dem 2026-11-23 alles, was seit dem 2026-11-22 neu und hinter der Anmeldung noch ungesehen ist (H). Zwei Sitzungen, zusammen gut zwei Stunden. Die Einzel-Einträge verweisen hierher. Sitzung 1 lief am 2026-11-24: G und F erledigt, A1 passt; A2–A5 hängen an BP2, B6–B8 sind nach Sitzung 2 verschoben (Stand in der Liste). KI-Einschätzung und Runner-Lauf sind seit dem 2026-11-21 geklickt (COMPLETE „KR1 — Teil 1"); der Rest braucht Passwort, Mail-Code oder die Bot-Prüfung und damit David selbst. **Wartet auf:** BP2 (für A2, A4, A5 und ein neues Wegwerf-Konto), sonst Davids Zeit. | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](plans/offen/KR1.md) |
+| KR1 | **Eine Sitzung, ein Test-Konto: alle offenen Klick-Proben am Stück.** Die Proben aus AB1, PB1, MM1, SI1, SR1, SV1, zwei aus P29 (Anmelde-Mail, gestohlenes Passwort) seit dem 2026-11-18 das Erstgespräch auf pukalani.studio, dazu Beispiel-Kit (F), Marktvergleich-Entwürfe (G) und seit dem 2026-11-23 alles, was seit dem 2026-11-22 neu und hinter der Anmeldung noch ungesehen ist (H). Zwei Sitzungen, zusammen gut zwei Stunden. Die Einzel-Einträge verweisen hierher. Sitzung 1 lief am 2026-11-24: G und F erledigt, A1 passt; A2–A5 hingen an BP2 (behoben 2026-11-24), B6–B8 sind nach Sitzung 2 verschoben (Stand in der Liste). KI-Einschätzung und Runner-Lauf sind seit dem 2026-11-21 geklickt (COMPLETE „KR1 — Teil 1"); der Rest braucht Passwort, Mail-Code oder die Bot-Prüfung und damit David selbst. **Wartet auf:** Davids Zeit (BP2 ist behoben, A2, A4, A5 und das Wegwerf-Konto gehen wieder). | Mittel | S (eine Sitzung) | **Ja: selbst klicken** | [Liste](plans/offen/KR1.md) |
 
 ### Schritt 3 — Baut Claude allein
 
@@ -54,13 +54,11 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| BP2 | **Bot-Prüfung hängt auf Production: Formulare lassen sich nicht abschicken.** Gefunden in KR1 Sitzung 1 am 2026-11-24 (14:29 und 14:36 bei David, Gegenprobe als Gast gegen 14:40): die unsichtbare Prüfung lädt, liefert aber kein Ergebnis, es erscheint kein Kästchen und keine Meldung, der Knopf bleibt grau. Gesehen auf `account.pukalani.app/de/register` und `/de/forgot-password`, `pukalani.studio/erstgespraech`, `branding.supply/de/erstgespraech`. Laut Code betroffen auch Anmeldung per Code, Warteliste von branding.supply und Gast-Kommentare. Die Anmeldung mit Passwort geht. Ursache finden und beheben; dazu soll die Seite sagen, wenn die Prüfung scheitert, statt still zu warten. Danach KR1 A2, A4, A5 nachholen. **Wartet auf:** nichts. | **Hoch** | S–M | Nein | [Liste](plans/offen/KR1.md) |
 
 **Bündel „Ausliefern und Rückweg":**
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| MG1 | **Tests von Shell-Skripten, die ohne erkennbaren Grund rot waren.** Der Test des Rückweg-Skripts mit Exit 141 (2026-11-16 in der CI, 2026-11-22 lokal unter zwei parallelen Suiten); zwei Fälle des Ausliefer-Skripts fünfmal in einer halben Stunde (2026-11-18), seit einer Härtung nicht mehr. Nachstellen ließ sich keiner, auch nicht am 2026-11-23 mit über 1.800 Läufen unter Last (COMPLETE „FL2"). **Wartet auf:** den nächsten roten Lauf — in der CI steht dann die bash-Spur dabei. | Niedrig | S | Nein | [Einzelheiten](plans/offen/MG1.md) |
 
 **Bündel „Mails und Bremsen":**
 
