@@ -343,36 +343,31 @@ Leer heisst unverändert `NUXT_SMTP_FROM` und die normalen Zugangsdaten. Ohne
 Eintrag ändert sich also nichts — das war die Bedingung dafür, den Core
 anzufassen.
 
-### 7.3 WAS NOCH FEHLT
+### 7.3 Der eigene Sende-Schlüssel (seit 2026-11-24)
 
-**Der Schlüssel — EINE Stelle, nicht fünf (Davids Entscheidung
-2026-11-09: Variante B).** In Resend einen `sending_access`-Schlüssel
-`branding-newsletter-send` anlegen, gebunden an `newsletter.branding.supply`,
-und ihn auf der Site `branding.supply` als
-`NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` eintragen (Ploi → Site → Environment).
-Das ist Davids Handgriff: der Wert erscheint beim Anlegen offen auf dem
-Bildschirm. `pukalani-smtp-send` bleibt **unangetastet** — die Verengung aus
-§ 6 gilt weiter, und jeder Schlüssel darf nur von SEINER Domain senden.
+| | |
+| --- | --- |
+| Name bei Resend | `branding-newsletter-send` (`sending_access`, Domain `newsletter.branding.supply`) |
+| Stelle | EINE: `/home/ploi/branding.supply/.env`, Zeile `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` (die Node-Site hat in Ploi keinen Environment-Reiter) |
+| Absender | `apps/branding/app/app.config.ts` → `insights.newsletter.from` |
+| Beweis 2026-11-24 | nach `pm2 startOrReload …/ecosystem-branding.config.cjs --update-env`: `pm2 jlist` zeigt die Zeile NUR bei `brandingsupply` (Länge, nie der Wert); SMTP-Probe mit dem `nodemailer` des Release-Ordners an `delivered@resend.dev`: von `insights@newsletter.branding.supply` → `250`, von `noreply@pukalani.app` → `550 This API key is not authorized` |
 
-Danach, in dieser Reihenfolge: `pm2 startOrReload
-/home/ploi/branding.supply/ops/ecosystem-branding.config.cjs --update-env &&
-pm2 save`; Beweis wie § 6.2 (Länge + `sha256`-Präfix aus `pm2 jlist`, nie der
-Wert; echte Mail über das `nodemailer` des Release-Ordners von
-`insights@newsletter.branding.supply` an `delivered@resend.dev` → `250`);
-erst dann die Adresse in `apps/branding/app/app.config.ts` setzen
-(`newsletter: { from: '…' }`). Beides gehört zusammen, einzeln bringt keines
-von beiden etwas.
-
-Warum nicht Variante A (ein Schlüssel ohne Domain-Bindung): die wäre eine
-Rotation über alle fünf Stellen aus § 6.1 — darunter die Ablage
-`instance_secrets` und die `~/appwrite/.env` auf der Appwrite-Maschine —, und
+`pukalani-smtp-send` bleibt **unangetastet** (Davids Entscheidung
+2026-11-09, Variante B) — die Verengung aus § 6 gilt weiter, und jeder
+Schlüssel darf nur von SEINER Domain senden. Warum nicht ein Schlüssel ohne
+Domain-Bindung: das wäre eine Rotation über alle fünf Stellen aus § 6.1, und
 ein geleakter Schlüssel könnte dann als JEDE verifizierte Domain senden.
 
-DMARC für `branding.supply` steht seit 2026-11-22 (`p=none`, Cloudflare DMARC
-Management) und gilt für die Subdomain mit.
+**Eintragen oder drehen, ohne dass der Wert irgendwo erscheint** (David am
+eigenen Terminal; legt zuerst eine Sicherung an, die Ausgabe muss `1` sein —
+beim Drehen vorher die alte Zeile entfernen):
 
-**Die Reihenfolge ist wichtig:** solange `newsletter.enabled` auf `false`
-steht, geht ohnehin nichts raus. Wer den Riegel nach den Rechtstexten öffnet,
-erledigt vorher den Schlüssel — sonst fällt der Newsletter beim ersten
-Versand aus, ohne dass jemand eine Zeile angefasst hätte.
+```bash
+read -rs "K?Resend-Schlüssel einfügen, dann Enter: "; echo; printf 'NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS=%s\n' "$K" | ssh ploi@<app-prod> 'cd /home/ploi/branding.supply && cp .env .env.bak-<datum>-newsletter && cat >> .env && grep -c "^NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS=" .env'; unset K
+```
+
+Danach neu laden (oben) und die Probe wiederholen. DMARC für
+`branding.supply` steht seit 2026-11-22 (`p=none`) und gilt für die Subdomain
+mit. Der Newsletter bleibt trotzdem aus, bis jemand `newsletter.enabled`
+nach den Rechtstexten öffnet (DT1).
 
