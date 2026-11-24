@@ -269,4 +269,8 @@ sie die 14-Tage-Frist. Darum gleich danach, nur lesend:
 
 | Datum | Schritt | Wer | Ergebnis |
 | --- | --- | --- | --- |
-| — | noch kein Durchlauf | — | — |
+| 2026-11-22 | A: `read` auf platform, portfolio, branding, Konsole | David (Befehle), Claude (Prüfung) | alle Hosts `ok`, `mode: read`, `cards: true`; Tag danach: keine Zeile `site_card.*`, Neustarts nur durch Ausliefern, Sicherung der Einstellungen grün |
+| 2026-11-24 | B, Vorprüfung (§ 2, Konsole nur gelesen) | Claude | Projekt `account`: keine Sitzungs-Obergrenze („unlimited" an) ⇒ K5 entfällt; Sitzungen bei Passwortwechsel beenden: an; Schlüssel `runtime` trägt `users.write` + `sessions.write`. Daneben an: „Session alerts" und „Account switching" (nicht Teil des Runbooks, nicht geändert) |
+| 2026-11-24 | B1: platform `write` | David (Befehl), Claude (Prüfung) | platform, account., demo.: `write`, `cards: true`, `liveRelay: true`; Klick-Probe: Anmelden auf demo trägt, Abmelden dort lässt account. angemeldet; Log ohne `site_card.*`/`session_copy_fallback`/Fehler. OFFEN: Live-Probe unter eigener Domain (kein Mitglieds-Konto nach der Konto-Löschung vom 22.11., LA2) |
+| 2026-11-24 | B2: portfolio, branding `write` | David (Befehle), Claude (Prüfung) | beide `write`, `cards: true` (`liveRelay: false` gewollt, keine eigenen Domains); branding: Anmelden trägt, Abmelden ⇒ 401; Studio-Probe AUSGELASSEN (einziges Konto, Passwort nicht zur Hand), Log ohne Befund |
+| 2026-11-24 | B3: Konsole `write` | David (Befehl), Claude (Prüfung) | alle sieben Hosts `ok`, `mode: write`, `cards: true`, Datenbank `ok`. K6 NICHT gesetzt (`NUXT_CUSTOM_DOMAIN_PLATFORM_HEALTH_URL` leer) — erst nach der Live-Probe unter eigener Domain, eigenes Ja |
