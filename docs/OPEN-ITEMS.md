@@ -61,7 +61,6 @@ am 2026-11-18, COMPLETE „N11").
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
-| MG1 | **Tests von Shell-Skripten, die ohne erkennbaren Grund rot waren.** Der Test des Rückweg-Skripts mit Exit 141 (2026-11-16 in der CI, 2026-11-22 lokal unter zwei parallelen Suiten); zwei Fälle des Ausliefer-Skripts fünfmal in einer halben Stunde (2026-11-18), seit einer Härtung nicht mehr. Nachstellen ließ sich keiner, auch nicht am 2026-11-23 mit über 1.800 Läufen unter Last (COMPLETE „FL2"). **Wartet auf:** den nächsten roten Lauf — in der CI steht dann die bash-Spur dabei. | Niedrig | S | Nein | [Einzelheiten](plans/offen/MG1.md) |
 
 **Bündel „Mails und Bremsen":**
 

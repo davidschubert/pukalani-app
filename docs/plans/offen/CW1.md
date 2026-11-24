@@ -9,7 +9,7 @@
 An diesem Tag führten drei Gruppen gleichzeitig zusammen. Drei Beobachtungen,
 jede mit Fundstelle; keine ist ein Fehler im Programm, alle kosten Zeit. (Ein
 vierter Wackler, ein Test des Ausliefer-Skripts, steht mit dem, was dagegen
-getan ist, unter [MG1](MG1.md).)
+getan ist, in OPEN-ITEMS-COMPLETE unter „MG1“.)
 
 - **(a) Sieben E2E-Läufe, in denen der Test-Server nicht startete.**
   Gemessen am 2026-11-18 aus 56 Läufen: in 49 grünen stand der Server nach
