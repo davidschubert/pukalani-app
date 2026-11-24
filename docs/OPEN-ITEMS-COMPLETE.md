@@ -30,6 +30,21 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### ZN1 — Dateiname des Beispiel-Kits: der lesbare Name gilt ✅ 2026-11-24
+
+`branding.supply/api/brand/example/kit.zip` schickt zwei Namen im
+`Content-Disposition`: `filename="kailua-coffee-co-brand-kit-2026-09-09.zip"`
+und `filename*=UTF-8''Kailua Coffee Co. brand kit 2026-09-09.zip`. Das ist
+Absicht (BRAND-BOOK-KIT §2.12 Nr. 4, alle Kit-Routen gleich): alte Werkzeuge
+lesen den ASCII-Namen, Browser den lesbaren. Entschieden: der lesbare Name
+gilt, kein Code geändert. Die Erwartung in KR1 F1 nennt jetzt den lesbaren
+Namen, `packages/brand/tests/brandKitExample.test.ts` hält den ganzen Kopf
+fest.
+
+**Gelernt:** Eine Klick-Probe schreibt die Erwartung aus der Spezifikation ab,
+nicht aus einem Teil des Kopfes — sonst wird gewolltes Verhalten als Fehler
+gemeldet.
+
 ### CW1 (a)(d) — Server-Hänger geklärt, kein älterer Commit bei toter App ✅ 2026-11-24
 
 - **(a)** Seit dem 2026-11-18 (Ausgabe des Dev-Servers im Job-Log) liefen
