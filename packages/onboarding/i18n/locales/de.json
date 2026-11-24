@@ -763,6 +763,49 @@
     "accountDelete": {
       "soleOwner": "Du bist der einzige Inhaber dieser Community | Du bist der einzige Inhaber dieser {count} Communities",
       "soleOwnerText": "Übertrage den Besitz vorher unter „Mitglieder“ der Community. Sonst bleibt sie ohne Inhaber, und niemand kann sie mehr verwalten oder bezahlen."
+    },
+    "ownerSlot": {
+      "navLabel": "Inhaber-Platz",
+      "title": "Inhaber-Platz vergeben",
+      "description": "Hat der einzige Inhaber einer Community sein Konto gelöscht, kann niemand mehr „Besitz übertragen\". Hier gibst du den Platz einem bestehenden Konto.",
+      "checkTitle": "Community prüfen",
+      "communityIdLabel": "Community-Id",
+      "communityIdHelp": "Die Id steht in der Konsole unter Communities.",
+      "check": "Prüfen",
+      "stateOrphaned": "Kein lebender Inhaber",
+      "stateOrphanedText": "Alle Inhaber-Konten dieser Community sind gelöscht. Du kannst den Platz vergeben.",
+      "statePresent": "Inhaber vorhanden",
+      "statePresentText": "Mindestens ein Inhaber hat noch ein Konto. Er kann den Besitz selbst übertragen.",
+      "stateNone": "Kein Inhaber-Eintrag",
+      "stateNoneText": "Diese Community hat keinen Inhaber-Platz. Hier gibt es nichts zu vergeben.",
+      "stateDisabled": "Stillgelegt",
+      "stateDisabledText": "Diese Community ist stillgelegt. Dort wird kein Inhaber vergeben.",
+      "ownerCount": "{count} Inhaber-Platz | {count} Inhaber-Plätze",
+      "assignTitle": "Neuer Inhaber",
+      "emailLabel": "E-Mail des neuen Inhabers",
+      "emailHelp": "Das Konto muss es schon geben.",
+      "assign": "Inhaber-Platz vergeben",
+      "confirmTitle": "Inhaber-Platz von „{name}\" vergeben?",
+      "confirmText": "Das Konto {email} wird Inhaber. Der alte, leere Platz wird gelöscht. Die neue Rolle wirkt nach etwa 30 Sekunden.",
+      "confirm": "Vergeben",
+      "done": "„{name}\" hat einen neuen Inhaber.",
+      "reauthText": "Bitte melde dich neu an, bevor du einen Inhaber-Platz vergibst.",
+      "validation": {
+        "communityId": "Bitte gib eine Community-Id ein.",
+        "email": "Bitte gib eine gültige E-Mail-Adresse ein."
+      },
+      "errors": {
+        "notFound": "Diese Community gibt es hier nicht.",
+        "owner_present": "Die Community hat noch einen Inhaber mit Konto. Nichts geändert.",
+        "owner_changed": "Die Inhaber haben sich gerade geändert. Bitte prüfe noch einmal.",
+        "account_not_found": "Zu dieser E-Mail gibt es kein Konto.",
+        "account_blocked": "Dieses Konto ist gesperrt. Gib den Platz einem aktiven Konto.",
+        "community_disabled": "Die Community ist stillgelegt. Nichts geändert.",
+        "new_owner_is_orphan": "Dieses Konto ist schon einer der alten Inhaber.",
+        "owner_check_unavailable": "Die Konten ließen sich gerade nicht prüfen. Bitte versuche es gleich noch einmal.",
+        "failed": "Das hat nicht geklappt.",
+        "failedHint": "Bitte prüfe die Community noch einmal, bevor du es erneut versuchst."
+      }
     }
   },
   "admin": {

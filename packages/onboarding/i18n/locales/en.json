@@ -763,6 +763,49 @@
     "accountDelete": {
       "soleOwner": "You are the only owner of this community | You are the only owner of these {count} communities",
       "soleOwnerText": "Transfer ownership first under “Members” in the community. Otherwise it is left without an owner, and nobody can manage or pay for it any more."
+    },
+    "ownerSlot": {
+      "navLabel": "Owner slot",
+      "title": "Give away an owner slot",
+      "description": "When the only owner of a community deletes their account, nobody can use \"Transfer ownership\" any more. Here you give the slot to an existing account.",
+      "checkTitle": "Check a community",
+      "communityIdLabel": "Community id",
+      "communityIdHelp": "You find the id in the console under Communities.",
+      "check": "Check",
+      "stateOrphaned": "No living owner",
+      "stateOrphanedText": "All owner accounts of this community are deleted. You can give the slot away.",
+      "statePresent": "Owner present",
+      "statePresentText": "At least one owner still has an account. They can transfer ownership themselves.",
+      "stateNone": "No owner entry",
+      "stateNoneText": "This community has no owner slot. There is nothing to give away.",
+      "stateDisabled": "Shut down",
+      "stateDisabledText": "This community is shut down. No owner is given there.",
+      "ownerCount": "{count} owner slot | {count} owner slots",
+      "assignTitle": "New owner",
+      "emailLabel": "E-mail of the new owner",
+      "emailHelp": "The account must already exist.",
+      "assign": "Give owner slot",
+      "confirmTitle": "Give the owner slot of \"{name}\"?",
+      "confirmText": "The account {email} becomes owner. The old, empty slot is deleted. The new role works after about 30 seconds.",
+      "confirm": "Give",
+      "done": "\"{name}\" has a new owner.",
+      "reauthText": "Please sign in again before you give an owner slot.",
+      "validation": {
+        "communityId": "Please enter a community id.",
+        "email": "Please enter a valid e-mail address."
+      },
+      "errors": {
+        "notFound": "This community does not exist here.",
+        "owner_present": "The community still has an owner with an account. Nothing changed.",
+        "owner_changed": "The owners just changed. Please check again.",
+        "account_not_found": "There is no account for this e-mail.",
+        "account_blocked": "This account is blocked. Give the slot to an active account.",
+        "community_disabled": "The community is shut down. Nothing changed.",
+        "new_owner_is_orphan": "This account is already one of the old owners.",
+        "owner_check_unavailable": "The accounts could not be checked right now. Please try again in a moment.",
+        "failed": "That did not work.",
+        "failedHint": "Please check the community again before you retry."
+      }
     }
   },
   "admin": {

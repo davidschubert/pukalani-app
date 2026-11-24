@@ -108,6 +108,22 @@ export default defineAppConfig({
           group: 'products',
           order: 10,
         },
+        {
+          // LA2 (2026-11-24): verwaisten Inhaber-Platz vergeben. BETREIBER-
+          // Sache (`scope: 'operator'`): erscheint auf dem Kontroll-Host
+          // (account.pukalani.app), nie auf einem Mandanten-Host. Liegt hier,
+          // weil die Routen die Naht zum Control Plane brauchen — dieselbe
+          // Begründung wie bei `members`. `sites.manage` wie die
+          // Community-Verwaltung der Konsole.
+          id: 'community-owner',
+          scope: 'operator',
+          labelKey: 'onboarding.ownerSlot.navLabel',
+          icon: 'i-ph-crown-simple',
+          to: '/dashboard/community-owner',
+          requiredCapability: 'sites.manage',
+          group: 'platform',
+          order: 90,
+        },
       ],
       /**
        * KENNZAHLEN DER COMMUNITY (U9/K2, 2026-08-11) — die zwei Zahlen, die
