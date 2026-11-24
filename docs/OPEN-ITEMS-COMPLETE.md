@@ -108,6 +108,41 @@ prüfen (`list-domains` zählen) — die Ablehnung kommt erst beim Anlegen.
 
 ---
 
+### LA2 — Verwaisten Inhaber-Platz einer Community neu vergeben ✅ 2026-11-24
+
+**Anlass:** Löscht der einzige Owner einer Community sein Konto, behält die Löschung seine Zeile in
+`community_members` ohne Adresse (`decideMembershipErasure`, Grund `last_owner`) — „Besitz
+übertragen" kann danach niemand mehr. Betroffen: zwei Communities von David (gelöscht am
+2026-11-22, LA1).
+
+**Entschieden (David):** (1) der Weg liegt im Betreiber-Dashboard der Platform
+(account.pukalani.app), nicht in der Konsole — die Konsole hat für das Projekt `account` keinen
+Schlüssel; (2) die verwaiste Zeile wird GELÖSCHT.
+
+**Gebaut:** Seite `/dashboard/community-owner` (Menüpunkt „Inhaber-Platz", `scope: 'operator'`,
+`sites.manage`) im onboarding-Layer. `GET`/`POST /api/onboarding/operator/community-owner`
+(Betreiber, POST mit frischer Anmeldung, auf Mandanten-Hosts 404): Konto über die Adresse suchen,
+jedes Owner-Konto mit `users.get` prüfen (nur 404 = gelöscht, sonst 503), Protokoll-Eintrag
+`community.owner_reassigned`. Im Control Plane zwei Naht-Routen: `members/owner-status` (lesen) und
+`members/owner-reassign` (unter der Team-Sperre: Owner-Menge muss genau die geprüfte sein, sonst
+409 `owner_changed`; erst das neue Konto zum Owner, dann die verwaisten Zeilen löschen, beim
+Scheitern zurücknehmen, 502). Regel pur in `packages/control/shared/communityOwnerSlot.ts`.
+
+**Beweis:** Rollen-Tests an den echten Routen (control: Naht-Geheimnis, fremdes Projekt, Regel,
+Anlegen, vorhandene Zeile, Owner-Menge geändert, stillgelegt, Rücknahme bei gescheitertem Löschen;
+onboarding: Rollen-Tor, Mandanten-Host 404, frische Anmeldung, lebender Owner 409, Störung 503,
+unbekannte Adresse 404, Protokoll-Eintrag). Kein Klick-Beweis auf Production — das Anwenden auf
+Davids zwei Communities braucht sein Ja.
+
+**Offen geblieben:** LA2-ANW (die zwei betroffenen Communities von David über die neue Seite vergeben
+(nach dem Ausliefern, mit Davids Ja).
+
+**Gelernt:** Ein Betreiber-Weg auf dem Kontroll-Host braucht ein Präfix aus
+`controlApiPrefixes` — `/api/admin/` ist dort zu (404). Darum liegen die Routen unter
+`/api/onboarding/operator/` und sperren Mandanten-Hosts selbst (N7).
+
+---
+
 ### LA1 — Konto löschen: die Seite warnt VOR dem Klick (letzter Admin, einziger Inhaber) ✅ 2026-11-23
 
 **Anlass:** Am 2026-11-22 um 23:52 UTC hat David sein einziges Admin-Konto der Platform (Projekt
