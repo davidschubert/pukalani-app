@@ -14,6 +14,21 @@ nicht. „Wortlaut kann abweichen" heißt: die Beschreibung stammt aus dem Code
 oder der Sprachdatei, nicht aus einem Blick auf die echte Seite — gilt der
 Sinn, nicht das Wort.
 
+**Stand Sitzung 1 (2026-11-24, mit David):**
+
+- **Erledigt:** G (Handprüfung: `anthropic` übernommen, Tonwörter auf
+  „Direct, Thoughtful" gekürzt, `verified` DS 2026-11-24; `nike` verworfen,
+  der alte Nike-Eintrag bleibt mit `keptStale` stehen wie apple/the-barn;
+  übernehmen und Vermerk setzen macht die nächste Sitzung), F (F1 und F2
+  passen, Davids Ja zur Copy = Gate K7), A1 (Bremse greift).
+- **Gescheitert:** A2 und A3 — die Bot-Prüfung liefert auf Production kein
+  Ergebnis, die Absende-Knöpfe bleiben grau (Punkt BP2). A4 und A5 hängen an
+  derselben Prüfung und sind deshalb nicht geklickt.
+- **Verschoben in Sitzung 2:** B6 (geht nur mit eigenem Konto, siehe dort),
+  B7 (es gibt noch kein Wegwerf-Konto; anlegen erst, wenn BP2 behoben ist),
+  B8 (NordPass hatte keinen Eintrag für das Konto — Markup stimmt, mit
+  gespeichertem Eintrag wiederholen). Danach A2, A4, A5 nachholen.
+
 **Reihenfolge und Zeit je Block** (die Buchstaben bleiben, andere Einträge
 verweisen darauf):
 
@@ -61,8 +76,9 @@ anfassen.
 3. **Erstgespräch auf der Studio-Site** · `pukalani.studio/erstgespraech` · Gast.
    Alle Schritte mit eigener Adresse ausfüllen, im letzten Schritt abschicken.
    *Sehen:* das Feld der Bot-Prüfung lädt, der Knopf wird nach einem
-   Augenblick frei, eine Bestätigung erscheint, die Mail im Postfach kommt
-   mit Anrede („Hallo …") und Schluss-Zeile mit dem Namen der Marke.
+   Augenblick frei, eine Bestätigung erscheint. Eine Mail geht NUR an die
+   Studio-Adresse (dein Postfach), nicht an die eingetragene Adresse: sie hat
+   Anrede („Hallo …") und Schluss-Zeile mit dem Namen der Marke.
    *Sonst:* Knopf bleibt grau oder „Bot-Prüfung fehlgeschlagen" ⇒ melden mit
    Browser und Uhrzeit.
 4. **Formulare von branding.supply** ([SR1 a](SR1.md)) · `branding.supply` (die
@@ -82,11 +98,14 @@ anfassen.
 ## Block B — als Wegwerf-Konto (privates Fenster) · ≈ 15 Min
 
 6. **Profilbild auf den drei Seiten** ([PB1 a](PB1.md)) · `admin.pukalani.app`,
-   `portfolio.pukalani.app`, `branding.supply` · Wegwerf-Konto (wo eine Seite
-   kein Profil anbietet: überspringen und das notieren). Profil/Einstellungen
-   öffnen, ein kleines Bild hochladen, speichern. *Sehen:* das Bild erscheint
-   im Kopf und nach Neuladen weiter. *Sonst:* Fehlermeldung beim Hochladen ⇒
-   dem Schlüssel fehlt dort das Schreibrecht für Dateien
+   `portfolio.pukalani.app`, `branding.supply` · DEIN Konto, nicht das
+   Wegwerf-Konto: die drei sind eigene Projekte, das Wegwerf-Konto gibt es
+   dort nicht (admin. zeigt ihm eine leere Seite). Gehört deshalb in
+   Sitzung 2. Ort: Dashboard → Einstellungen (`/dashboard/settings`), auf
+   branding.supply `/de/account`. Ein kleines Bild hochladen, speichern,
+   danach dein altes Bild zurücksetzen. *Sehen:* das Bild erscheint im Kopf
+   und nach Neuladen weiter. *Sonst:* Fehlermeldung beim Hochladen ⇒ dem
+   Schlüssel fehlt dort das Schreibrecht für Dateien
    ([APPWRITE-KEYS.md](../../runbooks/APPWRITE-KEYS.md)); melden, nicht
    anfassen.
 7. **Mitmachen als Mitglied** (Rest MM1, [MM1 a](MM1.md)) · `demo.pukalani.app` ·
