@@ -81,7 +81,7 @@ export default defineNuxtConfig({
      *
      * ── WARUM EIN ZWEITES PASSWORT ────────────────────────────────────────
      * Der Newsletter geht von einer eigenen Versand-Domain
-     * (`mail.branding.supply`), damit eine Beschwerde über die Massenmail
+     * (`newsletter.branding.supply`), damit eine Beschwerde über die Massenmail
      * nicht die Zustellung der Anmelde- und OTP-Mails beschädigt. Gemessen am
      * 2026-11-09: ein Resend-Schlüssel, der an eine Domain gebunden ist,
      * antwortet auf einen fremden Absender mit **403**, und die Bindung lässt

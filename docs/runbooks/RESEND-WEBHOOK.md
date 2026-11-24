@@ -282,7 +282,7 @@ Appwrite die eigenen Vorlagen nicht mehr.
   den Code-Pfad aus `pm_exec_path` nehmen; geheilt wird es wie oben.
 
 
-## 7 · Die Newsletter-Subdomain `mail.branding.supply` (RS1 e, 2026-11-09)
+## 7 · Die Newsletter-Subdomain `newsletter.branding.supply` (RS1 e; seit 2026-11-24, vorher `mail.`)
 
 **Warum eine eigene Domain.** Massenmail und Einzelmail teilen sich sonst
 EINEN Ruf. Eine Beschwerde über den Newsletter beschädigt dann die Zustellung
@@ -295,7 +295,7 @@ eigene, eigens verifizierte Versand-Subdomain; alles andere bleibt auf
 
 | | |
 | --- | --- |
-| Domain | `mail.branding.supply` |
+| Domain | `newsletter.branding.supply` (angelegt 2026-11-24; `mail.branding.supply` vom 2026-11-09 am selben Tag bei Resend gelöscht, ihre vier DNS-Einträge entfernt — der Tarif erlaubt drei Domains) |
 | Region | **eu-west-1** (wie `pukalani.app` — die EU-Frage aus (f)) |
 | Status | **verified** (alle vier Einträge) |
 | Versand / Empfang | sending `enabled` · receiving `disabled` |
@@ -306,10 +306,10 @@ Die vier DNS-Einträge liegen in der Cloudflare-Zone `branding.supply`, alle
 
 | Typ | Name | Inhalt |
 | --- | --- | --- |
-| TXT | `resend._domainkey.mail` | DKIM-Schlüssel |
-| MX (10) | `send.mail` | `feedback-smtp.eu-west-1.amazonses.com` |
-| TXT | `send.mail` | `v=spf1 include:amazonses.com ~all` |
-| CNAME | `rsend.mail` | `send.forge.rmta.net` |
+| TXT | `resend._domainkey.newsletter` | DKIM-Schlüssel |
+| MX (10) | `send.newsletter` | `feedback-smtp.eu-west-1.amazonses.com` |
+| TXT | `send.newsletter` | `v=spf1 include:amazonses.com ~all` |
+| CNAME | `rsend.newsletter` | `send.forge.rmta.net` |
 
 Angelegt per BIND-Import (Cloudflare → DNS → Import), Haken „Proxy imported
 DNS records" AUS. Gegenprobe von aussen über `1.1.1.1` **und** `8.8.8.8`; der
@@ -345,14 +345,22 @@ anzufassen.
 
 ### 7.3 WAS NOCH FEHLT
 
-**1. Der Schlüssel — EINE Stelle, nicht fünf (Davids Entscheidung
+**Der Schlüssel — EINE Stelle, nicht fünf (Davids Entscheidung
 2026-11-09: Variante B).** In Resend einen `sending_access`-Schlüssel
-anlegen, der an `mail.branding.supply` gebunden ist, und ihn auf der Site
-`branding.supply` als `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` eintragen.
-`pukalani-smtp-send` bleibt dabei **unangetastet** — die Verengung aus § 6
-gilt weiter, und jeder Schlüssel darf nur von SEINER Domain senden. Danach
-die Adresse in `apps/branding/app/app.config.ts` setzen
-(`newsletter: { from: '…' }`); beides gehört zusammen, einzeln bringt keines
+`branding-newsletter-send` anlegen, gebunden an `newsletter.branding.supply`,
+und ihn auf der Site `branding.supply` als
+`NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` eintragen (Ploi → Site → Environment).
+Das ist Davids Handgriff: der Wert erscheint beim Anlegen offen auf dem
+Bildschirm. `pukalani-smtp-send` bleibt **unangetastet** — die Verengung aus
+§ 6 gilt weiter, und jeder Schlüssel darf nur von SEINER Domain senden.
+
+Danach, in dieser Reihenfolge: `pm2 startOrReload
+/home/ploi/branding.supply/ops/ecosystem-branding.config.cjs --update-env &&
+pm2 save`; Beweis wie § 6.2 (Länge + `sha256`-Präfix aus `pm2 jlist`, nie der
+Wert; echte Mail über das `nodemailer` des Release-Ordners von
+`insights@newsletter.branding.supply` an `delivered@resend.dev` → `250`);
+erst dann die Adresse in `apps/branding/app/app.config.ts` setzen
+(`newsletter: { from: '…' }`). Beides gehört zusammen, einzeln bringt keines
 von beiden etwas.
 
 Warum nicht Variante A (ein Schlüssel ohne Domain-Bindung): die wäre eine
@@ -360,14 +368,11 @@ Rotation über alle fünf Stellen aus § 6.1 — darunter die Ablage
 `instance_secrets` und die `~/appwrite/.env` auf der Appwrite-Maschine —, und
 ein geleakter Schlüssel könnte dann als JEDE verifizierte Domain senden.
 
-**2. `branding.supply` hat gar kein DMARC** (gemessen 2026-11-09:
-`_dmarc.branding.supply` leer; nur `pukalani.app` hat einen Eintrag). Gmail
-und Yahoo verlangen für Massenversand mindestens `p=none`. Ein Klick, genau
-wie bei RS1 (g): Cloudflare → `branding.supply` → Email → DMARC Management →
-**Enable DMARC Management**. Cloudflare legt den `_dmarc`-Eintrag mit eigener
-Berichts-Adresse selbst an.
+DMARC für `branding.supply` steht seit 2026-11-22 (`p=none`, Cloudflare DMARC
+Management) und gilt für die Subdomain mit.
 
 **Die Reihenfolge ist wichtig:** solange `newsletter.enabled` auf `false`
 steht, geht ohnehin nichts raus. Wer den Riegel nach den Rechtstexten öffnet,
-erledigt vorher diese beiden Punkte — sonst fällt der Newsletter beim ersten
+erledigt vorher den Schlüssel — sonst fällt der Newsletter beim ersten
 Versand aus, ohne dass jemand eine Zeile angefasst hätte.
+
