@@ -627,13 +627,16 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 > ein Secret ohne Site-Key sperrt alle Gäste aus, ein Site-Key ohne Secret zeigt
 > ein nutzloses Widget. Das Widget EXISTIERT seit 2026-10-27: „Pukalani Apps"
 > im Cloudflare-Konto Hawaii Studio (Turnstile → Widgets), Hostnames
-> `pukalani.app` + `branding.supply` (Subdomains sind automatisch gedeckt),
+> `pukalani.app` + `branding.supply` + `pukalani.studio` (letzter seit
+> 2026-11-24, TS2; Subdomains sind automatisch gedeckt),
 > Modus „Managed"; EIN Schlüsselpaar für alle Pukalani-Sites, gesetzt auf
 > platform, admin, portfolio, branding — und dort PFLICHT im Wächter
 > `verify-site-env.mjs`. Nach dem Eintragen reicht `pm2 startOrReload
 > … --update-env` (kein Build nötig, auch der `NUXT_PUBLIC_`-Site-Key kommt
 > zur Laufzeit aus der Env). Neue Site mit Konten ⇒ beide Variablen mitgeben;
-> neue Root-Domain ⇒ als Hostname am Widget nachtragen.
+> neue Root-Domain ⇒ als Hostname am Widget nachtragen. Fehlt er, liefert
+> das Widget still kein Token (Fehlercode 110200) und der Absende-Knopf
+> bleibt grau.
 > **NEU LADEN NICHT VERGESSEN:** Nitro liest zur Laufzeit keine `.env`, die
 > Ecosystem-Config hebt sie nur beim `pm2 startOrReload … --update-env` in
 > den Prozess — und ein Deploy ohne App-Änderung überspringt. Nach dem
