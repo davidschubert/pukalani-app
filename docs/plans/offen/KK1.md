@@ -23,7 +23,7 @@ Erinnerungen gelesen, eine Liste der Betreiber-Ziele.
   ausgeblendeten Termin nicht an — sie kann den halben Zustand nicht erkennen.
   Die Kontingent-Zahlen im Katalog: gebaut und auf Production gefahren
   (2026-11-22, COMPLETE „KK1 (c) — Kontingent-Zahlen"), die Kommentar-Grenze
-  von Pro am selben Tag auf 5000/250.000 gehoben. Die
-  drei Verwaltungs-Routen der Seiten haben noch keinen Rollen-Test (stehen im
-  Bestand, BT1 b); ein solcher Test belegt dann auch den Hinweis der Liste
-  und den Fehler beim unvollständigen Löschen.
+  von Pro am selben Tag auf 5000/250.000 gehoben. Die drei
+  Verwaltungs-Routen der Seiten haben seit dem 2026-11-18 ihren Rollen-Test
+  (BT1 b), samt Hinweis der Liste (`truncated`) und Fehler beim
+  unvollständigen Löschen (`packages/pages/tests/route-roles.test.ts`).

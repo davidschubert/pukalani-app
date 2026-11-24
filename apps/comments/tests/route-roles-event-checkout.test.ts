@@ -50,16 +50,23 @@ const load = () => import('../server/api/events/[id]/checkout.post')
 let sessions: unknown[] = []
 let adminOpened = 0
 
-function globalsFor(row: EventRowLike, options: { ticketOwned?: boolean, maintenance?: boolean } = {}): Record<string, unknown> {
+function globalsFor(row: EventRowLike, options: { ticketOwned?: boolean, maintenance?: boolean, foreign?: boolean } = {}): Record<string, unknown> {
   return {
     requirePlanProduct,
     assertEventsWritable,
     useAppConfig: () => PLAN_CONFIG,
     getAppConfig: async () => ({ maintenanceMode: options.maintenance ?? false }),
     useRuntimeConfig: () => ({ public: { appwriteDatabaseId: 'main' } }),
-    createAdminClient: () => {
+    // Der Termin kommt über die Datentür (AR1 d): ein Termin einer anderen
+    // Community ist dort 404, die Tür wirft wie im echten Betrieb.
+    tenantDb: () => {
       adminOpened += 1
-      return { tablesDB: { getRow: async () => ({ ...row }) } }
+      return {
+        get: async (_table: string, id: string) => {
+          if (id !== row.$id || options.foreign) throw createError({ status: 404, statusText: 'Event not found' })
+          return { ...row }
+        },
+      }
     },
     hasEventTicket: async () => options.ticketOwned ?? false,
     billingReturnOrigin: async () => 'https://comments.example.test',
@@ -74,16 +81,17 @@ type RunOptions = Omit<RouteProbe, 'who' | 'params' | 'globals'> & {
   row?: EventRowLike
   ticketOwned?: boolean
   maintenance?: boolean
+  foreign?: boolean
 }
 
 const run = (who: Who, options: RunOptions = {}) => {
-  const { row = PAID_EVENT, ticketOwned, maintenance, ...world } = options
+  const { row = PAID_EVENT, ticketOwned, maintenance, foreign, ...world } = options
   return probeRoute(load, {
     mode: 'silo',
     ...world,
     who,
     params: { id: row.$id },
-    globals: globalsFor(row, { ticketOwned, maintenance }),
+    globals: globalsFor(row, { ticketOwned, maintenance, foreign }),
   })
 }
 
@@ -211,6 +219,12 @@ describe('POST /api/events/:id/checkout (Ticket-Kauf)', () => {
       expect(result.status).toBe(404)
       expect(result.guardPassed).toBe(false)
       expectNothingTouched()
+    })
+
+    it('Termin einer anderen Community: 404 aus der Datentür, kein Stripe-Aufruf (AR1 d)', async () => {
+      const result = await run('member', { ...POOL, foreign: true })
+      expect(result.status).toBe(404)
+      expect(sessions, 'kein Stripe-Aufruf').toEqual([])
     })
 
     it('Wartungs-Sperre: 403 maintenance, Ablage zu, kein Stripe-Aufruf', async () => {

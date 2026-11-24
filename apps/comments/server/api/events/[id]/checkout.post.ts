@@ -1,4 +1,4 @@
-import type { EventRow } from '../../../../../../packages/events/shared/types/event'
+import { EVENTS_TABLE, type EventRow } from '../../../../../../packages/events/shared/types/event'
 
 /**
  * Ticket-Checkout für paid-Events — APP-Route (A14: die App komponiert
@@ -36,13 +36,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ status: 400, statusText: 'Missing event id' })
   }
 
-  const config = useRuntimeConfig(event)
-  const admin = createAdminClient(event)
-  const row = await admin.tablesDB.getRow<EventRow>({
-    databaseId: config.public.appwriteDatabaseId,
-    tableId: 'events',
-    rowId: id,
-  }).catch((error) => { throw toH3Error(error, 'Event not found') })
+  // Über die Datentür (wie die Zusage): ein Termin einer anderen Community
+  // ist hier 404, nicht kaufbar (AR1 d — vor dem Umzug in eine Pool-App).
+  const row = await tenantDb(event).get<EventRow>(EVENTS_TABLE, id, 'Event not found')
 
   if (row.status !== 'published' || (row.access ?? 'free') !== 'paid' || !row.priceLookupKey) {
     throw createError({ status: 409, statusText: 'Event is not purchasable' })
