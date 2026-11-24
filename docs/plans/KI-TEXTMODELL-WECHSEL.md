@@ -1,6 +1,6 @@
 # Günstigeres Textmodell – Probe und Entscheidung (KM1 c)
 
-> **Plan-Status (2026-11-22):** Unterlage zu KM1 — Probe gebaut und lokal gefahren, nichts gewechselt ([OPEN-ITEMS](../OPEN-ITEMS.md) „KM1“).
+> **Plan-Status (2026-11-24):** teils gebaut — offen: Schritt 2 bis 4 (Probe, Lese-Probe, Umstellen); Schritt 1 (Transport) gebaut, Davids Ja am 2026-11-24 ([OPEN-ITEMS](../OPEN-ITEMS.md) „KM1“).
 
 Stand: 2026-11-22. Die Probe-Vorrichtung steht im Repo
 (`scripts/ki-modell-probe.mjs`), ein echter Probelauf ist gefahren (lokal,
@@ -100,6 +100,15 @@ Zeichen-Brief und Review einmal je Marke; der Marktvergleich alle paar
 Monate für vier Einträge. Welche Aufgabe das Geld ausgibt, zeigt die
 Aktivitätsliste beim Vermittler (Spalte „App"/Modell).
 
+**Schätzung aus dem Repo (2026-11-24, ohne Abrechnung):** je Aufruf heute
+0,001 bis 0,009 $ (Tabelle oben), ein Gesprächszug des Markenberaters
+geschätzt 0,01 bis 0,02 $ (8.000 bis 15.000 Tokens Kontext). Ohne zahlende
+Kundschaft (Geld-Kette offen) sind es geschätzt 5 bis 50 Aufrufe am Tag, also
+rund **1 bis 12 $ im Monat** — der Wechsel spart davon gut 80 %. Die Obergrenze
+setzt der Tages-Deckel der Marke (`aiDailyInstanceCap` 1.000 Aufrufe je
+Instanz): rund 450 $ im Monat, die Ersparnis wächst mit der Nutzung. David hat
+am 2026-11-24 trotzdem Ja gesagt.
+
 ## Je Aufgabe: heutiges Modell, Kandidat, Risiko, Empfehlung
 
 | Aufgabe(n) | Heute | Kandidat | Risiko | Empfehlung |
@@ -114,14 +123,25 @@ Aktivitätsliste beim Vermittler (Spalte „App"/Modell).
 
 ## Wenn David Ja sagt: die Reihenfolge
 
-1. **Transport (Code, eine Session):** `aiComplete`/`aiCompleteStream`
-   schicken `reasoning: { effort: 'none' }` mit, wenn das Modell es trägt
-   (Haiku 4.5 trägt es auch, dort ist Denken ohnehin aus). Test dazu;
-   `temperature` bleibt im Rumpf (der Vermittler lässt sie still fallen).
+1. **Transport — gebaut 2026-11-24:** `buildAiRequestBody` schickt
+   `reasoning: { effort: 'none' }` für die Modelle in
+   `AI_TEXT_MODELS_REASONING_OFF` (nur gemessene; heute Haiku 5.5). Haiku 4.5
+   bekommt das Feld bewusst NICHT — dort ist es ungemessen, und der Rumpf von
+   heute bleibt Byte für Byte gleich. Weil es am Modell hängt, kommt das Feld
+   beim Umstellen auf der Config-Seite ohne Ausliefern mit. `temperature`
+   bleibt im Rumpf (der Vermittler lässt sie still fallen).
 2. **Probe erweitern:** dieselbe Probe mit `--runs 10`, dazu die zwei
    UGC/Seiten-Skripte und der Markenberater mit dem neuen Modell (zusammen
    unter 2 $). Decke der Insights-Entwürfe und Kosten-Gewichte der Review
-   neu eichen.
+   neu eichen. Startet David selbst (Entwicklungs-Schlüssel), aus dem
+   Haupt-Checkout:
+
+   ```bash
+   node scripts/ki-modell-probe.mjs --live --runs 10 --models anthropic/claude-haiku-5.5 --max-usd 1 --env-file apps/comments/.env
+   ```
+
+   Das Skript zeigt vorher die geschätzten Höchstkosten und bricht über
+   `--max-usd` ab. Seit Schritt 1 geht „Denken aus" ohne `--reasoning` mit.
 3. **Davids Lese-Probe:** `vergleich.md` und fünf Antworten des
    Markenberaters, ohne zu wissen, welches Modell welche schrieb.
 4. **Erst ein Deployment:** `aiModel` auf der Config-Seite umstellen (ein
