@@ -30,6 +30,21 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BP2 — Bot-Prüfung hing auf Production: Formulare ließen sich nicht abschicken ✅ 2026-11-24
+
+Gefunden in KR1 Sitzung 1 (2026-11-24): die unsichtbare Turnstile-Prüfung lud,
+lieferte aber kein Ergebnis; die Absende-Knöpfe blieben grau (Registrierung,
+Passwort vergessen, Erstgespräch auf pukalani.studio und branding.supply).
+Ursache lag nicht im Code, sondern in Cloudflare: am Turnstile-Widget fehlte
+der Hostname `pukalani.studio`. Eintrag in Cloudflare nachgetragen, das
+Runbook nennt jetzt alle Hostnamen am Widget und den Fehlercode, den ein
+fehlender Name liefert (PR #586, TS2). KR1 A2, A4, A5 und das Wegwerf-Konto
+sind damit wieder klickbar.
+
+**Gelernt:** Ein neuer Hostname einer App braucht auch einen Eintrag am
+Turnstile-Widget — sonst scheitert die Prüfung still, ohne Fehler im Server.
+Beim Anlegen einer Domain die Widget-Liste im Runbook mitprüfen.
+
 ### SI1 (b) — scharf: drei aktive Mitgliedschaften in stillgelegten Communities entfernt ✅ 2026-11-24
 
 **Was.** Der Lauf `disabled-member-sweep` zählte seit dem 2026-11-22 auf
