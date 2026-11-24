@@ -55,7 +55,6 @@ am 2026-11-18, COMPLETE „N11").
 | # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details |
 | --- | --- | --- | --- | --- | --- |
 | BP2 | **Bot-Prüfung hängt auf Production: Formulare lassen sich nicht abschicken.** Gefunden in KR1 Sitzung 1 am 2026-11-24 (14:29 und 14:36 bei David, Gegenprobe als Gast gegen 14:40): die unsichtbare Prüfung lädt, liefert aber kein Ergebnis, es erscheint kein Kästchen und keine Meldung, der Knopf bleibt grau. Gesehen auf `account.pukalani.app/de/register` und `/de/forgot-password`, `pukalani.studio/erstgespraech`, `branding.supply/de/erstgespraech`. Laut Code betroffen auch Anmeldung per Code, Warteliste von branding.supply und Gast-Kommentare. Die Anmeldung mit Passwort geht. Ursache finden und beheben; dazu soll die Seite sagen, wenn die Prüfung scheitert, statt still zu warten. Danach KR1 A2, A4, A5 nachholen. **Wartet auf:** nichts. | **Hoch** | S–M | Nein | [Liste](plans/offen/KR1.md) |
-| ZN1 | **Dateiname des Beispiel-Kits.** `branding.supply/api/brand/example/kit.zip` schickt zwei Namen; der Browser speichert unter „Kailua Coffee Co. brand kit 2026-09-09.zip" (mit Leerzeichen) statt `kailua-coffee-co-brand-kit-2026-09-09.zip`. Klein; entscheiden, welcher Name gilt, und den anderen angleichen (gefunden in KR1 F1, 2026-11-24). **Wartet auf:** nichts. | Niedrig | XS | Nein | [Liste](plans/offen/KR1.md) |
 
 **Bündel „Ausliefern und Rückweg":**
 

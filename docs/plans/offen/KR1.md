@@ -271,7 +271,8 @@ F1. **Das Kit am Beispiel** · `branding.supply/de/discover/kailua-coffee-co`
     vier Kacheln (brand.md, tokens.json, tokens.css, Zeichen (SVG)); ein Klick
     auf „brand.md" öffnet die Datei im Browser (Text, beginnt mit „# Kailua
     Coffee Co."), „Zeichen" und „Ganzes Kit laden (.zip)" laden eine Datei
-    `kailua-coffee-co-brand-kit-2026-09-09.zip`; entpackt liegen darin
+    „Kailua Coffee Co. brand kit 2026-09-09.zip" (lesbarer Name, so gewollt —
+    ZN1); entpackt liegen darin
     `README.md`, `brand.md`, `tokens.css` und ein Ordner `marks/` mit SVGs.
     Auf einer anderen Marke unter „Marken entdecken" gibt es den Abschnitt
     NICHT. *Sonst:* Adresse, Kachel und was stattdessen kam melden.

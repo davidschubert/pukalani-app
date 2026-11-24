@@ -81,7 +81,13 @@ describe('Beispiel-Kit: Bündel', () => {
     const zip = zipRoute(EVENT)
     expect(headers['content-type']).toBe('application/zip')
     expect(headers['cache-control']).toBe('public, max-age=3600')
-    expect(String(headers['content-disposition'])).toContain('kailua-coffee-co-brand-kit-2026-09-09.zip')
+    // ZN1: zwei Namen mit Absicht (BRAND-BOOK-KIT §2.12 Nr. 4) — der
+    // ASCII-Rückfall für alte Werkzeuge, `filename*` für Browser. Der
+    // Browser speichert unter dem lesbaren Namen; das gilt.
+    expect(String(headers['content-disposition'])).toBe(
+      'attachment; filename="kailua-coffee-co-brand-kit-2026-09-09.zip"; '
+      + "filename*=UTF-8''Kailua%20Coffee%20Co.%20brand%20kit%202026-09-09.zip",
+    )
     const entries = unzipSync(new Uint8Array(zip))
     const names = Object.keys(entries)
     expect(names).toContain('README.md')
