@@ -323,6 +323,10 @@ export const SITES = [
       'NUXT_SMTP_USER',
       'NUXT_SMTP_PASS',
       'NUXT_SMTP_FROM',
+      // VT1 b (gesetzt 2026-11-22 mit Davids Ja, Empfänger nur der Betreiber):
+      // ohne den Wert erreichen Missbrauchs-Meldungen, Zugangs-Anfragen und
+      // Statuswechsel der Kunden-Sites nur die Glocke im Dashboard.
+      'NUXT_ALERT_EMAIL',
       'NUXT_PUBLIC_APP_URL',
       /**
        * F55: entschlüsselt die in `stripe_settings` abgelegten Stripe-

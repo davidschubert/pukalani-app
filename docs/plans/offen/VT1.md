@@ -21,12 +21,8 @@
   Gratis-Plan nimmt nur die Mail des Kontos, eine zweite Adresse kostet einen
   bezahlten „Notify-only seat" (Davids Entscheidung). Offen: die Probe mit
   der Person, danach schließt VT1.
-- **(b) Mail für Meldungen von außen — entschieden 2026-11-24: nur an David, noch nicht gesetzt.**
-  `NUXT_ALERT_EMAIL` ist auf keiner Site gesetzt (nachgesehen am 2026-11-17).
-  Missbrauchs-Meldungen, Zugangs-Anfragen und Statuswechsel der Kunden-Sites
-  erreichen deshalb heute niemanden per Mail, nur die Glocke im Dashboard.
-  Setzen heißt: eine Zeile in der Server-Datei der Betreiber-Seite, neu
-  laden, eine Probe-Meldung.
+- **(b) Mail für Meldungen von außen — erledigt** (2026-11-22, nur an David;
+  OPEN-ITEMS-COMPLETE „VT1 (b)").
 - **(c) Vorschlag, nicht entschieden:** ein Wort am Tor des Appwrite-Servers,
   das `docker compose up -d` fährt. Heute kann eine Vertretung ohne
   Server-Zugang den häufigsten Ausfall (Appwrite steht nach einem Update)

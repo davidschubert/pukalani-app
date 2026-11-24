@@ -67,7 +67,6 @@ export const ENV_NOT_REQUIRED = {
   NUXT_TICKETS_AI_KEY: 'Rückfall neben der verschlüsselten Ablage des KI-Schlüssels für Tickets; Pflicht ist der Umschlag NUXT_INSTANCE_SECRETS_KEY.',
 
   // Die Funktion ist heute bewusst aus — mit dem Einschalten wird der Name Pflicht.
-  NUXT_ALERT_EMAIL: 'Mail an den Betreiber bei Missbrauchs-Meldungen, Anfragen und Statuswechseln; heute bewusst ohne Empfänger (nur die Glocke im Dashboard). Wird mit der Entscheidung VT1 (b) Pflicht auf der Betreiber-Site.',
   NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS: 'Eigener Mail-Zugang für den Newsletter; der Newsletter ist noch abgeschaltet, und ohne Angabe gilt der normale Mail-Zugang der App. Wird beim Einschalten neu bewertet.',
   NUXT_ENTITLEMENTS_URL: 'Abruf-Adresse der Lizenz-Zustellung (Empfänger-Seite); der Abruf läuft auf keiner Site (ops/timed-jobs.conf), die Produkt-Schalter bleiben neutral. Wer ihn einschaltet, setzt URL und öffentliche Schlüssel zusammen.',
   NUXT_ENTITLEMENTS_PUBLIC_KEYS: 'Öffentliche Schlüssel der Lizenz-Zustellung (Empfänger-Seite); ohne Abruf entsteht kein Dokument, das zu prüfen wäre. Gehört zu NUXT_ENTITLEMENTS_URL.',
