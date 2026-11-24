@@ -63,9 +63,9 @@ describe('sendMail — Absender je Mail', () => {
       to: 'leser@example.test',
       subject: 'Neues Stück',
       text: 'Text',
-      from: 'Brand Insights <insights@mail.branding.supply>',
+      from: 'Brand Insights <insights@newsletter.branding.supply>',
     })).toBe(true)
-    expect(sentEnvelopes[0]?.from).toBe('Brand Insights <insights@mail.branding.supply>')
+    expect(sentEnvelopes[0]?.from).toBe('Brand Insights <insights@newsletter.branding.supply>')
   })
 
   it('nimmt ohne eigenen Absender weiter die Einstellung — die Gegenprobe', async () => {
@@ -114,7 +114,7 @@ describe('sendMail — Zugangsdaten je Mail', () => {
       to: 'leser@example.test',
       subject: 'Ausgabe',
       text: 'Text',
-      from: 'insights@mail.branding.supply',
+      from: 'insights@newsletter.branding.supply',
       auth: { pass: 're_newsletter' },
     })).toBe(true)
     expect(builtTransports).toHaveLength(1)

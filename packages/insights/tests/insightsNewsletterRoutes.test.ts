@@ -585,10 +585,10 @@ describe('Die Bestätigungs-Mail signiert mit dem richtigen Schlüssel (SEC-020)
  */
 describe('Der Newsletter-Absender reist bis an die Mail', () => {
   it('gibt die konfigurierte Adresse an sendMail weiter', async () => {
-    newsletterFrom = 'Pukalani Brand Insights <insights@mail.branding.supply>'
+    newsletterFrom = 'Pukalani Brand Insights <insights@newsletter.branding.supply>'
     await subscribe(event)
     expect(mails).toHaveLength(1)
-    expect(mails[0]?.from).toBe('Pukalani Brand Insights <insights@mail.branding.supply>')
+    expect(mails[0]?.from).toBe('Pukalani Brand Insights <insights@newsletter.branding.supply>')
   })
 
   it('gibt ohne Konfiguration einen leeren Absender weiter — der Core nimmt dann NUXT_SMTP_FROM', async () => {
@@ -610,13 +610,13 @@ describe('Der Newsletter-Absender reist bis an die Mail', () => {
  */
 describe('Der eigene Newsletter-Zugang reist bis an die Mail', () => {
   it('gibt das konfigurierte Passwort an sendMail weiter', async () => {
-    newsletterFrom = 'insights@mail.branding.supply'
+    newsletterFrom = 'insights@newsletter.branding.supply'
     newsletterSmtpPass = 're_newsletter_key'
     await subscribe(event)
     expect(mails).toHaveLength(1)
     expect(mails[0]?.auth).toEqual({ pass: 're_newsletter_key' })
     // Zusammen, nicht einzeln: der Absender ohne den Schlüssel wäre der 403.
-    expect(mails[0]?.from).toBe('insights@mail.branding.supply')
+    expect(mails[0]?.from).toBe('insights@newsletter.branding.supply')
   })
 
   it('gibt ohne Eintrag gar keinen Zugang weiter — der Core nimmt dann die normalen Daten', async () => {

@@ -30,6 +30,31 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RS1 (e2) + Domain-Wechsel — DMARC für branding.supply, Newsletter auf `newsletter.branding.supply` ✅ 2026-11-24
+
+**(e2) DMARC:** am 2026-11-22 über Cloudflare DMARC Management angelegt
+(`_dmarc.branding.supply`, `p=none`, Berichte an Cloudflare), über 1.1.1.1
+und 8.8.8.8 gesehen. Die Zeile in OPEN-ITEMS nannte es bis heute „offen".
+
+**Domain-Wechsel (Davids Wahl 2026-11-24):** der Newsletter sendet künftig von
+`newsletter.branding.supply` statt `mail.branding.supply`. Resends Tarif
+erlaubt drei Domains (belegt: `pukalani.app`, `mail.branding.supply`,
+`notify.hawaiifromthesky.com`); deshalb mit Davids Ja `mail.branding.supply`
+bei Resend gelöscht und ihre vier Einträge bei Cloudflare entfernt (Zone
+wieder 7 Einträge), dann `newsletter.branding.supply` angelegt (eu-west-1,
+Öffnen- und Klick-Zählung aus) und die vier Einträge per BIND-Import
+eingetragen, „Proxy imported DNS records" aus. Gegenprobe über 1.1.1.1 und
+8.8.8.8, Resend meldet `verified` für alle vier. Code, Tests und Runbook § 7
+nennen die neue Domain.
+
+**Offen geblieben:** (e1) der Sende-Schlüssel auf der Site — Davids zwei
+Klicks, Anleitung in `plans/offen/RS1.md`.
+
+**Gelernt:** Vor einer neuen Domain bei Resend das Domain-Limit des Tarifs
+prüfen (`list-domains` zählen) — die Ablehnung kommt erst beim Anlegen.
+
+---
+
 ### LA1 — Konto löschen: die Seite warnt VOR dem Klick (letzter Admin, einziger Inhaber) ✅ 2026-11-23
 
 **Anlass:** Am 2026-11-22 um 23:52 UTC hat David sein einziges Admin-Konto der Platform (Projekt

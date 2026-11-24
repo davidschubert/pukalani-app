@@ -697,12 +697,12 @@ describe('insightsNewsletterIdempotencyKey (RS1 d)', () => {
  */
 describe('insightsNewsletterFrom — der Absender', () => {
   it('gibt eine gesetzte Adresse unverändert zurück, auch mit Anzeigename', () => {
-    expect(insightsNewsletterFrom('Pukalani Brand Insights <insights@mail.branding.supply>'))
-      .toBe('Pukalani Brand Insights <insights@mail.branding.supply>')
+    expect(insightsNewsletterFrom('Pukalani Brand Insights <insights@newsletter.branding.supply>'))
+      .toBe('Pukalani Brand Insights <insights@newsletter.branding.supply>')
   })
 
   it('trimmt — ein führendes Leerzeichen in der Config ist unsichtbar und bricht den Umschlag', () => {
-    expect(insightsNewsletterFrom('  insights@mail.branding.supply  ')).toBe('insights@mail.branding.supply')
+    expect(insightsNewsletterFrom('  insights@newsletter.branding.supply  ')).toBe('insights@newsletter.branding.supply')
   })
 
   it('macht aus allem anderen den leeren String — also „nimm den normalen Absender"', () => {

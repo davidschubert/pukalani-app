@@ -104,7 +104,7 @@ export default defineAppConfig({
          * Massenmail und Einzelmail teilen sich sonst EINEN Ruf. Eine
          * Beschwerde über den Newsletter beschädigt dann die Zustellung der
          * Anmelde-Mail — und das ist die Mail, die ankommen MUSS. Für
-         * branding.supply ist deshalb `mail.branding.supply` als eigene
+         * branding.supply ist deshalb `newsletter.branding.supply` als eigene
          * Versand-Subdomain verifiziert (Resend, Region eu-west-1), und der
          * Newsletter nennt sie hier.
          *

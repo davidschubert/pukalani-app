@@ -7,25 +7,32 @@
 
 **RS1 — Resend besser nutzen: was offen ist.** Erledigt und in COMPLETE:
 (a) Tarif und Bremse, (b) Webhook, (c) + (d) Wächter und Idempotenz,
-(g) DMARC für `pukalani.app`, (h) engerer SMTP-Schlüssel. Die
-Newsletter-Adresse **`mail.branding.supply` steht** (bei Resend verifiziert,
-Region eu-west-1, Weg im Code gebaut); die alte Zeile nannte sie noch
-„offen". Offen:
+(e2) DMARC für `branding.supply`, (g) DMARC für `pukalani.app`, (h) engerer
+SMTP-Schlüssel, und der Wechsel der Newsletter-Domain von `mail.` auf
+**`newsletter.branding.supply`** (2026-11-24, Davids Wahl; bei Resend
+verifiziert, Region eu-west-1). Offen:
 
-- **(e1) Eigener Sende-Schlüssel.** Erst nötig, wenn der Newsletter aufgeht:
-  einen `sending_access`-Schlüssel für `mail.branding.supply` anlegen und
-  auf der Site `branding.supply` eintragen
-  (`NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS`), dann die Adresse in
-  `apps/branding/app/app.config.ts` setzen. Runbook
-  [RESEND-WEBHOOK.md](../../runbooks/RESEND-WEBHOOK.md) § 7.3.
-- **(e2) DMARC fehlt auf `branding.supply`** (gemessen 2026-11-09). Ein
-  Klick für David: Cloudflare → branding.supply → Email → DMARC Management
-  → „Enable DMARC Management".
+- **(e1) Eigener Sende-Schlüssel — Davids zwei Klicks.**
+  1. resend.com → API keys → Create API key → Name
+     `branding-newsletter-send`, Permission **Sending access**, Domain
+     **newsletter.branding.supply** → Add → Copy.
+  2. ploi.io → app-prod → Site branding.supply → Environment → neue Zeile
+     `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS=<Schlüssel>` (nur einmal) → Save.
+
+  Danach (Claude): `branding` neu laden, Probe-Mail von
+  `insights@newsletter.branding.supply` an `delivered@resend.dev`, dann im
+  selben Zug die Adresse in `apps/branding/app/app.config.ts` setzen
+  (`Brand Insights by Branding Supply <insights@newsletter.branding.supply>`,
+  Davids Wortlaut). Runbook [RESEND-WEBHOOK.md](../../runbooks/RESEND-WEBHOOK.md) § 7.3.
 - **(f) Rechtstexte.** Resend ist nach dem EU-US Data Privacy Framework
-  zertifiziert, `pukalani.app` sendet aus eu-west-1. Der Satz dazu gehört in
+  zertifiziert, beide Domains senden aus eu-west-1. Der Satz dazu gehört in
   den Durchgang [DT1](DT1.md).
 - **(g) Rest.** DMARC für `pukalani.app` nach ein paar Wochen sauberer
   Berichte auf `p=quarantine` stellen.
+- **Zur Klärung (David):** bei Resend liegen zwei Schlüssel vom 2026-11-21,
+  die nirgends beschrieben sind: „Branding Supply" und „admin.pukalani".
+  Spalte „Last used" ansehen; nie benutzt ⇒ widerrufen, sonst hier
+  eintragen, wo sie stecken.
 
 Zur Kenntnis, kein Bau: Resend sperrt öffentlich gewordene Schlüssel selbst.
 Unser Repo ist öffentlich: landet der SMTP-Schlüssel dort, fallen alle Mails

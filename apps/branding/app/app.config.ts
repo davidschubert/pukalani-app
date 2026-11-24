@@ -505,40 +505,30 @@ export default defineAppConfig({
 
       /**
        * DIE EIGENE NEWSLETTER-DOMAIN STEHT, DER WEG AUCH — ES FEHLT NUR NOCH
-       * DER SCHLÜSSEL AUF DEM SERVER (RS1 e, 2026-11-09, Davids Entscheidung
-       * „Variante B").
+       * DER SCHLÜSSEL AUF DEM SERVER (RS1 e1; seit 2026-11-24
+       * `newsletter.branding.supply` statt `mail.`, Davids Wahl).
        *
-       * `mail.branding.supply` ist bei Resend verifiziert (Region
-       * **eu-west-1**, DKIM + SPF + MX + Return-Path, alle vier Einträge
-       * DNS-only in der Cloudflare-Zone, von aussen über zwei Resolver
-       * gegengeprüft). Im Code reicht `newsletter.from` den Absender und
+       * Die Domain ist bei Resend verifiziert (Region **eu-west-1**, DKIM +
+       * SPF + MX + Return-Path, alle vier Einträge DNS-only in der
+       * Cloudflare-Zone). Im Code reicht `newsletter.from` den Absender und
        * `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` den eigenen Zugang bis an beide
        * Newsletter-Mails durch.
        *
        * ── WARUM HIER TROTZDEM NOCH NICHTS STEHT ───────────────────────────
-       * GEMESSEN am 2026-11-09: ein Resend-Schlüssel, der an eine Domain
-       * gebunden ist, antwortet auf einen fremden Absender mit **403 „This
-       * API key is not authorized to send emails from …"** — und die Bindung
-       * lässt sich an einem bestehenden Schlüssel NICHT mehr ändern (die API
-       * kann dort nur den Namen umschreiben). Unser `pukalani-smtp-send`
-       * hängt seit RS1 h an `pukalani.app`. Stünde die Adresse schon hier,
-       * ohne dass daneben der eigene Schlüssel liegt, wäre sie eine
-       * Zeitbombe: heute harmlos (`newsletter.enabled` ist `false`), scharf
-       * in dem Moment, in dem jemand nach den Rechtstexten den Riegel
-       * öffnet.
+       * Ein Resend-Schlüssel, der an eine Domain gebunden ist, antwortet auf
+       * einen fremden Absender mit **403**, und die Bindung lässt sich an
+       * einem bestehenden Schlüssel nicht ändern. Stünde die Adresse schon
+       * hier, ohne dass auf dem Server der eigene Schlüssel liegt, wäre sie
+       * eine Zeitbombe: heute harmlos (`newsletter.enabled` ist `false`),
+       * scharf in dem Moment, in dem jemand den Riegel öffnet.
        *
-       * ── WAS ZU TUN IST, WENN DER RIEGEL AUFGEHT (zwei Handgriffe) ──────
-       * 1. In Resend einen `sending_access`-Schlüssel anlegen, der auf
-       *    `mail.branding.supply` gebunden ist, und ihn auf dieser Site als
-       *    `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` eintragen. EINE Stelle —
-       *    nicht die fünf aus Runbook § 6.1, denn der bestehende Schlüssel
-       *    bleibt unangetastet.
-       * 2. Hier die Adresse eintragen:
-       *    `newsletter: { from: 'Pukalani Brand Insights <insights@mail.branding.supply>' }`
-       *    (Wortlaut ist Davids Wahl).
+       * ── WAS ZU TUN IST (zwei Handgriffe, in dieser Reihenfolge) ─────────
+       * 1. In Resend einen `sending_access`-Schlüssel anlegen, gebunden an
+       *    `newsletter.branding.supply`, und ihn auf dieser Site als
+       *    `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` eintragen (EINE Stelle).
+       * 2. Hier die Adresse eintragen (Wortlaut: Davids Wahl 2026-11-24):
+       *    `newsletter: { from: 'Brand Insights by Branding Supply <insights@newsletter.branding.supply>' }`
        *
-       * Beides gehört zusammen: der Absender ohne den Schlüssel ist genau
-       * der 403 von oben, der Schlüssel ohne den Absender bleibt wirkungslos.
        * Runbook: RESEND-WEBHOOK.md § 7.
        */
 
