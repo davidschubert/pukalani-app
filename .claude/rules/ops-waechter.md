@@ -141,8 +141,8 @@ Hosts und TLS: `.claude/rules/hosts-ops.md`.
   geteiltes Passwort); ein Repo eines Einzelkontos kennt nur eine Stufe — wer
   Läufe starten darf, darf auch zusammenführen und ausliefern. Den privaten
   Backup-Schlüssel bekommt sie nicht.
-- `NUXT_ALERT_EMAIL` ist auf keiner Site gesetzt: Missbrauchs-Meldungen,
-  Anfragen und Statuswechsel erreichen nur die Glocke im Dashboard.
+- `NUXT_ALERT_EMAIL` steht nur auf `admin.pukalani.app` (Pflicht-Liste) und
+  nennt nur den Betreiber, nicht die Vertretung (VT1 b, Davids Entscheidung).
 - OHNE SERVER-ZUGANG geht nicht: Appwrite von Hand starten (`docker compose
   up -d` in `/home/ploi/appwrite`; das Tor kennt dafür kein Wort, Runbook
   § 4). Störfälle ohne eigenes Runbook: `docs/runbooks/SICHERHEITSVORFALL.md`,

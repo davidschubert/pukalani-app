@@ -30,6 +30,31 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### VT1 (b) — Betreiber-Mail für Meldungen von außen auf admin.pukalani.app ✅ 2026-11-24
+
+**Anlass:** `NUXT_ALERT_EMAIL` stand auf keiner Site (nachgesehen 2026-11-17). Missbrauchs-Meldungen,
+Zugangs-Anfragen und Statuswechsel der Kunden-Sites erreichten nur die Glocke im Dashboard.
+
+**Entscheidung (David):** 2026-11-22 Ja zum Setzen, Empfänger seine Betreiber-Adresse (wie in M6
+beschlossen); 2026-11-24 bekräftigt: NUR an ihn, nicht an die Vertretung.
+
+**Getan (2026-11-22, Bahn 10):** eine Zeile in `/home/ploi/admin.pukalani.app/.env` angehängt
+(Sicherung daneben), neu geladen über `ops/ecosystem-control.config.cjs`. Probe-Meldung über die
+öffentliche Route `POST /api/abuse/report` auf `account.pukalani.app` → 200; Resend meldet die Mail
+„Missbrauchsmeldung" als zugestellt; die Probe-Zeile in der Konsole auf „verworfen" gesetzt.
+
+**Nachgeprüft 2026-11-24:** der Name steht einmal in der Datei, pm2 (`adminpukalaniapp`, gestartet
+nach dem Deploy vom 2026-11-23) trägt ihn, die anderen fünf Prozesse nicht; `/api/health` von
+`admin.pukalani.app` ok, Schema 7/7. Erst jetzt steht `NUXT_ALERT_EMAIL` auf der Pflicht-Liste von
+`control` in `scripts/ops/verify-site-env.mjs` (Reihenfolge F44: erst setzen, dann eintragen) und
+nicht mehr unter „keine Pflicht" in `scripts/ops/site-env-decisions.mjs`.
+
+**Gelernt:** Der Repo-Vermerk blieb zwei Tage hinter dem Server zurück — die Bahn notierte „erledigt"
+nur im Notizordner. Ein Handgriff auf dem Server ist erst fertig, wenn Pflicht-Liste und OPEN-ITEMS
+ihn kennen; sonst setzt die nächste Sitzung ihn ein zweites Mal an.
+
+---
+
 ### RS1 (e2) + Domain-Wechsel — DMARC für branding.supply, Newsletter auf `newsletter.branding.supply` ✅ 2026-11-24
 
 **(e2) DMARC:** am 2026-11-22 über Cloudflare DMARC Management angelegt
