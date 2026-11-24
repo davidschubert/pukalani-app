@@ -760,6 +760,29 @@ JWT an eine Sitzung binden will, gibt sie ausdrücklich mit.
 
 ---
 
+### KM1 c1 — Transport schickt Haiku 5.5 „Denken aus" mit ✅ 2026-11-24
+
+**Was.** Davids Antwort auf die Kosten-Frage am 2026-11-24: „Einschalten"
+(Schätzung heute 1 bis 12 $ im Monat, Plan
+[KI-TEXTMODELL-WECHSEL.md](plans/KI-TEXTMODELL-WECHSEL.md)). Gebaut ist
+Schritt 1: `buildAiRequestBody` (`packages/core/server/utils/aiComplete.ts`)
+schickt für die Modelle in `AI_TEXT_MODELS_REASONING_OFF` (nur gemessene,
+heute `anthropic/claude-haiku-5.5`) `reasoning: { effort: 'none' }` mit — für
+`aiComplete*` und den Stream des Markenberaters, auch für die Probe. Haiku 4.5
+bekommt das Feld nicht; auf Production ändert sich nichts, bis jemand das
+Modell umstellt.
+
+**Beweis.** `packages/core/tests/aiProviderRouting.test.ts`: Haiku 5.5 trägt
+das Feld (auch im Stream-Rumpf), Gegenprobe Haiku 4.5 hat genau die
+bisherigen fünf Schlüssel. Trockenlauf `node scripts/ki-modell-probe.mjs` 10
+von 10. Offen bleiben Schritt 2 bis 4 (OPEN-ITEMS „KM1").
+
+**Gelernt:** Ein Feld, das nur ein Modell braucht, hängt am Modell und nicht
+an einem Schalter — sonst stellt ein Klick auf der Config-Seite das Modell um,
+während das Feld erst mit dem nächsten Ausliefern käme.
+
+---
+
 ### KM1 c — Probe für ein günstigeres Textmodell gebaut und lokal gefahren ✅ 2026-11-22
 
 **Was.** Davids Klick 2026-11-19/21: „Ja, Probe vorbereiten". Neu ist
