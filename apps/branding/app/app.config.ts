@@ -504,33 +504,24 @@ export default defineAppConfig({
       enabled: true,
 
       /**
-       * DIE EIGENE NEWSLETTER-DOMAIN STEHT, DER WEG AUCH — ES FEHLT NUR NOCH
-       * DER SCHLÜSSEL AUF DEM SERVER (RS1 e1; seit 2026-11-24
-       * `newsletter.branding.supply` statt `mail.`, Davids Wahl).
+       * DER NEWSLETTER SENDET VON SEINER EIGENEN DOMAIN (RS1, 2026-11-24,
+       * Davids Wahl: `newsletter.branding.supply`, Wortlaut des Absenders
+       * ebenfalls seiner).
        *
        * Die Domain ist bei Resend verifiziert (Region **eu-west-1**, DKIM +
-       * SPF + MX + Return-Path, alle vier Einträge DNS-only in der
-       * Cloudflare-Zone). Im Code reicht `newsletter.from` den Absender und
-       * `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` den eigenen Zugang bis an beide
-       * Newsletter-Mails durch.
+       * SPF + MX + Return-Path, DNS-only in der Cloudflare-Zone). Auf dieser
+       * Site liegt ein EIGENER Sende-Schlüssel `branding-newsletter-send`
+       * als `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS`, gebunden an genau diese
+       * Domain (Probe 2026-11-24: `250` von hier, `550` von `pukalani.app`).
        *
-       * ── WARUM HIER TROTZDEM NOCH NICHTS STEHT ───────────────────────────
-       * Ein Resend-Schlüssel, der an eine Domain gebunden ist, antwortet auf
-       * einen fremden Absender mit **403**, und die Bindung lässt sich an
-       * einem bestehenden Schlüssel nicht ändern. Stünde die Adresse schon
-       * hier, ohne dass auf dem Server der eigene Schlüssel liegt, wäre sie
-       * eine Zeitbombe: heute harmlos (`newsletter.enabled` ist `false`),
-       * scharf in dem Moment, in dem jemand den Riegel öffnet.
-       *
-       * ── WAS ZU TUN IST (zwei Handgriffe, in dieser Reihenfolge) ─────────
-       * 1. In Resend einen `sending_access`-Schlüssel anlegen, gebunden an
-       *    `newsletter.branding.supply`, und ihn auf dieser Site als
-       *    `NUXT_INSIGHTS_NEWSLETTER_SMTP_PASS` eintragen (EINE Stelle).
-       * 2. Hier die Adresse eintragen (Wortlaut: Davids Wahl 2026-11-24):
-       *    `newsletter: { from: 'Brand Insights by Branding Supply <insights@newsletter.branding.supply>' }`
-       *
-       * Runbook: RESEND-WEBHOOK.md § 7.
+       * Absender und Schlüssel gehören zusammen: ein domain-gebundener
+       * Resend-Schlüssel lehnt jeden fremden Absender ab. Wer die Adresse
+       * ändert, bleibt auf `newsletter.branding.supply` — eine andere Domain
+       * braucht einen anderen Schlüssel. Runbook: RESEND-WEBHOOK.md § 7.
        */
+      newsletter: {
+        from: 'Brand Insights by Branding Supply <insights@newsletter.branding.supply>',
+      },
 
       /**
        * DER THEMENRADAR (BI1 I4, §9.6) — DIE KANALLISTE STEHT NICHT MEHR HIER.
