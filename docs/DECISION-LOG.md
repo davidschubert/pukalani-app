@@ -7,6 +7,24 @@ die kleinen, verstreuten Beschlüsse.
 
 ---
 
+## 2026-11-24 — Kommentar-Grenze im Plan Pro bleibt 5000 am Tag / 250.000 insgesamt (KK1 c)
+
+**Anlass:** Am 2026-11-22 wurde die Pro-Grenze für Kommentare auf Production
+von 1000/50.000 auf 5000/250.000 gehoben, obwohl die Antwort 6c zum
+Kontingent-Katalog „heutige Werte übernehmen" hieß. Unklar war, ob das so
+gewollt war.
+
+**Davids Entscheidung** (2026-11-24): 5000/250.000 bleibt. Die 1000/50.000
+waren nie ein Beschluss für Pro, sondern die Saat von control-014 aus der Zeit,
+als der mittlere Plan `pro` hieß; die Umbenennung hat sie an den obersten Plan
+gehängt. Beschluss vom Juli (`business` 5000/250.000), Vorgabe in
+`apps/platform/app/app.config.ts` und Hilfe-Seite „Abrechnung" sagen seit jeher
+5000/250.000. Verworfen: zurück auf 1000/50.000 — Pro hätte dieselbe Grenze
+wie Personal, und die Hilfe verspräche mehr als gilt. Betroffen waren nur drei
+eigene aktive Pro-Communities, keine nahe an 1000 am Tag.
+
+---
+
 ## 2026-11-21 — Seiten ohne Konten werden 60 Sekunden fertig gehalten (Q22, R3)
 
 **Anlass:** Landing, Hilfe und die öffentlichen Studio-Seiten wurden bei jedem

@@ -363,7 +363,8 @@ Pro-Communities heute die Kommentar-Grenze von Personal. control-042 hat das
 nicht angefasst (es überschreibt nie). Mit Davids Ja („Ja, heben") über die
 Konsole auf Production auf 5000/250.000 gesetzt; `GET /api/control/plans`
 liest danach für `pro` 5000/250.000, alle anderen Arten und Pläne
-unverändert.
+unverändert. Nachgefragt am 2026-11-24, weil 6c „heutige Werte" hieß: David
+bestätigt 5000/250.000 (DECISION-LOG „Kommentar-Grenze im Plan Pro bleibt").
 
 **Gelernt:** Der erste Wurf zog die Zahlen in eine eigene Datei, die
 `app.config.ts` per Wert-Import las. Dev-Server, Typecheck, Unit-Tests und
