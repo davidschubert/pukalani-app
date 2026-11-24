@@ -195,6 +195,12 @@ Davids zwei Communities braucht sein Ja.
 `controlApiPrefixes` — `/api/admin/` ist dort zu (404). Darum liegen die Routen unter
 `/api/onboarding/operator/` und sperren Mandanten-Hosts selbst (N7).
 
+
+**Angewandt (LA2-ANW, 2026-11-24, Davids Ja):** Freelancer Supply und Comments
+über die Seite „Inhaber-Platz" auf Davids neues Konto vergeben; Log
+`site.owner_reassigned` je Community mit `removedOrphans: 1`, die Prüfung
+danach zeigt je einen lebenden Inhaber. Aufgefallen: nach der frischen
+Anmeldung führte der Rückweg auf `/settings/data` statt zurück zur Seite.
 ---
 
 ### LA1 — Konto löschen: die Seite warnt VOR dem Klick (letzter Admin, einziger Inhaber) ✅ 2026-11-23
