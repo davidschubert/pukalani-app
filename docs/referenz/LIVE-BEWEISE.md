@@ -239,7 +239,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-86 Beweis-Skripte im Repo: 6 E2E-Lauf, 34 Bühne (jeder Lauf), 35 Bühne (nachts), 11 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+87 Beweis-Skripte im Repo: 6 E2E-Lauf, 34 Bühne (jeder Lauf), 36 Bühne (nachts), 11 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -253,6 +253,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/brand/scripts/verify-brand-sessions.mjs` | Beweis für BW2 Paket 3a — „Gespräch je Session" gegen einen echten Server. | Bühne (nachts), branding.supply |
 | `packages/brand/scripts/verify-brand-share.mjs` | Beweis für Paket G3 „Teilen sichtbar" (Konzept docs/archiv/BRAND-FOUNDATION-LESEANSICHT.md §5, Zeile G3) — gegen einen echten Server, weil keine pure Funktion belegen kann, was an Route, Ablage und Kopfzeilen hängt: | Bühne (nachts), branding.supply |
 | `packages/brand/scripts/verify-brand-tokens.mjs` | DER FREMDE LESER (Konzept docs/plans/BRAND-BOOK-KIT.md §2.18 Zeile K2: „Style-Dictionary-v5-Probelauf im Skript"). | von Hand: Lädt beim Lauf ein Werkzeug aus dem Netz, und das soll kein automatischer Lauf tun. |
+| `packages/brand/scripts/verify-workshop-hydration.mjs` | WERKSTATT: SERVER-FASSUNG GEGEN BROWSER-FASSUNG — der Prüfweg vor jedem weiteren WS1-Schnitt (2026-11-25). | Bühne (nachts), branding.supply |
 | `packages/comments/scripts/verify-comment-reactions.mjs` | EMOJI-REAKTIONEN AUF ANTWORTEN — der Beweis (F57, Davids Entscheidung 2026-08-13 „Ja, nachbauen"). | Bühne (nachts), Einzel-Instanz |
 | `packages/comments/scripts/verify-embed-boundary.mjs` | Beweis für F37 — DAS WIDGET IM POOL: Berechtigung + Mandantengrenze. | Bühne (jeder Lauf) |
 | `packages/comments/scripts/verify-pool-isolation.mjs` | H3-Pool-Isolation — LIVE-DB-Beweis (repeatable). Ergänzt den pure-logic- Beweis (der Spike s5-pool-silo, Ergebnis in docs/archiv/HORIZONT-3-POOL-SILO-BLUEPRINT.md) um einen echten Appwrite-Roundtrip: seedet Rows für ZWE… | E2E-Lauf |

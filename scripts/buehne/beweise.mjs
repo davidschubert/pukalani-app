@@ -75,6 +75,7 @@ export const BEWEISE = [
   { skript: 'packages/brand/scripts/verify-brand-kit.mjs', lauf: 'nacht', env: 'branding', dauer: 8, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-sessions.mjs', lauf: 'nacht', env: 'branding', dauer: 90, braucht: ['appwrite', 'branding'] },
   { skript: 'packages/brand/scripts/verify-brand-share.mjs', lauf: 'nacht', env: 'branding', dauer: 3, braucht: ['appwrite', 'branding'] },
+  { skript: 'packages/brand/scripts/verify-workshop-hydration.mjs', lauf: 'nacht', env: 'branding', dauer: 40, braucht: ['appwrite', 'branding', 'browser'] },
   { skript: 'packages/brand/scripts/verify-brand-tokens.mjs', lauf: 'hand', grund: 'Lädt beim Lauf ein Werkzeug aus dem Netz, und das soll kein automatischer Lauf tun.' },
 
   // ── comments ──
