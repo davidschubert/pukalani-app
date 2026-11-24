@@ -83,6 +83,30 @@ ihn kennen; sonst setzt die nächste Sitzung ihn ein zweites Mal an.
 
 ---
 
+### RS1 (e1) — eigener Sende-Schlüssel für den Newsletter von branding.supply ✅ 2026-11-24
+
+**Getan:** David hat bei Resend `branding-newsletter-send` angelegt
+(`sending_access`, Domain `newsletter.branding.supply`) und ihn über einen
+Terminal-Befehl mit verdeckter Eingabe in `/home/ploi/branding.supply/.env`
+angehängt (Sicherung `.env.bak-2026-11-24-newsletter`; Zeile genau einmal,
+keine doppelten Namen). Claude: `pm2 startOrReload` für branding, Absender
+`Brand Insights by Branding Supply <insights@newsletter.branding.supply>` in
+`apps/branding/app/app.config.ts` (Davids Wortlaut).
+
+**Beweis:** `pm2 jlist` zeigt die Zeile nur bei `brandingsupply` (Länge
+gedruckt, nie der Wert), `/api/health` vor und nach dem Neuladen `ok`,
+Schema `ok`. SMTP-Probe über das `nodemailer` des Release-Ordners an
+`delivered@resend.dev`: von der Newsletter-Domain `250`, von
+`noreply@pukalani.app` `550 This API key is not authorized` — der Schlüssel
+ist also wirklich an seine Domain gebunden. Der Newsletter bleibt aus
+(`newsletter.enabled: false`) bis nach DT1.
+
+**Gelernt:** Die Node-Sites in Ploi haben keinen Environment-Reiter; die
+Anleitung „Ploi → Environment" stimmte nicht. Der Weg ohne sichtbaren Wert
+ist `read -rs` am eigenen Terminal und `ssh … cat >> .env` (Runbook § 7.3).
+
+---
+
 ### RS1 (e2) + Domain-Wechsel — DMARC für branding.supply, Newsletter auf `newsletter.branding.supply` ✅ 2026-11-24
 
 **(e2) DMARC:** am 2026-11-22 über Cloudflare DMARC Management angelegt
