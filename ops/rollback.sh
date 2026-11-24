@@ -53,6 +53,10 @@
 #
 # Läuft mit dem bash 3.2 von macOS: keine assoziativen Felder, kein mapfile.
 set -euo pipefail
+# KEIN LESER BEENDET EINE PIPE FRÜH (MG1): `awk '… exit'` oder `head` schließt
+# die Pipe, ein Schreiber, der noch schreibt, endet mit 141 — mit `pipefail`
+# bricht das Skript dann ab, nur manchmal. Die Leser lesen bis zum Ende und
+# merken sich den ersten Treffer. Wächter: core/tests/rollbackScript.test.ts.
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 APPS_FILE="${ROLLBACK_APPS_FILE:-$HERE/apps.conf}"
@@ -104,7 +108,7 @@ if [ -z "$APP" ]; then
 fi
 
 printf '%s' "$APP" | grep -Eq '^[a-z0-9-]+$' || die 2 "Ungültiger App-Name: $APP"
-SITE="$(apps | awk -v a="$APP" '$1 == a { print $2; exit }')"
+SITE="$(apps | awk -v a="$APP" '$1 == a && !seen { print $2; seen = 1 }')"
 [ -n "$SITE" ] || die 2 "Unbekannte App: $APP — bekannt sind: $(apps | awk '{ printf "%s%s", sep, $1; sep = ", " }')"
 printf '%s' "$SITE" | grep -Eq '^[a-z0-9.-]+$' || die 2 "Ungültige Site in der App-Liste: $SITE"
 printf '%s' "$ROOT" | grep -Eq '^/[A-Za-z0-9._/-]+$' || die 2 "Ungültiges Wurzelverzeichnis: $ROOT"
@@ -142,7 +146,7 @@ remote() {
 HEALTH_BUILD=""; HEALTH_OK="false"
 health() {
   body="$(curl -fsS -m 15 "$HEALTH_URL" 2>/dev/null || true)"
-  HEALTH_BUILD="$(printf '%s' "$body" | sed -n 's/.*"build"[[:space:]]*:[[:space:]]*"\([0-9a-f]*\)".*/\1/p' | head -n 1)"
+  HEALTH_BUILD="$(printf '%s' "$body" | sed -n 's/.*"build"[[:space:]]*:[[:space:]]*"\([0-9a-f]*\)".*/\1/p' | awk 'NR == 1')"
   if printf '%s' "$body" | grep -Eq '"ok"[[:space:]]*:[[:space:]]*true'; then HEALTH_OK="true"; else HEALTH_OK="false"; fi
 }
 
@@ -161,7 +165,7 @@ LISTING="$(remote list "$APP" --root "$ROOT")" \
 if [ "$LISTING" = "missing" ]; then
   die 4 "Auf dem Server gibt es $ROOT/releases/$APP nicht — nichts geändert."
 fi
-CURRENT="$(printf '%s\n' "$LISTING" | awk '$1 == "current" { print $2; exit }')"
+CURRENT="$(printf '%s\n' "$LISTING" | awk '$1 == "current" && !seen { print $2; seen = 1 }')"
 # Nur vollständige Commit-Namen sind Stände; neuester zuerst.
 RELEASES_SORTED="$(printf '%s\n' "$LISTING" | awk '$1 == "release" && $2 ~ /^[0-9a-f]+$/ && length($2) == 40 { print $2, $3, $4 }' | sort -k2,2nr)"
 
@@ -201,8 +205,8 @@ fi
 if [ "$COUNT" -gt 1 ]; then
   die 3 "„$WANT“ passt auf $COUNT Stände — nichts geändert. Bitte mehr Zeichen angeben."
 fi
-TARGET="$(printf '%s\n' "$MATCHES" | awk 'NF { print $1; exit }')"
-TARGET_COMPLETE="$(printf '%s\n' "$MATCHES" | awk 'NF { print $2; exit }')"
+TARGET="$(printf '%s\n' "$MATCHES" | awk 'NF && !seen { print $1; seen = 1 }')"
+TARGET_COMPLETE="$(printf '%s\n' "$MATCHES" | awk 'NF && !seen { print $2; seen = 1 }')"
 [ "$TARGET_COMPLETE" = "1" ] \
   || die 3 "Der Stand $TARGET ist auf dem Server unvollständig (server/index.mjs fehlt) — nichts geändert."
 

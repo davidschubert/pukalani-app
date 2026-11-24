@@ -30,6 +30,29 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### MG1 — Shell-Skript-Tests ohne erkennbaren Grund rot: Ursache Exit 141 im Rückweg-Skript ✅ 2026-11-24
+
+Der Test `packages/core/tests/rollbackScript.test.ts` scheiterte selten mit
+Exit 141 (2026-11-16 in der CI, 2026-11-22 lokal unter Last). 141 ist
+SIGPIPE: `ops/rollback.sh` läuft mit `pipefail` und hatte fünf Leser, die
+eine Pipe früh schließen (`awk '… { print; exit }'` an vier Stellen,
+`head -n 1` einmal). Schreibt der Schreiber nach dem `exit` noch, stirbt er
+mit 141, `pipefail` macht daraus den Status der Zuweisung, `set -e` beendet
+das Skript — nur wenn der Zeitplan es so legt, darum nicht nachstellbar
+(FL2). Behoben: die Leser lesen bis zum Ende und merken sich den ersten
+Treffer (`!seen { …; seen = 1 }`, `awk 'NR == 1'`). Der Test zeigt das
+Muster jetzt sicher (alt 141, neu 0, mit viel Eingabe) und verbietet
+`awk … exit` und `head` hinter einer Pipe im Skript. Das Ausliefer-Skript
+(`ops/app-release.sh`, Fälle vom 2026-11-18) war schon mit PR 339 gegen
+denselben Mechanismus gehärtet und seither ruhig. Einzelheiten aus
+`docs/plans/offen/MG1.md` (gelöscht): zwei Proben (2.500 Läufe im
+Container, 1.800 Läufe unter Last) blieben ohne Befund.
+
+**Gelernt:** Ein Wackler, der sich nicht nachstellen lässt, ist oft ein
+Zeitplan-Rennen — dann nicht weiter würfeln, sondern das Muster lesen. Die
+Regel stand schon in `ops-ausliefern.md` („`| head -1` … Exit 141"); geprüft
+wurde nur ein Skript.
+
 ### ZN1 — Dateiname des Beispiel-Kits: der lesbare Name gilt ✅ 2026-11-24
 
 `branding.supply/api/brand/example/kit.zip` schickt zwei Namen im

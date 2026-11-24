@@ -333,3 +333,22 @@ describe('ops/rollback.sh — wenn etwas schiefgeht', () => {
     expect(out).toContain(`Zuletzt gemeldet: Build ${LIVE}`)
   })
 })
+
+describe('ops/rollback.sh — kein Leser beendet eine Pipe früh (MG1)', () => {
+  // Exit 141 (SIGPIPE): ein Leser, der vor dem Ende aufhört, lässt einen
+  // Schreiber, der noch schreibt, sterben; mit `pipefail` bricht das Skript
+  // ab — nur wenn der Zeitplan es so will. Mit viel Eingabe wird es sicher.
+  const pipeStatus = (reader: string) => spawnSync('bash', ['-c',
+    `set -o pipefail; seq 1 200000 | ${reader} >/dev/null; echo $?`], { encoding: 'utf8' }).stdout.trim()
+
+  it('das alte Muster endet mit 141, das neue mit 0', () => {
+    expect(pipeStatus(`awk 'NF { print $1; exit }'`)).toBe('141')
+    expect(pipeStatus(`awk 'NF && !seen { print $1; seen = 1 }'`)).toBe('0')
+  })
+
+  it('das Skript enthält kein `awk … exit` und kein `head` hinter einer Pipe', () => {
+    const code = readFileSync(SCRIPT, 'utf8').split('\n').filter(line => !line.trim().startsWith('#'))
+    const early = code.filter(line => /\|\s*awk\b[^|]*\bexit\b/.test(line) || /\|\s*head\b/.test(line))
+    expect(early).toEqual([])
+  })
+})
