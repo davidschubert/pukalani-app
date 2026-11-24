@@ -53,6 +53,52 @@ Zeitplan-Rennen — dann nicht weiter würfeln, sondern das Muster lesen. Die
 Regel stand schon in `ops-ausliefern.md` („`| head -1` … Exit 141"); geprüft
 wurde nur ein Skript.
 
+### ZN1 — Dateiname des Beispiel-Kits: der lesbare Name gilt ✅ 2026-11-24
+
+`branding.supply/api/brand/example/kit.zip` schickt zwei Namen im
+`Content-Disposition`: `filename="kailua-coffee-co-brand-kit-2026-09-09.zip"`
+und `filename*=UTF-8''Kailua Coffee Co. brand kit 2026-09-09.zip`. Das ist
+Absicht (BRAND-BOOK-KIT §2.12 Nr. 4, alle Kit-Routen gleich): alte Werkzeuge
+lesen den ASCII-Namen, Browser den lesbaren. Entschieden: der lesbare Name
+gilt, kein Code geändert. Die Erwartung in KR1 F1 nennt jetzt den lesbaren
+Namen, `packages/brand/tests/brandKitExample.test.ts` hält den ganzen Kopf
+fest.
+
+**Gelernt:** Eine Klick-Probe schreibt die Erwartung aus der Spezifikation ab,
+nicht aus einem Teil des Kopfes — sonst wird gewolltes Verhalten als Fehler
+gemeldet.
+
+### CW1 (a)(d) — Server-Hänger geklärt, kein älterer Commit bei toter App ✅ 2026-11-24
+
+- **(a)** Seit dem 2026-11-18 (Ausgabe des Dev-Servers im Job-Log) liefen
+  300 E2E-Läufe: 275 grün, 22 abgebrochen (Concurrency), 3 rot — in allen
+  drei stand der Test-Server nach Sekunden. Die sieben Hänger vom
+  2026-11-18 (07:54–08:38 UTC) kamen nicht wieder; die Frist bleibt bei
+  120 Sekunden. Ein Zeitfenster, kein Fehler im Programm.
+- **(d)** Der Schritt „Deploy nötig?" in `.github/workflows/deploy.yml`:
+  meldet eine App keinen Build, liefert er sicherheitshalber nur noch aus,
+  wenn sein Commit die Spitze von `origin/main` ist; sonst überspringt er
+  mit Warnung. Ist die Spitze nicht lesbar, liefert er weiter aus
+  (fail-open). Zwei neue Fälle in `packages/core/tests/deployDecision.test.ts`.
+
+**Gelernt:** Ein Wackler, der nur in einem Zeitfenster auftritt, braucht
+zuerst eine Messung über viele Läufe — erst dann ist klar, ob es überhaupt
+etwas zu beheben gibt.
+### BP2 — Bot-Prüfung hing auf Production: Formulare ließen sich nicht abschicken ✅ 2026-11-24
+
+Gefunden in KR1 Sitzung 1 (2026-11-24): die unsichtbare Turnstile-Prüfung lud,
+lieferte aber kein Ergebnis; die Absende-Knöpfe blieben grau (Registrierung,
+Passwort vergessen, Erstgespräch auf pukalani.studio und branding.supply).
+Ursache lag nicht im Code, sondern in Cloudflare: am Turnstile-Widget fehlte
+der Hostname `pukalani.studio`. Eintrag in Cloudflare nachgetragen, das
+Runbook nennt jetzt alle Hostnamen am Widget und den Fehlercode, den ein
+fehlender Name liefert (PR #586, TS2). KR1 A2, A4, A5 und das Wegwerf-Konto
+sind damit wieder klickbar.
+
+**Gelernt:** Ein neuer Hostname einer App braucht auch einen Eintrag am
+Turnstile-Widget — sonst scheitert die Prüfung still, ohne Fehler im Server.
+Beim Anlegen einer Domain die Widget-Liste im Runbook mitprüfen.
+
 ### SI1 (b) — scharf: drei aktive Mitgliedschaften in stillgelegten Communities entfernt ✅ 2026-11-24
 
 **Was.** Der Lauf `disabled-member-sweep` zählte seit dem 2026-11-22 auf
@@ -188,6 +234,12 @@ Davids zwei Communities braucht sein Ja.
 `controlApiPrefixes` — `/api/admin/` ist dort zu (404). Darum liegen die Routen unter
 `/api/onboarding/operator/` und sperren Mandanten-Hosts selbst (N7).
 
+
+**Angewandt (LA2-ANW, 2026-11-24, Davids Ja):** Freelancer Supply und Comments
+über die Seite „Inhaber-Platz" auf Davids neues Konto vergeben; Log
+`site.owner_reassigned` je Community mit `removedOrphans: 1`, die Prüfung
+danach zeigt je einen lebenden Inhaber. Aufgefallen: nach der frischen
+Anmeldung führte der Rückweg auf `/settings/data` statt zurück zur Seite.
 ---
 
 ### LA1 — Konto löschen: die Seite warnt VOR dem Klick (letzter Admin, einziger Inhaber) ✅ 2026-11-23

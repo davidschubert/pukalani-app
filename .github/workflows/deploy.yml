@@ -351,6 +351,16 @@ jobs:
             fi
           done
           if [ -n "$FAIL" ]; then
+            # CW1 (d): ohne Antwort weiß niemand, ob dort schon Neueres läuft.
+            # Sicherheitshalber ausliefern darf deshalb nur die SPITZE von
+            # main — ein älterer Commit (Re-run einer alten Prüfung) würde
+            # sonst die übrigen Hosts zurückstellen. Ist die Spitze nicht
+            # lesbar, bleibt es beim Ausliefern (fail-open).
+            TIP=$(git rev-parse -q --verify origin/main 2>/dev/null || true)
+            if [ -n "$TIP" ] && [ "$TIP" != "$EXPECTED_SHA" ]; then
+              echo "::warning::$FAIL — und $EXPECTED_SHA ist nicht die Spitze von main ($TIP). Nicht ausgeliefert: Deploy für die Spitze von main starten."
+              echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+            fi
             echo "$FAIL — deploye sicherheitshalber."
             echo "skip=false" >> "$GITHUB_OUTPUT"; exit 0
           fi

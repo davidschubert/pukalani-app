@@ -22,10 +22,10 @@ Sinn, nicht das Wort.
   übernehmen und Vermerk setzen macht die nächste Sitzung), F (F1 und F2
   passen, Davids Ja zur Copy = Gate K7), A1 (Bremse greift).
 - **Gescheitert:** A2 und A3 — die Bot-Prüfung liefert auf Production kein
-  Ergebnis, die Absende-Knöpfe bleiben grau (Punkt BP2). A4 und A5 hängen an
+  Ergebnis, die Absende-Knöpfe bleiben grau (Punkt BP2, behoben 2026-11-24). A4 und A5 hängen an
   derselben Prüfung und sind deshalb nicht geklickt.
 - **Verschoben in Sitzung 2:** B6 (geht nur mit eigenem Konto, siehe dort),
-  B7 (es gibt noch kein Wegwerf-Konto; anlegen erst, wenn BP2 behoben ist),
+  B7 (es gibt noch kein Wegwerf-Konto; BP2 ist behoben, kann angelegt werden),
   B8 (NordPass hatte keinen Eintrag für das Konto — Markup stimmt, mit
   gespeichertem Eintrag wiederholen). Danach A2, A4, A5 nachholen.
 
@@ -271,7 +271,8 @@ F1. **Das Kit am Beispiel** · `branding.supply/de/discover/kailua-coffee-co`
     vier Kacheln (brand.md, tokens.json, tokens.css, Zeichen (SVG)); ein Klick
     auf „brand.md" öffnet die Datei im Browser (Text, beginnt mit „# Kailua
     Coffee Co."), „Zeichen" und „Ganzes Kit laden (.zip)" laden eine Datei
-    `kailua-coffee-co-brand-kit-2026-09-09.zip`; entpackt liegen darin
+    „Kailua Coffee Co. brand kit 2026-09-09.zip" (lesbarer Name, so gewollt —
+    ZN1); entpackt liegen darin
     `README.md`, `brand.md`, `tokens.css` und ein Ordner `marks/` mit SVGs.
     Auf einer anderen Marke unter „Marken entdecken" gibt es den Abschnitt
     NICHT. *Sonst:* Adresse, Kachel und was stattdessen kam melden.

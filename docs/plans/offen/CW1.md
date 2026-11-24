@@ -11,7 +11,7 @@ jede mit Fundstelle; keine ist ein Fehler im Programm, alle kosten Zeit. (Ein
 vierter Wackler, ein Test des Ausliefer-Skripts, steht mit dem, was dagegen
 getan ist, in OPEN-ITEMS-COMPLETE unter „MG1“.)
 
-- **(a) Sieben E2E-Läufe, in denen der Test-Server nicht startete.**
+- **(a) Erledigt am 2026-11-24 (COMPLETE „CW1 (a)(d)").** Sieben E2E-Läufe, in denen der Test-Server nicht startete.**
   Gemessen am 2026-11-18 aus 56 Läufen: in 49 grünen stand der Server nach
   20 bis 39 Sekunden, in 7 roten gar nicht (volle 120 Sekunden, alle am
   2026-11-18 zwischen 07:54 und 08:38 UTC, auf Zweigen von drei Gruppen) —
@@ -34,7 +34,7 @@ getan ist, in OPEN-ITEMS-COMPLETE unter „MG1“.)
   live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln. Verloren
   geht dabei nichts — der nächste Lauf liefert alles seit dem ältesten
   lebenden Build aus.
-- **(d) Eine App ohne Antwort: ein älterer Commit wird trotzdem
+- **(d) Erledigt am 2026-11-24 (COMPLETE „CW1 (a)(d)").** Eine App ohne Antwort: ein älterer Commit wird trotzdem
   ausgeliefert.** Seit dem 2026-11-21 überspringt der Schritt „Deploy nötig?"
   einen Commit, den `main` überholt hat (COMPLETE „N20"). Eine Lücke bleibt:
   meldet eine App keinen Build (502, Zeitüberschreitung), liefert der Lauf
@@ -49,3 +49,13 @@ getan ist, in OPEN-ITEMS-COMPLETE unter „MG1“.)
   Protokoll des Schritts „Deploy nötig?" nachlesen, ob die Meldung stimmt,
   und den Live-Build mit der Spitze von `main` vergleichen. Kein Bauen, nur
   Hinsehen.
+- **(f) Statistik-Seite: einmal eine Abweichung zwischen Server und
+  Browser.** Gemessen am 2026-11-24: seit dem 2026-11-18 liefen 104
+  E2E-Läufe auf `main`, einer war rot (2026-11-21, Commit `121276a3`):
+  `dashboard-landmarks.spec.ts` meldete auf `/dashboard/community/statistics`
+  „Hydration node mismatch" (Server zeichnete einen Kommentar, der Browser
+  erwartete ein Fragment, am Element mit `aria-busy`). Die zwei anderen roten
+  Läufe lagen auf Zweigen und waren echte Fehler dieser Zweige. Die Seite
+  fragt ihre Zahlen erst nach dem Einhängen (`onMounted`); woher der
+  Unterschied kommt, ist nicht belegt. Nicht stumm schalten; beim nächsten
+  roten Lauf mit diesem Fall die volle Meldung lesen.
