@@ -33,7 +33,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 import { assertTarget, isLocalEndpoint } from '../../../scripts/lib/target.mjs'
-import { appwriteRest, findColumns, PERSON_COLUMNS, sweepRows } from '../../../scripts/lib/probe-stage.mjs'
+import { appwriteRest, createHostLogins, findColumns, PERSON_COLUMNS, sweepRows } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3131)
 const HOST_A = process.env.TENANT_A_HOST || 'kunde-a.localhost'
@@ -197,12 +197,15 @@ try {
   check('B bekommt auch den ICS-Export nicht (404)', icsB.status === 404, `Status ${icsB.status}`)
 
   console.log('\n5. Operator-Pfad (Admin-Client — die Tür ist die einzige Grenze)')
-  const manageB = await call(HOST_B, '/api/events/manage', { cookie })
+  // Eigene Anmeldung auf B (PK1 E1c): im Modus write gilt das Cookie nur auf
+  // dem Host, der es gesetzt hat — wie im Browser.
+  const cookieB = await createHostLogins(call)(HOST_B, { email, password })
+  const manageB = await call(HOST_B, '/api/events/manage', { cookie: cookieB })
   const manageHasA = (manageB.json?.rows ?? []).some(r => r.$id === eventId)
   check('manage-Liste auf B enthält das A-Event NICHT', manageB.status === 200 && !manageHasA, `Status ${manageB.status}`)
-  const patchB = await call(HOST_B, `/api/events/${eventId}`, { method: 'PATCH', cookie, body: { title: 'Übernahme' } })
+  const patchB = await call(HOST_B, `/api/events/${eventId}`, { method: 'PATCH', cookie: cookieB, body: { title: 'Übernahme' } })
   check('PATCH per ID von Host B → 404 (Operator-get belegt Zugehörigkeit)', patchB.status === 404, `Status ${patchB.status}`)
-  const cancelB = await call(HOST_B, `/api/events/${eventId}`, { method: 'DELETE', cookie })
+  const cancelB = await call(HOST_B, `/api/events/${eventId}`, { method: 'DELETE', cookie: cookieB })
   check('DELETE (Soft-Cancel) von Host B → 404', cancelB.status === 404, `Status ${cancelB.status}`)
   const manageA = await call(HOST_A, '/api/events/manage', { cookie })
   const manageAHas = (manageA.json?.rows ?? []).some(r => r.$id === eventId)
