@@ -162,6 +162,15 @@ Log-Zeile `community_members.disabled_sweep_dry_run` (bzw. `…_applied`):
 (dann zählt er wieder nur). Eine umgestellte Zeile kommt nur über eine neue
 Einladung zurück — dieselbe Semantik wie das Stilllegen.
 
+**Nur einmalig scharf, nie dauerhaft:** „Deaktivieren" im Betreiber-Dashboard
+(`/dashboard/communities`) setzt nur den Status und lässt die
+Mitgliedschaften stehen — eine Pause, die „Aktivieren" samt Owner
+zurückholt. Ein dauerhaft scharfer Lauf nähme sie binnen einer Stunde. Darum:
+erst ansehen, WOHER die gezählten Zeilen kommen (Konsole, Projekt `admin`,
+Tabelle `community_members`), nach `…_applied` die Zeile sofort wieder
+entfernen. Bisher einmal gelaufen: 2026-11-24, `removed` 3 (COMPLETE
+„SI1 (b) — scharf").
+
 ## Rückweg
 
 Schalter auf `off` und deployen. Der Lauf hat keinen Zustand außer einem

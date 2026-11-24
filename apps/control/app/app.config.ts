@@ -24,14 +24,13 @@ export default defineAppConfig({
     // nur (Karte unter der Communities-Liste zählt IMMER nur). Zurück auf
     // `dry-run` hält alles an, ohne etwas zurückzunehmen.
     //
-    // ZWEITER SICHERUNGS-LAUF (SI1 b): `apply` EINMALIG — Davids Ja am
-    // 2026-11-24 zur gezählten Zahl 3 (je der Owner einer Test-Community
-    // „A2a Probe", Wegwerf-Konten aus dem gelöschten Projekt `pool`). Nach
-    // `…_applied` mit `removed` 3 kommt die Zeile wieder raus (Vorgabe
-    // `dry-run`): „Deaktivieren" im Betreiber-Dashboard ist eine Pause und
-    // lässt die Mitgliedschaften stehen — ein scharfer Lauf nähme sie sonst
-    // binnen einer Stunde, und „Aktivieren" brächte eine Community ohne Owner.
-    control: { customDomainSweep: 'apply', disabledMembershipSweep: 'apply' },
+    // ZWEITER SICHERUNGS-LAUF (SI1 b): zählt wieder nur (Layer-Vorgabe
+    // `dry-run`). Am 2026-11-24 lief er EINMAL scharf (Davids Ja zur Zahl 3,
+    // `removed` 3). NICHT dauerhaft auf `apply`: „Deaktivieren" im
+    // Betreiber-Dashboard ist eine Pause und lässt die Mitgliedschaften
+    // stehen — ein scharfer Lauf nähme sie binnen einer Stunde, und
+    // „Aktivieren" brächte eine Community ohne Owner.
+    control: { customDomainSweep: 'apply' },
     // STRUKTURIERTE FEHLERZEILEN (OPS-011, 2026-11-16): 5xx-Zeilen am
     // zentralen Fehler-Hook UND die Browser-Fehler-Annahme
     // (POST /api/telemetry/error, je Prozess gedeckelt) — ein täglicher
