@@ -75,7 +75,7 @@ describe('Selbsttest der Erkennung', () => {
 
   it('kein Skript mit env „branding" ruft eine echte KI, Stripe oder eine fremde Website — die Einteilung sagt es, der Nacht-Lauf stellt die Antworten', () => {
     const nightly = BEWEISE.filter(entry => entry.env === 'branding' && entry.lauf === 'nacht')
-    // Elf der zwölf Skripte von branding.supply laufen nachts; ausgeschrieben, damit ein neues bewusst dazukommt.
+    // Zwölf der dreizehn Skripte von branding.supply laufen nachts; ausgeschrieben, damit ein neues bewusst dazukommt.
     expect(nightly.map(entry => entry.skript.split('/').at(-1)).sort()).toEqual([
       'verify-brand-check-robots.mjs',
       'verify-brand-design.mjs',
@@ -88,6 +88,7 @@ describe('Selbsttest der Erkennung', () => {
       'verify-market-report.mjs',
       'verify-market-retention.mjs',
       'verify-market-ui.mjs',
+      'verify-workshop-hydration.mjs',
     ])
     const workflow = readFileSync(join(REPO, '.github', 'workflows', 'buehne.yml'), 'utf8')
     // Der Server des Nacht-Laufs startet mit gestellten Antworten …

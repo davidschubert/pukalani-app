@@ -52,6 +52,16 @@ Balken → `useBrandWorkshopRail`, `useBrandWorkshopLayout`, `BwStageBar`;
   Impact-Refs); `editingSlotId`/`editBaseline` bleiben Refs der Seite.
   3.520 → 3.325.
 
+**Prüfweg für Hydration** (2026-11-25): `packages/brand/scripts/verify-workshop-hydration.mjs`
+lädt das offene Kapitel einer Wegwerf-Marke frisch vom Server eines laufenden
+branding-Dev-Servers und verlangt eine Konsole ohne Abweichung zwischen Server
+und Browser (zweimal: ohne und mit Verlauf). KI-Routen fängt es im Browser ab.
+Gegenprobe: ein absichtlicher Unterschied im Seiten-Kopf macht es rot. Läuft
+nachts auf der Bühne; vor und nach jedem Schnitt von (e) lokal:
+`node --env-file=../../apps/branding/.env scripts/verify-workshop-hydration.mjs http://localhost:<port>`
+(aus `packages/brand`). Grenze: nur das erste Kapitel (die übrigen sind bei
+einer neuen Marke gesperrt).
+
 **Offen, jeweils mit gemessenem Grund** (Zählung: Deklarationen eines
 Abschnitts, die außerhalb gelesen werden = Ausgänge; Deklarationen der Seite,
 die er liest = Eingänge; Stand 3.325 Zeilen):
