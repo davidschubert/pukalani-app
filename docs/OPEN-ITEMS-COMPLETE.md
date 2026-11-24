@@ -30,6 +30,34 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### SI1 (b) — scharf: drei aktive Mitgliedschaften in stillgelegten Communities entfernt ✅ 2026-11-24
+
+**Was.** Der Lauf `disabled-member-sweep` zählte seit dem 2026-11-22 auf
+Production konstant `disabledCommunities 5`, `affectedCommunities 3`,
+`activeRows 3`. Nachgesehen (nur lesend, Konsole Projekt `admin`, Tabelle
+`community_members`): je der **Owner** einer der drei Test-Communities
+„A2a Probe" (Zeilen vom 2026-08-18, Wegwerf-Konten bei example.com,
+`runtimeProjectId` = das gelöschte Projekt `pool`). Die zwei übrigen
+stillgelegten Communities (F50 A/B) hatten keine aktive Zeile. Zugang hatten
+die drei schon nicht mehr (Host 404, Label vom ersten Lauf entzogen).
+
+**Entscheidung.** Davids Ja am 2026-11-24 zu genau diesem Schritt: „Entfernen".
+
+**Wie.** PR #580 setzte `disabledMembershipSweep: 'apply'` in
+`apps/control/app/app.config.ts`; live mit Build `94a21cac`. Protokoll
+`adminpukalaniapp`, 13:45 UTC: `community_members.disabled_sweep_applied`
+mit `removed 3`, `skipped 0`, `failed 0`. Gegenprobe in der Konsole: alle
+drei Zeilen `removed`, `removedAt` 2026-11-24T13:45:20Z. Danach kam die
+Zeile wieder raus (Vorgabe `dry-run`).
+
+**Gelernt:** „Stillgelegt" hat zwei Wege. Löscht der Owner seine Community,
+gehen alle Mitgliedschaften sofort auf `removed`. „Deaktivieren" im
+Betreiber-Dashboard setzt dagegen nur den Status: eine Pause, die
+„Aktivieren" samt Owner zurückholt. Ein dauerhaft scharfer Lauf machte aus
+jeder Pause binnen einer Stunde eine Community ohne Owner. Darum läuft er nur
+einmalig scharf, nachdem die Herkunft der Zeilen angesehen ist
+(`docs/runbooks/LABEL-ABGLEICH.md`, „Der zweite Lauf").
+
 ### VT1 (b) — Betreiber-Mail für Meldungen von außen auf admin.pukalani.app ✅ 2026-11-24
 
 **Anlass:** `NUXT_ALERT_EMAIL` stand auf keiner Site (nachgesehen 2026-11-17). Missbrauchs-Meldungen,
