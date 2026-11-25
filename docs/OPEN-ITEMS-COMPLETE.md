@@ -124,6 +124,13 @@ zurückhält: Menü und Formular vollständig, ein nicht eingebetteter Text
 (`brand.kitPage.title`) zeigt „" und nach dem Eintreffen „Kit"; danach
 verhält sich ein unbekannter Schlüssel wie vorher.
 
+**Live (2026-11-25, `eb5d84b6` auf branding.supply und pukalani.app):** in die
+Seite eingebettet sind gepackt (de / en) branding.supply 3,0 / 2,8 KB,
+pukalani.app 8,1 / 7,6 KB, pukalani.studio 0,9 / 0,8 KB. Im Browser als Gast:
+branding.supply `/de/brand-check` startet den Katalog bei 1,6 s, nach dem
+Start der Seite (1,1 s), `/brand-check` (en) bei 0,54 s nach 0,31 s,
+pukalani.app `/de` bei 1,24 s nach 0,64 s; keine rohen Schlüssel.
+
 **Gelernt:** Der eingebaute Weg des Moduls war fast fertig — er scheiterte an
 einer einzigen Stelle (`loadMessages` kennt die eingebetteten Texte nicht).
 Ein Lader „je Bereich" hätte eine Pflege-Liste gebraucht, die mit jedem neuen

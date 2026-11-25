@@ -22,7 +22,7 @@ niemand weiß, ob ein Häkchen noch Arbeit bedeutet.
 
 | Datei | Inhalt |
 | --- | --- |
-| **[OPEN-ITEMS.md](OPEN-ITEMS.md)** | **DIE EINE offene-Punkte-Liste — und zwar NUR Offenes** (Regel von David, 2026-07-30). Sechs Schritte „Jetzt dran — in dieser Reihenfolge", je mit Tabellen (Prio, Aufwand, „Braucht David?"), darunter „Geparkt / wartet". Max. 3 Zeilen je Eintrag; Einzelheiten leben im verlinkten Plan oder je Kürzel unter [plans/offen/](plans/offen/README.md). Neue offene Punkte kommen HIERHER — nie in ein Plan-Dokument. |
+| **[OPEN-ITEMS.md](OPEN-ITEMS.md)** | **DIE EINE offene-Punkte-Liste — und zwar NUR Offenes** (Regel von David, 2026-07-30). Sechs Abschnitte nach Produkt (Community-App, branding.supply, Studio, Pukalani-Konto, Projekt & Kern, Bugs), je eine Tabelle (Prio, Aufwand, Wer, Bereich, „Braucht David?"). Max. 3 Zeilen je Eintrag; Einzelheiten leben im verlinkten Plan oder je Kürzel unter [plans/offen/](plans/offen/README.md). Neue offene Punkte kommen HIERHER — nie in ein Plan-Dokument. |
 | **[OPEN-ITEMS-COMPLETE.md](OPEN-ITEMS-COMPLETE.md)** | **Finales Archiv der erledigten Punkte = unser Lern-Gedächtnis.** Jeder Eintrag vollständig, mit Datum und einer Zeile **Gelernt:**, wo etwas nicht auf Anhieb ging. Ausdrücklich KEINE Arbeitsliste — hier wird nachgelesen, nicht abgearbeitet. |
 | [GOALS.md](GOALS.md) | **Abgeschlossene Chronik** der `/goal`-Ära (Phasen 1–27, 09.06.–08.07.2026). Keine Arbeitsliste, keine neuen Phasen — was ansteht, steht in OPEN-ITEMS.md |
 | [DECISION-LOG.md](DECISION-LOG.md) | Beschluss-Protokoll: welche Entscheidung wann, mit Begründung — neueste zuerst; eine abgelöste Entscheidung trägt die Zeile „Überholt am …" |
