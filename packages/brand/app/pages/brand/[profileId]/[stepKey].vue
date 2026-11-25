@@ -8,7 +8,6 @@ import {
 import {
   BRAND_ACCEPTANCE_VIEW,
   type BrandNavSession,
-  countOpenFindings,
   decideAutoAdvance,
   isAcceptanceView,
   needsOpeningTurn,
@@ -40,25 +39,7 @@ import {
   brandSlotIsConfirmed,
 } from '../../../../shared/brandAutosaveDiff'
 import { brandAiRejectionMessageKey } from '../../../../shared/brandAiLimits'
-import {
-  BRAND_STAGE_CHOICE_SLOTS,
-  brandChoiceContract,
-  brandChoiceDisplayLabel,
-} from '../../../../shared/brandChoiceOptions'
-import type { BwChoiceCard } from '../../../components/BwChoiceCards.vue'
-import type { BwBoardChoice } from '../../../components/BwStageOptions.vue'
-import type { BwDirectionChoice, BwLogCard, BwLogChapter } from '../../../components/BwWorkshopLog.vue'
-import {
-  brandDirectionById,
-  suggestBrandDirections,
-} from '../../../../shared/brandDirections'
-import {
-  type BrandDnaMixSources,
-  brandDnaBoardDifferences,
-  brandDnaBoardName,
-  brandDnaBoardNote,
-  brandDnaDimensionLabel,
-} from '../../../../shared/brandDesignDna'
+import { brandChoiceDisplayLabel } from '../../../../shared/brandChoiceOptions'
 import {
   BRAND_DESIGN_VOICE,
   BRAND_VOICE,
@@ -72,7 +53,6 @@ import {
 } from '../../../../shared/brandSlotReadiness'
 import {
   type BrandSlotControls,
-  brandLogCardAction,
   brandSlotControls,
 } from '../../../../shared/brandSlotControls'
 import {
@@ -86,19 +66,18 @@ import {
   brandStaticQuestionVisible,
 } from '../../../../shared/brandStageModule'
 import type {
-  BrandFindingDecisionResponse,
-  BrandFindingView,
   BrandSessionAcceptResponse,
   BrandSessionCloseResponse,
-  BrandSlotView,
 } from '../../../../shared/types/brand'
 import { useBrandWorkspaceStore } from '../../../stores/brandWorkspace'
 import { useBrandAutosave } from '../../../composables/useBrandAutosave'
 import { useBrandFieldLabel } from '../../../composables/useBrandFieldLabel'
 import { useBrandConversation } from '../../../composables/useBrandConversation'
 import { useBrandWorkshopComposer } from '../../../composables/useBrandWorkshopComposer'
+import { useBrandWorkshopChoices } from '../../../composables/useBrandWorkshopChoices'
+import { useBrandWorkshopLogCards } from '../../../composables/useBrandWorkshopLogCards'
+import { useBrandWorkshopBenches } from '../../../composables/useBrandWorkshopBenches'
 import { useBrandGeneration } from '../../../composables/useBrandGeneration'
-import { useBrandDesignToolSync } from '../../../composables/useBrandDesignToolSync'
 import { useBrandWorkshopLayout } from '../../../composables/useBrandWorkshopLayout'
 import { useBrandWorkshopRail } from '../../../composables/useBrandWorkshopRail'
 import { useBrandSlotRevision } from '../../../composables/useBrandSlotRevision'
@@ -1775,110 +1754,23 @@ const pendingConfirmations = computed<string[]>(() =>
   }))
 
 /**
- * DIE AUSWAHL-OPTIONEN kommen aus dem Feld selbst (P3.1): George legt sie als
- * Text hinein, hier gibt es keine zweite Liste. Solange nichts drinsteht,
- * bleibt das Modul eine Zeile mit „Übermitteln" für die eigene Formulierung —
- * ein erfundener Options-Katalog wäre genau der Schaden, den
- * `brandChoiceOptions` verhindert.
+ * Auswahl-Karten, die drei Richtungen und die eigene Formulierung rechnet
+ * `useBrandWorkshopChoices` (WS1); geantwortet wird über den einen Sende-Pfad
+ * `answerFromGeorge` des Schreibfelds.
  */
-const ownChoice = ref('')
-watch(nextSlot, () => { ownChoice.value = '' })
-
-async function submitChoice(): Promise<void> {
-  const said = ownChoice.value.trim()
-  if (!said) return
-  ownChoice.value = ''
-  await answerFromGeorge(said)
-}
-
-/** Die eine Session, die statt Text-Karten eine Farbwelt zeigt (Paket G4). */
-const DIRECTION_SLOT = 'result.direction'
-
-/**
- * DIE GESCHLOSSENE AUSWAHL BEKOMMT KARTEN (P4, Infografik §12.3).
- *
- * Der Absatz darüber bleibt wörtlich wahr: hier entsteht KEINE zweite Liste.
- * Die Menge kommt aus dem geschlossenen Vertrag (`brandChoiceOptions.ts`) —
- * derselben Stelle, aus der auch die Prompt-Regel des Generators gebaut wird.
- * Sähe der Mensch andere Modelle als das Sprachmodell, wäre jede Begründung
- * hinterher eine über etwas anderes.
- *
- * ZWEI BEDINGUNGEN, weil beide etwas ANDERES sagen: die Registry sagt, womit
- * dieser Slot bedient wird (`editor: 'cards'`), der Vertrag sagt, dass es
- * überhaupt eine endliche Menge gibt (`kind: 'closed'`). Ein offener
- * choice-Slot wie `b.positioningCategory` fällt an beiden durch und behält
- * sein Textfeld — dort IST der Text die Antwort.
- */
-function choiceCardsFor(slotId: string): BwChoiceCard[] {
-  // SLOTS MIT EIGENER BÜHNE BEKOMMEN KEINE TEXT-KARTEN (Liste in
-  // `brandChoiceOptions.ts`): `result.direction` zeigt eine Farbwelt (G4),
-  // `g.board` drei gerenderte Szenen (D2c), und seit D8 haben auch die acht
-  // Auswahl-Sessions der Schicht 2 ihre eigenen Karten — Schriftproben,
-  // SVG-Setzungen, laufende Szenen. Ihre Verträge stehen trotzdem, damit im
-  // Handbuch „Knapp" steht und nicht die rohe Id `snappy`; ohne diese Zeile
-  // stünden daneben drei Textzeilen einer Karten-Copy, die es nicht gibt.
-  if (BRAND_STAGE_CHOICE_SLOTS.includes(slotId)) return []
-  if (slotById(slotId)?.editor !== 'cards') return []
-  const contract = brandChoiceContract(slotId)
-  if (!contract || contract.kind !== 'closed') return []
-  return contract.options.map(option => ({
-    id: option.id,
-    label: t(`${option.copyKey}.label`),
-    hint: t(`${option.copyKey}.hint`),
-    example: t(`${option.copyKey}.example`),
-  }))
-}
-
-const choiceCards = computed<BwChoiceCard[]>(() =>
-  (nextSlot.value ? choiceCardsFor(nextSlot.value.id) : []))
-
-// ── Die drei Richtungen (Paket G4) ────────────────────────────────────────
-
-/**
- * DREI RICHTUNGEN, PASSEND ZU HAUPT- UND NEBEN-ARCHETYP (Konzept §11 b).
- *
- * Die Menge kommt aus der PUREN Regel (`suggestBrandDirections`), nicht aus
- * dem Markup — dieselbe Arbeitsteilung wie bei den Architektur-Karten: was in
- * dem Feld stehen DARF, sagt der Vertrag; welche drei ANGEBOTEN werden, sagt
- * die Regel; wie sie aussehen, sagt der Katalog.
- *
- * DIE ZWEI ARCHETYPEN LIEGEN IN EINEM FREMDEN KAPITEL. Der Browser lädt immer
- * nur eines, deshalb reisen sie als `sourceValues` in der Kapitel-Antwort mit
- * (`brandStageSourceSlots`, Paket G4). Fehlen sie — weil der Archetyp noch
- * nicht bestätigt ist oder ein alter Server antwortet —, greift der Rückfall
- * der Regel: die ersten drei des Katalogs. Ein leerer Bildschirm wäre die
- * teuerste Antwort auf eine fehlende Quelle.
- */
-function directionChoicesFor(slotId: string): BwDirectionChoice[] {
-  if (slotId !== DIRECTION_SLOT) return []
-  const primary = store.sourceValues['d.primary'] ?? ''
-  const secondary = store.sourceValues['d.secondary'] ?? ''
-  return suggestBrandDirections(primary, secondary || null).flatMap((suggestion) => {
-    const direction = brandDirectionById(suggestion.id)
-    if (!direction) return []
-    return [{
-      direction,
-      name: t(direction.nameKey),
-      reason: t(direction.reasonKey),
-      match: t(suggestion.reasonKey),
-    }]
-  })
-}
-
-const directionChoices = computed<BwDirectionChoice[]>(() =>
-  (nextSlot.value ? directionChoicesFor(nextSlot.value.id) : []))
-
-/**
- * Der Klick auf eine Karte geht denselben Weg wie die getippte Antwort — nur
- * mit der stabilen ID als Text. `answerFromGeorge` schreibt sie in den Slot,
- * legt sie als Zug in den Verlauf und reicht sie an George weiter; ein eigener
- * Übermittlungsweg wäre eine zweite Wahrheit über dieselbe Handlung.
- */
-async function pickChoice(id: string): Promise<void> {
-  if (conversation.pending.value) return
-  ownChoice.value = ''
-  await answerFromGeorge(id)
-}
+const {
+  ownChoice,
+  submitChoice,
+  choiceCardsFor,
+  choiceCards,
+  directionChoicesFor,
+  directionChoices,
+  pickChoice,
+} = useBrandWorkshopChoices({
+  nextSlot,
+  conversationPending: conversation.pending,
+  answerFromGeorge,
+})
 
 /**
  * WAS IN EINER KARTE STEHT, WENN DER WERT EINE ID IST (P4).
@@ -1898,138 +1790,28 @@ function slotDisplayValue(slotId: string, value: string): string {
 
 // ── Der Log: Kapitel-Sektionen und ihre Karten ────────────────────────────
 
-function findingsForSlot(slotId: string): BrandFindingView[] {
-  return store.findings.filter(finding => finding.slots.includes(slotId))
-}
-
 /**
- * DIE BEFUNDE DER AKTIVEN SESSION — der Chip auf der BÜHNE (§8, „im Log und in
- * beiden Sessions").
- *
- * Er steht EINMAL über dem Feld, unter der Session-Zeile. George hat den Befund
- * schon einmal ausgesprochen (Paket 4, `mentionedAt`); der Chip ist der
- * BLEIBENDE Weg, kein zweiter Chat-Text — ein Hinweis, der mit dem nächsten Zug
- * nach oben scrollt, ist nach drei Antworten weg.
+ * Sektionen, Karten und Befunde des Logs rechnet `useBrandWorkshopLogCards`
+ * (WS1). Die Seite reicht die Karten des offenen Kapitels und die
+ * Beschriftungen herein, die Bühne und Log teilen.
  */
-const activeFindings = computed<BrandFindingView[]>(() =>
-  (activeSessionKey.value ? findingsForSlot(activeSessionKey.value) : []))
+const {
+  findingsForSlot,
+  activeFindings,
+  findingDecided,
+  logChapters,
+  chapterCards,
+} = useBrandWorkshopLogCards({
+  stepKey,
+  completion,
+  confirmsInFlight,
+  slotCards,
+  activeSessionKey,
+  slotLabel,
+  slotNote,
+  slotDisplayValue,
+})
 
-/**
- * EIN BEFUND WURDE ENTSCHIEDEN (§8). Der Store nimmt ihn aus der Liste und
- * übernimmt die `revision` — ein vollständiger Neuabruf des Kapitels wäre hier
- * der falsche Handgriff: `applyStepDetail` leert die gestreamten Züge, und der
- * Mensch stünde nach einem Klick auf einen Chip vor einem leeren Gespräch.
- */
-function findingDecided(decision: BrandFindingDecisionResponse): void {
-  store.applyFindingDecision(decision)
-}
-
-/** Der Ersatztext einer leeren Karte — s. `BwLogCard.placeholder`. */
-function slotPlaceholder(slot: BrandSlot): string {
-  return slotIsConfirmable(slot)
-    ? t('brand.workspace.stage.pending')
-    : t('brand.workspace.stage.pairsPlaceholder')
-}
-
-const logChapters = computed<BwLogChapter[]>(() => store.railSteps.map((entry) => {
-  const current = entry.stepKey === stepKey.value
-  const confirmed = current
-    ? (completion.value?.confirmed ?? 0)
-    : entry.progress.requiredTotal - entry.missingRequired.length
-  const chapter = {
-    stepKey: entry.stepKey,
-    label: t(`brand.steps.${entry.stepKey}`),
-    state: entry.state,
-    confirmed,
-    total: current ? (completion.value?.total ?? 0) : entry.progress.requiredTotal,
-    optional: slotsForStep(entry.stepKey).filter(slot => !slot.required).length,
-    current,
-    findings: countOpenFindings(store.findings, entry.stepKey),
-  }
-  return { ...chapter, countLine: chapterCountLine(chapter) }
-}))
-
-/**
- * Der Name eines Karten-Knopfs für Hilfsmittel (UX-011): sichtbarer Text
- * ZUERST, dann das Feld — „Bestätigen: Gründungsimpuls".
- */
-function chapterCountLine(chapter: Omit<BwLogChapter, 'countLine'>): string {
-  const values = { confirmed: chapter.confirmed, total: chapter.total, optional: chapter.optional }
-  if (chapter.current) {
-    const line = t(chapter.optional > 0 ? 'brand.workspace.log.confirmedOfOptional' : 'brand.workspace.log.confirmedOf', values)
-    /**
-     * NOCH UNTERWEGS (Kailua-Befund 3): der Zähler zeigt seit heute nur den
-     * SERVER-Stand — ohne diesen Zusatz sähe der Klick auf „Bestätigen" für
-     * einen Augenblick nach nichts aus, und das wäre die zweite Art zu lügen.
-     */
-    return confirmsInFlight.value > 0
-      ? `${line} · ${t('brand.workspace.log.confirmSaving', { count: confirmsInFlight.value })}`
-      : line
-  }
-  return t(chapter.optional > 0 ? 'brand.workspace.log.countOptional' : 'brand.workspace.log.count', values)
-}
-
-/**
- * EINE KARTE IM LOG (`BwWorkshopLog`). Für das LAUFENDE Kapitel kommt sie aus
- * `slotCards` (voll bedienbar); für ein anderes Kapitel aus einem eigenen,
- * LESENDEN Abruf derselben GET-Route, den der Log beim Aufklappen macht und
- * hier hereinreicht (`loaded`) — der Store darf dafür nicht benutzt werden,
- * denn `applyStepDetail` würde den offenen Baustein ersetzen.
- */
-function chapterCards(chapter: BwLogChapter, loaded: Record<string, BrandSlotView> | undefined): BwLogCard[] {
-  if (chapter.current) {
-    return slotCards.value.map(entry => ({
-      id: entry.slot.id,
-      label: slotLabel(entry.slot),
-      note: slotNote(entry.slot),
-      value: store.slotValue(entry.slot.id),
-      display: slotDisplayValue(entry.slot.id, store.slotValue(entry.slot.id)),
-      confirmed: entry.controls.state === 'confirmed',
-      placeholder: slotPlaceholder(entry.slot),
-      controls: entry.controls,
-      action: brandLogCardAction({
-        confirmed: entry.controls.state === 'confirmed',
-        hasValue: store.slotValue(entry.slot.id).trim().length > 0,
-        askable: entry.slot.type === 'question' || entry.slot.type === 'choice',
-        confirmable: slotIsConfirmable(entry.slot),
-        generatable: entry.slot.generator !== 'none',
-      }),
-      findings: findingsForSlot(entry.slot.id),
-      reviewNotes: store.sessions[entry.slot.id]?.notes ?? '',
-      missing: store.sessions[entry.slot.id]?.missing ?? [],
-      // Ohne Session-Stand gilt „geprüft": ein Etikett „noch nicht
-      // gegengelesen" an einem Feld, über das wir nichts wissen, wäre eine
-      // Behauptung statt einer Auskunft.
-      reviewed: store.sessions[entry.slot.id]?.reviewed !== false,
-    }))
-  }
-  if (!loaded) return []
-  return slotsForStep(chapter.stepKey as BrandStepKey).map(slot => ({
-    id: slot.id,
-    label: slotLabel(slot),
-    note: slotNote(slot),
-    value: brandSlotDisplayValue(loaded[slot.id]),
-    display: slotDisplayValue(slot.id, brandSlotDisplayValue(loaded[slot.id])),
-    confirmed: brandSlotIsConfirmed(loaded[slot.id]),
-    placeholder: slotPlaceholder(slot),
-    controls: null,
-    // Fremdes Kapitel: die Karte ist eine Auskunft, kein Bedienfeld (s. `action`).
-    action: 'none' as const,
-    findings: findingsForSlot(slot.id),
-    // Notizen und Prüf-Stand stehen in der `sessions`-Karte, und die gibt es
-    // nur für das OFFENE Kapitel — der lesende Abruf holt bewusst nur Slots.
-    reviewNotes: '',
-    missing: [],
-    reviewed: true,
-  }))
-}
-
-/**
- * Ein fremdes Kapitel wird beim AUFKLAPPEN gelesen, nicht auf Vorrat: neun
- * Abrufe beim Betreten der Werkstatt wären neun Anfragen für etwas, das
- * niemand aufgeschlagen hat. FAIL-SOFT — bleibt der Abruf aus, ist die
- * Sektion eben leer.
- */
 // ── Frühere Fassungen ─────────────────────────────────────────────────────
 
 /**
@@ -2086,115 +1868,13 @@ const {
 const { railCollapsed, logCollapsed, navOverlayOpen, navVisible, toggleNav } = useBrandWorkshopLayout()
 
 /**
- * DIE SPERR-FLÄCHE HAT ZWEI SÄTZE (Brand Design D1) — die Fläche bleibt eine.
- *
- * „Schließ das Kapitel davor ab" ist für einen gesperrten FOUNDATION-Baustein
- * richtig und für ein Design-Kapitel eine Irreführung: davor fehlt nichts, das
- * Produkt ist für diese Marke schlicht nicht freigeschaltet. Der Server nennt
- * den Grund (`data.code: 'design_locked'`, `canEnterBrandStep`), der Store
- * reicht ihn als `blocked` durch, hier wird ein Text daraus. Jeder andere
- * Grund behält den alten Satz — ein unbekannter Code darf nie in einer leeren
- * Fläche enden.
+ * DIE WERKBÄNKE ÜBER DEM GESPRÄCH (Vorbilder, DNA, Design-Werkzeuge, Book &
+ * Kit) rechnet `useBrandWorkshopBenches` (WS1), gezeigt werden sie von
+ * `BwWorkshopBenches`. Geschrieben wird über `onInput` — die Seite bleibt die
+ * einzige Stelle, die `setSlotValue` ruft und den Autosave spült.
  */
-const lockedTextKey = computed(() => {
-  if (store.blocked === 'design_locked') return 'brand.workspace.designLocked'
-  // SCHICHT 3 SAGT ETWAS ANDERES ALS SCHICHT 2 (K1): „Book & Kit ist Teil der
-  // Ableitung" — und die Ableitung ist EIN Feld, das auch den Marktvergleich
-  // öffnet. Der Grund kommt aus derselben Quelle wie bei Schicht 2
-  // (`canEnterBrandStep` → `data.code`), nur heisst er hier
-  // `derivation_locked` und steht auf `skipped` statt auf `locked` (D0-Lehre:
-  // die Kapitel zählen sonst im Fortschritt mit).
-  if (store.blocked === 'derivation_locked') return 'brand.workspace.derivationLocked'
-  return 'brand.workspace.stepLocked'
-})
-
-/**
- * DER WEG ZUM ERSTGESPRÄCH — AUS DER CONFIG, NICHT GETIPPT (BS1 R0).
- *
- * Er steht NUR an der Ableitungs-Schranke (K1, §2.7: „CTA, KEIN Preis"): dort
- * ist die Auskunft „das gibt es, so kommt ihr dran" die halbe Produktseite.
- * An der Design-Schranke bleibt es beim Satz — dort führt der Einstieg über
- * Kapitel 10 der Leseansicht, und zwei CTAs auf denselben Weg wären zwei
- * Zählungen desselben Klicks.
- */
-const callCta = useBrandCompletionCta()
-
-/**
- * ZEIGT DIE BÜHNE DAS UPLOAD-INSTRUMENT? (Brand Design D2a, §2.2)
- *
- * Genau dann, wenn wir im Kapitel `dna` stehen UND die Weiche `g.source` auf
- * „wir haben Vorbilder" steht. Der andere Weg („Frida schlägt vor") lässt
- * `g.inspiration` ENTFALLEN — und zwar ohne eine einzige neue Regel in der
- * Zustandsmaschine (§2.1: „NICHTS Neues"):
- *
- *  · `g.inspiration` ist `required: false` UND `type: 'special'`, also nach
- *    `slotIsConfirmable` nicht bestätigbar. Es steht damit in KEINER
- *    Abschluss-Bedingung (`brandStepCompletion`), in keinem Fortschritts-
- *    Nenner (`brandChapterProgress`) und auf keiner Bühne als Karte.
- *  · Es zu überspringen heisst deshalb: es nicht zeigen. Ein `deferred`-Flag
- *    oder ein `skipped`-Zustand für einen Slot, den niemand einfordert, wäre
- *    ein zweiter Weg, dasselbe zu sagen.
- *
- * GELESEN WIRD DER ROHE SLOT-WERT, nicht nur der bestätigte: die Karte
- * schreibt die Id, sobald sie geklickt wird, und das Instrument soll direkt
- * danach dastehen — nicht erst nach „Übernehmen".
- */
-const showInspiration = computed(() => (
-  stepKey.value === 'dna' && store.slotValue('g.source') === 'inspiration'
-))
-
-/**
- * DER ANDERE WEG SAGT, DASS ER DER ANDERE IST.
- *
- * Auf „Frida schlägt vor" entfällt `g.inspiration` — aber die Session steht
- * weiter in der Leiste (die Zustandsmaschine kennt kein „übersprungen" JE
- * SESSION, nur je Kapitel, und §2.1 sagt ausdrücklich: nichts Neues daran).
- * Wer dort klickt, landete sonst auf einer leeren Fläche. Ein Satz statt des
- * Instruments ist die billigste ehrliche Antwort — und er nennt den Weg
- * zurück, weil die Weiche jederzeit korrigierbar ist.
- */
-const showInspirationSkipped = computed(() => (
-  stepKey.value === 'dna' && store.slotValue('g.source') === 'foundation'
-))
-
-// ── Der DNA-Vorschlag, die drei Boards und der Mix (D2c, §2.2 Schritte 4–5) ─
-
-/**
- * DIE RECHNUNG STEHT IM COMPOSABLE, DAS SCHREIBEN HIER.
- *
- * `useBrandDnaBoards()` leitet Vorschlag, Boards und Mischung aus den
- * Slot-Werten ab und hält keinen eigenen Zustand (s. dessen Kopf). Die SEITE
- * ist die einzige Stelle, die `setSlotValue` ruft und den Autosave spült —
- * dieselbe Arbeitsteilung wie bei jeder anderen Komponente dieser Werkstatt
- * (die Komponente zeigt, die Seite entscheidet).
- */
-const dna = useBrandDnaBoards()
-
-/** Der Vorschlag steht, sobald die Weiche beantwortet ist — auf beiden Wegen. */
-const showDnaPanel = computed(() => stepKey.value === 'dna' && store.slotValue('g.source').length > 0)
-
-/** Mischen kann nur, wer ein Board gewählt hat. */
-const showDnaMix = computed(() => (
-  stepKey.value === 'dna' && dna.boards.value.length > 0 && dna.chosenBoardId.value.length > 0
-))
-
-/**
- * DIE DREI BOARD-KARTEN als Auswahl von `g.board` — dasselbe Muster wie die
- * Richtungs-Karten aus G4: was in dem Feld stehen DARF, sagt der geschlossene
- * Vertrag; welche drei ANGEBOTEN werden, sagt die pure Regel; wie sie aussehen,
- * sagt die Karte. Ein leeres Array heisst „hier gibt es keine Boards", und die
- * Bühne behält ihr Textfeld.
- */
-const boardChoices = computed<BwBoardChoice[]>(() => {
-  if (nextSlot.value?.id !== 'g.board') return []
-  return dna.boards.value.map(board => ({
-    board,
-    name: brandDnaBoardName(board.id, locale.value),
-    note: brandDnaBoardNote(board.id, locale.value),
-    differences: brandDnaBoardDifferences(dna.boards.value, board.id)
-      .map(id => brandDnaDimensionLabel(id, locale.value)),
-  }))
-})
+const benches = useBrandWorkshopBenches({ profileId, stepKey, nextSlot, onInput })
+const { showDnaMix, boardChoices, applyMixSources } = benches
 
 /**
  * ÜBERSCHRIFT UND PLATZHALTER DER ANTWORT-KARTE (Befund 9, 2026-09-10) — die
@@ -2208,181 +1888,6 @@ const answerCard = computed(() => brandStageAnswerCard({
     || boardChoices.value.length > 0,
   partKey: collectPartKey.value,
 }))
-
-/**
- * ZWEI ABGELEITETE FELDER, DIE SICH SELBST FÜLLEN (H5: „jede Session muss als
- * BESTÄTIGUNG durchlaufbar sein").
- *
- * `g.boards` und `g.mix` sind RECHNUNGEN, keine Eingaben — es gibt für sie
- * nichts zu tippen und (bewusst) keinen Generator. Die Bühne braucht trotzdem
- * einen Wert, sonst stünde dort eine Karte ohne Inhalt mit einem
- * Übernehmen-Knopf, der nichts übernimmt.
- *
- * DIE GLEICHHEITS-PRÜFUNG IST DIE GANZE SICHERUNG: ohne sie schriebe jeder
- * Renderdurchlauf denselben Text und der Autosave liefe im Kreis. Sie hält
- * auch, wenn sich der Vorschlag ÄNDERT — dann rechnet dieselbe Regel neue
- * Werte, der Vergleich schlägt an, und der Stand heilt sich selbst.
- *
- * NUR NACH DEM MOUNT — `import.meta.client` allein reicht NICHT (Brand Design
- * D3, am eigenen Klick gefunden): ein `watch(..., { immediate: true })` läuft
- * im Browser schon im SETUP, also VOR dem ersten Rendern. Der Server malt die
- * Karte dann leer („Noch offen — kommt im Gespräch"), der Client malt sie im
- * selben Augenblick gefüllt — drei Hydration-Mismatches, darunter ein
- * `disabled`-Attribut am Bestätigen-Knopf. Dieselbe Falle und dieselbe Kur wie
- * beim Eröffnungszug oben: `onMounted` ist die kleinste ehrliche Klammer, und
- * der Server schreibt so ohnehin nichts.
- */
-const dnaMixValue = computed(() => (dna.chosenBoardId.value ? dna.mixSlotValue() : ''))
-
-onMounted(() => {
-  watch(dna.boardsSlotValue, (value) => {
-    if (stepKey.value !== 'dna' || !value) return
-    if (store.slotValue('g.boards') === value) return
-    onInput('g.boards', value)
-  }, { immediate: true })
-
-  watch(dnaMixValue, (value) => {
-    if (stepKey.value !== 'dna' || !value) return
-    if (store.slotValue('g.mix') === value) return
-    onInput('g.mix', value)
-  }, { immediate: true })
-})
-
-/** Eine neue Mischung aus dem Panel — sie geht denselben Weg wie jede Eingabe. */
-function applyMixSources(next: BrandDnaMixSources): void {
-  const value = dna.mixSlotValue(next)
-  if (!value) return
-  onInput('g.mix', value)
-}
-
-// ── Die Farbwelt (D3, §2.3) ───────────────────────────────────────────────
-
-/**
- * Die fünf Design-Werkzeuge (Farbwelt, Typografie, Zeichen, Bildsprache,
- * Bewegung) teilen EINE Mechanik: das Werkzeug rechnet, die Seite schreibt
- * über `onInput`, bestätigte Felder bleiben unberührt, der Abgleich läuft erst
- * nach dem Mount — `useBrandDesignToolSync` (WS1, Kapitel d), dort begründet.
- */
-const colorWorld = useBrandColorWorld()
-const { show: showColorPanel, confirmed: confirmedColorSlots, pick: applyColorPick } = useBrandDesignToolSync({
-  stepKey,
-  chapter: 'color',
-  slots: ['h.base', 'h.ramp', 'h.neutral', 'h.accent', 'h.roles', 'h.contrast'],
-  values: colorWorld.slotValues,
-  onInput,
-})
-
-// ── Die Typografie (D4, §2.4) ─────────────────────────────────────────────
-
-const typeWorld = useBrandTypeWorld()
-const { show: showTypePanel, confirmed: confirmedTypeSlots, pick: applyTypePick } = useBrandDesignToolSync({
-  stepKey,
-  chapter: 'type',
-  slots: ['i.pair', 'i.scale', 'i.rules'],
-  values: typeWorld.slotValues,
-  onInput,
-})
-
-// ── Das Zeichen (D5a/D5b, §2.5) ───────────────────────────────────────────
-
-/**
- * DREI der vier Sessions belegt das Kapitel selbst vor — `j.brief` NICHT.
- *
- * Das Briefing ist die einzige Session dieses Kapitels, die weder gerechnet
- * noch gewählt wird: sie entsteht im Lauf (server-seitig, `POST …/mark/brief`)
- * oder von Hand. Stünde sie in dieser Liste, überschriebe der Autosave beim
- * nächsten Rendern genau den Text, den der Mensch gerade bekommen hat.
- * `j.drafts` (Stufe 3, D5c) fehlt aus einem anderen Grund: der Wert dieser
- * Session beschreibt die BEHALTENEN Entwürfe und wird server-seitig
- * nachgezogen (`syncBrandMarkDraftsSlot`) — ein Autosave von hier schriebe ihn
- * bei jedem Rendern leer. Bestätigt sein kann auch `j.brief` — das Panel
- * sperrt dann seinen Lauf (`panelSlots`).
- */
-const markWorld = useBrandMarkWorld()
-const { show: showMarkPanel, confirmed: confirmedMarkSlots, pick: applyMarkPick } = useBrandDesignToolSync({
-  stepKey,
-  chapter: 'mark',
-  slots: ['j.kind', 'j.examples', 'j.pick'],
-  panelSlots: ['j.kind', 'j.brief', 'j.examples', 'j.pick'],
-  values: markWorld.slotValues,
-  onInput,
-})
-
-// ── Die Bildsprache (D6, §2.6) ────────────────────────────────────────────
-
-/**
- * ALLE VIER Sessions belegt das Kapitel selbst vor — anders als beim Zeichen,
- * wo `j.brief` aus einem Lauf kommt. Hier gibt es keinen Modell-Text, den ein
- * Autosave überschreiben könnte (§1.4: „Regeln statt Bilder").
- */
-const imageryWorld = useBrandImageryWorld()
-const { show: showImageryPanel, confirmed: confirmedImagerySlots, pick: applyImageryPick } = useBrandDesignToolSync({
-  stepKey,
-  chapter: 'imagery',
-  slots: ['k.photo', 'k.illustration', 'k.icons', 'k.dodont'],
-  values: imageryWorld.slotValues,
-  onInput,
-})
-
-// ── Die Bewegung (D7, §2.7) ───────────────────────────────────────────────
-
-/**
- * ALLE VIER Sessions belegt das Kapitel selbst vor — wie in der Bildsprache
- * gibt es hier keinen Modell-Text, den ein Autosave überschreiben könnte
- * (§1.4). `l.rules` ist `stage-edit` und darf von Hand ergänzt werden: eine
- * BESTÄTIGTE Fassung rührt der Abgleich nicht an (Sicherung 2).
- */
-const motionWorld = useBrandMotionWorld()
-const { show: showMotionPanel, confirmed: confirmedMotionSlots, pick: applyMotionPick } = useBrandDesignToolSync({
-  stepKey,
-  chapter: 'motion',
-  slots: ['l.tempo', 'l.transitions', 'l.logo', 'l.rules'],
-  values: motionWorld.slotValues,
-  onInput,
-})
-
-// ── Die drei Kapitel von Book & Kit (K5, §2.2–§2.4) ───────────────────────
-
-/**
- * DIESELBE ARBEITSTEILUNG WIE IN SCHICHT 2 — mit EINER Verschiebung: es
- * rechnet nicht der Browser, sondern der SERVER, und die Seite schreibt.
- *
- * Der Grund steht im Kopf von `useBrandKitWorkshop`: die Prompt-Vorlagen
- * brauchen die ganze Foundation, die Pressekit-Vorschau vier fremde Kapitel,
- * und die Fakten (`a.facts`) dürfen den Browser überhaupt nur über einen
- * Eigentümer-Pfad erreichen. Der Store der Werkstatt trägt immer nur den
- * offenen Baustein.
- */
-const kitWorkshop = useBrandKitWorkshop(profileId)
-
-const showNomenclaturePanel = computed(() => stepKey.value === 'nomenclature')
-const showAiguidePanel = computed(() => stepKey.value === 'aiguide')
-const showPresskitPanel = computed(() => stepKey.value === 'presskit')
-
-const NOMENCLATURE_SLOTS = ['m.types', 'm.patterns', 'm.rules'] as const
-const AIGUIDE_SLOTS = ['n.scope', 'n.review', 'n.guardrails', 'n.prompts'] as const
-const PRESSKIT_SLOTS = ['p.facts', 'p.contact', 'p.summary'] as const
-
-const confirmedNomenclatureSlots = computed(() =>
-  NOMENCLATURE_SLOTS.filter(slotId => store.slotConfirmed(slotId)))
-const confirmedAiguideSlots = computed(() =>
-  AIGUIDE_SLOTS.filter(slotId => store.slotConfirmed(slotId)))
-const confirmedPresskitSlots = computed(() =>
-  PRESSKIT_SLOTS.filter(slotId => store.slotConfirmed(slotId)))
-
-/**
- * EINE WAHL AUS EINEM KIT-PANEL — derselbe Weg wie jede Eingabe.
- *
- * KEIN selbst-vorbelegender Beobachter wie in den Design-Kapiteln: dort
- * entsteht NICHTS von Hand, hier schon (`m.rules` ist `stage-edit`,
- * `p.contact` ein Formular). Ein Automatismus überschriebe genau die Fassung,
- * die jemand gerade tippt. Übernommen wird deshalb auf Klick — der Knopf ist
- * in den Panels, der Schreibvorgang hier.
- */
-function applyKitPick(slotId: string, value: string): void {
-  if (store.slotConfirmed(slotId)) return
-  onInput(slotId, value)
-}
 
 // ── Navigation ────────────────────────────────────────────────────────────
 
@@ -2496,31 +2001,7 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
        Zweig für „kein Zugang" ist mit Paket 9 weg — dieser Fall endet oben
        als 404, und ein Zweig, der nie zieht, ist kein Sicherheitsnetz,
        sondern eine Behauptung über einen Zustand, den es nicht gibt. -->
-  <div v-if="store.blocked" class="bw-root grid min-h-dvh place-items-center px-6">
-    <div class="max-w-md text-center">
-      <BwIllustration variant="journey" class="mx-auto h-16 w-auto" style="color: var(--bw-ink-soft)" />
-      <p class="mt-4 font-medium">
-        {{ t(`${lockedTextKey}.title`) }}
-      </p>
-      <p class="mt-1 text-sm" style="color: var(--bw-muted)">
-        {{ t(`${lockedTextKey}.description`) }}
-      </p>
-      <div class="mt-5 flex flex-wrap items-center justify-center gap-2">
-        <UButton
-          class="rounded-full" variant="outline" :to="localePath('/dashboard/brands')"
-          :label="t('brand.brands.title')"
-        />
-        <!-- Nur an der Ableitungs-Schranke, und ohne Preis (s. `callCta`). -->
-        <UButton
-          v-if="store.blocked === 'derivation_locked'"
-          :to="callCta.to" :target="callCta.target" :rel="callCta.rel" :external="callCta.external"
-          class="rounded-full" trailing-icon="i-ph-arrow-right"
-          :label="t(callCta.labelKey)"
-          data-derivation-cta
-        />
-      </div>
-    </div>
-  </div>
+  <BwWorkshopLocked v-if="store.blocked" :blocked="store.blocked" />
 
   <!-- Runde 16/20/31 (David): Sidebar-Muster links, keine Topbar, kein
        Rail-Fuß — der Gesamt-Fortschritt wohnt unten rechts im Log. Die
@@ -2603,141 +2084,9 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
              hinterlegter Adresse; eigene Komponente seit Q21. -->
         <BwSiteStrip :profile-id="profileId" :step-key="routeStepKey" />
 
-        <!-- DAS INSTRUMENT `uploads` (Brand Design D2a, §2.2 Schritt 2) — die
-             Vorbilder. Es steht ÜBER dem Gespräch und nicht als Antwort-Modul
-             darunter, weil `g.inspiration` `type: 'special'` ist: es beantwortet
-             keine Frage, es nimmt entgegen (`sessionContent.ts`: „das Instrument
-             fragt nicht"). Sichtbar wird es erst nach der Weiche — s.
-             `showInspiration`. -->
-        <BwUploadsEditor v-if="showInspiration" :profile-id="profileId" />
-        <!-- DIE LESUNG (`g.reading`, D2b) steht DIREKT unter dem Instrument und
-             unter derselben Bedingung: sie liest genau die Bilder darüber, und
-             ohne Vorbilder gibt es nichts zu lesen. Kein Chat — dieser
-             Abschnitt ist ein LAUF (s. Kopf der Komponente). -->
-        <BwReadingPanel v-if="showInspiration" :profile-id="profileId" />
-        <p v-else-if="showInspirationSkipped" class="bw-pending">
-          {{ t('brand.inspiration.skipped') }}
-        </p>
-
-        <!-- DER DNA-VORSCHLAG (`g.dna`, D2c) — er steht unter der Lesung und
-             auf BEIDEN Wegen: ohne Vorbilder leitet Frida ihn aus der
-             Foundation allein ab (§2.2 Schritt 4). Kein Chat, sondern ein
-             LAUF, wie die Lesung darüber. -->
-        <BwDnaPanel
-          v-if="showDnaPanel"
-          :profile-id="profileId"
-          :with-inspiration="showInspiration"
-        />
-
-        <!-- DIE FARBWELT (Kapitel `color`, D3) — sechs Abschnitte auf EINER
-             Werkbank. Sie steht ÜBER dem Gespräch wie der DNA-Vorschlag: was
-             hier passiert, ist kein Zug, sondern eine Rechnung, die man
-             ansieht. Bestätigt wird jede der sechs Sessions unten auf ihrer
-             Karte (`RENDERED_ABOVE`). -->
-        <BwColorPanel
-          v-if="showColorPanel"
-          :confirmed="confirmedColorSlots"
-          @pick="applyColorPick"
-        />
-
-        <!-- DIE TYPOGRAFIE (Kapitel `type`, D4) — Paar, Hierarchie, Regeln
-             auf EINER Werkbank, mit den echten Schriften. Sie steht wie die
-             Farbwelt ÜBER dem Gespräch: was hier passiert, ist kein Zug,
-             sondern eine Wahl, die man sofort sieht. Bestätigt wird jede der
-             drei Sessions unten auf ihrer Karte (`RENDERED_ABOVE`). -->
-        <BwTypePanel
-          v-if="showTypePanel"
-          :confirmed="confirmedTypeSlots"
-          @pick="applyTypePick"
-        />
-
-        <!-- DAS ZEICHEN (Kapitel `mark`, D5a/D5b) — Richtung, Briefing und die
-             gesetzten Beispiele auf EINER Werkbank. Wie Farbwelt und
-             Typografie steht sie ÜBER dem Gespräch; bestätigt wird jede
-             Session unten auf ihrer Karte (`RENDERED_ABOVE`). Stufe 3 (die
-             KI-Entwürfe, D5c) hängt als eigene Komponente darunter. -->
-        <BwMarkPanel
-          v-if="showMarkPanel"
-          :profile-id="profileId"
-          :confirmed="confirmedMarkSlots"
-          @pick="applyMarkPick"
-        />
-
-        <!-- DIE BILDSPRACHE (Kapitel `imagery`, D6) — Prinzip, Illustration,
-             Icons und das gerechnete Do & Don't auf EINER Werkbank. Wie die
-             drei Kapitel davor steht sie ÜBER dem Gespräch; bestätigt wird
-             jede Session unten auf ihrer Karte (`RENDERED_ABOVE`). Keine
-             Fotos, keine KI-Bilder — §1.4. -->
-        <BwImageryPanel
-          v-if="showImageryPanel"
-          :confirmed="confirmedImagerySlots"
-          @pick="applyImageryPick"
-        />
-
-        <!-- DIE BEWEGUNG (Kapitel `motion`, D7) — Tempo, Übergangs-Tokens,
-             kinetisches Zeichen und die Regeln auf EINER Werkbank. Wie die
-             vier Kapitel davor steht sie ÜBER dem Gespräch; bestätigt wird
-             jede Session unten auf ihrer Karte (`RENDERED_ABOVE`). Die drei
-             Tempos spielen als drei Szenen gleichzeitig — Tempo liest man
-             nicht (§2.7). -->
-        <BwMotionPanel
-          v-if="showMotionPanel"
-          :confirmed="confirmedMotionSlots"
-          @pick="applyMotionPick"
-        />
-
-        <!-- DIE NOMENKLATUR (Kapitel `nomenclature`, K5) — Typen, Muster und
-             Regeln auf EINER Werkbank. Wie die Design-Kapitel steht sie ÜBER
-             dem Gespräch; bestätigt wird jede Session unten auf ihrer Karte
-             (`RENDERED_ABOVE`). Die Züge darüber sind GEORGES Sätze über Otto
-             — keine zweite Stimme. -->
-        <template v-if="showNomenclaturePanel">
-          <BwKitMoves chapter="nomenclature" :count="3" />
-          <BwKitPatternsPanel
-            :architecture-rule="kitWorkshop.architectureRule.value"
-            :confirmed="confirmedNomenclatureSlots"
-            @pick="applyKitPick"
-          />
-        </template>
-
-        <!-- DIE AI-GUIDELINES (Kapitel `aiguide`, K5). Umfang und Freigabe
-             sind Katalog-Wahlen und laufen über das Karten-Instrument der
-             Bühne; die LEITPLANKEN entwirft Nikas Technik auf ihrer Karte.
-             Hier steht nur, was PUR gerechnet ist: die drei Vorlagen. -->
-        <template v-if="showAiguidePanel">
-          <BwKitMoves chapter="aiguide" :count="3" />
-          <BwKitPromptsPanel
-            :prompts="kitWorkshop.prompts.value"
-            :pending="kitWorkshop.pending.value"
-            :confirmed="confirmedAiguideSlots"
-            @pick="applyKitPick"
-          />
-        </template>
-
-        <!-- DAS PRESSEKIT (Kapitel `presskit`, K5) — hier entsteht nichts
-             Neues; zwei Dinge muss trotzdem ein Mensch sagen (Fakten-Freigabe,
-             Ansprechperson), das dritte ist die Vorschau. -->
-        <template v-if="showPresskitPanel">
-          <BwKitMoves chapter="presskit" :count="2" />
-          <BwKitFactsPanel
-            :facts="kitWorkshop.facts.value"
-            :pending="kitWorkshop.pending.value"
-            :confirmed="confirmedPresskitSlots"
-            @pick="applyKitPick"
-          />
-          <BwKitContactPanel
-            :templates="kitWorkshop.contactTemplates.value"
-            :pending="kitWorkshop.pending.value"
-            :confirmed="confirmedPresskitSlots"
-            @pick="applyKitPick"
-          />
-          <BwKitSummaryPanel
-            :summary="kitWorkshop.summary.value"
-            :pending="kitWorkshop.pending.value"
-            :confirmed="confirmedPresskitSlots"
-            @pick="applyKitPick"
-          />
-        </template>
+        <!-- DIE WERKBÄNKE (Vorbilder, Lesung, DNA, Design-Werkzeuge, Book &
+             Kit) stehen ÜBER dem Gespräch — s. `BwWorkshopBenches`. -->
+        <BwWorkshopBenches :profile-id="profileId" :benches="benches" />
 
         <p v-if="phaseIntro" class="bw-label" style="color: var(--bw-muted); padding-left: 2.65rem">{{ phaseIntro }}</p>
 
@@ -2940,67 +2289,24 @@ useBrandTitle(() => (store.profile?.title || t('brand.brands.card.untitled')))
              der vierte Ausgang „Später". Sie steht UNTER dem Gespräch und auf
              dessen Text-Flucht — über den Zügen wäre sie ein Kopf, und die
              Bühne hat bewusst keinen (Umbau-Plan §2). -->
-        <div v-if="activeSlot" class="flex flex-col gap-2" style="padding-left: 2.65rem">
-          <p class="bw-label" style="color: var(--bw-muted)">{{ affectsLine(activeSlot.id) }}</p>
-
-          <!-- DER BEFUND AN DIESER SESSION (§8) — EINMAL, neben „fliesst
-               später in". George hat ihn schon ausgesprochen; hier bleibt er
-               stehen, mit beiden Feld-Links und beiden Handlungen. -->
-          <BwFindingChip
-            v-for="finding in activeFindings" :key="finding.id"
-            :finding="finding" :profile-id="profileId"
-            @field="slotId => correctThenGo(slotId, () => goToField(slotId))"
-            @decided="findingDecided"
-            @stale="store.dropFinding(finding.id)"
-          />
-
-          <!-- VERALTET (§9): ein Feld davor hat sich geändert. RUHIG und ohne
-               Sperre — der bestätigte Wert steht weiter da. Zwei Ausgänge:
-               „Gilt weiter" stempelt den neuen Stand als Grundlage, „Neu
-               besprechen" räumt den Hinweis weg und überlässt das Feld dem
-               Gespräch (George eröffnet mit Bezug auf die Änderung). -->
-          <div
-            v-if="activeStale && !staleHidden"
-            class="rounded-2xl px-4 py-3" style="background: var(--bw-surface)"
-          >
-            <p class="text-sm" style="color: var(--bw-ink-soft)">{{ t('brand.session.stale') }}</p>
-            <div class="mt-2 flex flex-wrap items-center gap-2">
-              <UButton
-                size="sm" variant="ghost" color="neutral" class="rounded-full"
-                icon="i-ph-check" :loading="restamping"
-                :label="t('brand.session.keep')" @click="keepSessionValid"
-              />
-              <UButton
-                size="sm" variant="ghost" color="neutral" class="rounded-full"
-                icon="i-ph-chat-circle-dots"
-                :label="t('brand.session.rediscuss')" @click="staleHidden = true"
-              />
-            </div>
-          </div>
-
-          <!-- VERTAGT: der Zwischenstand bleibt sichtbar, aber nicht
-               bearbeitbar — der Wert entsteht im Gespräch. -->
-          <div v-if="activeSession?.deferred" class="rounded-2xl px-4 py-3" style="background: var(--bw-surface)">
-            <p class="text-sm" style="color: var(--bw-ink-soft)">{{ t('brand.session.deferredNote') }}</p>
-            <ul v-if="activeCollected.length" class="mt-2 space-y-1">
-              <li v-for="part in activeCollected" :key="part.label" class="bw-label" style="color: var(--bw-muted)">
-                {{ part.label }}: {{ part.value }}
-              </li>
-            </ul>
-            <UButton
-              size="sm" variant="ghost" color="neutral" class="mt-2 rounded-full"
-              icon="i-ph-arrow-counter-clockwise" :loading="deferring"
-              :label="t('brand.session.resume')" @click="setDeferred(false)"
-            />
-          </div>
-          <div v-else-if="activeAllowsDefer">
-            <UButton
-              size="sm" variant="ghost" color="neutral" class="rounded-full"
-              icon="i-ph-clock" :loading="deferring"
-              :label="t('brand.session.defer')" @click="setDeferred(true)"
-            />
-          </div>
-        </div>
+        <BwWorkshopSessionLine
+          v-if="activeSlot"
+          v-model:stale-hidden="staleHidden"
+          :profile-id="profileId"
+          :affects="affectsLine(activeSlot.id)"
+          :findings="activeFindings"
+          :stale="activeStale"
+          :restamping="restamping"
+          :deferred="Boolean(activeSession?.deferred)"
+          :collected="activeCollected"
+          :deferring="deferring"
+          :allows-defer="activeAllowsDefer"
+          @field="slotId => correctThenGo(slotId, () => goToField(slotId))"
+          @decided="findingDecided"
+          @stale-finding="findingId => store.dropFinding(findingId)"
+          @keep="keepSessionValid"
+          @defer="setDeferred"
+        />
 
         <!-- MIX & MATCH UND „EUER STAND" (`g.mix`, D2c) — sie stehen UNTER dem
              Gespräch, weil sie erst nach der Board-Wahl einen Sinn haben: was
