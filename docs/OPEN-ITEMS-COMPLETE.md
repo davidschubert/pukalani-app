@@ -44,8 +44,13 @@ Die Nacht-Läufe vom 23. und 24.11. scheiterten in `courses/verify-pool-isolatio
 und `events/verify-pool-isolation`: beide schickten das Cookie von kunde-a an
 kunde-b. Seit PK1 E1c gilt eine Anmeldung im Modus `write` nur auf ihrem Host,
 also kam 401 statt 403 bzw. 200. Beide melden sich jetzt auf B eigens an
-(`createHostLogins`), wie die neun Skripte aus a261ffe6. Beweis: Nacht-Lauf
-von Hand auf dem Zweig.
+(`createHostLogins`), wie die neun Skripte aus a261ffe6. Der Nacht-Lauf von
+Hand auf dem Zweig (67 von 70) zeigte drei weitere, ebenso alte Rote:
+`verify-member-invites` und `verify-trust-perks` (Anmeldung auf dem
+Kontroll-Host, Cookie auf dem Community-Host ⇒ jetzt `createHostSessions`)
+und `verify-trial-notice` (lädt `control/shared/onboarding.ts` direkt in
+Node; dessen Import von `primaryLocale` ohne `.ts`-Endung fand Node nicht,
+seit Q10 vom 2026-11-21).
 
 **Gelernt:** Eine Umstellung, die „alle Skripte" betrifft, mit `git grep` nach
 dem Muster (`cookie` an `HOST_B`) abschließen — die Liste aus dem Gedächtnis

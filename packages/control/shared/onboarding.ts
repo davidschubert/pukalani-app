@@ -13,7 +13,7 @@
  * i18n-Keys im UI; hier stehen ausschließlich stabile Ids.
  */
 
-import { parsePrimaryLocale, type PrimaryLocale } from '../../core/shared/primaryLocale'
+import { parsePrimaryLocale, type PrimaryLocale } from '../../core/shared/primaryLocale.ts'
 
 // ── 1. Antwort-Kataloge ─────────────────────────────────────────────────────
 
