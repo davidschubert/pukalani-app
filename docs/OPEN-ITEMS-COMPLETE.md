@@ -30,6 +30,28 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### RU1 (c) — Runner: ein Dateiname wird im Ticket nicht mehr zum Link ✅ 2026-11-25
+
+Der Editor der Ticket-Beschreibung machte aus `README.md` den Link
+`[README.md](http://README.md)`; so stand es auch im Auftrag an den Agenten
+(Klick-Probe vom 2026-11-21). Grund: die Link-Erweiterung von Tiptap
+verlinkt beim Tippen und Einfügen alles, was wie ein Host aussieht, und
+`.md`, `.ts`, `.vue`, `.json` sind gültige Endungen. Jetzt verlinkt der
+Ticket-Editor von selbst nur noch eine Adresse mit Schema (`https://…`,
+`mailto:…`) oder mit `www.` vorn (`packages/tickets/shared/ticketAutolink.ts`,
+eingehängt über `:starter-kit` in `TicketModal.vue`; Nuxt UI mischt die
+übrigen Vorgaben per defu dazu). Der Link-Knopf der Werkzeugleiste bleibt.
+Beweis: `packages/tickets/tests/ticketAutolink.test.ts` und eine Probe mit
+dem echten Tiptap-Editor (happy-dom): vorher `href="http://README.md"`,
+nachher bleibt `README.md` Text, `https://pukalani.app` wird weiter Link.
+Die übrigen Editoren (Beiträge, Nachrichten, Seiten) sind bewusst nicht
+umgestellt: dort ist `example.com` öfter eine Adresse als ein Dateiname.
+Damit ist RU1 ganz erledigt.
+
+**Gelernt:** Tiptaps Autolink fragt nur „sieht das wie ein Host aus?" — und
+fast jede Datei-Endung ist eine Landes-Domain. In Texten über Code gehört der
+Autolink auf eindeutige Adressen beschränkt (`shouldAutoLink`).
+
 ### AR1 (d) — Ticket-Kauf: Termin über die Datentür ✅ 2026-11-25
 
 `apps/comments/server/api/events/[id]/checkout.post.ts` las den Termin mit dem

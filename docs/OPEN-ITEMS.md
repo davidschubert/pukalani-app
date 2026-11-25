@@ -73,7 +73,6 @@ am 2026-11-18, COMPLETE „N11").
 | --- | --- | --- | --- | --- | --- |
 | EL1 | **Export und Löschung: Rest.** (b) Datenschutztexte: DT1. Die alten Textauszüge sind seit dem 2026-11-18 geleert (COMPLETE „N11"). **Wartet auf:** Davids Freigabe der Texte. | Niedrig | S | **Ja** | [Einzelheiten](plans/offen/EL1.md) |
 | WH1 | **Gelöschte Marke zurückholen (Papierkorb)** auf branding.supply: Knopf „Marke löschen", 90 Tage unter „Gelöschte Marken", danach endgültig weg. Konten bleiben vorerst nicht zurückholbar (kommt mit PK1). **Wartet auf:** Davids Freigabe des Prototyps. | Mittel | M | **Ja: Prototyp freigeben, Lauf scharf schalten** | [Plan](plans/WIEDERHERSTELLUNG.md) |
-| RU1 | **Runner: Reste nach der Klick-Probe.** Der echte Lauf über das Formular ist seit dem 2026-11-21 gelaufen (COMPLETE „KR1 — Teil 1"). Dabei gefunden und offen: (c) der Editor macht aus einem Dateinamen wie `README.md` einen Link. Das Budget-Feld (b) ist seit dem 2026-11-21 behoben (COMPLETE „RU1 (b)"). **Wartet auf:** nichts. | Niedrig | S | Nein | [Einzelheiten](plans/offen/RU1.md) |
 
 **Umsetzung der Entscheidungen aus Schritt 1:**
 

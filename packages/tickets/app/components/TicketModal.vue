@@ -3,6 +3,7 @@ import type { EditorToolbarItem } from '@nuxt/ui'
 import type { TicketChecklistItem, TicketFileRow, TicketFilesResponse, TicketListRow, TicketMember, TicketRow } from '../../shared/types/ticket'
 import { TICKET_EFFORTS, TICKET_LABELS, TICKET_PRIORITIES } from '../../shared/types/ticket'
 import { parseTicketChecklist } from '../../shared/ticketChecklist'
+import { shouldAutoLinkTicketText } from '../../shared/ticketAutolink'
 import { composeTicketMarkdown, parseTicketMembers } from '../utils/ticketMarkdown'
 import { TICKET_EFFORT_META, TICKET_LABEL_META, TICKET_PRIORITY_META } from '../utils/ticketMeta'
 
@@ -190,6 +191,13 @@ const toolbarItems: EditorToolbarItem[] = [
   { kind: 'blockquote', icon: 'i-ph-quotes' },
   { kind: 'codeBlock', icon: 'i-ph-code' },
 ]
+
+/**
+ * RU1 (c): `README.md` wird beim Tippen nicht mehr zum Link — von selbst
+ * verlinkt nur eine Adresse mit Schema oder `www.` (`shared/ticketAutolink.ts`).
+ * Der Rest der StarterKit-Vorgaben von `UEditor` bleibt (defu-Merge).
+ */
+const descriptionStarterKit = { link: { shouldAutoLink: shouldAutoLinkTicketText } }
 
 const listItems = computed(() => props.lists.map(list => ({ label: list.title, value: list.$id })))
 const noneItem = computed(() => ({ label: t('tickets.modal.none'), value: NONE }))
@@ -602,6 +610,7 @@ const createdAtText = computed(() =>
               v-slot="{ editor }"
               v-model="form.description"
               content-type="markdown"
+              :starter-kit="descriptionStarterKit"
               class="w-full rounded-md border border-default"
               :ui="{ base: 'px-3 sm:px-3 py-2', content: 'min-h-32' }"
             >
