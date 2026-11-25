@@ -30,6 +30,60 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### WH1 — Papierkorb für Marken auf branding.supply (gebaut) ✅ 2026-11-25
+
+Davids Entscheidungen vom 2026-11-15 ([Plan](plans/WIEDERHERSTELLUNG.md)) sind
+gebaut; offen bleibt nur das Ausliefern (Zeile WH1 in OPEN-ITEMS).
+
+- **Kennzeichen:** Migration `brand-028` legt `brand_profiles.erasedAt` und den
+  Index `idx_erased` an. Die Regel „aktiv / im Papierkorb / fällig" steht pur in
+  `packages/brand/shared/brandProfileTrash.ts` (Frist = die 90 Tage der
+  Prüfergebnisse, ein Test hält beide gleich; ein unlesbarer Zeitpunkt
+  versteckt, löscht aber nie).
+- **Löschen = verstecken** (`trashBrandProfile`): Prüfergebnisse werden mit
+  DEMSELBEN Zeitpunkt wie die Marke versteckt, geteilte Links gelöscht, eine
+  Veröffentlichung zurückgezogen (Schnappschüsse leer, Adresse bleibt
+  reserviert). Ein zweiter Aufruf nach 502 versucht es erneut, ohne die Frist
+  zu verschieben.
+- **Zurückholen** (`POST …/[id]/restore`): nur in der Frist, sonst 409
+  `trash_expired`; holt genau die Prüfergebnisse zurück, deren Zeitpunkt gleich
+  dem der Marke ist. Links und Veröffentlichung kommen nicht zurück.
+- **Jetzt endgültig löschen** (`DELETE …/[id]/purge`, Vorschlag aus dem Plan
+  übernommen): nur nach frischer Anmeldung (`requireRecentAuth`), dieselbe
+  Kaskade wie früher (`purgeBrandProfile`).
+- **Lauf** `brand-profile-trash`: stündlich, Gerüst `rowRetention`, Schalter
+  `pukalani.brand.profileTrash` (Layer `off`, branding `count`), Hand-Route
+  `POST /api/brand/admin/profile-trash/run`. Der Takt bekommt ein Ereignis ohne
+  Anfrage (`brandDetachedEvent`), damit die Kaskade samt market-Mitläufer
+  unverändert bleibt.
+- **Jeder Leser** von `brand_profiles` hat eine Entscheidung
+  (`packages/brand/tests/brandProfileTrashReaders.test.ts`, 19 Dateien);
+  `loadOwnedProfile` meldet eine gelöschte Marke als 404. Die Kontolöschung und
+  die Auskunft lesen bewusst ohne Filter.
+- **Oberfläche:** „Löschen" im Menü der Karte mit Hinweis (`useConfirm`),
+  Abschnitt „Gelöschte Marken" als `UTable` unter dem Raster; Texte de+en,
+  Hinweis vor der Kontolöschung, vorläufiger Datenschutztext (Fassung vom
+  2026-11-25, Prüfsummen der alten Fassung eingetragen), Referenz
+  `EXPORT-UND-LOESCHUNG.md`.
+- **Beweise:** Regel-, Rollen- (`route-roles-profile-trash.test.ts`, 36 Fälle)
+  und Lösch-Tests (`brandUserDataStrict.test.ts`); lokal mit Wegwerf-Konto
+  geklickt: löschen ⇒ Liste leer, Link 404, Veröffentlichung `withdrawn`,
+  Prüfergebnis versteckt, Inhalt noch da; zurückholen ⇒ Marke und Score wieder
+  da, Link bleibt 404; Frist abgelaufen ⇒ nicht mehr gelistet, 409.
+
+Abweichung vom Ablauf: der Prototyp wurde nicht eigens zur Freigabe gezeigt,
+sondern auf Auftrag des Leitstands direkt gebaut; David nimmt die Oberfläche
+vor dem Ausliefern ab.
+
+**Gelernt:** Ein Zeit-Lauf, der eine Kaskade aus Anfrage-Funktionen fährt,
+braucht kein Umschreiben jeder Funktion auf „mit oder ohne Event": ein
+Ereignis ohne Anfrage mit `context.nitro.runtimeConfig` genügt, weil
+`useRuntimeConfig(event)` sonst an `event.context.nitro` scheitert. Und im
+Dev-Browser zählt der erste Klick nach dem Laden nicht — ohne Hydration öffnet
+kein Menü und kein Fehler steht in der Konsole.
+
+---
+
 ### LL1 (c) — Lange Läufe: die bekannten Grenzen ziehen in die Referenz ✅ 2026-11-25
 
 LL1 (c) war seit dem 2026-11-17 eine wachsende Sammlung von Sätzen der Art
