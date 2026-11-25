@@ -30,6 +30,26 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### LL1 (c) — Lange Läufe: die bekannten Grenzen ziehen in die Referenz ✅ 2026-11-25
+
+LL1 (c) war seit dem 2026-11-17 eine wachsende Sammlung von Sätzen der Art
+„bekannte Grenze, nicht gebaut": hängender Herzschlag, Rückbuchung beim
+Radar-Knopf, Newsletter-Stapel, Lauf-Zeilen ohne Frist, die 45 Sekunden der
+Quellen-Prüfung, derselbe Lauf für zwei Besucher am selben Anschluss. Keine
+davon ist eine Aufgabe; jede ist eine bewusste Entscheidung mit Grund. Sie
+standen trotzdem in der Liste der offenen Punkte und hielten LL1 offen.
+Jetzt stehen sie in `docs/referenz/LANGE-LAEUFE-GRENZEN.md` (in der Karte
+`docs/README.md`, verlinkt aus `.claude/rules/lange-laeufe.md`), mit der
+einen Schwelle, bei der neu zu entscheiden ist (über 50.000 Lauf-Zeilen).
+Gebaut wurde nichts. In `docs/OPEN-ITEMS.md` bleibt von LL1 nur der echte
+Rest: einen Lauf über 60 Sekunden auf Production sehen. Der braucht einen
+bezahlten Lauf oder einen Blick in die Production-Daten und wartet deshalb
+auf David.
+
+**Gelernt:** Eine „bekannte Grenze" ist kein offener Punkt. Steht sie in der
+Liste, hält sie den Punkt ewig offen und versteckt den einen echten Rest.
+Grenzen gehören in die Referenz, die Liste bekommt nur, was jemand tun muss.
+
 ### AR1 (d) — Ticket-Kauf: Termin über die Datentür ✅ 2026-11-25
 
 `apps/comments/server/api/events/[id]/checkout.post.ts` las den Termin mit dem

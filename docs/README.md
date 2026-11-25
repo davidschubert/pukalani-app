@@ -49,6 +49,7 @@ KI-Agenten — **die eine Quelle**, `AGENTS.md` zeigt nur darauf),
 | [referenz/THEMES-CONCEPT-V2.md](referenz/THEMES-CONCEPT-V2.md) | Theme-System + bewusste Ablehnungen |
 | [referenz/AUTH-FORMS.md](referenz/AUTH-FORMS.md) | Warum Login/Register eigene UForms sind |
 | [referenz/EXPORT-UND-LOESCHUNG.md](referenz/EXPORT-UND-LOESCHUNG.md) | Export und Löschung: der Vertrag, die Liste aller Tabellen, was „gelöscht" heißt, Fristen und ihre Läufe |
+| [referenz/LANGE-LAEUFE-GRENZEN.md](referenz/LANGE-LAEUFE-GRENZEN.md) | Lange Läufe: was bewusst NICHT gelöst ist (Herzschlag, Rückbuchung, Lauf-Zeilen ohne Frist, nur lokal Gezeigtes) |
 | [referenz/EMBED.md](referenz/EMBED.md) | Embed-Widget: Gates, CSP, Cookie-Verhalten |
 | [referenz/EIGENE-DOMAIN.md](referenz/EIGENE-DOMAIN.md) | Kundendomains: Pool-Tenant vs. Silo-Alias, Zustandskette, kanonischer Host |
 | [referenz/CHANGELOG-WORKFLOW.md](referenz/CHANGELOG-WORKFLOW.md) | Kunden-Changelog (von Hand im Dashboard; Function und Entwurfs-Werkzeug seit 2026-11-15 entfernt); Entwickler-CHANGELOG/release-please seit 2026-11-13 abgeschaltet |

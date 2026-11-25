@@ -21,7 +21,8 @@ paths:
 ---
 
 ## Lange Läufe: Lauf-Sperre statt langer Anfrage (BE-008/BE-010)
-KI-Transport und Bindung: `ki.md`.
+KI-Transport und Bindung: `ki.md`. Bewusst offene Grenzen:
+`docs/referenz/LANGE-LAEUFE-GRENZEN.md`.
 
 - LANGE ARBEIT GEHÖRT NICHT IN DIE ANFRAGE (Davids Entscheidung „antwortet
   sofort und rechnet im Hintergrund; ein zweiter Klick startet keinen zweiten
