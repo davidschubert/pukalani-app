@@ -40,7 +40,7 @@ import '../../../scripts/lib/assert-target.mjs'
 import { request } from 'node:http'
 import { createHash } from 'node:crypto'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
-import { probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
+import { createHostSessions, probeSiteBody } from '../../../scripts/lib/probe-stage.mjs'
 
 const PORT = Number(process.env.PLATFORM_PORT || 3016)
 const CONTROL_HOST = process.env.CONTROL_HOST || 'app.localhost'
@@ -89,7 +89,7 @@ function freshIp() {
 }
 
 /** node:http, weil fetch den Host-Header verwirft; ::1, weil Nitro dort hört. */
-function call(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
+function rawCall(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
   return new Promise((resolve, reject) => {
     const payload = body ? JSON.stringify(body) : null
     const req = request({
@@ -153,14 +153,20 @@ async function createPoolUser(tag, { verified = false } = {}) {
   return { userId: user.$id, email, password }
 }
 
+/**
+ * ANMELDEN JE HOST (PK1 E1c): das Skript reicht je Konto einen Ausweis herum;
+ * jeder Aufruf meldet das Konto auf SEINEM Host an (einmal je Host) — im
+ * Modus `write` gilt eine Karte nur dort, wie im Browser.
+ */
+const sessions = createHostSessions(rawCall)
+async function call(host, path, options = {}) {
+  return rawCall(host, path, { ...options, cookie: await sessions.cookieFor(host, options.cookie) })
+}
+
+/** Anmelden auf dem Kontroll-Host; zurück kommt der Ausweis des Kontos (s. o.). */
 async function login(account) {
-  const res = await call(CONTROL_HOST, '/api/auth/login', {
-    method: 'POST', body: { email: account.email, password: account.password },
-  })
-  if (res.status !== 200) throw new Error(`Login fehlgeschlagen (${res.status}): ${res.text.slice(0, 160)}`)
-  const raw = res.setCookie.find(c => c.startsWith('a_session_'))
-  if (!raw) throw new Error('Kein Session-Cookie erhalten')
-  return raw.split(';')[0]
+  await sessions.cookieOn(CONTROL_HOST, account)
+  return sessions.badge(account)
 }
 
 async function issueCode() {

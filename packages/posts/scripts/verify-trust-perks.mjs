@@ -46,9 +46,9 @@ import { Client, ID, Permission, Query, Role, TablesDB } from 'node-appwrite'
 import {
   appwriteRest,
   createCleanup,
+  createHostSessions,
   createProbeAccount,
   createProbeCommunity,
-  login,
   runStamp,
 } from '../../../scripts/lib/probe-stage.mjs'
 
@@ -95,7 +95,7 @@ function check(label, ok, detail = '') {
 }
 
 /** node:http, weil fetch den Host-Header verwirft; ::1, weil Nitro dort hört. */
-function call(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
+function rawCall(host, path, { method = 'GET', body, cookie, clientIp } = {}) {
   return new Promise((resolve, reject) => {
     const payload = body ? JSON.stringify(body) : null
     const req = request({
@@ -143,9 +143,20 @@ async function createPoolUser(tag) {
   return { ...account, tag }
 }
 
-/** Der Login gibt seine Cookies über die Header zurück — hier vollständig. */
-function loginWithCookies(account) {
-  return login(call, CONTROL_HOST, account)
+/**
+ * ANMELDEN JE HOST (PK1 E1c): das Skript reicht je Konto einen Ausweis herum;
+ * jeder Aufruf meldet das Konto auf SEINEM Host an (einmal je Host) — im
+ * Modus `write` gilt eine Karte nur dort, wie im Browser.
+ */
+const sessions = createHostSessions(rawCall)
+async function call(host, path, options = {}) {
+  return rawCall(host, path, { ...options, cookie: await sessions.cookieFor(host, options.cookie) })
+}
+
+/** Anmelden auf dem Kontroll-Host; zurück kommt der Ausweis des Kontos (s. o.). */
+async function loginWithCookies(account) {
+  await sessions.cookieOn(CONTROL_HOST, account)
+  return sessions.badge(account)
 }
 
 
