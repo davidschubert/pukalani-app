@@ -33,10 +33,10 @@ import {
   addStageMember,
   appwriteRest,
   createCleanup,
+  createHostSessions,
   createHttpCaller,
   createProbeAccount,
   createProbeCommunity,
-  login,
   runStamp,
   waitForHost,
 } from '../../../scripts/lib/probe-stage.mjs'
@@ -61,7 +61,20 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey) {
 const script = 'verify-trial-notice'
 const control = appwriteRest({ endpoint, projectId: controlProject, key: controlKey, script })
 const pool = appwriteRest({ endpoint, projectId: poolProject, key: poolKey, script })
-const { call } = createHttpCaller({ port: PORT })
+const { call: rawCall } = createHttpCaller({ port: PORT })
+/**
+ * ANMELDEN JE HOST (PK1 E1c): das Skript reicht je Konto einen Ausweis herum;
+ * jeder Aufruf meldet das Konto auf SEINEM Host an (einmal je Host) — im
+ * Modus `write` gilt eine Karte nur dort, wie im Browser.
+ */
+const sessions = createHostSessions(rawCall)
+/** @type {typeof rawCall} */
+const call = async (host, path, options = {}) => rawCall(host, path, { ...options, cookie: await sessions.cookieFor(host, options.cookie) })
+/** Anmelden auf dem Kontroll-Host; zurück kommt der Ausweis des Kontos. */
+async function login(account) {
+  await sessions.cookieOn(CONTROL_HOST, account)
+  return sessions.badge(account)
+}
 const cleanup = createCleanup({ pool, control, controlDatabaseId: databaseId })
 const stamp = runStamp()
 
@@ -115,8 +128,8 @@ try {
 
   const owner = await createPoolUser('owner', { verified: true })
   const stranger = await createPoolUser('stranger')
-  const ownerCookie = await login(call, CONTROL_HOST, owner)
-  const strangerCookie = await login(call, CONTROL_HOST, stranger)
+  const ownerCookie = await login(owner)
+  const strangerCookie = await login(stranger)
 
   console.log('1. Community anlegen (echter Wizard-Abschluss → Testphase läuft)')
   const created = await createProbeCommunity({
@@ -155,7 +168,7 @@ try {
     communityId, projectId: poolProject, userId: mod.userId, role: 'moderator', status: 'active', email: mod.email,
   })
   cleanup.track('member', modRow.$id)
-  const modCookie = await login(call, CONTROL_HOST, mod)
+  const modCookie = await login(mod)
   const modRes = await call(host, '/api/community/billing/trial', { cookie: modCookie })
   check('Moderator dieser Community → 403 (nur der Owner zahlt)', modRes.status === 403, `Status ${modRes.status}`)
 
