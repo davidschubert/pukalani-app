@@ -9,7 +9,8 @@
 `packages/brand/app/pages/brand/[profileId]/[stepKey].vue`: 5.235 Zeilen vor
 Q21, 5.119 nach Q21, 3.746 nach dem WS1-Lauf (fünf Schnitte, Erledigt-Liste
 „WS1-Lauf"), 3.767 auf `main` vor Bahn C (zwischendurch gewachsen), **3.325
-nach Bahn C** (zwei Schnitte, s. unten), **3.149 nach dem Schreibfeld-Schnitt** (2026-11-25). Der Rauch-Test
+nach Bahn C** (zwei Schnitte, s. unten), **3.149 nach dem Schreibfeld-Schnitt** (2026-11-25), **2.454 nach dem
+Rest-Schnitt** (2026-11-25, fünf Schnitte, s. unten). Der Rauch-Test
 (`packages/brand/tests/render/workshopPage.test.ts`, Vitest-Projekt `render`)
 hat jetzt acht Fälle: Kontext-Kapitel samt Log, Leiste und Balken; Steckbrief,
 frühere Fassungen und Konflikt; Bestätigungs-Modul; Farbwelt; Korrektur-Regel;
@@ -68,6 +69,31 @@ einer neuen Marke gesperrt).
 in `setup`, kein Abruf beim Aufbau. `confirmDismissed` bleibt Ref der Seite.
 Belegt mit Rauch-Test (10 grün), Hydration-Prüfweg (5 grün, vorher und
 nachher) und Bildern vorher/nachher (gleich). 3.325 → 3.149.
+
+**Geschnitten** (2026-11-25, Rest-Schnitt, ein Pull Request): fünf Teile mit
+wenig Kopplung, je an derselben Stelle im `setup` aufgerufen, an der der
+Abschnitt stand (Reihenfolge von `watch`/`onMounted` unverändert):
+- `useBrandWorkshopChoices` — Text-Karten, drei Richtungen, eigene
+  Formulierung (`ownChoice` zieht mit um), Antwort über `answerFromGeorge`.
+- `useBrandWorkshopLogCards` — Log-Sektionen, Karten, Befunde
+  (`findingsForSlot` geht weiter an die Leiste).
+- `useBrandWorkshopBenches` + `BwWorkshopBenches` — Vorbilder/Lesung, DNA,
+  fünf Design-Werkzeuge, Book & Kit. Die Beobachter bleiben in der SEITE
+  (Composable), die Komponente rendert nur: sie hängt unter `v-else` der
+  Abnahme, ein Abgleich darin liefe in der Abnahme nicht mehr.
+  `slotDisplayValue` blieb in der Seite (das Schreibfeld bekommt es vorher).
+- `BwWorkshopLocked` (Sperr-Fläche) und `BwWorkshopSessionLine` (Session-Zeile;
+  `staleHidden` als `v-model`, Handlungen als Ereignisse).
+Belegt mit Rauch-Test (8 grün), allen brand-Tests, Typecheck branding,
+Hydration-Prüfweg (5 grün) und einem Klick-Durchgang mit Wegwerf-Konto
+(17 grün: Leiste, Log samt fremdem Kapitel, Antwort-Modul, Schreibfeld,
+Steckbrief, Balken, Sperr-Fläche, Auswahl-Karte → DNA-Panel, Kit-Vorlagen
+übernehmen). 3.149 → 2.454.
+**Nebenbefund (nicht gebaut, auch auf `main`):** „AI-Guidelines" einer frischen
+Marke meldet beim Laden einen Hydration-Unterschied in `BwKitPromptsPanel` —
+`useBrandKitWorkshop` lädt mit `server: false`, der Server malt „Die Vorlagen
+entstehen …", der Browser „Rechne die Vorlagen …". Der Prüfweg sieht ihn
+nicht (er prüft nur das erste Kapitel).
 
 **Offen, jeweils mit gemessenem Grund** (Zählung: Deklarationen eines
 Abschnitts, die außerhalb gelesen werden = Ausgänge; Deklarationen der Seite,
