@@ -1129,6 +1129,41 @@ JWT an eine Sitzung binden will, gibt sie ausdrücklich mit.
 
 ---
 
+### KM1 c2 — Probe, Lese-Probe und branding.supply auf Haiku 5.5 ✅ 2026-11-25
+
+**Was.** Schritt 2 bis 4 des Plans
+[KI-TEXTMODELL-WECHSEL.md](plans/KI-TEXTMODELL-WECHSEL.md) für das erste
+Deployment. (2) Bezahlte Probe lokal mit dem Entwicklungs-Schlüssel,
+`--runs 10`, beide Modelle: 99 von 100 Aufgaben bestanden, zusammen 0,23 $.
+Haiku 5.5 „Denken aus" kostet je Aufruf rund ein Sechstel bis ein Achtel
+(DNA-Vorschlag 0,0010 $ statt 0,0062 $, Insights-Entwurf 0,0011 $ statt
+0,0082 $). Der eine Fehlschlag: ein DNA-Vorschlag von 5.5 mit kaputtem JSON
+(nicht abgeschnitten) — in der App ein misslungener Entwurf, der neu erzeugt
+wird. Haiku 4.5 brauchte die JSON-Reparatur bei DNA 10 von 10 Mal, 5.5 nie.
+Die Decke des Insights-Entwurfs (3.400) reicht: höchstens 2.029 genutzt,
+keine Neu-Eichung. (3) Lese-Probe: fünf erfundene Züge des Markenberaters
+(echter System- und Zug-Prompt), je Modell einmal, blind gemischt (0,02 $).
+5.5 schreibt etwa doppelt so lang und fragt öfter mehr als einmal; Davids
+Urteil am 2026-11-25: „5.5 passt". (4) Auf Davids Auftrag („stelle du das
+bitte um") `app_config.aiModel` auf branding.supply über dieselbe Route wie
+die Config-Seite (`PATCH /api/admin/config`) auf
+`anthropic/claude-haiku-5.5` gesetzt — Antwort `aiModelCheck: 'ok'`
+(EU-Endpunkte geprüft).
+
+**Beweis.** `GET /api/admin/config` danach: `aiModel`
+`anthropic/claude-haiku-5.5`; `https://branding.supply/api/health` `ok: true`,
+Build `85547fc5`, Schema `ok`. Rückweg: Feld leeren ⇒ Build-Vorgabe Haiku 4.5.
+Offen bleiben die übrigen Deployments (OPEN-ITEMS „KM1").
+
+**Gelernt:** Auf branding.supply zeigt die Config-Seite das Feld
+„KI-Modell (Laufzeit-Override)" gar nicht — es hängt an `pukalani.ai.enabled`,
+und das ist dort aus, obwohl Marke und Insights das Modell über
+`getEffectiveAiConfig` aus genau dieser Einstellung lesen. Wer dort umstellt,
+geht über die Route; ob das Feld an „irgendein Layer nutzt das Modell" statt
+am Core-Gate hängen soll, ist eine offene Frage für KM1.
+
+---
+
 ### KM1 c1 — Transport schickt Haiku 5.5 „Denken aus" mit ✅ 2026-11-24
 
 **Was.** Davids Antwort auf die Kosten-Frage am 2026-11-24: „Einschalten"

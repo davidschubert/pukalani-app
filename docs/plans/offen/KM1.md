@@ -11,17 +11,16 @@ Europa-Endpunkte jetzt in einer zweiten Liste, die Aufrufe liefen die ganze
 Zeit (COMPLETE „KA1"). Von den Vorschlägen danach ist (a) gebaut, (b)
 abgelehnt und (e) gebaut (COMPLETE „KM1 a" und „KM1 e"). Offen:
 
-- **(c) Günstigeres Textmodell — Davids Ja am 2026-11-24, Schritt 1
-  gebaut.** Der Core-Rumpf (`buildAiRequestBody`) schickt für die Modelle in
-  `AI_TEXT_MODELS_REASONING_OFF` (heute nur `anthropic/claude-haiku-5.5`)
-  `reasoning: { effort: 'none' }` mit; für Haiku 4.5 bleibt der Rumpf, wie er
-  war (COMPLETE „KM1 c1"). Offen, in dieser Reihenfolge
-  ([Plan](../../plans/KI-TEXTMODELL-WECHSEL.md), „Wenn David Ja sagt"):
-  (2) größere Probe lokal, zusammen unter 2 $, mit dem Entwicklungs-Schlüssel —
-  David startet sie, die Befehle stehen im Plan; (3) Davids Lese-Probe
-  (`vergleich.md`, fünf Antworten des Markenberaters blind); (4) `aiModel` auf
-  der Config-Seite eines Deployments umstellen (ein Klick zurück, kein
-  Ausliefern), danach die übrigen.
+- **(c) Günstigeres Textmodell — Schritt 1 bis 3 erledigt, branding.supply
+  umgestellt (2026-11-25, COMPLETE „KM1 c2").** `app_config.aiModel` steht
+  dort auf `anthropic/claude-haiku-5.5` — Rückweg: Feld leeren (oder
+  `PATCH /api/admin/config` mit `aiModel: ""`), dann gilt wieder Haiku 4.5.
+  Offen ([Plan](../../plans/KI-TEXTMODELL-WECHSEL.md), „Wenn David Ja sagt"):
+  die übrigen Deployments mit Text-KI (admin.pukalani.app: Ticket-Triage,
+  Community-Hosts: UGC- und Seiten-Übersetzen — vorher einen Lauf der zwei
+  UGC/Seiten-Skripte), `reviewModel` der Marke (nur per Ausliefern, eigene
+  Probe) und die Ticket-Auswahl-Liste. Erst nach ein paar Tagen ohne
+  KI-Ausfälle auf branding.supply.
 - **(d) Zur Kenntnis.** Der Anbieter bietet „nur Europa" inzwischen auch als
   eigene Adresse an (in einem teureren Tarif). Nötig ist das nicht, solange
   die Bindung je Aufruf greift — und das ist am 2026-11-18 gemessen. Ob auf
