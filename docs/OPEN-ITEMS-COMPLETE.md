@@ -50,6 +50,109 @@ auf David.
 Liste, hält sie den Punkt ewig offen und versteckt den einen echten Rest.
 Grenzen gehören in die Referenz, die Liste bekommt nur, was jemand tun muss.
 
+### KI1 (d) — KI-Schutz: Kosten und Anbieter je Lauf im Protokoll ✅ 2026-11-25
+
+Bis hierher stand ein bezahlter KI-Lauf nur im Log, wenn er scheiterte
+(`ai.failed`). Jetzt schreibt jeder erfolgreiche Text-Lauf und jeder fertige
+Stream EINE `info`-Zeile `ai.completed` mit `label`, `model`, `run`, `ms`,
+`provider` (Anbieter, den der Vermittler nennt: „Amazon Bedrock" ⇒
+`amazon-bedrock`), `tokensIn`, `tokensOut` und `costUsd` (der Betrag aus
+`usage.cost`, auf Millionstel gerundet). Fehlt der Betrag, fehlt das Feld —
+geschätzt wird nichts. Kein Prompt, kein Antworttext (`aiLog.ts`,
+`logAiCompleted`). Der tägliche Wächter zählt weiter nur `ai.failed` und
+`ai.disabled` (genauer Vergleich in `ops/app-watch-counts.mjs`).
+Beweis: `packages/core/tests/aiCompletedLog.test.ts` (genaue Feldliste,
+geheimer Text taucht nicht auf, ohne Betrag kein Feld, Ausfall ohne Zeile,
+Stream liest den Betrag aus dem letzten Frame).
+
+Bild, Vision und Video schreiben die Zeile noch nicht; sie laufen selten und
+nur auf branding.supply. Bewusst so gelassen, nicht vergessen.
+
+Die übrigen Kleinigkeiten aus (d) sind bewertet und ohne Bau geschlossen:
+- Beim Speichern eines Modells wird nur der Ort geprüft; ob der Anbieter
+  nichts speichert, prüft der tägliche Wächter. Das reicht: ein Modell ohne
+  diese Zusage bekommt unter der Bindung ohnehin keinen Endpunkt (404 ⇒ 503).
+- Der Klick auf der Config-Seite ist lokal gezeigt (COMPLETE „N15"); auf
+  Production bräuchte er Davids Anmeldung und ändert nichts am Beweis.
+- Die englischen Hinweise HINTER der Anmeldung (abgeschnittener Zug, Satz
+  ohne Europa-Endpunkt, Hinweis vor dem Entwurfs-Knopf) sind durch Tests und
+  Sprachdateien belegt (`pnpm check:i18n-keys`). Zwei davon zeigen sich nur
+  nach einem echten abgeschnittenen Zug oder mit einem Modell ohne
+  Europa-Endpunkt; der Aufwand dafür steht in keinem Verhältnis.
+Teil (b) Datenschutztexte lebt in DT1 weiter. Damit ist KI1 geschlossen.
+
+**Gelernt:** Ein Protokoll nur für Fehler beantwortet die Frage „was kostet
+das?" nie — ein gescheiterter Lauf kostet einmal, ein erfolgreicher hundertmal.
+Der Vermittler schickt den Betrag mit; man muss ihn nur lesen.
+
+### TK1 — Textkatalog: die Seite bringt ihre Texte mit, der volle Katalog kommt nach dem Start (Rest von PERF-006) ✅ 2026-11-25
+
+**Vorher gemessen (Production, `/de`, gepackt):** vor dem Start jeder Seite
+holte der Browser den ganzen Textkatalog seiner Sprache und wartete darauf —
+branding.supply 108 KB, pukalani.app 29 KB, pukalani.studio 28 KB.
+
+**Gebaut — nicht nach Bereichen von Hand geschnitten, sondern je Seite.**
+Eine Liste „welcher Schlüssel gehört zu welchem Bereich" hätte jemand pflegen
+müssen (allein `brand` hat 61 Bereiche, Startseite und Dashboard teilen sich
+viele). Stattdessen:
+
+- `i18n.experimental.preload` + `stripMessagesPayload` in
+  `packages/core/nuxt.config.ts`: der Server legt genau die Texte in die
+  Seite, die er beim Rendern über `t`/`te`/`tm` angefasst hat.
+- Das allein reichte nicht (GW1): @nuxtjs/i18n 10.6 holt trotzdem vor der
+  Hydration den vollen Katalog, weil `loadMessages` die eingebetteten Texte
+  nicht kennt. Die Weiche `packages/core/app/plugins/i18n-catalog-later.client.ts`
+  (Logik `packages/core/app/utils/i18nCatalogLater.ts`) setzt sich im Hook
+  `i18n:beforeLocaleSwitch` vor diesen Abruf, lässt ihn während der
+  Hydration aus und holt den Katalog, sobald die Seite steht
+  (`onNuxtReady`). Fehlt vorher ein Text, steht dort eine leere Stelle statt
+  des rohen Schlüssels, und der Katalog kommt sofort.
+- `<i18n-t>` meldete seinen Schlüssel nicht an den Server (eigener Weg in
+  vue-i18n): `packages/core/app/plugins/i18n-track-keypath.server.ts`.
+- Wächter: `packages/core/tests/i18nCatalogLater.test.ts` — die Weiche mit
+  Gegenproben und die drei inneren Stellen von @nuxtjs/i18n und vue-i18n, auf
+  die sie sich stützt (ein Update, das eine davon ändert, ist dort rot).
+
+**Nachher (lokal, Production-Build):** in die Seite eingebettet sind
+branding.supply 3 KB, pukalani.app 8 KB gepackt; der volle Katalog startet
+erst nach dem Start (gemessen bei rund 1,3 s, alle Skripte waren nach 60 ms
+da). Skript-Gewicht +4 KB je Startseite (der Leser für die eingebetteten
+Texte): branding 311 KB, marketing 285 KB, beide unter der Grenze.
+Browser: branding.supply und pukalani.app in de und en, Navigation,
+Sprachwechsel, keine rohen Schlüssel. Mit einem Proxy, der den Katalog 6 s
+zurückhält: Menü und Formular vollständig, ein nicht eingebetteter Text
+(`brand.kitPage.title`) zeigt „" und nach dem Eintreffen „Kit"; danach
+verhält sich ein unbekannter Schlüssel wie vorher.
+
+**Gelernt:** Der eingebaute Weg des Moduls war fast fertig — er scheiterte an
+einer einzigen Stelle (`loadMessages` kennt die eingebetteten Texte nicht).
+Ein Lader „je Bereich" hätte eine Pflege-Liste gebraucht, die mit jedem neuen
+Text veraltet; der Schnitt je Seite misst der Server selbst. Den Fehlfall
+(ein Text, der erst im Browser auftaucht) beweist man nur mit einem
+künstlich verzögerten Katalog — von Hand trifft man die Lücke nie.
+
+### RU1 (c) — Runner: ein Dateiname wird im Ticket nicht mehr zum Link ✅ 2026-11-25
+
+Der Editor der Ticket-Beschreibung machte aus `README.md` den Link
+`[README.md](http://README.md)`; so stand es auch im Auftrag an den Agenten
+(Klick-Probe vom 2026-11-21). Grund: die Link-Erweiterung von Tiptap
+verlinkt beim Tippen und Einfügen alles, was wie ein Host aussieht, und
+`.md`, `.ts`, `.vue`, `.json` sind gültige Endungen. Jetzt verlinkt der
+Ticket-Editor von selbst nur noch eine Adresse mit Schema (`https://…`,
+`mailto:…`) oder mit `www.` vorn (`packages/tickets/shared/ticketAutolink.ts`,
+eingehängt über `:starter-kit` in `TicketModal.vue`; Nuxt UI mischt die
+übrigen Vorgaben per defu dazu). Der Link-Knopf der Werkzeugleiste bleibt.
+Beweis: `packages/tickets/tests/ticketAutolink.test.ts` und eine Probe mit
+dem echten Tiptap-Editor (happy-dom): vorher `href="http://README.md"`,
+nachher bleibt `README.md` Text, `https://pukalani.app` wird weiter Link.
+Die übrigen Editoren (Beiträge, Nachrichten, Seiten) sind bewusst nicht
+umgestellt: dort ist `example.com` öfter eine Adresse als ein Dateiname.
+Damit ist RU1 ganz erledigt.
+
+**Gelernt:** Tiptaps Autolink fragt nur „sieht das wie ein Host aus?" — und
+fast jede Datei-Endung ist eine Landes-Domain. In Texten über Code gehört der
+Autolink auf eindeutige Adressen beschränkt (`shouldAutoLink`).
+
 ### AR1 (d) — Ticket-Kauf: Termin über die Datentür ✅ 2026-11-25
 
 `apps/comments/server/api/events/[id]/checkout.post.ts` las den Termin mit dem
