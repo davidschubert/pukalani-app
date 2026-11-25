@@ -88,6 +88,33 @@ export function brandCheckAnonymizedData(): {
 }
 
 /**
+ * DIE CHECKS EINES KONTOS UND/ODER EINER MARKE — auf den drei Wegen, die im
+ * Kopf von `markBrandChecksErased` stehen. Streng wie dort: nur eine fehlende
+ * Tabelle ist leer, jeder andere Lesefehler wirft.
+ */
+async function listTargetChecks(
+  event: H3Event,
+  target: { userId?: string, profileId?: string },
+): Promise<Map<string, BrandCheckRow>> {
+  const filters: string[][] = []
+  if (target.userId) filters.push([Query.equal('userId', target.userId)])
+  if (target.profileId) {
+    filters.push([Query.equal('profileId', target.profileId)])
+    filters.push([Query.equal('urlKey', brandCheckDocumentUrlKey(target.profileId))])
+  }
+  const rows = new Map<string, BrandCheckRow>()
+  if (!filters.length) return rows
+
+  const { tablesDB, databaseId } = brandDb(event)
+  for (const filter of filters) {
+    for (const row of await listAllRowsIfTableExists<BrandCheckRow>(tablesDB, databaseId, BRAND_CHECKS_TABLE, filter)) {
+      rows.set(row.$id, row)
+    }
+  }
+  return rows
+}
+
+/**
  * MARKIERT DIE CHECKS EINES KONTOS UND/ODER EINER MARKE ALS GELÖSCHT —
  * Rückgabe: wie viele Zeilen jetzt NEU markiert wurden.
  *
@@ -113,21 +140,9 @@ export async function markBrandChecksErased(
   target: { userId?: string, profileId?: string },
   now: Date = new Date(),
 ): Promise<number> {
-  const filters: string[][] = []
-  if (target.userId) filters.push([Query.equal('userId', target.userId)])
-  if (target.profileId) {
-    filters.push([Query.equal('profileId', target.profileId)])
-    filters.push([Query.equal('urlKey', brandCheckDocumentUrlKey(target.profileId))])
-  }
-  if (!filters.length) return 0
-
+  const rows = await listTargetChecks(event, target)
+  if (!rows.size) return 0
   const { tablesDB, databaseId } = brandDb(event)
-  const rows = new Map<string, BrandCheckRow>()
-  for (const filter of filters) {
-    for (const row of await listAllRowsIfTableExists<BrandCheckRow>(tablesDB, databaseId, BRAND_CHECKS_TABLE, filter)) {
-      rows.set(row.$id, row)
-    }
-  }
 
   const erasedAt = now.toISOString()
   let marked = 0
@@ -143,4 +158,46 @@ export async function markBrandChecksErased(
     }
   }
   return marked
+}
+
+/**
+ * DIE CHECKS EINER ZURÜCKGEHOLTEN MARKE WIEDER ZEIGEN (WH1) — Rückgabe: wie
+ * viele Zeilen wieder sichtbar sind.
+ *
+ * NUR DIE, DIE DIESES LÖSCHEN VERSTECKT HAT: `erasedAt` des Checks gleich
+ * dem Zeitpunkt der Marke (`brand_profiles.erasedAt`; das Löschen schreibt
+ * beide mit DERSELBEN Uhrzeit, `trashBrandProfile`). Ein Check, den ein
+ * anderes Löschen früher versteckt hat, bleibt versteckt — dessen Frist läuft
+ * weiter. Verglichen wird der Zeitpunkt, nicht der Text: Appwrite schreibt
+ * `+00:00`, wo wir `Z` geschickt haben.
+ *
+ * Die Frist prüft der Aufrufer VORHER (`brandProfileTrashState`): nach 90
+ * Tagen hat der Lauf der Prüfergebnisse Website-Checks schon anonymisiert,
+ * und ein anonymisierter Check trägt keine Marke mehr, die ihn zurückholen
+ * könnte.
+ *
+ * STRENG wie das Markieren: ein Lese- oder Schreibfehler wirft, die Marke
+ * bleibt dann im Papierkorb, und ein zweiter Versuch ist gefahrlos.
+ */
+export async function unmarkBrandChecksErased(
+  event: H3Event,
+  profileId: string,
+  erasedAt: string,
+): Promise<number> {
+  const at = Date.parse(erasedAt)
+  if (!profileId || !Number.isFinite(at)) return 0
+  const rows = await listTargetChecks(event, { profileId })
+  const { tablesDB, databaseId } = brandDb(event)
+  let restored = 0
+  for (const row of rows.values()) {
+    if (!row.erasedAt || Date.parse(row.erasedAt) !== at) continue
+    try {
+      await tablesDB.updateRow({ databaseId, tableId: BRAND_CHECKS_TABLE, rowId: row.$id, data: { erasedAt: null } })
+      restored++
+    }
+    catch (error) {
+      if (!isAppwriteNotFound(error)) throw error
+    }
+  }
+  return restored
 }

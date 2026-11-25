@@ -1288,7 +1288,36 @@
         "resultLocked": "Ab Foundation-Abschluss",
         "delete": "Löschen"
       },
-      "loadFailed": "Die Brandings konnten nicht geladen werden."
+      "loadFailed": "Die Brandings konnten nicht geladen werden.",
+      "delete": {
+        "title": "Marke löschen?",
+        "description": "„{title}“ ist sofort für alle unsichtbar. 90 Tage lang kannst du sie unter „Gelöschte Marken“ zurückholen, danach wird sie endgültig gelöscht.",
+        "warningTitle": "Was sofort endet",
+        "warningDescription": "Geteilte Links und die Seite in der Galerie enden sofort; wer die Marke wieder zeigen will, veröffentlicht neu und braucht eine neue Freigabe. Hochgeladene Vorbilder und Logo-Entwürfe bleiben die 90 Tage gespeichert. Wer sein Konto löscht, löscht auch Marken im Papierkorb sofort.",
+        "confirm": "Marke löschen",
+        "done": "Die Marke liegt jetzt unter „Gelöschte Marken“.",
+        "failed": "Die Marke konnte nicht gelöscht werden. Bitte versuch es noch einmal."
+      },
+      "trash": {
+        "title": "Gelöschte Marken",
+        "description": "Gelöschte Marken liegen hier 90 Tage, dann werden sie endgültig gelöscht.",
+        "name": "Marke",
+        "deletedAt": "Gelöscht am",
+        "left": "Endgültig gelöscht in",
+        "daysLeft": "heute | einem Tag | {count} Tagen",
+        "actions": "Aktionen",
+        "restore": "Zurückholen",
+        "restored": "Die Marke ist wieder da. Geteilte Links und die Veröffentlichung kommen nicht zurück.",
+        "restoreFailed": "Die Marke konnte nicht zurückgeholt werden.",
+        "expired": "Die 90 Tage sind um, die Marke lässt sich nicht mehr zurückholen.",
+        "purge": "Jetzt endgültig löschen",
+        "purgeTitle": "Endgültig löschen?",
+        "purgeDescription": "„{title}“ wird jetzt mit allen Kapiteln, Gesprächen, Bildern und Entwürfen gelöscht. Das lässt sich nicht rückgängig machen.",
+        "purged": "Die Marke ist endgültig gelöscht.",
+        "purgeFailed": "Die Marke konnte nicht endgültig gelöscht werden.",
+        "reauth": "Endgültig löschen geht nur kurz nach der Anmeldung. Melde dich neu an, danach kannst du es noch einmal versuchen — gelöscht wurde noch nichts.",
+        "loadFailed": "Die gelöschten Marken konnten nicht geladen werden."
+      }
     },
     "new": {
       "title": "Womit starten wir?",
@@ -3772,7 +3801,7 @@
         "notifications": "Benachrichtigungen",
         "data": "Daten"
       },
-      "deleteNotice": "Deine Marken und alles darin werden sofort gelöscht. Deine Prüfergebnisse sieht ab sofort niemand mehr; nach 90 Tagen werden sie endgültig gelöscht. Ergebnisse über öffentliche Websites bleiben danach bestehen, ohne Bezug zu dir."
+      "deleteNotice": "Deine Marken und alles darin werden sofort gelöscht, auch Marken unter „Gelöschte Marken“. Deine Prüfergebnisse sieht ab sofort niemand mehr; nach 90 Tagen werden sie endgültig gelöscht. Ergebnisse über öffentliche Websites bleiben danach bestehen, ohne Bezug zu dir."
     }
   }
 }

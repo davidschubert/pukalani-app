@@ -100,6 +100,8 @@ export default defineEventHandler(async (event): Promise<BrandProfileScoresRespo
       queries: [
         Query.equal('ownerType', 'user'),
         Query.equal('ownerId', userId),
+        // Marken im Papierkorb (WH1) stehen nur unter „Gelöschte Marken".
+        Query.isNull('erasedAt'),
         Query.orderDesc('lastActivityAt'),
         Query.limit(PROFILE_LIMIT),
       ],

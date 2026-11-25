@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { isBrandProfileErased } from '../../../shared/brandProfileTrash'
 import { RUN_LEASE_BUSY_CODE } from '../../../../core/shared/runLease'
 import { createBrandCheckSchema } from '../../../schemas/brandCheck'
 import {
@@ -273,7 +274,8 @@ async function requireOwnProfileId(event: H3Event, userId: string, profileId: st
       tableId: BRAND_PROFILES_TABLE,
       rowId: profileId,
     })
-    if (row.ownerType !== 'user' || row.ownerId !== userId) {
+    // Eine Marke im Papierkorb (WH1) gilt wie eine fehlende.
+    if (row.ownerType !== 'user' || row.ownerId !== userId || isBrandProfileErased(row)) {
       throw createError({ status: 404, statusText: 'Not Found', data: { code: 'profile_not_found' } })
     }
     return row.$id

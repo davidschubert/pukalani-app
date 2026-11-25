@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 import { displayNameProblem } from '../../../core/shared/displayName'
 import { Query } from 'node-appwrite'
+import { isBrandProfileErased } from '../../shared/brandProfileTrash'
 import type { BrandIntroCallInput, BrandIntroLocale } from '../../schemas/brandIntroCall'
 import {
   type BrandIntroFilter,
@@ -220,6 +221,8 @@ export async function resolveBrandIntroProfileId(
     // `ownerType` wird POSITIV geprüft: einen zweiten Typ (Team) gibt es in
     // diesem Layer heute nicht, und wenn er kommt, soll er hier nicht
     // stillschweigend durchrutschen.
+    // Eine Marke im Papierkorb (WH1) ist keine Herkunft mehr.
+    if (isBrandProfileErased(profile)) return ''
     return profile.ownerType === 'user' && profile.ownerId === input.userId ? profile.$id : ''
   }
   catch (error) {

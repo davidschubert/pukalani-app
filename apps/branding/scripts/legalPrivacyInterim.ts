@@ -77,7 +77,7 @@
  */
 
 /** Stand des Textes. Ändert sich eine Aussage, ändert sich dieses Datum mit. */
-export const PRIVACY_INTERIM_DATE = '2026-11-15'
+export const PRIVACY_INTERIM_DATE = '2026-11-25'
 
 /**
  * FRÜHERE FASSUNGEN DIESES TEXTES — als SHA-256 des ganzen Textes je Sprache.
@@ -94,21 +94,24 @@ export const PRIVACY_INTERIM_DATE = '2026-11-15'
  */
 export const PRIVACY_INTERIM_SUPERSEDED_SHA256: Record<'de' | 'en', readonly string[]> = {
   // Fassung vom 2026-11-12 (erste Übergangsfassung), danach die vom
-  // 2026-11-14 (Bildmodell und Hinweis zum offenen Ort).
+  // 2026-11-14 (Bildmodell und Hinweis zum offenen Ort), danach die vom
+  // 2026-11-15 (vor dem Papierkorb der Marken, WH1).
   de: [
     '6c2623eef8eababa63ec65041a5a3e34b0876a63d9561af57fc07c6a5c92f18e',
     '73955e509c6cb9d3bf0323f5e5db4970a8907a0a7adcdb087e7944abdac8cf7f',
+    'c738bef27c122e91cd961e4f1305fa8d306d2dfb8d872c81bbbbc0b81b234512',
   ],
   en: [
     '8ae6fa07221ac78bb421f76a303166ab0d6247796b8344f663d35ab758a3699e',
     '20a5410e76c5f69ddd66887a53c396c9e224c27a371f9d97325637c5fc84769e',
+    '689df0886873b694c52c8a1d6f035e87348e5a2c42af040b8a751ab80a656434',
   ],
 }
 
 /** Woran das Einspiel-Skript und der Test die Übergangsfassung erkennen. */
 export const PRIVACY_INTERIM_MARKER: Record<'de' | 'en', string> = {
-  de: '> **Vorläufige Fassung, Stand 15. November 2026.**',
-  en: '> **Provisional version, as of 15 November 2026.**',
+  de: '> **Vorläufige Fassung, Stand 25. November 2026.**',
+  en: '> **Provisional version, as of 25 November 2026.**',
 }
 
 export const PRIVACY_INTERIM_BODY: Record<'de' | 'en', string> = {
@@ -208,7 +211,7 @@ An diese Stellen gehen Daten, und nur an diese:
 
 ## Speicherdauer
 
-- **Konto und Markeninhalte:** bis du die Marke oder das Konto löschst.
+- **Konto und Markeninhalte:** bis du die Marke oder das Konto löschst. Eine gelöschte Marke liegt danach 90 Tage unter „Gelöschte Marken“, mit allen hochgeladenen Bildern und Entwürfen, damit du sie zurückholen kannst; dann löschen wir sie endgültig. Löschst du dein Konto, löschen wir auch diese Marken sofort.
 - **Sitzungen:** bis du dich abmeldest oder die Sitzung abläuft.
 - **Brand-Check:** Ein Ergebnis wird sieben Tage lang für dieselbe Adresse wiederverwendet. Gespeichert bleibt es, bis du die Marke oder dein Konto löschst oder wir es auf Anfrage entfernen. Nach dem Löschen sieht es sofort niemand mehr; nach 90 Tagen löschen wir es endgültig. Ein Ergebnis über eine öffentliche Website bleibt danach bestehen, ohne Bezug zu dir.
 - **Korrekturvorschlag zu einem Brand-Check:** Die E-Mail-Adresse, die du dabei angibst, löschen wir 90 Tage nach dem Vorschlag automatisch. Der Vorschlag selbst bleibt, ohne Bezug zu dir.
@@ -224,11 +227,11 @@ Je nachdem, wo du lebst, hast du Rechte an deinen Daten. Nach der DSGVO sind das
 
 - Export und Löschung erledigst du selbst unter [Konto, Daten](/account/data); dort steht vor dem Löschen noch einmal, was geschieht. Löschst du dein Konto, entfernen wir deine Marken, die Gespräche, geteilte Links, Nutzungsereignisse und die Daten deiner Marktvergleiche. Deine Brand-Check-Ergebnisse verstecken wir sofort und löschen sie nach 90 Tagen. Einträge der Warteliste und E-Mail-Adressen an Korrekturvorschlägen und Meldungen entfernen wir mit, wenn sie zu deiner bestätigten Adresse gehören. Einladungen bleiben als Nachweis bestehen, aber ohne deine E-Mail-Adresse.
 - Ergebnisse eines Brand-Checks ohne Konto und Einträge der Warteliste ohne Konto hängen an keinem Konto. Wir entfernen sie auf Anfrage von Hand.
-- Eine einzelne Marke kannst du noch nicht selbst löschen; schreib uns an hello@branding.supply, wir löschen sie für dich. Für alles andere genügt ebenfalls eine Mail an diese Adresse.
+- Eine einzelne Marke löschst du selbst über „Löschen“ an ihrer Karte; sie liegt danach 90 Tage unter „Gelöschte Marken“, dort kannst du sie zurückholen oder sofort endgültig löschen. Für alles andere genügt eine Mail an hello@branding.supply.
 
 ## Änderungen
 
-Stand: 15. November 2026. Ändert sich etwas an den Empfängern oder an dem, was wir verarbeiten, ändern wir diesen Text und das Datum.`,
+Stand: 25. November 2026. Ändert sich etwas an den Empfängern oder an dem, was wir verarbeiten, ändern wir diesen Text und das Datum.`,
 
   en: `${PRIVACY_INTERIM_MARKER.en} This text describes what actually happens to your data on branding.supply today and who receives it. It has not been reviewed by our lawyer yet, which is why it does not name legal bases yet. The reviewed version will replace it.
 
@@ -326,7 +329,7 @@ Data goes to these parties, and only to these:
 
 ## Retention
 
-- **Account and brand content:** until you delete the brand or the account.
+- **Account and brand content:** until you delete the brand or the account. A deleted brand then stays under “Deleted brands” for 90 days, with all uploaded images and drafts, so you can restore it; after that we delete it for good. If you delete your account, we delete these brands right away as well.
 - **Sessions:** until you sign out or the session expires.
 - **Brand check:** a result is reused for the same address for seven days. It stays stored until you delete the brand or your account, or until we remove it on request. After deletion nobody can see it any more; after 90 days we delete it for good. A result about a public website remains after that, with no link to you.
 - **Correction request for a brand check:** we automatically delete the email address you give 90 days after the request. The request itself remains, with no link to you.
@@ -342,9 +345,9 @@ Depending on where you live, you have rights over your data. Under the GDPR thes
 
 - You handle export and deletion yourself under [Account, Data](/account/data); before you delete, that page tells you once more what happens. If you delete your account, we remove your brands, the conversations, shared links, usage events and the data of your market comparisons. We hide your brand check results at once and delete them after 90 days. We also remove waiting list entries and email addresses on correction requests and reports if they belong to your confirmed address. Invitations remain as a record, but without your email address.
 - Results of a brand check without an account and waiting list entries without an account are not tied to an account. We remove them by hand on request.
-- You cannot delete a single brand yourself yet; write to hello@branding.supply and we delete it for you. For everything else, an email to that address is enough as well.
+- You delete a single brand yourself with “Delete” on its card; it then stays under “Deleted brands” for 90 days, where you can restore it or delete it for good right away. For everything else, an email to hello@branding.supply is enough.
 
 ## Changes
 
-As of 15 November 2026. If the recipients or what we process change, we change this text and the date.`,
+As of 25 November 2026. If the recipients or what we process change, we change this text and the date.`,
 }

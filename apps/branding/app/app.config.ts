@@ -301,6 +301,13 @@ export default defineAppConfig({
        */
       introRequestRetention: 'apply',
       /**
+       * DER PAPIERKORB DER MARKEN (WH1): 'count' — der Lauf zählt nur
+       * (`retention.run`, `job: brand-profile-trash`). 'apply' erst mit
+       * Davids Ja zur gezählten Zahl; frühestens 90 Tage nach dem ersten
+       * „Marke löschen" kann überhaupt etwas fällig sein.
+       */
+      profileTrash: 'count',
+      /**
        * DIE DREI RECHTSWÖRTER IM FUSS SIND SEIT BS1 R1 ECHTE LINKS
        * (2026-09-07). Bis dahin standen sie hier bewusst leer — der
        * Layer-Default lässt die Zeile dann ganz weg, weil ein Wort ohne Ziel
