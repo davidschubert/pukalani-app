@@ -64,6 +64,7 @@ Teil (b) Datenschutztexte lebt in DT1 weiter. Damit ist KI1 geschlossen.
 **Gelernt:** Ein Protokoll nur für Fehler beantwortet die Frage „was kostet
 das?" nie — ein gescheiterter Lauf kostet einmal, ein erfolgreicher hundertmal.
 Der Vermittler schickt den Betrag mit; man muss ihn nur lesen.
+
 ### RU1 (c) — Runner: ein Dateiname wird im Ticket nicht mehr zum Link ✅ 2026-11-25
 
 Der Editor der Ticket-Beschreibung machte aus `README.md` den Link
