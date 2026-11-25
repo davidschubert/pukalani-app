@@ -1,6 +1,6 @@
 # Günstigeres Textmodell – Probe und Entscheidung (KM1 c)
 
-> **Plan-Status (2026-11-24):** teils gebaut — offen: Schritt 2 bis 4 (Probe, Lese-Probe, Umstellen); Schritt 1 (Transport) gebaut, Davids Ja am 2026-11-24 ([OPEN-ITEMS](../OPEN-ITEMS.md) „KM1“).
+> **Plan-Status (2026-11-25):** teils gebaut — offen: Schritt 4 für die übrigen Deployments (`reviewModel`, Ticket-Auswahl, UGC/Seiten nach eigenem Lauf); Schritt 1 bis 3 erledigt, branding.supply läuft seit 2026-11-25 mit Haiku 5.5 ([OPEN-ITEMS](../OPEN-ITEMS.md) „KM1“, COMPLETE „KM1 c2“).
 
 Stand: 2026-11-22. Die Probe-Vorrichtung steht im Repo
 (`scripts/ki-modell-probe.mjs`), ein echter Probelauf ist gefahren (lokal,
