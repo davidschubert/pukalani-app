@@ -85,7 +85,7 @@ overrides:
   '@tiptap/extension-list': 3.34.0
   '@tiptap/extension-list-item': 3.34.0
   '@tiptap/extension-list-keymap': 3.34.0
-  '@tiptap/extension-mention': 3.34.0
+  '@tiptap/extension-mention': 3.35.0
   '@tiptap/extension-node-range': 3.34.0
   '@tiptap/extension-ordered-list': 3.34.0
   '@tiptap/extension-paragraph': 3.34.0
@@ -181,7 +181,7 @@ catalog:
   # dass Tiptap Extensions aus der fremden Kopie nicht mehr erkennt. Bei einem
   # @nuxt/ui-Bump gehört diese Zeile mitgezogen — `pnpm check:single-copy`
   # (Liste enthält `@tiptap/core`) ist der Wächter.
-  '@tiptap/extension-mention': 3.34.0
+  '@tiptap/extension-mention': 3.35.0
   # Bild-Naht Schritt 2 (C14). 2.2.1 (2026-11-06, GHSA-p5vf-pjf5-ggj3: Speicher-
   # fehler in der /_ipx-Route) haengt an h3 ^1.15.11 — die Linie, die
   # `overrides.h3` festhaelt — und an @nuxt/kit ^4.6.3, also EINE Kit-Linie
