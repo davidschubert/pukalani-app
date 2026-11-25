@@ -215,7 +215,7 @@ catalog:
   # die alte vue-Version und nuxt zieht daneben die neue: mit ZWEI vue-Kopien
   # läuft der Nitro-Externals-Tracer im Zyklus vue → @vue/server-renderer → vue
   # und der Prod-Build stirbt an ENAMETOOLONG.
-  vue: ^3.5.45
+  vue: ^3.5.46
   # 6.0 ist die DECKE, nicht 7 (2026-11-10 ausprobiert): TypeScript 7 ist der
   # native Compiler und exportiert die klassische JS-API nicht mehr (Paket-
   # Wurzel = nur `version.cjs`). vue-tsc stirbt an `./lib/tsc` (ERR_PACKAGE_
