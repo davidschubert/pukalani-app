@@ -92,6 +92,61 @@ export function logAiFailed(ctx: AiRunContext, kind: AiFailureKind, status?: num
   })
 }
 
+/**
+ * KI1 (d): WAS EIN ERFOLGREICHER LAUF GEKOSTET HAT, und bei wem (2026-11-25).
+ *
+ * Bis hierher stand ein bezahlter Lauf nur im Log, wenn er SCHEITERTE. Wer
+ * wissen wollte, was eine Route im Betrieb kostet oder welcher Anbieter unter
+ * der Europa-Bindung wirklich gerechnet hat, musste beim Vermittler
+ * nachsehen. Jetzt schreibt jeder erfolgreiche Text-Lauf (auch der Stream)
+ * EINE zählbare `info`-Zeile `ai.completed`: Kennungen und Zahlen, wie
+ * `ai.failed` — kein Text, kein Prompt.
+ *
+ * `costUsd` ist der Betrag, den der Vermittler in `usage.cost` meldet
+ * (OpenRouter schickt ihn mit, in US-Dollar). Fehlt er, fehlt das Feld —
+ * geschätzt wird nicht. `provider` ist der Anbieter, den der Vermittler
+ * nennt („Amazon Bedrock" ⇒ `amazon-bedrock`).
+ */
+export interface AiCompletedFields {
+  provider?: string
+  promptTokens?: number | null
+  completionTokens?: number | null
+  costUsd?: number | null
+}
+
+/** „Amazon Bedrock" ⇒ `amazon-bedrock`; leer oder nichts Lesbares ⇒ `undefined`. */
+export function aiProviderSlug(provider: unknown): string | undefined {
+  if (typeof provider !== 'string') return undefined
+  const slug = provider.trim().toLowerCase().replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '')
+  return slug.length > 0 && slug.length <= 64 ? slug : undefined
+}
+
+/** `usage.cost` des Vermittlers — nur eine endliche Zahl ab 0, sonst `null`. */
+export function aiUsageCost(usage: unknown): number | null {
+  if (!usage || typeof usage !== 'object') return null
+  const cost = (usage as { cost?: unknown }).cost
+  return typeof cost === 'number' && Number.isFinite(cost) && cost >= 0 ? cost : null
+}
+
+function finiteOrUndefined(value: number | null | undefined): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+export function logAiCompleted(ctx: AiRunContext, fields: AiCompletedFields): void {
+  const costUsd = finiteOrUndefined(fields.costUsd)
+  logEvent('info', 'ai.completed', {
+    label: aiLogSafeValue(ctx.label),
+    model: aiLogSafeValue(ctx.model),
+    run: aiLogSafeValue(ctx.run),
+    ms: aiRunMs(ctx),
+    provider: fields.provider === undefined ? undefined : aiLogSafeValue(fields.provider),
+    tokensIn: finiteOrUndefined(fields.promptTokens),
+    tokensOut: finiteOrUndefined(fields.completionTokens),
+    // Auf Millionstel gerundet: mehr Stellen meldet kein Vermittler sinnvoll.
+    costUsd: costUsd === undefined ? undefined : Math.round(costUsd * 1e6) / 1e6,
+  })
+}
+
 /** Der Abschalter hat einen Aufruf verhindert — eine `warn`-Zeile, zählbar wie `ai.failed`. */
 export function logAiDisabled(label: string, model: string | undefined, run: string | undefined): void {
   logEvent('warn', 'ai.disabled', {

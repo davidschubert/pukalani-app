@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import type { AiCompleteOptions } from './aiComplete'
 import { buildAiRequestBody, getAiConfig, resolveAiKey } from './aiComplete'
-import { aiCallFailed, aiHttpFailure, aiLogLine, aiRunMs, assertAiRouteOnly, isAiTransportError, logAiFailed, startAiRun } from './aiLog'
+import { aiCallFailed, aiHttpFailure, aiLogLine, aiProviderSlug, aiRunMs, aiUsageCost, assertAiRouteOnly, isAiTransportError, logAiCompleted, logAiFailed, startAiRun } from './aiLog'
 import { assertAiSwitchedOn } from './aiKillSwitch'
 
 /**
@@ -51,6 +51,8 @@ export interface AiStreamUsage {
   promptTokens: number | null
   completionTokens: number | null
   totalTokens: number | null
+  /** `usage.cost` des Vermittlers in US-Dollar (KI1 d); fehlt ⇒ `null`. */
+  cost: number | null
 }
 
 /** Was in EINEM SSE-Frame stehen kann. */
@@ -83,6 +85,7 @@ function readUsage(raw: unknown): AiStreamUsage {
     promptTokens: toNumberOrNull(usage.prompt_tokens),
     completionTokens: toNumberOrNull(usage.completion_tokens),
     totalTokens: toNumberOrNull(usage.total_tokens),
+    cost: aiUsageCost(usage),
   }
 }
 
@@ -336,6 +339,13 @@ export async function aiCompleteStream(
       finished = await consume(decoded.events)
     }
     if (!finished) await consume(decodeSseTail(buffer))
+    // KI1 (d): der fertige Strom bekommt dieselbe Zeile wie der Text-Weg.
+    logAiCompleted(ctx, {
+      provider: aiProviderSlug(result.provider),
+      promptTokens: result.usage?.promptTokens,
+      completionTokens: result.usage?.completionTokens,
+      costUsd: result.usage?.cost,
+    })
   }
   catch (error) {
     if (isAbortError(error)) {
