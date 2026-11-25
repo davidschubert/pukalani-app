@@ -75,6 +75,7 @@ Ein Lader „je Bereich" hätte eine Pflege-Liste gebraucht, die mit jedem neuen
 Text veraltet; der Schnitt je Seite misst der Server selbst. Den Fehlfall
 (ein Text, der erst im Browser auftaucht) beweist man nur mit einem
 künstlich verzögerten Katalog — von Hand trifft man die Lücke nie.
+
 ### RU1 (c) — Runner: ein Dateiname wird im Ticket nicht mehr zum Link ✅ 2026-11-25
 
 Der Editor der Ticket-Beschreibung machte aus `README.md` den Link
