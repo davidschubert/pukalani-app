@@ -68,7 +68,7 @@ describe('decodeSseChunk — chunk-grenzen-fest', () => {
       { kind: 'meta', model: 'anthropic/claude-haiku-4.5', provider: 'Anthropic' },
       { kind: 'delta', text: 'Hallo ' },
       { kind: 'delta', text: 'Welt' },
-      { kind: 'usage', usage: { promptTokens: 12, completionTokens: 3, totalTokens: 15 } },
+      { kind: 'usage', usage: { promptTokens: 12, completionTokens: 3, totalTokens: 15, cost: null } },
       { kind: 'done' },
     ])
   })
@@ -193,7 +193,7 @@ describe('aiCompleteStream', () => {
     expect(result.text).toBe('Hallo Welt')
     expect(result.model).toBe('anthropic/claude-haiku-4.5')
     expect(result.provider).toBe('Anthropic')
-    expect(result.usage).toEqual({ promptTokens: 12, completionTokens: 3, totalTokens: 15 })
+    expect(result.usage).toEqual({ promptTokens: 12, completionTokens: 3, totalTokens: 15, cost: null })
     expect(result.aborted).toBe(false)
     expect(deltas).toEqual(['Hallo ', 'Welt'])
   })

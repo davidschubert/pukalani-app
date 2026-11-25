@@ -30,6 +30,41 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### KI1 (d) — KI-Schutz: Kosten und Anbieter je Lauf im Protokoll ✅ 2026-11-25
+
+Bis hierher stand ein bezahlter KI-Lauf nur im Log, wenn er scheiterte
+(`ai.failed`). Jetzt schreibt jeder erfolgreiche Text-Lauf und jeder fertige
+Stream EINE `info`-Zeile `ai.completed` mit `label`, `model`, `run`, `ms`,
+`provider` (Anbieter, den der Vermittler nennt: „Amazon Bedrock" ⇒
+`amazon-bedrock`), `tokensIn`, `tokensOut` und `costUsd` (der Betrag aus
+`usage.cost`, auf Millionstel gerundet). Fehlt der Betrag, fehlt das Feld —
+geschätzt wird nichts. Kein Prompt, kein Antworttext (`aiLog.ts`,
+`logAiCompleted`). Der tägliche Wächter zählt weiter nur `ai.failed` und
+`ai.disabled` (genauer Vergleich in `ops/app-watch-counts.mjs`).
+Beweis: `packages/core/tests/aiCompletedLog.test.ts` (genaue Feldliste,
+geheimer Text taucht nicht auf, ohne Betrag kein Feld, Ausfall ohne Zeile,
+Stream liest den Betrag aus dem letzten Frame).
+
+Bild, Vision und Video schreiben die Zeile noch nicht; sie laufen selten und
+nur auf branding.supply. Bewusst so gelassen, nicht vergessen.
+
+Die übrigen Kleinigkeiten aus (d) sind bewertet und ohne Bau geschlossen:
+- Beim Speichern eines Modells wird nur der Ort geprüft; ob der Anbieter
+  nichts speichert, prüft der tägliche Wächter. Das reicht: ein Modell ohne
+  diese Zusage bekommt unter der Bindung ohnehin keinen Endpunkt (404 ⇒ 503).
+- Der Klick auf der Config-Seite ist lokal gezeigt (COMPLETE „N15"); auf
+  Production bräuchte er Davids Anmeldung und ändert nichts am Beweis.
+- Die englischen Hinweise HINTER der Anmeldung (abgeschnittener Zug, Satz
+  ohne Europa-Endpunkt, Hinweis vor dem Entwurfs-Knopf) sind durch Tests und
+  Sprachdateien belegt (`pnpm check:i18n-keys`). Zwei davon zeigen sich nur
+  nach einem echten abgeschnittenen Zug oder mit einem Modell ohne
+  Europa-Endpunkt; der Aufwand dafür steht in keinem Verhältnis.
+Teil (b) Datenschutztexte lebt in DT1 weiter. Damit ist KI1 geschlossen.
+
+**Gelernt:** Ein Protokoll nur für Fehler beantwortet die Frage „was kostet
+das?" nie — ein gescheiterter Lauf kostet einmal, ein erfolgreicher hundertmal.
+Der Vermittler schickt den Betrag mit; man muss ihn nur lesen.
+
 ### TK1 — Textkatalog: die Seite bringt ihre Texte mit, der volle Katalog kommt nach dem Start (Rest von PERF-006) ✅ 2026-11-25
 
 **Vorher gemessen (Production, `/de`, gepackt):** vor dem Start jeder Seite
