@@ -70,6 +70,10 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   macOS und Linux nicht nachstellen, das Skript ist seitdem umgebaut). Seit
   dem 2026-11-18 hält der Test bei einem Fehlschlag die Spur des Skripts
   fest — wird er wieder rot, steht die Zeile da (COMPLETE „N14").
+  Wackelig im Nacht-Lauf: `verify-handles-mentions` (und am 22.11.
+  `verify-trial-notice`) scheitern ab und zu an
+  `page.waitForLoadState('networkidle')` (30 s) — mit offener Live-Verbindung
+  wird das Netz nie ganz still. Besser auf ein Element der Seite warten.
 - **(e) erledigt am 2026-11-22** (COMPLETE „BT1 (e)"): Übersicht und
   Statistik einer Pool-Community sieht über den Not-Zugang nur der Betreiber.
 - **(f) Reste aus dem roten Nacht-Lauf vom 2026-11-21** (COMPLETE „N21": ein
