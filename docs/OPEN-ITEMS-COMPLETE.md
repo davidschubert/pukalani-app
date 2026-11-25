@@ -65,6 +65,52 @@ Teil (b) Datenschutztexte lebt in DT1 weiter. Damit ist KI1 geschlossen.
 das?" nie — ein gescheiterter Lauf kostet einmal, ein erfolgreicher hundertmal.
 Der Vermittler schickt den Betrag mit; man muss ihn nur lesen.
 
+### TK1 — Textkatalog: die Seite bringt ihre Texte mit, der volle Katalog kommt nach dem Start (Rest von PERF-006) ✅ 2026-11-25
+
+**Vorher gemessen (Production, `/de`, gepackt):** vor dem Start jeder Seite
+holte der Browser den ganzen Textkatalog seiner Sprache und wartete darauf —
+branding.supply 108 KB, pukalani.app 29 KB, pukalani.studio 28 KB.
+
+**Gebaut — nicht nach Bereichen von Hand geschnitten, sondern je Seite.**
+Eine Liste „welcher Schlüssel gehört zu welchem Bereich" hätte jemand pflegen
+müssen (allein `brand` hat 61 Bereiche, Startseite und Dashboard teilen sich
+viele). Stattdessen:
+
+- `i18n.experimental.preload` + `stripMessagesPayload` in
+  `packages/core/nuxt.config.ts`: der Server legt genau die Texte in die
+  Seite, die er beim Rendern über `t`/`te`/`tm` angefasst hat.
+- Das allein reichte nicht (GW1): @nuxtjs/i18n 10.6 holt trotzdem vor der
+  Hydration den vollen Katalog, weil `loadMessages` die eingebetteten Texte
+  nicht kennt. Die Weiche `packages/core/app/plugins/i18n-catalog-later.client.ts`
+  (Logik `packages/core/app/utils/i18nCatalogLater.ts`) setzt sich im Hook
+  `i18n:beforeLocaleSwitch` vor diesen Abruf, lässt ihn während der
+  Hydration aus und holt den Katalog, sobald die Seite steht
+  (`onNuxtReady`). Fehlt vorher ein Text, steht dort eine leere Stelle statt
+  des rohen Schlüssels, und der Katalog kommt sofort.
+- `<i18n-t>` meldete seinen Schlüssel nicht an den Server (eigener Weg in
+  vue-i18n): `packages/core/app/plugins/i18n-track-keypath.server.ts`.
+- Wächter: `packages/core/tests/i18nCatalogLater.test.ts` — die Weiche mit
+  Gegenproben und die drei inneren Stellen von @nuxtjs/i18n und vue-i18n, auf
+  die sie sich stützt (ein Update, das eine davon ändert, ist dort rot).
+
+**Nachher (lokal, Production-Build):** in die Seite eingebettet sind
+branding.supply 3 KB, pukalani.app 8 KB gepackt; der volle Katalog startet
+erst nach dem Start (gemessen bei rund 1,3 s, alle Skripte waren nach 60 ms
+da). Skript-Gewicht +4 KB je Startseite (der Leser für die eingebetteten
+Texte): branding 311 KB, marketing 285 KB, beide unter der Grenze.
+Browser: branding.supply und pukalani.app in de und en, Navigation,
+Sprachwechsel, keine rohen Schlüssel. Mit einem Proxy, der den Katalog 6 s
+zurückhält: Menü und Formular vollständig, ein nicht eingebetteter Text
+(`brand.kitPage.title`) zeigt „" und nach dem Eintreffen „Kit"; danach
+verhält sich ein unbekannter Schlüssel wie vorher.
+
+**Gelernt:** Der eingebaute Weg des Moduls war fast fertig — er scheiterte an
+einer einzigen Stelle (`loadMessages` kennt die eingebetteten Texte nicht).
+Ein Lader „je Bereich" hätte eine Pflege-Liste gebraucht, die mit jedem neuen
+Text veraltet; der Schnitt je Seite misst der Server selbst. Den Fehlfall
+(ein Text, der erst im Browser auftaucht) beweist man nur mit einem
+künstlich verzögerten Katalog — von Hand trifft man die Lücke nie.
+
 ### RU1 (c) — Runner: ein Dateiname wird im Ticket nicht mehr zum Link ✅ 2026-11-25
 
 Der Editor der Ticket-Beschreibung machte aus `README.md` den Link

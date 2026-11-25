@@ -137,6 +137,14 @@ export default defineNuxtConfig({
       { code: 'en', language: 'en-US', name: 'English', file: 'en.json' },
       { code: 'de', language: 'de-DE', name: 'Deutsch', file: 'de.json' },
     ],
+    // TK1 (Rest von PERF-006): die Seite bringt die Texte mit, die der Server
+    // beim Rendern benutzt hat; den vollen Katalog holt der Browser erst nach
+    // dem Start (`app/plugins/i18n-catalog-later.client.ts`). Ohne die Weiche
+    // holte das Modul ihn trotzdem VOR der Hydration (COMPLETE „GW1“).
+    experimental: {
+      preload: true,
+      stripMessagesPayload: true,
+    },
   },
 
   // SYMBOLE NUR AUS DEN INSTALLIERTEN PAKETEN (FE-002, 2026-11-20). Die Vorgabe

@@ -36,6 +36,13 @@ paths:
   vue-i18n bei fehlender Übersetzung den SCHLÜSSEL ausgibt. NEUES CONFIG-FELD
   MIT SCHLÜSSEL ⇒ in die `FIELDS`-Tabelle von `scripts/check-i18n-keys.mjs`,
   sonst ist es ungedeckt.
+- DIE SEITE BRINGT NUR IHRE TEXTE MIT (TK1): eingebettet wird, was der
+  Server über `t`/`te`/`tm`/`<i18n-t>` angefasst hat; der volle Katalog kommt
+  nach dem Start (`core/app/plugins/i18n-catalog-later.client.ts`). Ein Text,
+  der erst im Browser auftaucht (`ClientOnly`, früher Klick), ist bis dahin
+  LEER, nicht roh. Wer Texte an der Übersetzungs-API vorbei liest (eigene
+  Funktion um `messages`), bricht das — immer über `t`/`tm`. Beweis des
+  Fehlfalls nur mit verzögertem `/_i18n/`-Abruf (COMPLETE „TK1").
 - ZWEITER TEIL (Q03): derselbe Lauf liest jeden FEST genannten Schlüssel —
   `t('…')`, `$t('…')`, `keypath="…"` in `app/` und `shared/` — und verlangt ihn
   in JEDER App, die die Datei mitbringt, in beiden Sprachen
