@@ -8,9 +8,12 @@ import {
   aiHttpFailure,
   aiLogLine,
   aiProviderErrorCode,
+  aiProviderSlug,
   aiRoutingInvalidError,
   aiRunMs,
+  aiUsageCost,
   assertAiRouteOnly,
+  logAiCompleted,
   startAiRun,
 } from './aiLog'
 import { assertAiSwitchedOn } from './aiKillSwitch'
@@ -349,17 +352,26 @@ async function runAiCompletion(event: H3Event, prompt: string, options: AiComple
     if (!res.ok) await aiHttpFailure(res, ctx, 'KI-API-Fehler')
     const payload = await res.json() as {
       id?: unknown
+      provider?: unknown
       choices?: { message?: { content?: string }, finish_reason?: string }[]
-      usage?: { prompt_tokens?: number, completion_tokens?: number }
+      usage?: { prompt_tokens?: number, completion_tokens?: number, cost?: unknown }
     }
     const choice = payload.choices?.[0]
+    const completion: AiCompletion = {
+      content: choice?.message?.content ?? '',
+      finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
+      promptTokens: typeof payload.usage?.prompt_tokens === 'number' ? payload.usage.prompt_tokens : 0,
+      completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
+    }
+    // KI1 (d): jeder bezahlte Lauf eine Zeile mit Anbieter und Kosten (`aiLog.ts`).
+    logAiCompleted(ctx, {
+      provider: aiProviderSlug(payload.provider),
+      promptTokens: completion.promptTokens,
+      completionTokens: completion.completionTokens,
+      costUsd: aiUsageCost(payload.usage),
+    })
     return {
-      completion: {
-        content: choice?.message?.content ?? '',
-        finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : '',
-        promptTokens: typeof payload.usage?.prompt_tokens === 'number' ? payload.usage.prompt_tokens : 0,
-        completionTokens: typeof payload.usage?.completion_tokens === 'number' ? payload.usage.completion_tokens : 0,
-      },
+      completion,
       ctx,
       status: res.status,
       gen: typeof payload.id === 'string' ? payload.id : undefined,
