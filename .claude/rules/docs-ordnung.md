@@ -9,10 +9,14 @@ Vier Sorten, jede mit genau EINEM Zuhause. Wer eine neue Datei anlegt,
 entscheidet zuerst die Sorte und trägt sie in die Karte ein
 (`pnpm check:doc-links` hält Verweise, Karte und Plan-Status).
 - **Steuerung** `docs/` — **`docs/OPEN-ITEMS.md` ist DIE EINE offene-Punkte-
-  Liste** und enthält NUR Offenes (Davids Regel): Tabellen je Schritt unter
-  „Jetzt dran — in dieser Reihenfolge" mit den Spalten
-  # | Was (einfach erklärt) | Prio | Aufwand | Braucht David? | Details,
-  darunter Geparktes und bewusst Zurückgestelltes. Jeder Eintrag hat ein
+  Liste** und enthält NUR Offenes (Davids Regel): sechs Abschnitte nach
+  Produkt — Community-App · branding.supply · Studio · Pukalani-Konto ·
+  Projekt & Kern (Betrieb, Core, Tests, Recht übergreifend; KR1) · Bugs
+  (tritt heute auf). Spalten # | Was | Prio | Aufwand | Wer (David/Session/
+  Termin) | Bereich (Betrieb/Recht/Geld/Feature/Test/Aufräumen) | Braucht
+  David? | Details / Wartet auf. Ein Punkt steht GENAU EINMAL (Hauptprodukt
+  oder Kern), andere Abschnitte nennen nur das Kürzel als Verweis.
+  Bewusst Zurückgestelltes steht im Anhang. Jeder Eintrag hat ein
   KÜRZEL und höchstens 3 gerenderte Zeilen; die Tiefe lebt im verlinkten Plan
   oder je Kürzel in `docs/plans/offen/<Kürzel>.md`, nicht in der Liste.
   **Erledigtes zieht SOFORT und FINAL nach `docs/OPEN-ITEMS-COMPLETE.md`** —

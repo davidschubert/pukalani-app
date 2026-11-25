@@ -9,8 +9,14 @@
 Jede Zeile ist ein Satz oder Abschnitt, der in die Erklärungen gehört;
 freigegeben wird von David, nach der Antwort des Anwalts.
 
-- **KI** — was die Texte über Speicherung, Training und den Ort der
-  Verarbeitung sagen dürfen ([KI1 b](KI1.md)).
+- **KI** (aus KI1 b, KI1 selbst ist seit dem 2026-11-25 geschlossen) — was
+  die Texte über Speicherung, Training und den Ort der Verarbeitung sagen
+  dürfen. Stand im Code: Übersetzung, Moderations-Hilfe, Ticket-Einordnung,
+  Seiten-Übersetzung und Markenberater lassen den Anbieter nichts speichern,
+  nicht damit trainieren und in Europa rechnen (Amazon Bedrock in Irland oder
+  Google Vertex in Europa, vermittelt über OpenRouter). Die EINE Ausnahme ist
+  das Erzeugen der Zeichen-Entwürfe (kein fester Ort, steht schon im Text von
+  branding.supply).
 - **Fristen** — Kopie gelöschter Konten, Prüfergebnisse, Melder-Adresse,
   Protokoll ([EL1 b](EL1.md)). Dazu, seit dem 2026-11-17 gebaut und
   eingeschaltet, aber noch in keinem Text: Warteliste (nie bestätigt 30
