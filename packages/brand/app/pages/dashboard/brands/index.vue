@@ -7,7 +7,12 @@ import {
   type BrandStepKey,
 } from '../../../../shared/slotRegistry'
 import { brandGradientFor } from '../../../../shared/brandPalette'
-import type { BrandProfileScoresResponse, BrandProfileSummary } from '../../../../shared/types/brand'
+import type {
+  BrandProfileScoresResponse,
+  BrandProfileSummary,
+  BrandProfileTrashItem,
+  BrandProfileTrashListResponse,
+} from '../../../../shared/types/brand'
 import { useBrandWorkspaceStore } from '../../../stores/brandWorkspace'
 
 /**
@@ -273,6 +278,114 @@ async function createFromModal(payload: BwNewBrandSubmit): Promise<void> {
   if (await createBrand(payload)) newBrandOpen.value = false
 }
 
+/**
+ * DER PAPIERKORB (WH1, Davids Entscheidung 2026-11-15) — „Löschen" an der
+ * Karte und der Abschnitt „Gelöschte Marken" unter dem Raster.
+ *
+ * Löschen fragt über `useConfirm()` nach und sagt im Hinweis, was sofort
+ * endet und was 90 Tage bleibt (Wortlaut aus dem Plan
+ * `docs/plans/WIEDERHERSTELLUNG.md`). Die Liste ist eine `UTable` (B6); sie
+ * steht nur da, wenn es gelöschte Marken gibt — ein leerer Papierkorb ist
+ * keine Auskunft, die jemand sucht. Ein Ladefehler bleibt eine Zeile, die
+ * Übersicht scheitert nicht daran.
+ */
+const toast = useToast()
+const confirm = useConfirm()
+const { promptFreshSignIn } = useRecentAuthPrompt()
+
+const { data: trash, error: trashError, refresh: refreshTrash } = await useAsyncData<BrandProfileTrashListResponse | null>(
+  'brand-profile-trash',
+  async () => {
+    try {
+      return await request<BrandProfileTrashListResponse>('/api/brand/profiles/trash')
+    }
+    catch (error) {
+      if (isFetchOutage(error)) throw error
+      return null
+    }
+  },
+)
+const trashItems = computed(() => trash.value?.items ?? [])
+const trashFailed = computed(() => isFetchOutage(trashError.value))
+
+const trashColumns = computed(() => [
+  { accessorKey: 'title', header: t('brand.brands.trash.name') },
+  { accessorKey: 'erasedAt', header: t('brand.brands.trash.deletedAt') },
+  { accessorKey: 'daysLeft', header: t('brand.brands.trash.left') },
+  // Nie ein leerer Spaltenkopf (stiller Hydration-Fehler): beschriftet, nur
+  // für Screenreader.
+  { id: 'actions', header: () => h('span', { class: 'sr-only' }, t('brand.brands.trash.actions')) },
+])
+
+function trashTitle(item: { title: string }): string {
+  return item.title || t('brand.brands.card.untitled')
+}
+
+async function refreshAfterTrashChange(): Promise<void> {
+  await Promise.all([store.loadProfiles(request).catch(() => {}), refreshTrash(), refreshScores()])
+}
+
+async function deleteBrand(profile: BrandProfileSummary): Promise<void> {
+  try {
+    const ok = await confirm({
+      title: t('brand.brands.delete.title'),
+      description: t('brand.brands.delete.description', { title: profile.title || t('brand.brands.card.untitled') }),
+      confirmLabel: t('brand.brands.delete.confirm'),
+      warning: {
+        title: t('brand.brands.delete.warningTitle'),
+        description: t('brand.brands.delete.warningDescription'),
+      },
+      action: () => $fetch(`/api/brand/profiles/${profile.id}`, { method: 'DELETE' }),
+    })
+    if (!ok) return
+    toast.add({ title: t('brand.brands.delete.done') })
+  }
+  catch {
+    toast.add({ title: t('brand.brands.delete.failed'), color: 'error' })
+  }
+  await refreshAfterTrashChange()
+}
+
+const trashBusy = ref<string | null>(null)
+
+async function restoreBrand(item: BrandProfileTrashItem): Promise<void> {
+  if (trashBusy.value) return
+  trashBusy.value = item.id
+  try {
+    await $fetch(`/api/brand/profiles/${item.id}/restore`, { method: 'POST' })
+    toast.add({ title: t('brand.brands.trash.restored') })
+  }
+  catch (error) {
+    const reason = (error as { data?: { reason?: unknown } } | null)?.data?.reason
+    toast.add({
+      title: reason === 'trash_expired' ? t('brand.brands.trash.expired') : t('brand.brands.trash.restoreFailed'),
+      color: 'error',
+    })
+  }
+  finally {
+    trashBusy.value = null
+  }
+  await refreshAfterTrashChange()
+}
+
+async function purgeBrand(item: BrandProfileTrashItem): Promise<void> {
+  try {
+    const ok = await confirm({
+      title: t('brand.brands.trash.purgeTitle'),
+      description: t('brand.brands.trash.purgeDescription', { title: trashTitle(item) }),
+      confirmLabel: t('brand.brands.trash.purge'),
+      action: () => $fetch(`/api/brand/profiles/${item.id}/purge`, { method: 'DELETE' }),
+    })
+    if (!ok) return
+    toast.add({ title: t('brand.brands.trash.purged') })
+  }
+  catch (error) {
+    if (await promptFreshSignIn(error, t('brand.brands.trash.reauth'))) return
+    toast.add({ title: t('brand.brands.trash.purgeFailed'), color: 'error' })
+  }
+  await refreshTrash()
+}
+
 useBrandTitle(() => t('brand.brands.title'))
 </script>
 
@@ -370,6 +483,7 @@ useBrandTitle(() => t('brand.brands.title'))
             :pct="profile.progressPct"
             :result-to="resultPath(profile)"
             :result-ready="resultReady(profile)"
+            @delete="deleteBrand(profile)"
           />
           <!-- Der Brand-Score (BRAND-CHECK-SEITE §5) steht UNTER der Karte und
                nicht in ihr: `BwBrandCard` ist Davids abgenommener Klickdummy,
@@ -397,6 +511,47 @@ useBrandTitle(() => t('brand.brands.title'))
           </div>
         </div>
       </div>
+
+      <!-- Der Papierkorb (WH1): nur mit Inhalt oder bei einem Ladefehler. -->
+      <section
+        v-if="!store.denied && (trashItems.length || trashFailed)"
+        class="mt-20" aria-labelledby="brand-trash-title" data-brand-trash
+      >
+        <h2 id="brand-trash-title" class="text-lg font-semibold">{{ t('brand.brands.trash.title') }}</h2>
+        <p class="mt-1 text-sm" style="color: var(--bw-muted)">{{ t('brand.brands.trash.description') }}</p>
+        <CoreInlineLoadError
+          v-if="trashFailed" class="mt-4"
+          :text="t('brand.brands.trash.loadFailed')" :retry="refreshTrash"
+        />
+        <UTable v-else class="mt-4" :data="trashItems" :columns="trashColumns">
+          <template #title-cell="{ row }">
+            {{ trashTitle(row.original) }}
+          </template>
+          <template #erasedAt-cell="{ row }">
+            {{ publicationDate(row.original.erasedAt) }}
+          </template>
+          <template #daysLeft-cell="{ row }">
+            {{ t('brand.brands.trash.daysLeft', { count: row.original.daysLeft }, row.original.daysLeft) }}
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex justify-end gap-2">
+              <UButton
+                icon="i-ph-arrow-counter-clockwise" size="sm" variant="outline"
+                :label="t('brand.brands.trash.restore')"
+                :loading="trashBusy === row.original.id" :disabled="trashBusy !== null"
+                data-brand-trash-restore
+                @click="restoreBrand(row.original)"
+              />
+              <UButton
+                icon="i-ph-trash" size="sm" color="error" variant="ghost"
+                :label="t('brand.brands.trash.purge')" :disabled="trashBusy !== null"
+                data-brand-trash-purge
+                @click="purgeBrand(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+      </section>
 
     </div>
 

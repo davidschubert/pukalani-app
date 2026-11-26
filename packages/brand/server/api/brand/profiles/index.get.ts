@@ -37,6 +37,8 @@ export default defineEventHandler(async (event): Promise<BrandProfileListRespons
       queries: [
         Query.equal('ownerType', 'user'),
         Query.equal('ownerId', userId),
+        // Marken im Papierkorb (WH1) stehen nur unter „Gelöschte Marken".
+        Query.isNull('erasedAt'),
         // Zuletzt angefasst zuerst — die Karte, an der jemand gerade arbeitet,
         // steht oben. `lastActivityAt` ist genau dafür da (Schema-Anhang §1).
         Query.orderDesc('lastActivityAt'),

@@ -456,6 +456,16 @@ export default defineAppConfig({
        * Annotation hält den Typ weit genug für die drei Stellungen.
        */
       introRequestRetention: 'off' as RowRetentionMode,
+      /**
+       * DER PAPIERKORB DER MARKEN (WH1, Davids Entscheidung 2026-11-15) —
+       * 'off' | 'count' | 'apply'. Stündlich: jede Marke 90 Tage nach „Marke
+       * löschen" endgültig löschen, mit allem, was an ihr hängt
+       * (`server/utils/brandProfileTrash.ts`, Regel in
+       * `shared/brandProfileTrash.ts`). 'off' ist der Layer-Default, weil der
+       * Lauf NICHT UMKEHRBAR löscht; ohne Zeile in der App wird nie etwas
+       * endgültig gelöscht.
+       */
+      profileTrash: 'off' as RowRetentionMode,
     },
   },
 })

@@ -227,10 +227,36 @@ export interface BrandSiteAnalyzeResponse {
   analyzedAt: string
 }
 
+/**
+ * „Marke löschen" (WH1): die Marke liegt jetzt im Papierkorb. `purgeAt` ist
+ * der Zeitpunkt, ab dem sie endgültig gelöscht wird.
+ */
 export interface BrandProfileDeleteResponse {
-  deleted: true
-  /** Was die Kaskade wirklich entfernt hat — für Log und Beweis. */
-  removed: { steps: number, messages: number, shares: number, events: number, findings: number }
+  trashed: true
+  erasedAt: string
+  purgeAt: string
+}
+
+/** Eine Zeile unter „Gelöschte Marken" (WH1). */
+export interface BrandProfileTrashItem {
+  id: string
+  title: string
+  erasedAt: string
+  purgeAt: string
+  /** Verbleibende ganze Tage bis zum endgültigen Löschen. */
+  daysLeft: number
+}
+
+export interface BrandProfileTrashListResponse {
+  items: BrandProfileTrashItem[]
+}
+
+export interface BrandProfileRestoreResponse {
+  restored: true
+}
+
+export interface BrandProfilePurgeResponse {
+  purged: true
 }
 
 /**

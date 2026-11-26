@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { Query } from 'node-appwrite'
+import { isBrandProfileErased } from '../../shared/brandProfileTrash'
 import type { BrandProfileRow, BrandStepRow } from './brandStore'
 import {
   BRAND_PROFILES_TABLE,
@@ -107,6 +108,8 @@ export async function isBrandProfileSharedForMarket(
   catch {
     return false
   }
+  // Eine Marke im Papierkorb (WH1) ist für niemanden mehr freigegeben.
+  if (isBrandProfileErased(row)) return false
   if (brandMarketVisibilityOf(row) !== 'shared') return false
 
   try {
@@ -205,6 +208,7 @@ export async function listSharedMarketProfiles(
   const prefix = normalizePrefix(query.prefix ?? '')
   const candidates = rows.filter((row) => {
     if (row.ownerId === query.excludeOwnerId) return false
+    if (isBrandProfileErased(row)) return false
     if (!row.title?.trim()) return false
     return !prefix || row.title.toLowerCase().startsWith(prefix)
   })
