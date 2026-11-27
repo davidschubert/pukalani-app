@@ -61,7 +61,10 @@ war — ein verlorener Schlüssel meldet alle mit Karte ab (kein Datenverlust).
   vorige eigene Sitzung DESSELBEN Hosts weg; eine verwaiste Seiten-Sitzung
   (Cookie gelöscht, anderes Gerät) lebt bis zu ihrem Ablauf und zählt mit.
   Bei 50 ist das selten; bei 10 träfe es Menschen mit vielen Seiten und
-  Geräten. Ein Aufräumen verwaister Seiten-Sitzungen steht offen (PK1-EIN).
+  Geräten. Seit 2026-11-27 hat ein Konto höchstens 30 Seiten-Sitzungen:
+  beim Host-Wechsel fallen die ältesten darüber (`SITE_SESSION_CAP`,
+  `core/server/utils/sessionHandoff.ts`; Log bei Fehlschlag
+  `auth.site_session_cleanup_failed` mit `reason: over_cap`).
 - [ ] **Sitzungen bei Passwortwechsel beenden** (Projekt `account`, Auth →
   Security): nur ablesen und ins Protokoll. Der eigene Passwortwechsel im
   Konto beendet die übrigen Sitzungen schon selbst; für das Zurücksetzen über
@@ -179,11 +182,28 @@ Der Lauf beendet sie: für jedes Konto im Projekt `account`
 `users.deleteSessions` — danach meldet sich jede Person einmal neu an
 (Davids Entscheidung „Einmalige Abmeldung aller").
 
-- **Ein Werkzeug dafür gibt es noch nicht** (gesucht: kein Skript im Repo ruft
-  `deleteSessions` über alle Konten). Es wird erst mit Davids Ja gebaut, als
-  Fristen-Lauf-artiges Werkzeug mit `count` zuerst (gezählte Konten und
-  Sitzungen, nichts geschrieben), dann `apply` nur mit Davids Ja zur
-  gezählten Zahl, Ziel-Prüfung über `scripts/lib/target.mjs`.
+- **Werkzeug:** `scripts/ops/end-copied-sessions.mjs` (seit 2026-11-27).
+  Zählt standardmäßig nur; beendet werden die Sitzungen, die VOR der Stichzeit
+  `--before` entstanden sind (`users.deleteSession` je Sitzung). Ziel-Prüfung
+  schon beim Zählen (`PUKALANI_TARGET_CONFIRM=account`).
+  1. Zählen (schreibt nichts):
+     `PUKALANI_TARGET_CONFIRM=account node scripts/ops/end-copied-sessions.mjs --env <Env-Datei account> --before <Stichzeit>`
+  2. David sagt Ja zur gezählten Zahl. Dann der Befehl, den Schritt 1 am Ende
+     druckt: dieselbe Stichzeit, `--apply --expect <Zahl>`. Der Lauf zählt
+     neu und bricht ohne Löschen ab, wenn die Zahl jetzt GRÖSSER ist; am Ende
+     zählt er nach (vor der Stichzeit muss 0 übrig sein).
+- **Welche Stichzeit:** Empfehlung ist der Zeitpunkt, ab dem `write` auf
+  ALLEN Apps stand (B2/B3 am 2026-11-24, genaue Uhrzeit aus dem Log des
+  Neuladens). Davor angelegte Sitzungen können kopiert worden sein, spätere
+  tragen eine Karte und bleiben stehen. Ohne `--before` zählt der Lauf ALLE
+  Sitzungen (Stichzeit = jetzt) — das ist Davids ursprüngliche Fassung
+  „Einmalige Abmeldung aller"; `--apply` verlangt die Stichzeit aber immer
+  ausdrücklich.
+- Bewiesen lokal (2026-11-27) mit zwei Wegwerf-Konten (`--users`): gezählt 3
+  von 4, `--expect 2` ⇒ Abbruch ohne Löschen (Exit 2), `--expect 3` ⇒ 3
+  beendet, die Sitzung nach der Stichzeit blieb; fremder Endpunkt ohne
+  Bestätigung ⇒ Abbruch vor dem ersten Lesen. Zählen über alle 176 Konten des
+  lokalen Spiegels: 1,3 s.
 - Erst nach Schritt B 1 und nach mindestens einem Tag ohne Befund.
 
 ## 4. Rückweg
@@ -263,7 +283,7 @@ sie die 14-Tage-Frist. Darum gleich danach, nur lesend:
   Prozess.** pm2 fährt je App genau eine Instanz; wer das ändert, braucht
   einen geteilten Merker (Redis), sonst lässt sich ein Siegel je Instanz
   einmal einlösen.
-- Der einmalige Abmelde-Lauf hat noch kein Werkzeug (Schritt C).
+- Der einmalige Abmelde-Lauf (Schritt C) ist gebaut, aber auf Production noch nicht gelaufen.
 
 ## Protokoll
 
