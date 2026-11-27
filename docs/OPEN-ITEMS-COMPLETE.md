@@ -1106,6 +1106,38 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1-EIN — Werkzeug für den Abmelde-Lauf, Obergrenze für Seiten-Sitzungen ✅ 2026-11-27
+
+**Was.** (1) Schritt C bekommt sein Werkzeug: `scripts/ops/end-copied-sessions.mjs`
+liest alle Konten des Projekts `account` und deren Sitzungen, zählt die vor
+einer Stichzeit und beendet sie nur mit `--apply --expect <Zahl>` (neu
+gezählt, größer ⇒ Abbruch ohne Löschen; am Ende nachgezählt). Ziel-Prüfung
+schon beim Zählen. Auf Production NICHT gelaufen — wartet auf Davids Ja.
+(2) Verwaiste Seiten-Sitzungen: Appwrite führt kein „zuletzt benutzt", und
+ob ein Cookie noch lebt, weiß nur der Browser. Statt einer Erkennung (das
+große Paket mit eigener Tabelle) eine Grenze: beim Host-Wechsel fallen die
+ältesten Sitzungen mit `provider: 'server'` über 30 je Konto
+(`SITE_SESSION_CAP` in `core/server/utils/sessionHandoff.ts`), gelesen aus der
+Liste, die die Nachprüfung der Quelle ohnehin holt — kein zusätzlicher
+Lese-Aufruf. 30 liegt über dem gerechneten Bedarf (etwa 21) und unter der
+Zahl für die Projekt-Obergrenze (50); echte Anmeldungen werden nie gezählt
+oder gelöscht.
+
+**Beweis.** Unit- und Rollen-Tests (`endCopiedSessions.test.ts`,
+`siteCardWrite.test.ts`, `route-roles-site-card-handoff.test.ts` mit
+Gegenprobe an der Grenze); Bühne `verify-site-card` neuer Schritt 3b: 31
+gestellte Seiten-Sitzungen + Wechsel ⇒ genau 30, die zwei ältesten weg,
+echte Anmeldungen gleich, 59/59. Abmelde-Lauf lokal mit Wegwerf-Konten
+(Protokoll im Runbook, Schritt C).
+
+**Gelernt:** Wo der Zustand („wird dieses Cookie noch benutzt?") nirgends
+abzulesen ist, ist eine Grenze am Ort des Entstehens billiger und ehrlicher
+als ein Aufräum-Lauf, der raten müsste. Und `--users` für Wegwerf-Konten ist
+Pflicht bei einem Lauf über „alle Konten", solange die lokale Appwrite ein
+Spiegel von Production ist und andere Sitzungen darauf arbeiten.
+
+---
+
 ### PK1-EIN Befund 1, kleiner Teil — Seiten-Sitzungen heißen „Community-Seite" ✅ 2026-11-27
 
 **Was.** Die Sitzungsliste im Kundenbereich zeigte Sitzungen einer eigenen

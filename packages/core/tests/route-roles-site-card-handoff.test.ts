@@ -4,7 +4,7 @@ import { probeRoute, resetCommunityWorld, userIdOf } from './support/participati
 import { appwriteFake } from './support/appwriteFake'
 import { coreKit } from './support/coreRouteKit'
 import { configureSiteCard, deriveSiteCardKey, sealSiteCard } from '../server/utils/siteCard'
-import { claimHandoffOnce, establishSiteSession, resetHandoffClaimsForTests } from '../server/utils/sessionHandoff'
+import { SITE_SESSION_CAP, claimHandoffOnce, establishSiteSession, resetHandoffClaimsForTests } from '../server/utils/sessionHandoff'
 import { HANDOFF_TTL_MS, deriveHandoffKey, openHandoff, sealHandoff, sealHandoffToken, type HandoffGrant } from '../server/utils/embedHandoff'
 import type { SessionCookieCard } from '../server/utils/requestSession'
 
@@ -447,6 +447,62 @@ describe('GET /api/auth/site-session — eigene Sitzung je Seite', () => {
       plainAccount({ mfa: true, emailVerification: true })
       await run(seal(fullGrant()), { cookie: existingCard() })
       expect(appwriteFake.argsOf('admin.users.deleteSession')).toEqual([])
+    })
+  })
+
+  describe('verwaiste Seiten-Sitzungen (PK1-EIN): Obergrenze je Konto', () => {
+    /** `count` Seiten-Sitzungen, die älteste zuerst, dazu Quelle, neue Sitzung und eine echte Anmeldung von früher. */
+    function listedSessions(count: number) {
+      const site = Array.from({ length: count }, (_, i) => ({
+        $id: `s-site-${i}`,
+        provider: 'server',
+        $createdAt: new Date(Date.UTC(2026, 0, 1 + i)).toISOString(),
+      }))
+      appwriteFake.reply('admin.users.listSessions', () => ({
+        total: count + 3,
+        sessions: [
+          { $id: 's-real-old', provider: 'email', $createdAt: '2025-01-01T00:00:00.000Z' },
+          { $id: 's-source', provider: 'server', $createdAt: '2025-06-01T00:00:00.000Z' },
+          ...site,
+          { $id: 's-new', provider: 'server', $createdAt: '2026-11-27T00:00:00.000Z' },
+        ],
+      }))
+    }
+
+    beforeEach(() => {
+      writeMode()
+      sourceSessionIsAlive()
+      plainAccount()
+      newSessionWorks()
+    })
+
+    it(`über ${SITE_SESSION_CAP}: die ältesten Seiten-Sitzungen fallen; Quelle, neue Sitzung und echte Anmeldung bleiben`, async () => {
+      // 30 + Quelle + neue = 32 Seiten-Sitzungen ⇒ zwei zu viel.
+      listedSessions(SITE_SESSION_CAP)
+      const result = await run(seal(fullGrant()))
+      expect(result.status).toBe(200)
+      expect(appwriteFake.argsOf('admin.users.deleteSession')).toEqual([
+        { userId: USER, sessionId: 's-site-0' },
+        { userId: USER, sessionId: 's-site-1' },
+      ])
+      expect(cookieWrites[0]!.secret).toBe('neues-geheimnis')
+    })
+
+    it('Gegenprobe: genau an der Grenze wird nichts gelöscht', async () => {
+      listedSessions(SITE_SESSION_CAP - 2)
+      await run(seal(fullGrant()))
+      expect(appwriteFake.argsOf('admin.users.deleteSession')).toEqual([])
+    })
+
+    it('Löschen scheitert: gezählte Zeile, die neue Karte steht trotzdem', async () => {
+      listedSessions(SITE_SESSION_CAP - 1)
+      appwriteFake.reply('admin.users.deleteSession', () => {
+        throw Object.assign(new Error('boom'), { code: 500 })
+      })
+      const result = await run(seal(fullGrant()))
+      expect(result.status).toBe(200)
+      expect(appwriteFake.argsOf('admin.users.deleteSession')).toEqual([{ userId: USER, sessionId: 's-site-0' }])
+      expect(cookieWrites[0]!.secret).toBe('neues-geheimnis')
     })
   })
 })

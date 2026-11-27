@@ -21,6 +21,8 @@
  *      gelesen mit dem Laufzeit-Schlüssel); dasselbe Siegel ein zweites Mal ⇒
  *      401.
  *   3. Abmelden auf Community A lässt den Kontroll-Host angemeldet.
+ *   3b. Obergrenze (PK1-EIN): über 30 Seiten-Sitzungen fallen beim Wechsel
+ *      die ältesten, echte Anmeldungen bleiben.
  *   4. Gestellte eigene Domain für Community B (`customDomain` +
  *      `customDomainStatus: 'active'` an der `communities`-Zeile im Control
  *      Plane; der Name endet auf `.localhost`, sonst sperrt Vites
@@ -80,6 +82,8 @@ if (!endpoint || !controlProject || !databaseId || !controlKey || !poolKey || !H
 
 /** Der Resolver hält eine Community ~30 s (Kopf von `00.tenant.ts`). */
 const RESOLVER_SETTLE_MS = 33_000
+/** Spiegel von `SITE_SESSION_CAP` in `packages/core/server/utils/sessionHandoff.ts`. */
+const SITE_SESSION_CAP = 30
 const script = 'verify-site-card'
 const { call, page } = createHttpCaller({ port: PORT })
 
@@ -197,6 +201,36 @@ try {
   check('der Kontroll-Host bleibt angemeldet (/api/auth/me → 200)', meControl.status === 200, `Status ${meControl.status}`)
   const meA2 = await call(HOST_A, '/api/auth/me', { cookie: second.cookie })
   check('…und A ist abgemeldet → 401', meA2.status === 401, `Status ${meA2.status}`)
+
+  // ── 3b. Obergrenze für Seiten-Sitzungen (PK1-EIN, verwaiste Sitzungen) ──
+  // 31 gestellte Seiten-Sitzungen (wie verwaiste aus anderen Browsern, mit
+  // `users.createSession` — derselbe Weg wie der Host-Wechsel), dann ein
+  // echter Wechsel: 32 > 30 ⇒ die zwei ÄLTESTEN gestellten fallen, die
+  // echte Anmeldung des Kontroll-Hosts und die neue Sitzung bleiben.
+  console.log(`\n3b. Obergrenze: höchstens ${SITE_SESSION_CAP} Seiten-Sitzungen je Konto`)
+  const staged = []
+  for (let i = 0; i < SITE_SESSION_CAP + 1; i++) {
+    const created = await pool.post(`/users/${person.userId}/sessions`)
+    staged.push(created.$id)
+  }
+  const capBefore = await pool.get(`/users/${person.userId}/sessions`)
+  const siteBefore = (capBefore?.sessions ?? []).filter(session => session.provider === 'server')
+  check(`gestellt: ${SITE_SESSION_CAP + 1} Seiten-Sitzungen mit provider server`, siteBefore.length === SITE_SESSION_CAP + 1, `${siteBefore.length}`)
+  const capEnter = await enterCommunity(controlCookie, COMMUNITY_A, HOST_A)
+  check('Wechsel über der Grenze → 302 mit Karte', capEnter.redeem.status === 302 && valueOf(capEnter.cookie).startsWith('c1.'), `Status ${capEnter.redeem.status}`)
+  const capAfter = (await pool.get(`/users/${person.userId}/sessions`))?.sessions ?? []
+  const siteAfter = capAfter.filter(session => session.provider === 'server').map(session => session.$id)
+  check(`danach genau ${SITE_SESSION_CAP} Seiten-Sitzungen`, siteAfter.length === SITE_SESSION_CAP, `${siteAfter.length}`)
+  check('die zwei ältesten gestellten sind weg, die übrigen gestellten stehen',
+    !siteAfter.includes(staged[0]) && !siteAfter.includes(staged[1]) && staged.slice(2).every(id => siteAfter.includes(id)),
+    `weg: ${staged.filter(id => !siteAfter.includes(id)).length}`)
+  check('echte Anmeldungen bleiben (gleich viele wie vorher)',
+    capAfter.filter(session => session.provider !== 'server').length === (capBefore?.sessions ?? []).filter(session => session.provider !== 'server').length)
+  const capMe = await call(HOST_A, '/api/auth/me', { cookie: capEnter.cookie })
+  check('mit der neuen Karte auf A angemeldet', capMe.status === 200, `Status ${capMe.status}`)
+  const capControl = await call(CONTROL_HOST, '/api/auth/me', { cookie: controlCookie })
+  check('der Kontroll-Host bleibt angemeldet', capControl.status === 200, `Status ${capControl.status}`)
+  for (const id of siteAfter) await pool.delete(`/users/${person.userId}/sessions/${id}`)
 
   // ── 4. Gestellte eigene Domain für Community B ───────────────────────────
   console.log(`\n4. Eigene Domain für B (gestellt, ${DOMAIN})`)

@@ -100,7 +100,7 @@ Bau erst, wenn Schritt B auf der Platform gelaufen und geprüft ist**:
 | Eigene Sitzung je Seite ist auf Production bewiesen | Die Rückkehr nutzt denselben Weg wie der Wechsel aus dem Kundenbereich (Siegel → eigene Sitzung). Was dort hakt, hakt in E2 bei jeder Anmeldung. | Klick-Probe aus Schritt B 1 bestanden |
 | Live-Verbindung unter eigenen Domains läuft | Nach der Rückkehr verbindet die Seite live über unseren Server; ohne ihn wären Mitglieder unter eigenen Domains nur Gast. | `liveRelay: true` |
 | Die Sitzungs-Obergrenze ist gelesen und passt | E2 bringt je Gerät **eine Sitzung mehr** (die zentrale). | Wert im Protokoll von PK1-EINSCHALTEN § 2 |
-| Der einmalige Abmelde-Lauf (Schritt C) | Nicht zwingend vor dem Bau, aber vor dem Einschalten von E2: sonst leben kopierte Alt-Sitzungen weiter, und „überall abmelden" an der zentralen Stelle wirkt auf sie nicht so, wie die Seite es sagt. | Werkzeug fehlt noch (PK1-EIN) |
+| Der einmalige Abmelde-Lauf (Schritt C) | Nicht zwingend vor dem Bau, aber vor dem Einschalten von E2: sonst leben kopierte Alt-Sitzungen weiter, und „überall abmelden" an der zentralen Stelle wirkt auf sie nicht so, wie die Seite es sagt. | Werkzeug gebaut 2026-11-27 (`scripts/ops/end-copied-sessions.mjs`), Lauf wartet auf Davids Ja |
 | Ein Admin-Konto im Projekt `account` | Schritt B wartet darauf; ohne Admin lässt sich auch E2 nicht bedienen und nicht prüfen. | Aussperr-Wächter grün ([ADMIN-KONTO-WIEDERHERSTELLEN.md](../runbooks/ADMIN-KONTO-WIEDERHERSTELLEN.md)) |
 
 Das **Konzept** und der **Prototyp** (Gesamtkonzept § 8: vor jeder Etappe ein
@@ -257,7 +257,7 @@ eigener Domain):
 | Offener Umleiter: die Anmeldung schickt nach einer fremden Adresse zurück. | Rücksprung-Ziel nie aus dem Aufruf, nur aus der Auflösung der Community; Unit-Test mit fremder Adresse. |
 | Das Siegel landet im Protokoll eines fremden Webservers. | 60 s, einmal einlösbar, an Host und Community gebunden; § 7 Punkt 3 misst, ob es als Formular statt in der Adresse reisen muss. |
 | Mitglieder halten die Umleitung für einen Angriff. | Kleid der Community auf der zentralen Seite, klarer Satz „Anmelden bei X über dein Pukalani-Konto"; Hilfe-Text. |
-| Sitzungs-Obergrenze wirft Menschen raus (eine Sitzung mehr je Gerät). | Wert lesen, wenn nötig anheben (§ 6 Punkt 4); das Aufräumen verwaister Seiten-Sitzungen (PK1-EIN) vorher bauen. |
+| Sitzungs-Obergrenze wirft Menschen raus (eine Sitzung mehr je Gerät). | Wert lesen, wenn nötig anheben (§ 6 Punkt 4); verwaiste Seiten-Sitzungen begrenzt seit 2026-11-27 die Obergrenze je Konto (30, `SITE_SESSION_CAP`). |
 | Einladungs- oder Mail-Links führen ins Leere. | § 7 Punkt 4; Bühnen-Pfad für Einladung ohne Konto. |
 | Einbettung bricht. | Einbettungs-E2E vor dem Einschalten. |
 | Ein geteilter Rechner bleibt an der zentralen Stelle angemeldet. | Entscheidung 2. |
