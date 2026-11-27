@@ -1028,6 +1028,27 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1-EIN Befunde 2 und 3 — Widerruf richtig melden, Rückweg nach frischer Anmeldung ✅ 2026-11-27
+
+**Was.** Zwei der drei Befunde aus der Live-Probe (2026-11-25). (2) Wird eine
+Sitzung beendet, schließt Appwrite die obere Verbindung der Live-Weiche
+manchmal ohne 401-Rahmen. Die Weiche (`core/server/utils/liveRelay.ts`)
+fragt dann einmal die Fahrkarte nach: ist sie widerrufen, schreibt sie
+`live_relay.revoked` und schließt mit `4403`, sonst bleibt es bei
+`upstream_failed`/`1011`. (3) Beim „frisch anmelden" meldet `useLogout` ab und
+fährt nach `/login?redirect=…`. Dasselbe Abmelden löst das Session-Lösch-
+Ereignis aus; `realtime-account.client.ts` prüfte nach und fuhr zum nackten
+`/login`, und wer zuletzt fuhr, gewann. Jetzt fährt die Prüfung nicht mehr,
+wenn die Anmeldeseite schon offen ist, und sonst mit Rückweg. Die
+`admin`-Middleware schickt ebenfalls mit Rückweg.
+
+**Gelernt:** Zwei Wege zur Anmeldeseite, ausgelöst vom selben Ereignis, sind
+ein Wettlauf — nur der eine mit Rückweg ist ein Fehler, der nicht jedes Mal
+auftritt. Eine Live-Probe, die „mal klappt, mal nicht", heißt Wettlauf, nicht
+Bedienfehler.
+
+---
+
 ### PK1 E1d — Live-Verbindung unter eigenen Domains über unseren Server (Schalter aus) ✅ 2026-11-22
 
 **Was.** Davids K4 („auch dort live lassen") als Weg 3 aus Plan § 13.3:
