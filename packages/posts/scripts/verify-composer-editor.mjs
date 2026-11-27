@@ -36,12 +36,19 @@
  * Dev-Server derselben Instanz:
  *   node --env-file=../../apps/comments/.env scripts/verify-composer-editor.mjs http://localhost:3001
  *
+ * Auf der Bühne nachts gegen die Einzel-Instanz (`EINZEL_URL`, Playwrights
+ * Chromium; BT1 a): `pnpm buehne run --only verify-composer-editor
+ * --einzel-port <port>`. Die Adressen im Text zeigen auf `example.com` (eine
+ * reservierte Beispiel-Domain): sie werden getippt bzw. eingefügt und
+ * geprüft, das Skript ruft keine fremde Website auf.
+ *
  * Legt einen Wegwerf-Nutzer samt Beiträgen an und räumt beides wieder weg —
  * auch im Fehlerfall (Beiträge über den Admin-Client, damit auch ein
  * abgebrochener Lauf nichts liegen lässt).
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
+import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
 
 /**
  * Playwright wohnt in `apps/comments` (dort läuft die E2E-Suite). Ein
@@ -55,7 +62,7 @@ const { chromium } = await import(playwrightEntry.href).catch(() => {
   process.exit(1)
 })
 
-const base = process.argv[2] ?? 'http://localhost:3001'
+const base = einzelBaseUrl('http://localhost:3001')
 const endpoint = process.env.NUXT_PUBLIC_APPWRITE_ENDPOINT
 const projectId = process.env.NUXT_PUBLIC_APPWRITE_PROJECT_ID
 const databaseId = process.env.NUXT_PUBLIC_APPWRITE_DATABASE_ID
@@ -105,6 +112,14 @@ try {
   }])
   const page = await context.newPage()
 
+  /**
+   * Ruhe abwarten, bevor gezählt wird — aber nie daran scheitern: mit offener
+   * Live-Verbindung wird das Netz nie ganz still (BT1 d, dieselbe Falle wie
+   * in `verify-handles-mentions`). Was danach zählt, prüfen die Haken an den
+   * Elementen.
+   */
+  const settle = () => page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {})
+
   // Was der Composer abschickt bzw. das Bearbeiten-Feld patcht — das ist der
   // Text, der in `community_posts.body` landet.
   let lastPost = null
@@ -127,14 +142,30 @@ try {
 
   await page.goto('/feed', { waitUntil: 'domcontentloaded' })
   await page.waitForSelector('[data-composer-body] textarea', { timeout: 90_000 })
-  await page.waitForLoadState('networkidle')
+  await settle()
   await page.waitForTimeout(1200)
   const beforeFocus = scripts.filter(u => /tiptap|prosemirror/i.test(u)).length
   check('Feed OHNE Schreibabsicht lädt kein Tiptap', beforeFocus === 0, `${beforeFocus} Anfragen`)
 
   // Der Wechsel hängt am FOKUS (siehe PostBodyField) — erst hier kommt der Editor.
   await page.locator('[data-composer-body] textarea').click()
-  await page.waitForSelector('[data-composer-body] [contenteditable="true"]', { timeout: 30_000 })
+  const editorUp = await page.waitForSelector('[data-composer-body] [contenteditable="true"]', { timeout: 30_000 })
+    .then(() => true, () => false)
+  if (!editorUp) {
+    /**
+     * KALTSTART DES DEV-SERVERS (BT1 a, gemessen 2026-11-27): Vite bündelt
+     * Tiptap erst beim ersten Import und lädt die Seite dann neu — der Fokus
+     * ist danach weg, der Editor kommt nie. Genau EIN Neuversuch nach dem
+     * Neuladen; ein zweites Ausbleiben ist rot. Gilt nur im Dev-Server; der
+     * Zähler oben (kein Tiptap vor dem Fokus) ist davon nicht berührt.
+     */
+    console.log('  (Editor kam nicht — Kaltstart des Dev-Servers? einmal neu laden und erneut fokussieren)')
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('[data-composer-body] textarea', { timeout: 90_000 })
+    await settle()
+    await page.locator('[data-composer-body] textarea').click()
+    await page.waitForSelector('[data-composer-body] [contenteditable="true"]', { timeout: 60_000 })
+  }
   await page.waitForTimeout(1200)
   const afterFocus = scripts.filter(u => /tiptap|prosemirror/i.test(u)).length
   check('… und holt ihn beim ersten Fokus nach', afterFocus > 0, `${afterFocus} Anfragen`)
@@ -399,7 +430,7 @@ try {
   check('Bestands-Beitrag angelegt (roher Text, ohne Editor)', legacy?.body === legacyBody, JSON.stringify(legacy)?.slice(0, 200))
 
   await page.reload({ waitUntil: 'domcontentloaded' })
-  await page.waitForLoadState('networkidle')
+  await settle()
   await page.waitForTimeout(1500)
 
   const untouched = await reopenAndSave({ touch: false })
@@ -439,6 +470,14 @@ finally {
       await tablesDB.deleteRow({ databaseId, tableId: 'community_posts', rowId: row.$id }).catch(() => {})
     }
     await users.delete({ userId: user.$id }).catch(() => {})
+  }
+  // NACHZÄHLEN (Bühnen-Regel 2): Konto und alles, was daran hängt
+  // (Beiträge, Zähler, Protokoll-Zeilen), ist wirklich weg.
+  if (user) {
+    const sweep = createEinzelCleanup({ script: 'verify-composer-editor' })
+    sweep.track('account', user.$id)
+    const { leftovers } = await sweep.run().catch(error => ({ leftovers: [`Nachzählen gescheitert: ${error.message}`] }))
+    check('aufgeräumt und nachgezählt: nichts übrig', leftovers.length === 0, leftovers.join(', '))
   }
 }
 

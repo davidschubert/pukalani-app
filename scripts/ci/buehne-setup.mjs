@@ -133,6 +133,9 @@ writeEnv('apps/platform', [
   `NUXT_PUBLIC_TENANCY_CONTROL_HOSTS=${controlHost}`,
   `NUXT_ONBOARDING_CONTROL_URL=http://localhost:${controlPort}`,
   `NUXT_ONBOARDING_SERVICE_SECRET=${seamSecret}`,
+  // Orts-Picker (BT1 a): der kleine Auszug aus dem Repo statt des vollen
+  // GeoNames-Verzeichnisses — `verify-geo-cities` liest dieselbe Datei.
+  `NUXT_GEO_CITIES_PATH=${resolve('scripts/buehne/fixtures/geo-cities.tsv')}`,
   ...smtp,
 ])
 

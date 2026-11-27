@@ -14,21 +14,28 @@ und die Tabellen in `docs/referenz/LIVE-BEWEISE.md`.
 Erledigt am 2026-11-18 (COMPLETE „N14"): Rollen-Tests für `pages`,
 `apps/control` und die drei Einzelrouten, drei der vier Stellen aus (e), das
 Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
+Erledigt am 2026-11-27 (COMPLETE „BT1 (a) drei Skripte"): `verify-geo-cities`,
+`verify-notification-mail-links` und `verify-composer-editor` laufen mit; ein
+Nacht-Alarm schließt nur noch ein grüner Nacht-Lauf.
 
-- **(a) Skripte, die noch von Hand laufen (11 von 84).** Nachts steht
-  branding.supply als vierter Server; seit dem 2026-11-19 laufen elf seiner
-  zwölf Skripte mit (COMPLETE „N17": die drei Design-Skripte haben wieder
-  eine gültige Vorlage). Offen:
+- **(a) Skripte, die noch von Hand laufen (8 von 87).** Seit dem 2026-11-27
+  laufen 79 von 87 von selbst (`docs/referenz/LIVE-BEWEISE.md`). Offen:
   - **Die fünf E2E-Dateien von `apps/portfolio`** und
     **`verify-business-confirmation`** brauchen einen fünften Server mit
     eigenem Projekt `portfolio`. Das Skript selbst ist seit dem 2026-11-19
     nachgezogen (lokal 27 von 27, COMPLETE „N17"). Empfehlung: nach demselben
     Muster wie der vierte Server bauen (`--portfolio-port` im Setup, Start nur
     nachts, die Dateien über `pnpm buehne e2e`), aber erst nach der
-    Entscheidung in (c) — der nächtliche Lauf dauert schon rund 32 Minuten.
+    Entscheidung in (c) — der nächtliche Lauf dauert schon rund 32 Minuten
+    (seit dem 2026-11-27 rund zwei Minuten mehr: `verify-composer-editor`).
   - Zwei Skripte der Einzel-Instanz brauchen eigens eingestellte Server
-    (`verify-silo-domain`, `verify-domain-settle`). Bewusst von Hand bleiben
-    sechs mit Fremddiensten.
+    (`verify-silo-domain`, `verify-domain-settle`), `verify-custom-domain`
+    eine Betreiber-App im Trockenlauf und echte öffentliche DNS-Einträge.
+    Bewusst von Hand bleiben vier mit Fremddiensten oder fremden Dateien
+    (`verify-brand-context`, `verify-ugc-translation`: bezahlte KI;
+    `verify-brand-tokens`: Werkzeug aus dem Netz; `verify-session-ip`:
+    Standort-Datenbank im Binärformat, die sich ohne neues Paket nicht als
+    Auszug schreiben lässt).
   - `verify-brand-sessions` hat einen Zweig für einen Server OHNE gestellte
     Antworten (vier Prüfungen „ohne Modell ⇒ 503"). Er ist nach dem Umbau
     nicht gelaufen; die Bühne überspringt ihn mit Grund.
@@ -56,15 +63,25 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
   22.11. zwei Zeitüberschreitungen beim Laden einer Seite
   (`verify-trial-notice`, `verify-handles-mentions`), 23./24.11. zwei
   Isolations-Skripte (courses, events) nach PK1 E1c nicht auf die Anmeldung
-  je Host umgestellt (behoben am 2026-11-25). Am Pull Request und auf `main`
+  je Host umgestellt (behoben am 2026-11-25).
+  **Nachgezählt am 2026-11-27:** auch 25.11. und 26.11. rot, wieder nicht am
+  Programm-Kern: 25.11. `verify-handles-mentions` an
+  `waitForLoadState('networkidle')` (dieselbe Wackel-Stelle wie in (d));
+  26.11. `verify-brand-sessions` Abschnitt 26–27: die Werkstatt-Seite zeigt
+  den markierten Vorschlag zwei- bzw. viermal statt einmal — fällt zeitlich
+  mit dem Umbau der Werkstatt-Seite zusammen (WS1); ob Seite oder Skript
+  falsch ist, entscheidet, wer WS1 baut. Damit seit dem 18.11.: 3 Nächte
+  grün, 6 rot; von den 6 lagen 5 sicher am Skript bzw. am Lauf, eine (26.11.)
+  ist offen. Dabei gefunden: ein grüner KURZER Lauf auf `main` schloss am
+  26.11. das Alarm-Issue #614, obwohl das rote Nacht-Skript darin gar nicht
+  lief — behoben (Label `buehne-alarm-nacht`, COMPLETE „BT1 (a) drei
+  Skripte"). Am Pull Request und auf `main`
   (Modus ohne Browser-Tests): seit dem 20.11. 229 + 142 grün, 3 rot (alle am
   21.11.), der Rest abgebrochen. Rohzählung: `gh run list --workflow
   buehne.yml --limit 400`.
 - **(d) Kleinigkeiten.** `verify-custom-domain` braucht eine Betreiber-App im
   Trockenlauf mit eigenem Namens-Server und kennt die Freigabe durch den
-  Betreiber noch nicht. `verify-notification-mail-links` stößt den
-  Sammel-Lauf für alle Konten der Instanz an und gehört deshalb nur auf eine
-  leere Datenbank. Der Test `packages/core/tests/rollbackScript.test.ts`
+  Betreiber noch nicht. Der Test `packages/core/tests/rollbackScript.test.ts`
   scheiterte am 2026-11-17 einmal in der CI mit Exit 141; die Ursache ist
   nicht gefunden (das verdächtige Muster ließ sich in je 3.000 Läufen auf
   macOS und Linux nicht nachstellen, das Skript ist seitdem umgebaut). Seit

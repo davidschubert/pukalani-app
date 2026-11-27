@@ -203,18 +203,29 @@ EIGENE Aufrufer-Adresse (`scripts/buehne/client-address.mjs` hängt
 laufen alle Skripte in dieselben Bremsen. Rot auf `main` oder nachts öffnet
 das Issue `buehne-alarm` (docs/runbooks/PRODUKTIONS-ALARM.md, Abschnitt 1b).
 
-**Von Hand bleiben** (Stand 2026-11-18, der Grund steht je Skript in der
-Liste): zwei Skripte der Einzel-Instanz, die sie EIGENS eingestellt brauchen
-(`verify-silo-domain`: Trockenlauf-Betreiber-App, Naht, portfolio gegen eine
-tote Naht; `verify-domain-settle`: beschnittener Schlüssel);
-`verify-business-confirmation` (braucht branding.supply UND die Studio-Site
-nebeneinander, jede mit eigenem Projekt — die Bühne hat keinen Server der
-Studio-Site; das Skript selbst ist seit dem 2026-11-19 nachgezogen und liest
-das Projekt der Gegenprobe aus `PLAIN_ENV_FILE`); die mit Fremddiensten (echte
-KI, eine fremde Website, Dateien, die nicht im Repo liegen);
-`verify-custom-domain` (braucht eine Betreiber-App im Trockenlauf mit eigenem
-Namens-Server); `verify-notification-mail-links` (stößt den Sammel-Lauf für
-ALLE Konten der Instanz an — nur auf einer leeren Datenbank).
+**Von Hand bleiben** (Stand 2026-11-27, acht von 87; der Grund steht je
+Skript in der Liste): zwei Skripte der Einzel-Instanz, die sie EIGENS
+eingestellt brauchen (`verify-silo-domain`: Trockenlauf-Betreiber-App, Naht,
+portfolio gegen eine tote Naht; `verify-domain-settle`: beschnittener
+Schlüssel); `verify-business-confirmation` (braucht branding.supply UND die
+Studio-Site nebeneinander, jede mit eigenem Projekt — die Bühne hat keinen
+Server der Studio-Site; das Skript selbst ist seit dem 2026-11-19 nachgezogen
+und liest das Projekt der Gegenprobe aus `PLAIN_ENV_FILE`);
+`verify-custom-domain` (Trockenlauf-Betreiber-App mit eigenem Namens-Server,
+dazu echte öffentliche DNS-Einträge); die mit Fremddiensten oder Dateien, die
+nicht im Repo liegen (`verify-brand-context` und `verify-ugc-translation`:
+bezahlte KI; `verify-brand-tokens`: Werkzeug aus dem Netz;
+`verify-session-ip`: Standort-Datenbank im Binärformat).
+
+Seit dem 2026-11-27 (BT1 a) laufen mit: `verify-geo-cities` (der Orts-Auszug
+`scripts/buehne/fixtures/geo-cities.tsv`, acht Orte mit derselben
+Spalten-Ordnung wie das GeoNames-Verzeichnis; `scripts/ci/buehne-setup.mjs`
+trägt ihn als `NUXT_GEO_CITIES_PATH` ein, das Skript liest dieselbe Datei
+unabhängig), `verify-notification-mail-links` (sein Sammel-Lauf ist derselbe,
+den jeder Server mit Mail-Zugang zwei Minuten nach dem Start selbst anstößt —
+Mails gehen auf der Bühne nur in den lokalen Briefkasten) und nachts
+`verify-composer-editor` (Einzel-Instanz, Chromium; ein Neuversuch für den
+Kaltstart, bei dem Vite Tiptap erst beim ersten Fokus bündelt).
 
 ## Beweise von Hand laufen lassen
 
@@ -239,7 +250,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-87 Beweis-Skripte im Repo: 6 E2E-Lauf, 34 Bühne (jeder Lauf), 36 Bühne (nachts), 11 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+87 Beweis-Skripte im Repo: 6 E2E-Lauf, 36 Bühne (jeder Lauf), 37 Bühne (nachts), 8 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -264,16 +275,16 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/control/scripts/verify-onboarding.mjs` | Beweis für O2 — die Provisionierungs-Route des Control Plane. | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-silo-domain.mjs` | Beweis: eigene Domains für SILO-Apps (control-036, 2026-08-07). | von Hand: Braucht drei eigens eingestellte Server: die Betreiber-App im Trockenlauf mit eigenem Namens-Server, die Einzel-Instanz mit Naht zum Control Plane und portfolio gegen eine tote Naht — der nächtliche Lauf startet keinen davon so. |
 | `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | von Hand: Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site, jede mit eigenem Projekt), und die Bühne hat keinen Server der Studio-Site. Das Skript selbst ist seit dem 2026-11-19 nachgezogen (27 von 27 lokal) — es kann einziehen, sobald die Studio-Site auf der Bühne steht. |
-| `packages/core/scripts/verify-geo-cities.mjs` | Beweis: der Orts-Picker im Profil — Suche, Länder-Filter und der Standort am KONTO (Mitglieder-Karte, Etappe 1). | von Hand: Braucht die Orts-Datei für Städte und Regionen, und die liegt nicht im Repo. |
+| `packages/core/scripts/verify-geo-cities.mjs` | Beweis: der Orts-Picker im Profil — Suche, Länder-Filter und der Standort am KONTO (Mitglieder-Karte, Etappe 1). | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-handle-search-boundary.mjs` | Beweis: die Handle-Grenze einer Community hält — beim LESEN und beim NEHMEN. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-mfa.mjs` | Beweis für den Zweitfaktor (U15 Teil 4). | Bühne (nachts), Einzel-Instanz |
-| `packages/core/scripts/verify-notification-mail-links.mjs` | Beweis: Benachrichtigungs-MAILS verlinken auf den Host DER COMMUNITY (D5). | von Hand: Noch nicht ganz grün auf der Bühne gesehen: der Platform-Server muss mit NUXT_PUBLIC_APP_URL laufen (die CI setzt es), lokal fehlte es; außerdem verschickt der Sammel-Lauf die Mails aller wartenden Konten der Instanz. |
+| `packages/core/scripts/verify-notification-mail-links.mjs` | Beweis: Benachrichtigungs-MAILS verlinken auf den Host DER COMMUNITY (D5). | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-otp-availability.mjs` | Beweis für F37 — DER PASSWORTLOSE LOGIN ENDET NIE IN EINER SACKGASSE. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-presence-away-priority.mjs` | BEWEIS: „sichtbar schlägt away (fremder Mandant)" — die Vorfahrts-Regel vom 2026-08-18 (packages/core/shared/presencePriority.ts). | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-presence-boundary.mjs` | A4 — DIE PRESENCE-GRENZE, in BEIDE Richtungen bewiesen. | E2E-Lauf |
 | `packages/core/scripts/verify-rate-limits.mjs` | Beweis für die Drossel-Grenzen des Sicherheits-Pakets vom 2026-08-02. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-server-only-writes.mjs` | „Der Server schreibt" — LIVE-Beweis an der Datenbank (SEC-002, GA1 P13). | Bühne (jeder Lauf) |
-| `packages/core/scripts/verify-session-ip.mjs` | Beweis: serverseitig erzeugte Appwrite-Sessions tragen die CLIENT-IP (x-forwarded-for aus forwardClientContext), nicht die Server-IP. | von Hand: Braucht die Standort-Datei und eine geänderte Proxy-Einstellung der Datenbank. |
+| `packages/core/scripts/verify-session-ip.mjs` | Beweis: serverseitig erzeugte Appwrite-Sessions tragen die CLIENT-IP (x-forwarded-for aus forwardClientContext), nicht die Server-IP. | von Hand: Braucht die Standort-Datenbank (DB-IP im Binärformat, nicht im Repo; einen kleinen Auszug kann man ohne neues Paket nicht schreiben) und eine geänderte Proxy-Einstellung der Datenbank, die die Bühne nicht setzt. |
 | `packages/core/scripts/verify-site-card.mjs` | BEWEIS: DIE EINTRITTSKARTE JE SEITE IM MODUS `write` (PK1 E1c; Plan `docs/plans/PUKALANI-KONTO-E1.md`, § 9 „Auf der Bühne"). | Bühne (nachts) |
 | `packages/core/scripts/verify-timezone.mjs` | Beweis für die Konto-Zeitzone (U15 Teil 5). | Bühne (nachts), Einzel-Instanz |
 | `packages/core/scripts/verify-ugc-translation.mjs` | Beweis: KI-Übersetzung für User-Content (Davids Entscheidungen 2026-08-17 — Beiträge + Kommentare · Knopf statt Automatik · Inhalts-Produkt als Gate · nur Eingeloggte, gedrosselt · EIN Übersetzungs-Cache je Zeile, posts… | von Hand: Braucht einen echten KI-Aufruf bei einem fremden Anbieter, der Geld kostet. |
@@ -300,7 +311,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/onboarding/scripts/verify-community-suspension.mjs` | Beweis für M13 — der Sperr-/Missbrauchspfad (Davids Entscheidungen 2026-08-02). | Bühne (nachts) |
 | `packages/onboarding/scripts/verify-control-exit.mjs` | Beweis für den F50-Nachtrag — die zwei Switcher-Ausgänge kommen EINGELOGGT an. | Bühne (jeder Lauf) |
 | `packages/onboarding/scripts/verify-control-host.mjs` | Beweis für O3 — die Trennung der zwei Welten DESSELBEN Deployments. | Bühne (jeder Lauf) |
-| `packages/onboarding/scripts/verify-custom-domain.mjs` | Beweis: eigene Domains je Community (control-035, Davids Entscheidungen vom 2026-08-07). | von Hand: Braucht eine Betreiber-App im Trockenlauf mit eigenem Namens-Server (NUXT_CUSTOM_DOMAIN_DRY_RUN, NUXT_CUSTOM_DOMAIN_DNS_SERVERS), die die Bühne nicht startet, und kennt die Freigabe durch den Betreiber (BE-014) noch nicht. |
+| `packages/onboarding/scripts/verify-custom-domain.mjs` | Beweis: eigene Domains je Community (control-035, Davids Entscheidungen vom 2026-08-07). | von Hand: Braucht eine Betreiber-App im Trockenlauf mit eigenem Namens-Server (NUXT_CUSTOM_DOMAIN_DRY_RUN, NUXT_CUSTOM_DOMAIN_DNS_SERVERS), die die Bühne nicht startet, misst in Abschnitt 5 gegen echte öffentliche DNS-Einträge (Weiterleitung an 1.1.1.1, ein Fremddienst) und kennt die Freigabe durch den Betreiber (BE-014) noch nicht. |
 | `packages/onboarding/scripts/verify-dashboard-access.mjs` | Beweis für N1 — Site-Rollen öffnen das Kunden-Dashboard (Pool-Audit 2026-07-27, wichtigster offener Befund). | Bühne (jeder Lauf) |
 | `packages/onboarding/scripts/verify-member-invites.mjs` | Beweis für F57 Mechanik 2 — EINLADUNGEN DURCH MITGLIEDER. | Bühne (nachts) |
 | `packages/onboarding/scripts/verify-members-map.mjs` | Beweis für die MITGLIEDER-KARTE (Etappe 2, 2026-08-23). | Bühne (jeder Lauf) |
@@ -315,7 +326,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/pages/scripts/verify-community-redirects.mjs` | Beweis für U15 Teil 3 (Davids Entscheidung vom 2026-08-13) — DER OWNER LEGT SEINE WEITERLEITUNGEN SELBST AN: alte Adresse ⇒ neue Adresse. | Bühne (jeder Lauf) |
 | `packages/pages/scripts/verify-community-seo.mjs` | Beweis für U15 Teil 2 (Davids Zuschnitt vom 2026-08-13) — DER OWNER STELLT SEINEN SUCHEINTRAG SELBST EIN: eigene Beschreibung der Startseite · noindex-Schalter · Vorschau. | Bühne (jeder Lauf) |
 | `packages/pages/scripts/verify-page-languages.mjs` | Beweis für F60 (Davids Entscheidungen vom 2026-09-10) — MEHRSPRACHIGE BETREIBER-SEITEN: der Fallback zeigt und sagt, was er zeigt. | Bühne (jeder Lauf) |
-| `packages/posts/scripts/verify-composer-editor.mjs` | „SCHREIBFLÄCHE AUF UEditor" — der Beweis (2026-08-04). | von Hand: Braucht einen echten Browser und eine fremde Website. |
+| `packages/posts/scripts/verify-composer-editor.mjs` | „SCHREIBFLÄCHE AUF UEditor" — der Beweis (2026-08-04). | Bühne (nachts), Einzel-Instanz |
 | `packages/posts/scripts/verify-handles-mentions.mjs` | „HANDLES (@name) UND ERWÄHNUNGEN" — der Beweis (2026-08-04). | Bühne (nachts), Einzel-Instanz |
 | `packages/posts/scripts/verify-like-limit.mjs` | DAS TAGES-LIMIT FUER LIKES — der Beweis (F57 Mechanik 3, 2026-08-14). | Bühne (nachts), Einzel-Instanz |
 | `packages/posts/scripts/verify-mention-menu.mjs` | „NAMENSVERVOLLSTÄNDIGUNG BEIM TIPPEN" — der Beweis (2026-08-05). | Bühne (nachts), Einzel-Instanz |
