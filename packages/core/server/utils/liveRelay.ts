@@ -297,6 +297,10 @@ export class LiveRelayConnection {
   private recheckTimer: ReturnType<typeof setInterval> | undefined
   private rechecking = false
   private closed = false
+  /** Oben ist zu oder kaputt; die Nachfrage, warum, läuft schon. */
+  private ending = false
+  /** Appwrite hat einen 401-Rahmen geschickt (Sitzung beendet, JWT ungültig). */
+  private sawAuthEnd = false
 
   constructor(
     private readonly peer: Downstream,
@@ -333,8 +337,8 @@ export class LiveRelayConnection {
     socket.addEventListener('message', (event) => {
       if (typeof event.data === 'string') this.fromUpstream(event.data)
     })
-    socket.addEventListener('close', () => this.shutdown(LIVE_CLOSE_UPSTREAM, 'upstream_closed'))
-    socket.addEventListener('error', () => this.fail('upstream_error'))
+    socket.addEventListener('close', () => { void this.upstreamEnded('upstream_closed') })
+    socket.addEventListener('error', () => { void this.upstreamEnded('upstream_error') })
     this.pingTimer = setInterval(() => {
       if (this.upstream?.readyState === WebSocket.OPEN) this.upstream.send('{"type":"ping"}')
     }, LIVE_UPSTREAM_PING_MS)
@@ -382,6 +386,7 @@ export class LiveRelayConnection {
         // Abmelde-Prüfung, `onRealtimeAccessEnded`). Nur Code und kurzer Text.
         const data = message.data && typeof message.data === 'object' ? message.data as Record<string, unknown> : {}
         const code = typeof data.code === 'number' ? data.code : 500
+        if (code === 401) this.sawAuthEnd = true
         const text = typeof data.message === 'string' ? data.message.slice(0, 200) : 'Error'
         this.toDownstream({ type: 'error', data: { code, message: text } })
         return
@@ -451,6 +456,34 @@ export class LiveRelayConnection {
     catch (error) {
       this.fail('downstream_send_failed', error)
     }
+  }
+
+  /**
+   * Oben ist die Verbindung zu oder kaputt. Meist heißt das: die Sitzung ist
+   * beendet (abgemeldet, „Sitzung beenden"), und Appwrite schließt — das ist
+   * ein WIDERRUF, keine Störung (PK1-EIN, Live-Probe 2026-11-25: vorher stand
+   * dafür `live_relay.upstream_failed` im Log). Darum erst fragen: ein
+   * 401-Rahmen oder eine Nachprüfung mit `revoked` ⇒ `live_relay.revoked`
+   * und zu mit 4403; sonst bleibt es eine Störung (1011, das SDK verbindet
+   * neu). Der Browser hat den 401-Rahmen in beiden Fällen schon bekommen.
+   */
+  async upstreamEnded(reason: string): Promise<void> {
+    if (this.closed || this.ending) return
+    this.ending = true
+    if (this.sawAuthEnd) {
+      logEvent('info', 'live_relay.revoked', { reason: 'session_ended' })
+      this.shutdown(LIVE_CLOSE_REVOKED, 'revoked')
+      return
+    }
+    let verdict: 'ok' | 'revoked' | 'unknown' = 'unknown'
+    try {
+      verdict = await this.env.recheck(this.scope)
+    }
+    catch (error) {
+      logEvent('warn', 'live_relay.recheck_failed', { message: error instanceof Error ? error.message : String(error) })
+    }
+    if (verdict === 'revoked') this.shutdown(LIVE_CLOSE_REVOKED, 'revoked')
+    else this.fail(reason)
   }
 
   private fail(reason: string, error?: unknown): void {

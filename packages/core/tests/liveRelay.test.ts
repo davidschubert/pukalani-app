@@ -328,12 +328,34 @@ describe('Dienst: eine Verbindung', () => {
     expect(up.sent).toHaveLength(1)
   })
 
-  it('Widerruf: Appwrite meldet 401 und schließt ⇒ der Browser bekommt den 401 und wird geschlossen', () => {
+  it('Widerruf: Appwrite meldet 401 und schließt ⇒ der Browser bekommt den 401, zu mit 4403 (Widerruf, keine Störung)', () => {
     const { peer, sent, up } = connect()
     up.open()
     up.emit({ type: 'connected', data: {} })
     up.revoke()
     expect(sent.at(-1)).toEqual({ type: 'error', data: { code: 401, message: 'User session expired.' } })
+    expect(peer.closed?.code).toBe(relay.LIVE_CLOSE_REVOKED)
+    expect(relay.liveRelayConnectionCount()).toBe(0)
+  })
+
+  it('oben zu OHNE 401-Rahmen, Nachprüfung sagt „widerrufen" ⇒ zu mit 4403', async () => {
+    const { peer, up } = connect()
+    up.open()
+    up.emit({ type: 'connected', data: {} })
+    verdict = 'revoked'
+    up.dispatchEvent(new Event('error'))
+    up.dispatchEvent(new Event('close'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(peer.closed?.code).toBe(relay.LIVE_CLOSE_REVOKED)
+    expect(relay.liveRelayConnectionCount()).toBe(0)
+  })
+
+  it('oben zu, Karte gilt weiter ⇒ Störung, zu mit 1011 (das SDK verbindet neu)', async () => {
+    const { peer, up } = connect()
+    up.open()
+    up.emit({ type: 'connected', data: {} })
+    up.dispatchEvent(new Event('error'))
+    await vi.advanceTimersByTimeAsync(0)
     expect(peer.closed?.code).toBe(relay.LIVE_CLOSE_UPSTREAM)
     expect(relay.liveRelayConnectionCount()).toBe(0)
   })
