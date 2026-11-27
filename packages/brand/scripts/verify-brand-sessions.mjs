@@ -252,6 +252,17 @@ async function awaitRun(listPath, cookie, pick = json => json?.run, { timeoutMs 
   }
 }
 
+/**
+ * Zählt einen sichtbaren Text NUR im gerenderten Markup. Seit TK1 (#604,
+ * i18n `experimental.preload`) legt der Server die beim Rendern benutzten
+ * Texte zusätzlich in den Payload (`<script id="__NUXT_DATA__">`) — einmal je
+ * Schlüssel. Wer das ganze HTML zählt, findet „Aus der DNA" darum einmal zu
+ * oft (BS2). Gezählt wird weiter streng („genau einer"), nur ohne Skripte.
+ */
+function countInMarkup(html, needle) {
+  return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').split(needle).length - 1
+}
+
 function check(label, ok, detail = '') {
   if (ok) {
     pass++
@@ -2729,8 +2740,8 @@ try {
     TYPE_PAIRS.every(pair => typeView.text.includes(`data-type-pair="${pair.id}"`)),
     TYPE_PAIRS.filter(pair => !typeView.text.includes(`data-type-pair="${pair.id}"`)).map(p => p.id).join(', '))
   check('… und mit einem markierten Vorschlag aus der DNA (genau einer)',
-    typeView.text.split('Aus der DNA').length - 1 === 1,
-    `${typeView.text.split('Aus der DNA').length - 1}× gefunden`)
+    countInMarkup(typeView.text, 'Aus der DNA') === 1,
+    `${countInMarkup(typeView.text, 'Aus der DNA')}× gefunden`)
 
   /**
    * DER UNTERSCHIED ZU G4, GEMESSEN: die Seite liefert die ECHTEN
@@ -2903,8 +2914,8 @@ try {
     markKinds.every(kind => markView.text.includes(`data-mark-kind="${kind}"`)),
     markKinds.filter(kind => !markView.text.includes(`data-mark-kind="${kind}"`)).join(', '))
   check('… und mit genau einem markierten Vorschlag',
-    markView.text.split('Aus der DNA').length - 1 === 1,
-    `${markView.text.split('Aus der DNA').length - 1}× gefunden`)
+    countInMarkup(markView.text, 'Aus der DNA') === 1,
+    `${countInMarkup(markView.text, 'Aus der DNA')}× gefunden`)
 
   /**
    * DER UNTERSCHIED ZU EINER BESCHREIBUNG, GEMESSEN: die Seite liefert die
@@ -3164,8 +3175,8 @@ try {
    * Icons), nicht einmal insgesamt.
    */
   check('… und mit genau drei markierten Vorschlägen — einer je Abschnitt',
-    imageryView.text.split('Aus der DNA').length - 1 === 3,
-    `${imageryView.text.split('Aus der DNA').length - 1}× gefunden`)
+    countInMarkup(imageryView.text, 'Aus der DNA') === 3,
+    `${countInMarkup(imageryView.text, 'Aus der DNA')}× gefunden`)
   check('der Vorschlag ist das Prinzip der DNA-Bildwelt („Nah am Handwerk" ⇒ `closeup`)',
     cardChunk(imageryView.text, 'closeup').includes('Aus der DNA')
     && !cardChunk(imageryView.text, 'daylight').includes('Aus der DNA'),
