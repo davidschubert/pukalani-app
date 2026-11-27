@@ -60,6 +60,10 @@ const E2E = 'läuft als eigener Schritt in .github/workflows/e2e.yml'
 // branding.supply steht seit dem 2026-11-18 nachts als vierter Server; seit dem
 // 2026-11-19 laufen dort elf der zwölf Skripte mit (die Design-Vorlage der drei
 // Design-Skripte steht jetzt an einer Stelle: packages/brand/scripts/lib/designProbe.mjs).
+// Seit dem 2026-11-27 (BT1 a) laufen auch `verify-geo-cities` (kleiner Orts-Auszug
+// scripts/buehne/fixtures/geo-cities.tsv, von buehne-setup.mjs eingetragen),
+// `verify-notification-mail-links` (der Server stößt denselben Sammel-Lauf ohnehin
+// zwei Minuten nach dem Start selbst an) und nachts `verify-composer-editor` mit.
 
 /** @type {Beweis[]} */
 export const BEWEISE = [
@@ -93,10 +97,10 @@ export const BEWEISE = [
 
   // ── core ──
   { skript: 'packages/core/scripts/verify-business-confirmation.mjs', lauf: 'hand', grund: 'Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site, jede mit eigenem Projekt), und die Bühne hat keinen Server der Studio-Site. Das Skript selbst ist seit dem 2026-11-19 nachgezogen (27 von 27 lokal) — es kann einziehen, sobald die Studio-Site auf der Bühne steht.' },
-  { skript: 'packages/core/scripts/verify-geo-cities.mjs', lauf: 'hand', grund: 'Braucht die Orts-Datei für Städte und Regionen, und die liegt nicht im Repo.' },
+  { skript: 'packages/core/scripts/verify-geo-cities.mjs', lauf: 'buehne', env: 'platform', dauer: 5, braucht: ['appwrite', 'platform'] },
   { skript: 'packages/core/scripts/verify-handle-search-boundary.mjs', lauf: 'buehne', env: 'control', dauer: 4, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/core/scripts/verify-mfa.mjs', lauf: 'nacht', env: 'einzel', dauer: 120, braucht: ['appwrite', 'einzel', 'mailpit'] },
-  { skript: 'packages/core/scripts/verify-notification-mail-links.mjs', lauf: 'hand', env: 'platform', dauer: 5, braucht: ['appwrite', 'platform', 'mailpit'], grund: 'Noch nicht ganz grün auf der Bühne gesehen: der Platform-Server muss mit NUXT_PUBLIC_APP_URL laufen (die CI setzt es), lokal fehlte es; außerdem verschickt der Sammel-Lauf die Mails aller wartenden Konten der Instanz.' },
+  { skript: 'packages/core/scripts/verify-notification-mail-links.mjs', lauf: 'buehne', env: 'platform', dauer: 5, braucht: ['appwrite', 'platform', 'mailpit'] },
   { skript: 'packages/core/scripts/verify-otp-availability.mjs', lauf: 'buehne', env: 'control', dauer: 1, braucht: ['appwrite', 'platform'] },
   { skript: 'packages/core/scripts/verify-presence-away-priority.mjs', lauf: 'buehne', env: 'platform', dauer: 2, braucht: ['appwrite', 'platform'] },
   { skript: 'packages/core/scripts/verify-presence-boundary.mjs', lauf: 'e2e', env: 'platform', dauer: 3, braucht: ['appwrite', 'platform'], grund: E2E },
@@ -104,7 +108,7 @@ export const BEWEISE = [
   { skript: 'packages/core/scripts/verify-server-only-writes.mjs', lauf: 'buehne', env: 'platform', dauer: 1, braucht: ['appwrite'] },
   // PK1 E1c: nur nachts im Modus write (zwei Resolver-Wartezeiten); ohne write ⇒ „übersprungen".
   { skript: 'packages/core/scripts/verify-site-card.mjs', lauf: 'nacht', env: 'control', dauer: 75, braucht: ['appwrite', 'platform', 'control'] },
-  { skript: 'packages/core/scripts/verify-session-ip.mjs', lauf: 'hand', grund: 'Braucht die Standort-Datei und eine geänderte Proxy-Einstellung der Datenbank.' },
+  { skript: 'packages/core/scripts/verify-session-ip.mjs', lauf: 'hand', grund: 'Braucht die Standort-Datenbank (DB-IP im Binärformat, nicht im Repo; einen kleinen Auszug kann man ohne neues Paket nicht schreiben) und eine geänderte Proxy-Einstellung der Datenbank, die die Bühne nicht setzt.' },
   { skript: 'packages/core/scripts/verify-timezone.mjs', lauf: 'nacht', env: 'einzel', dauer: 5, braucht: ['appwrite', 'einzel'] },
   { skript: 'packages/core/scripts/verify-ugc-translation.mjs', lauf: 'hand', grund: 'Braucht einen echten KI-Aufruf bei einem fremden Anbieter, der Geld kostet.' },
 
@@ -146,7 +150,7 @@ export const BEWEISE = [
   { skript: 'packages/onboarding/scripts/verify-community-suspension.mjs', lauf: 'nacht', env: 'control', dauer: 175, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-control-exit.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-control-host.mjs', lauf: 'buehne', env: 'keine', dauer: 1, braucht: ['platform'] },
-  { skript: 'packages/onboarding/scripts/verify-custom-domain.mjs', lauf: 'hand', env: 'control', grund: 'Braucht eine Betreiber-App im Trockenlauf mit eigenem Namens-Server (NUXT_CUSTOM_DOMAIN_DRY_RUN, NUXT_CUSTOM_DOMAIN_DNS_SERVERS), die die Bühne nicht startet, und kennt die Freigabe durch den Betreiber (BE-014) noch nicht.' },
+  { skript: 'packages/onboarding/scripts/verify-custom-domain.mjs', lauf: 'hand', env: 'control', grund: 'Braucht eine Betreiber-App im Trockenlauf mit eigenem Namens-Server (NUXT_CUSTOM_DOMAIN_DRY_RUN, NUXT_CUSTOM_DOMAIN_DNS_SERVERS), die die Bühne nicht startet, misst in Abschnitt 5 gegen echte öffentliche DNS-Einträge (Weiterleitung an 1.1.1.1, ein Fremddienst) und kennt die Freigabe durch den Betreiber (BE-014) noch nicht.' },
   { skript: 'packages/onboarding/scripts/verify-dashboard-access.mjs', lauf: 'buehne', env: 'control', dauer: 5, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/onboarding/scripts/verify-member-invites.mjs', lauf: 'nacht', env: 'control', dauer: 68, braucht: ['appwrite', 'platform', 'control', 'mailpit'] },
   { skript: 'packages/onboarding/scripts/verify-members-map.mjs', lauf: 'buehne', env: 'control', dauer: 2, braucht: ['appwrite', 'platform', 'control'] },
@@ -165,7 +169,7 @@ export const BEWEISE = [
   { skript: 'packages/pages/scripts/verify-page-languages.mjs', lauf: 'buehne', env: 'control', dauer: 3, braucht: ['appwrite', 'platform', 'control'] },
 
   // ── posts ──
-  { skript: 'packages/posts/scripts/verify-composer-editor.mjs', lauf: 'hand', grund: 'Braucht einen echten Browser und eine fremde Website.' },
+  { skript: 'packages/posts/scripts/verify-composer-editor.mjs', lauf: 'nacht', env: 'einzel', dauer: 112, braucht: ['appwrite', 'einzel', 'browser'] },
   { skript: 'packages/posts/scripts/verify-handles-mentions.mjs', lauf: 'nacht', env: 'einzel', dauer: 55, braucht: ['appwrite', 'einzel', 'browser'] },
   { skript: 'packages/posts/scripts/verify-like-limit.mjs', lauf: 'nacht', env: 'einzel', dauer: 40, braucht: ['appwrite', 'einzel'], vars: { LIKE_LIMIT: '50' } },
   { skript: 'packages/posts/scripts/verify-mention-menu.mjs', lauf: 'nacht', env: 'einzel', dauer: 40, braucht: ['appwrite', 'einzel', 'browser'] },

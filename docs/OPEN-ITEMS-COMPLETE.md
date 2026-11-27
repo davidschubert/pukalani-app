@@ -30,6 +30,53 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BT1 (a) drei Skripte — drei Beweise mehr im automatischen Lauf, Nacht-Alarm schließt nur ein Nacht-Lauf ✅ 2026-11-27
+
+Von den elf Skripten, die noch von Hand liefen, laufen drei jetzt mit (79 von
+87, `docs/referenz/LIVE-BEWEISE.md`); die übrigen acht haben einen Grund, der
+den Fremddienst oder den fehlenden Server nennt (`scripts/buehne/beweise.mjs`).
+
+- **`verify-geo-cities` (jeder Lauf):** auf die Bühnen-Helfer umgebaut —
+  Wegwerf-Konto `…@example.test` statt Anmeldung über `/api/auth/signup`,
+  Zustimmung über die echte Route, Hosts aus der Umgebung, Aufräumen mit
+  Nachzählen (vorher blieb jedes Konto liegen). Die Orte kommen aus einem
+  Auszug im Repo, `scripts/buehne/fixtures/geo-cities.tsv` (acht Orte,
+  dieselben sieben Spalten wie das GeoNames-Verzeichnis);
+  `scripts/ci/buehne-setup.mjs` trägt ihn als `NUXT_GEO_CITIES_PATH` ein, das
+  Skript liest dieselbe Datei unabhängig. Lokal 35/0 gegen das volle
+  Verzeichnis und 35/0 gegen den Auszug.
+- **`verify-notification-mail-links` (jeder Lauf):** der Grund „stößt den
+  Sammel-Lauf für alle Konten an" trug nicht — jeder Server mit Mail-Zugang
+  stößt denselben Lauf zwei Minuten nach dem Start selbst an
+  (`core/server/plugins/email-digest.ts`), und auf der Bühne gehen Mails nur in
+  den lokalen Briefkasten. Lokal 12/0.
+- **`verify-composer-editor` (nachts, Einzel-Instanz, Chromium):** der Grund
+  „fremde Website" stimmte nicht (`example.com` wird nur getippt). Adresse über
+  `einzelBaseUrl`, Nachzählen über `createEinzelCleanup`, `networkidle` nur
+  noch als begrenzte Ruhepause. Lokal 73/73; mit geleertem Vite-Zwischenspeicher
+  kam der Editor beim ersten Fokus nicht (Vite bündelt Tiptap erst dann und
+  lädt die Seite neu) — dafür genau ein Neuversuch nach dem Neuladen, danach
+  73/73 in 112 s.
+- **Alarmweg:** am 2026-11-26 schloss ein grüner KURZER Lauf auf `main` das
+  Alarm-Issue #614, obwohl das rote Nacht-Skript (`verify-brand-sessions`)
+  darin nicht lief. Ein roter Nacht-Lauf setzt jetzt das Label
+  `buehne-alarm-nacht`; ein grüner kurzer Lauf kommentiert dann nur, schließen
+  kann nur ein grüner Nacht-Lauf (`.github/workflows/buehne.yml`, Runbook
+  `docs/runbooks/PRODUKTIONS-ALARM.md` § 1b). Vier Fälle mit nachgebautem `gh`
+  durchgespielt.
+- Für die Entscheidung in BT1 (c) nachgezählt (Plan `plans/offen/BT1.md`):
+  seit dem 18.11. drei Nächte grün, sechs rot; fünf davon lagen am Skript
+  oder am Lauf, eine (26.11., Werkstatt-Seite zeigt den markierten Vorschlag
+  doppelt) ist offen.
+
+**Gelernt:** Ein „von Hand"-Grund veraltet wie Code. Drei der elf Gründe
+hielten einer Nachfrage nicht stand („alle Konten" machte der Server ohnehin
+selbst, „fremde Website" war nur getippter Text, „Datei nicht im Repo" löste
+ein Auszug von acht Zeilen). Und eine Testdatei ist erst richtig, wenn der
+Server sie liest: der erste Auszug hatte sechs statt sieben Spalten, der
+Server verwarf still jede Zeile — nur die Gegenprobe mit genau dieser Datei
+zeigte es.
+
 ### WH1 — Papierkorb für Marken auf branding.supply (gebaut) ✅ 2026-11-25
 
 Davids Entscheidungen vom 2026-11-15 ([Plan](plans/WIEDERHERSTELLUNG.md)) sind

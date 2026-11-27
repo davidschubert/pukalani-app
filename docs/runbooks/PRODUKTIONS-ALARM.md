@@ -318,7 +318,10 @@ fährt die Beweis-Skripte dagegen (bei jedem Pull Request und auf `main` die
 kurzen, jede Nacht um 01:41 UTC auch die langen). Rot auf `main` oder nachts
 ⇒ der Job `alarm` DIESES Workflows öffnet ein Issue mit dem Label
 `buehne-alarm` (eines, solange es offen ist; jeder weitere rote Lauf
-kommentiert; der nächste grüne Lauf schließt es). Ohne Secret, ohne Mail,
+kommentiert; der nächste grüne Lauf schließt es — war ein NACHT-Lauf rot,
+trägt das Issue zusätzlich `buehne-alarm-nacht`, und nur ein grüner
+Nacht-Lauf schließt es: der kurze Lauf auf `main` fährt die Nacht-Skripte
+nicht, ein grüner kurzer Lauf kommentiert nur). Ohne Secret, ohne Mail,
 ohne Heartbeat — das Issue ist dem Repo-Besitzer zugewiesen. Ein roter Lauf
 an einem Pull Request öffnet nichts; ein verdrängter Lauf („cancelled") auch
 nicht.

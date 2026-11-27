@@ -34,7 +34,8 @@
 # `pnpm check:live-beweise` und einen Test rot.
 #
 # ROT AUF main ODER NACHTS ⇒ ALARM: der Job `alarm` öffnet das Issue
-# `buehne-alarm` (offen = Alarm, der nächste grüne Lauf schließt es) — derselbe
+# `buehne-alarm` (offen = Alarm, der nächste grüne Lauf schließt es; kam der
+# Alarm aus dem Nacht-Lauf, schließt ihn nur ein grüner Nacht-Lauf) — derselbe
 # Weg wie beim Produktions-Wächter (docs/runbooks/PRODUKTIONS-ALARM.md), ohne
 # Secret. Ein roter Lauf an einem Pull Request öffnet nichts; er steht dort.
 #
@@ -480,6 +481,13 @@ jobs:
       RESULT: ${{ needs.buehne.result }}
       DRILL: ${{ inputs.alarm_drill && 'ja' || 'nein' }}
       ANLASS: ${{ github.event_name }}
+      # Dieselbe Rechnung wie im Job `buehne`: welche Beweise liefen?
+      LAUF: ${{ github.event_name == 'schedule' && 'nacht' || inputs.lauf || 'buehne' }}
+      # ROT NACHTS ⇒ dieses zweite Label (BT1 c, 2026-11-27): der kurze Lauf
+      # auf `main` fährt die Nacht-Skripte nicht. Am 2026-11-26 schloss er
+      # das Issue #614 trotzdem („wieder grün"), obwohl das rote Skript
+      # (`verify-brand-sessions`) gar nicht gelaufen war.
+      NACHT_LABEL: buehne-alarm-nacht
       ALARM_ASSIGNEE: ${{ github.repository_owner }}
     steps:
       - name: Issue öffnen, bestätigen oder schließen
@@ -502,6 +510,7 @@ jobs:
             exit 0
           fi
           gh label create "$LABEL" --color B60205 --description 'Die Bühne (Tests über den echten Kundenpfad) ist rot' >/dev/null 2>&1 || true
+          gh label create "$NACHT_LABEL" --color D93F0B --description 'Rot im Nacht-Lauf — nur ein grüner Nacht-Lauf gibt Entwarnung' >/dev/null 2>&1 || true
           nummer=$(gh issue list --label "$LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
           hinweis=''
           if [ "$DRILL" = "ja" ]; then hinweis=' (PROBEALARM — nichts ist kaputt)'; fi
@@ -515,13 +524,21 @@ jobs:
                 echo
                 echo 'Was zu tun ist: den Lauf öffnen. Die Zusammenfassung zeigt je Beweis-Skript, ob es bestanden hat; der rote Schritt nennt die letzten Zeilen. Ein roter Beweis heißt: eine Zusage des Kundenpfads hält gerade nicht, oder das Skript ist veraltet. Einteilung und Aufruf von Hand: docs/referenz/LIVE-BEWEISE.md.'
                 echo
-                echo 'Dieses Issue schließt sich von selbst, sobald ein Lauf auf main oder der nächtliche Lauf wieder grün ist.'
+                echo 'Dieses Issue schließt sich von selbst, sobald ein Lauf auf main oder der nächtliche Lauf wieder grün ist — kam der Alarm aus dem Nacht-Lauf (Label buehne-alarm-nacht), nur ein grüner Nacht-Lauf.'
               } > /tmp/issue-body.md
-              gh issue create --title "Bühne rot: Tests über den echten Kundenpfad$hinweis" --label "$LABEL" --assignee "$ALARM_ASSIGNEE" --body-file /tmp/issue-body.md
+              nummer=$(gh issue create --title "Bühne rot: Tests über den echten Kundenpfad$hinweis" --label "$LABEL" --assignee "$ALARM_ASSIGNEE" --body-file /tmp/issue-body.md | sed -n 's#.*/issues/\([0-9]*\)$#\1#p')
+              echo "Alarm-Issue #$nummer geöffnet."
             else
               gh issue comment "$nummer" --body "Weiter rot$hinweis ($stand, Anlass: $ANLASS). Lauf: $RUN_URL" >/dev/null
               echo "Alarm-Issue #$nummer bestätigt."
             fi
+            if [ "$LAUF" = "nacht" ] && [ -n "$nummer" ]; then
+              gh issue edit "$nummer" --add-label "$NACHT_LABEL" >/dev/null
+            fi
+          elif [ -n "$nummer" ] && [ "$LAUF" != "nacht" ] \
+            && gh issue view "$nummer" --json labels --jq '.labels[].name' | grep -x "$NACHT_LABEL" >/dev/null; then
+            gh issue comment "$nummer" --body "Kurzer Lauf grün ($stand, Anlass: $ANLASS) — der Alarm kam aus dem Nacht-Lauf, dessen Skripte hier nicht liefen. Offen bis zum nächsten grünen Nacht-Lauf. Lauf: $RUN_URL" >/dev/null
+            echo "Alarm-Issue #$nummer bleibt offen (Nacht-Alarm, kurzer Lauf)."
           elif [ -n "$nummer" ]; then
             gh issue comment "$nummer" --body "✅ Entwarnung ($stand): die Bühne ist wieder grün. Lauf: $RUN_URL" >/dev/null
             gh issue close "$nummer" --reason completed >/dev/null
