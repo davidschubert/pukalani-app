@@ -154,7 +154,7 @@ catalog:
   # und ist ein eigener Schritt.
   node-appwrite: ^31.3.0
   # Die Typen folgen der Laufzeit (DECISION-LOG 2026-11-18): Linie 24, nie darüber.
-  '@types/node': ^24.19.2
+  '@types/node': ^26.6.6
   # 4.6.4 (2026-11-09) = Sicherheitsrelease vom 2026-11-02 (acht Nuxt-, drei
   # Nitro-Fixes; Nitro 2.13.6): routeRules/Middleware-Umgehungen, SSR-Fehler-
   # Lecks, Dev-Server-Dateizugriff; cache/swr/isr speichert nur noch GET/HEAD
