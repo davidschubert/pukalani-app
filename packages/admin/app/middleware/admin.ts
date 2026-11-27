@@ -1,5 +1,6 @@
 import type { Capability } from '../../../core/shared/types/authz'
 import type { DashboardScope } from '../../../core/shared/dashboardNav'
+import { safeRedirectTarget } from '../../../core/shared/redirectTarget'
 
 /**
  * Route-Middleware für Dashboard-Pages (UX-Schicht — die Autorität sind die
@@ -32,7 +33,12 @@ export default defineNuxtRouteMiddleware((to) => {
   const auth = useAuthStore()
 
   if (!auth.isLoggedIn) {
-    return navigateTo(useLocalePath()('/login'))
+    // Mit Rückweg wie die `auth`-Middleware (PK1-EIN, Befund 3).
+    const target = safeRedirectTarget(to.fullPath)
+    return navigateTo({
+      path: useLocalePath()('/login'),
+      ...(target ? { query: { redirect: target } } : {}),
+    })
   }
 
   const { capabilities: siteCaps } = useCommunityRole()

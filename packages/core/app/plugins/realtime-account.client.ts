@@ -1,5 +1,6 @@
 import { isSessionDeleteEvent } from '../../shared/realtimeAuth'
 import { accountVerifyAt } from '../../shared/realtimeGate'
+import { safeRedirectTarget } from '../../shared/redirectTarget'
 
 /**
  * Live-Session-Widerruf (#9): Beendet ein Admin die Sessions eines Users (oder
@@ -51,13 +52,27 @@ export default defineNuxtPlugin((nuxtApp) => {
         if (!auth.user) return
         await auth.refresh()
         if (auth.user) return // eigene Session lebt weiter (z.B. nur Netz-Blip)
+        // MIT RÜCKWEG und nie über einen schon laufenden Weg zur Anmeldung
+        // (PK1-EIN, Befund 3): beim „frisch anmelden" meldet `useLogout` ab
+        // und fährt nach `/login?redirect=…`. Dasselbe Abmelden löst hier das
+        // Session-Lösch-Ereignis aus; dauert der Logout-Aufruf länger als die
+        // Entprellung, lief diese Prüfung hinterher und überschrieb das Ziel
+        // mit dem nackten `/login` — nach der Anmeldung ging es auf die
+        // Startseite statt zurück.
+        const current = nuxtApp.$router.currentRoute.value
+        const loginPath = localePath('/login')
+        if (current.path === loginPath || current.path.startsWith(`${loginPath}/`)) return
+        const target = safeRedirectTarget(current.fullPath)
         toast.add({
           title: i18n.t('auth.sessionRevoked'),
           description: i18n.t('auth.sessionRevokedDescription'),
           color: 'warning',
           icon: 'i-ph-sign-out',
         })
-        await navigateTo(localePath('/login'))
+        await navigateTo({
+          path: loginPath,
+          ...(target ? { query: { redirect: target } } : {}),
+        })
       })
     }, at - now)
   }
