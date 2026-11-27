@@ -30,6 +30,68 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### WS1 — die Werkstatt-Seite in Teile geschnitten: Session/Verlauf und Warteschlange (ARC-001) ✅ 2026-11-27
+
+**Was.** `packages/brand/app/pages/brand/[profileId]/[stepKey].vue`: 5.235
+Zeilen vor Q21, 3.746 nach dem WS1-Lauf, 3.325 nach Bahn C (`BwStageAnswer`,
+`BwStageOptions`, `BwStageDraft`, `useBrandSlotRevision`), 3.149 nach dem
+Schreibfeld (`useBrandWorkshopComposer`), 2.454 nach dem Rest-Schnitt vom
+2026-11-25 (`useBrandWorkshopChoices`, `useBrandWorkshopLogCards`,
+`useBrandWorkshopBenches` + `BwWorkshopBenches`, `BwWorkshopLocked`,
+`BwWorkshopSessionLine`) und jetzt **1.978** nach den zwei letzten Teilen:
+
+- **(e) Session, Verlauf, Abschluss** → `useBrandWorkshopSession`:
+  Eröffnungszug samt `onMounted`-Klammer, Session öffnen (`?s=`), Feld-Link
+  über die Kapitel-Grenze, Dokument, Abnahme, Auto-Weiter, Vertagen,
+  Sammel-Zwischenstand, „Wofür brauchen wir das?", die zwei
+  Session-Ablehnungen, Bestätigen mit Schliess-Aufruf, Weiter-Knopf.
+  20 Eingänge, 13 Rückgaben.
+- **(f, Rest) Warteschlange „neu besprechen" und Karten** →
+  `useBrandWorkshopQueue`: Veraltet-Hinweis mit „Gilt weiter", Hinweis je
+  Slot, die Flanke `turnEnded`, das Räumen beim Kapitel-/Session-Wechsel,
+  `slotCards`/`cardFor`, `generateSlot`, `generationNotice`. 16 Eingänge,
+  11 Rückgaben.
+
+**Wie, ohne das Verhalten zu ändern.** Beide Composables sind synchron und
+werden an DERSELBEN Stelle im `setup` aufgerufen, an der der Abschnitt stand
+— Reihenfolge von `watch` und `onMounted` unverändert. In der Seite bleibt,
+was nicht wandern darf: das `await useAsyncData` des Verlaufs (nach einem
+`await` IN einem Composable hingen `onMounted`/`watch` an keiner Komponente
+mehr; die Seite reicht `sessionHistory` herein), `openedSessions`, und alle
+Refs, die die Bühne schon beim Anlegen liest (`closingFrom`, `closingNext`,
+`editingSlotId`, `editBaseline`, `readinessOf` — die TDZ-Gründe stehen an den
+Deklarationen). Die zwei Beobachter, die `turnEnded` setzen, bleiben bei
+`stageModule`. Bewusst NICHT geschnitten: DNA-Vorschlag und Book & Kit (andere
+Form als die fünf Werkzeuge, klein genug für die Seite).
+
+**Beweise.** Rauch-Test `packages/brand/tests/render/workshopPage.test.ts`
+vorher und nachher 8/8, alle brand-Tests (4.080), Typecheck branding,
+`pnpm check` (14/14). Hydration-Prüfweg
+`packages/brand/scripts/verify-workshop-hydration.mjs` gegen einen Dev-Server
+aus dem Worktree: 5 grün. Klick-Probe mit Wegwerf-Konto (Playwright, KI-Routen
+abgefangen, 13 grün): Verlauf in `a.customerPraise` aus Zeilen gesetzt, Klick
+in der Leiste ⇒ `?s=a.customerPraise`, beide Züge stehen da, KEIN
+Eröffnungszug (die erste Session ohne Verlauf eröffnete beim Laden genau
+einmal); in `a.competitors` „George, draft this" ⇒ genau ein
+`…/generate`, danach der Satz „That did not work just now"; keine Abweichung
+Server/Browser. Konto, Marke und Zeilen danach gelöscht und nachgezählt.
+
+**Was der Rauch-Test lehrt (für jeden weiteren Schnitt an dieser Seite):** der
+Store lebt über alle Fälle einer Datei und lädt dasselbe Kapitel nicht neu —
+ein Fall, der den Store verändert, hinterlässt einen vollständigen Stand; ein
+Fall mit anderem Ausgangsstand läuft direkt nach dem Farbwelt-Fall und schaltet
+ihn über die gestellte Antwort ein (`workshopReviseSlotConfirmed`).
+`…/converse` und `…/generate` antworten nur mit gestelltem Strom, wenn der
+Fall sie scharf schaltet (`aiStub`); `calls.ai` bleibt sonst 0.
+
+**Gelernt:** Die Hälfte der Kopplung war Reihenfolge, nicht Daten. Ein
+Composable mit `await` hätte die SSR-Nutzlast gleich gelassen und trotzdem den
+Eröffnungszug gebrochen (Beobachter ohne Komponente) — Rauch-Test und Typecheck
+sähen das nicht. Deshalb bleibt jedes `await` in der Seite, und der Prüfweg
+für Server und Browser lief vor dem Klick. Und: eine Klick-Probe, die „kein
+Eröffnungszug" ab dem Laden zählt, ist falsch rot — die ERSTE Session eröffnet
+dort zu Recht; gezählt wird ab dem Klick.
+
 ### WH1 — Papierkorb für Marken auf branding.supply (gebaut) ✅ 2026-11-25
 
 Davids Entscheidungen vom 2026-11-15 ([Plan](plans/WIEDERHERSTELLUNG.md)) sind
@@ -1689,7 +1751,7 @@ einen toten Proxy gesperrt — zwei Eröffnungszüge scheiterten dort nach rund
 Bestätigungs-Modul korrigieren/verwerfen, Leiste im schmalen Fenster, Farbwelt
 wählen mit Autosave 200. Konten und Zeilen danach gelöscht, nachgezählt 0.
 
-Offen geblieben, mit Grund in `docs/plans/offen/WS1.md`: Antwort-, Options-
+Offen geblieben (seit 2026-11-27 alles geschnitten, Eintrag „WS1“ oben): Antwort-, Options-
 und Entwurfs-Modul (Hauptklick ruft die KI-Route; braucht einen gestellten
 Strom im Rauch-Test), Session/Verlauf (SSR und Hydration sieht der Rauch-Test
 nicht), Korrektur-Regel (der Handlungs-Kern, den alle drei Spalten teilen).
@@ -2269,7 +2331,7 @@ Wechsel der Anmeldung; die Kürzel bleiben als Verweis an jeder Probe.
 hatte 5.235 Zeilen, und es gab im Projekt keinen einzigen Test, der eine
 Komponente aufbaut. Ein Umbau dieser Seite war damit blind. Bewusst begrenzt
 auf zwei Dinge: ein Rauch-Test und der ERSTE Schnitt. Die übrigen Schnitte
-stehen als **WS1** in der Liste (Kapitel mit Zeilen in `docs/plans/offen/WS1.md`).
+stehen als **WS1** in der Liste (seit 2026-11-27 erledigt, Eintrag „WS1“ oben).
 
 1. **Werkzeug.** `@nuxt/test-utils` 4.4.0 über den Katalog (13 Tage alt, passt
    zu Nuxt 4.6.4 und Vitest 5.1.1). Es verlangt für einen echten Aufbau eine
