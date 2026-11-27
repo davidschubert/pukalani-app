@@ -230,3 +230,25 @@ describe('Anmelde-Merker: mehrere eigene Sitzungen eines Kontos', () => {
     expect(counter.n).toBe(4)
   })
 })
+
+describe('siteSessionsOverCap: verwaiste Seiten-Sitzungen (PK1-EIN)', async () => {
+  const { siteSessionsOverCap } = await import('../server/utils/sessionHandoff')
+  const site = (id: string, day: number) => ({ $id: id, provider: 'server', $createdAt: new Date(Date.UTC(2026, 0, day)).toISOString() })
+
+  it('unter oder an der Grenze: nichts', () => {
+    expect(siteSessionsOverCap([site('a', 1), site('b', 2)], [], 2)).toEqual([])
+  })
+
+  it('darüber: die ältesten zuerst, echte Anmeldungen zählen nicht mit', () => {
+    const sessions = [site('c', 3), { $id: 'real', provider: 'email', $createdAt: '2020-01-01T00:00:00.000Z' }, site('a', 1), site('b', 2)]
+    expect(siteSessionsOverCap(sessions, [], 1)).toEqual(['a', 'b'])
+  })
+
+  it('geschützte Ids fallen nie, auch wenn sie die ältesten sind', () => {
+    expect(siteSessionsOverCap([site('a', 1), site('b', 2), site('c', 3)], ['a'], 2)).toEqual(['b'])
+  })
+
+  it('unlesbares Datum gilt als ältestes', () => {
+    expect(siteSessionsOverCap([site('a', 1), { $id: 'x', provider: 'server', $createdAt: 'kaputt' }], [], 1)).toEqual(['x'])
+  })
+})

@@ -9,6 +9,7 @@ import { forgetRequestSession } from './sessionAccount'
 import { siteCardSettings } from './siteCard'
 import { softFail } from './softFail'
 import { normalizeHost } from './tenantResolver'
+import { SITE_SESSION_PROVIDER } from '../../shared/sessionMethod'
 import { isCustomDomainHost } from '../../shared/siteCard'
 
 /**
@@ -207,9 +208,10 @@ export async function establishSiteSession(event: H3Event, grant: HandoffGrant, 
   // stehenbleiben. Darum NACH dem Anlegen nachsehen, ob die Quelle noch
   // lebt. Weg ⇒ neue Sitzung löschen, 401. Lesefehler ⇒ neue Sitzung
   // löschen, Kopie (die lebt nur so lange wie die Quelle selbst).
-  const sourceAlive = await admin.users.listSessions({ userId: source.userId, total: false })
-    .then(list => list.sessions.some(session => session.$id === source.$id))
+  const sessions = await admin.users.listSessions({ userId: source.userId, total: false })
+    .then(list => list.sessions)
     .catch(softFail('core:utils/sessionHandoff:listSessions', null))
+  const sourceAlive = sessions ? sessions.some(session => session.$id === source.$id) : null
   if (sourceAlive !== true) {
     await admin.users.deleteSession({ userId: source.userId, sessionId: created.$id })
       .catch((error: unknown) => {
@@ -245,6 +247,21 @@ export async function establishSiteSession(event: H3Event, grant: HandoffGrant, 
     forgetRequestSession(event)
   }
 
+  // Verwaiste Seiten-Sitzungen (PK1-EIN): über der Obergrenze fallen die
+  // ältesten — aus derselben Liste, die die Nachprüfung oben schon gelesen
+  // hat, also ohne weiteren Lese-Aufruf.
+  if (sessions) {
+    const keep = [source.$id, created.$id]
+    if (previous?.format === 'card') keep.push(previous.claims.sessionId)
+    for (const sessionId of siteSessionsOverCap(sessions, keep)) {
+      await admin.users.deleteSession({ userId: source.userId, sessionId })
+        .catch((error: unknown) => {
+          const status = (error as { code?: unknown, status?: unknown } | null)?.code ?? (error as { status?: unknown } | null)?.status
+          if (status !== 404) logEvent('warn', 'auth.site_session_cleanup_failed', { status: typeof status === 'number' ? status : null, reason: 'over_cap' })
+        })
+    }
+  }
+
   // Die neue Sitzung gilt nicht länger als die Quelle: Ablauf der Karte =
   // der früheste aus neuer Sitzung, Quell-Sitzung und Quell-Karte.
   const expire = earliestExpire(sourceLimit, created.expire)
@@ -263,4 +280,54 @@ export function earliestExpire(first: string, second: string | number | undefine
   if (!Number.isFinite(b)) return first
   if (!Number.isFinite(a) || b < a) return new Date(b).toISOString()
   return first
+}
+
+/**
+ * OBERGRENZE FÜR SEITEN-SITZUNGEN JE KONTO (PK1-EIN, „verwaiste
+ * Seiten-Sitzungen").
+ *
+ * Jeder Host-Wechsel im Modus `write` legt eine Sitzung mit `provider:
+ * 'server'` an. Weggeräumt wird sie, wenn derselbe Browser denselben Host
+ * erneut betritt (oben) oder dort abmeldet. Ist das Cookie dagegen weg
+ * (gelöscht, Browser oder Gerät gewechselt), lebt die Sitzung bei Appwrite bis
+ * zu ihrem Ablauf weiter (ein Jahr) — und zählt bei einer echten Anmeldung zur
+ * Sitzungs-Obergrenze des Projekts mit; Appwrite beendet dann still die
+ * ältesten, auch echte.
+ *
+ * Ob ein Cookie noch existiert, weiß niemand außer dem Browser; Appwrite führt
+ * keinen „zuletzt benutzt". Darum keine Erkennung, sondern eine Grenze: mehr
+ * als `SITE_SESSION_CAP` Seiten-Sitzungen hat ein Konto nie, beim Anlegen
+ * fallen die ältesten darüber. 30 liegt über dem gerechneten Bedarf eines
+ * Vielnutzers (Plan E1 § 13.2 Punkt 2: etwa 21 Seiten-Sitzungen bei fünf
+ * Communities, zwei eigenen Domains, drei Geräten) und unter der Zahl für die
+ * Projekt-Obergrenze (50) — echte Anmeldungen behalten also immer Platz.
+ * Trifft es doch eine benutzte Sitzung, ist die Folge ein Abmelden auf dieser
+ * einen Seite; „Anmelden" dort holt über den Host-Wechsel eine neue Karte.
+ *
+ * Nie angefasst: echte Anmeldungen (anderer `provider`), die Ids in `keep`
+ * (Quelle, die neue Sitzung, die eigene Sitzung der Anfrage).
+ */
+export const SITE_SESSION_CAP = 30
+
+/** Ids der Seiten-Sitzungen über der Obergrenze, älteste zuerst. */
+export function siteSessionsOverCap(
+  sessions: ReadonlyArray<Pick<Models.Session, '$id' | '$createdAt' | 'provider'>>,
+  keep: readonly string[],
+  cap: number = SITE_SESSION_CAP,
+): string[] {
+  const site = sessions.filter(session => session.provider === SITE_SESSION_PROVIDER)
+  const excess = site.length - cap
+  if (excess <= 0) return []
+  const kept = new Set(keep)
+  return site
+    .filter(session => !kept.has(session.$id))
+    .sort((a, b) => createdAtMs(a) - createdAtMs(b))
+    .slice(0, excess)
+    .map(session => session.$id)
+}
+
+/** Unlesbares Datum gilt als „ältestes" — es fällt zuerst. */
+function createdAtMs(session: Pick<Models.Session, '$createdAt'>): number {
+  const ms = Date.parse(session.$createdAt)
+  return Number.isFinite(ms) ? ms : 0
 }
