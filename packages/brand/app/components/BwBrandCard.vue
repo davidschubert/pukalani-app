@@ -59,10 +59,14 @@ const bg = computed(() => `background: linear-gradient(165deg, ${props.gradient[
  * `progress`, `remaining`, `edited`); übrig blieben das Aktionen-Menü und
  * der Knopf — die laufen seit 2026-09-01 ebenfalls über i18n. */
 const { t } = useI18n()
+/* „Löschen" (WH1): die Karte meldet nur den Wunsch, die Seite fragt nach
+ * und ruft die Route — die Karte bleibt ohne Datenzugriff, und der
+ * Klickdummy, der das Ereignis nicht hört, bleibt unverändert. */
+const emit = defineEmits<{ delete: [] }>()
 const actions = computed(() => [[
   { label: t('brand.brands.card.rename'), icon: 'i-ph-pencil-simple' },
   { label: t('brand.brands.card.share'), icon: 'i-ph-share-network' },
-  { label: t('brand.brands.card.delete'), icon: 'i-ph-trash' },
+  { label: t('brand.brands.card.delete'), icon: 'i-ph-trash', color: 'error' as const, onSelect: () => emit('delete') },
 ]])
 </script>
 

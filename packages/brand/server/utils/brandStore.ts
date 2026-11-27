@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { H3Event } from 'h3'
 import type { Models } from 'node-appwrite'
+import { isBrandProfileErased } from '../../shared/brandProfileTrash'
 import { AppwriteException, Query } from 'node-appwrite'
 import type {
   BrandGenerationsView,
@@ -173,6 +174,14 @@ export type BrandProfileRow = Models.Row & {
    */
   derivationUnlockedVia?: string | null
   derivationUnlockedBy?: string | null
+  /**
+   * DER PAPIERKORB (WH1, Migration brand-028): der Zeitpunkt, an dem die
+   * Person die Marke gelöscht hat. Optional getypt, weil die Spalte additiv
+   * dazukam — `undefined`/`null` heisst „nicht gelöscht". Ab dem Zeitpunkt
+   * gilt die Marke in jedem Weg als nicht vorhanden; die Regel steht pur in
+   * `shared/brandProfileTrash.ts`.
+   */
+  erasedAt?: string | null
   /**
    * DAS OPT-IN „diese Marke darf als öffentliche Seite in der Galerie stehen"
    * (Migration brand-020, Discover D1). EIGENE Spalte neben `marketVisibility`
@@ -961,6 +970,38 @@ export async function loadOwnedProfile(
     if (isAppwriteNotFound(error)) throw createError({ status: 404, statusText: 'Not Found' })
     throw toH3Error(error, 'Brand profile could not be loaded')
   }
+  // DER PAPIERKORB (WH1): eine gelöschte Marke gibt es für jeden Weg, der
+  // hierüber geht, nicht — dieselbe 404 wie eine fehlende Zeile, VOR der
+  // Besitz-Prüfung (eine fremde Id erfährt nicht, dass es sie gab). Nur der
+  // Papierkorb selbst liest sie über `loadOwnedTrashedProfile`.
+  if (isBrandProfileErased(row)) throw createError({ status: 404, statusText: 'Not Found' })
+  assertBrandOwnerAccess(event, row, userId)
+  return row
+}
+
+/**
+ * EINE MARKE IM PAPIERKORB (WH1) — das Gegenstück zu `loadOwnedProfile` für
+ * die zwei Routen des Papierkorbs (zurückholen, jetzt endgültig löschen).
+ * Eine NICHT gelöschte Marke ist hier 404: keine dieser Routen darf eine
+ * lebende Marke anfassen.
+ */
+export async function loadOwnedTrashedProfile(
+  event: H3Event,
+  userId: string,
+  profileId: string,
+): Promise<BrandProfileRow> {
+  const { tablesDB, databaseId } = brandDb(event)
+  let row: BrandProfileRow
+  try {
+    row = await tablesDB.getRow<BrandProfileRow>({
+      databaseId, tableId: BRAND_PROFILES_TABLE, rowId: profileId,
+    })
+  }
+  catch (error) {
+    if (isAppwriteNotFound(error)) throw createError({ status: 404, statusText: 'Not Found' })
+    throw toH3Error(error, 'Brand profile could not be loaded')
+  }
+  if (!isBrandProfileErased(row)) throw createError({ status: 404, statusText: 'Not Found' })
   assertBrandOwnerAccess(event, row, userId)
   return row
 }
@@ -1026,7 +1067,8 @@ export async function listBrandProfilesForOwner(
       Query.equal('ownerId', userId),
       Query.orderDesc('lastActivityAt'),
     ])
-    return rows.map(row => ({
+    // Eine Marke im Papierkorb ist keine Quelle mehr (WH1).
+    return rows.filter(row => !isBrandProfileErased(row)).map(row => ({
       id: row.$id,
       title: row.title ?? '',
       industry: row.industry ?? '',

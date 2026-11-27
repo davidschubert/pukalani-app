@@ -1288,7 +1288,36 @@
         "resultLocked": "After the foundation is complete",
         "delete": "Delete"
       },
-      "loadFailed": "The brandings could not be loaded."
+      "loadFailed": "The brandings could not be loaded.",
+      "delete": {
+        "title": "Delete brand?",
+        "description": "“{title}” disappears for everyone right away. For 90 days you can bring it back from “Deleted brands”; after that it is deleted for good.",
+        "warningTitle": "What ends right away",
+        "warningDescription": "Shared links and the gallery page end right away; to show the brand again you publish it anew and it needs a new approval. Uploaded references and logo drafts stay stored for the 90 days. Deleting your account also deletes brands in the trash right away.",
+        "confirm": "Delete brand",
+        "done": "The brand is now under “Deleted brands”.",
+        "failed": "The brand could not be deleted. Please try again."
+      },
+      "trash": {
+        "title": "Deleted brands",
+        "description": "Deleted brands stay here for 90 days, then they are deleted for good.",
+        "name": "Brand",
+        "deletedAt": "Deleted on",
+        "left": "Deleted for good in",
+        "daysLeft": "today | one day | {count} days",
+        "actions": "Actions",
+        "restore": "Restore",
+        "restored": "The brand is back. Shared links and the publication do not come back.",
+        "restoreFailed": "The brand could not be restored.",
+        "expired": "The 90 days are over, the brand can no longer be restored.",
+        "purge": "Delete for good now",
+        "purgeTitle": "Delete for good?",
+        "purgeDescription": "“{title}” will now be deleted with all chapters, conversations, images and drafts. This cannot be undone.",
+        "purged": "The brand is deleted for good.",
+        "purgeFailed": "The brand could not be deleted for good.",
+        "reauth": "Deleting for good only works shortly after signing in. Sign in again, then try once more — nothing has been deleted yet.",
+        "loadFailed": "The deleted brands could not be loaded."
+      }
     },
     "new": {
       "title": "What are we starting with?",
@@ -3772,7 +3801,7 @@
         "notifications": "Notifications",
         "data": "Data"
       },
-      "deleteNotice": "Your brands and everything in them are deleted right away. From then on, nobody can see your check results; after 90 days they are deleted for good. Results about public websites stay after that, with no link to you."
+      "deleteNotice": "Your brands and everything in them are deleted right away, including brands under “Deleted brands”. From then on, nobody can see your check results; after 90 days they are deleted for good. Results about public websites stay after that, with no link to you."
     }
   }
 }

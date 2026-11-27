@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { Query, type Models } from 'node-appwrite'
+import { isBrandProfileErased } from '../../shared/brandProfileTrash'
 import { resolveBrandJourney } from '../../shared/brandJourney'
 import { BRAND_DESIGN_STEP_KEYS } from '../../shared/slotRegistry'
 import type { BrandDesignUnlockItem } from '../../shared/types/brand'
@@ -91,8 +92,9 @@ export async function loadBrandProfileForOperator(
   profileId: string,
 ): Promise<BrandProfileRow> {
   const { tablesDB, databaseId } = brandDb(event)
+  let row: BrandProfileRow
   try {
-    return await tablesDB.getRow<BrandProfileRow>({
+    row = await tablesDB.getRow<BrandProfileRow>({
       databaseId, tableId: BRAND_PROFILES_TABLE, rowId: profileId,
     })
   }
@@ -100,6 +102,8 @@ export async function loadBrandProfileForOperator(
     if (isAppwriteNotFound(error)) throw createError({ status: 404, statusText: 'Not Found' })
     throw brandDesignUnlockUnavailable(error, { profileId, stage: 'load' })
   }
+  if (isBrandProfileErased(row)) throw createError({ status: 404, statusText: 'Not Found' })
+  return row
 }
 
 /**
@@ -180,6 +184,8 @@ export async function listBrandProfilesForOperator(
       databaseId,
       tableId: BRAND_PROFILES_TABLE,
       queries: [
+        // Marken im Papierkorb (WH1) sind auch für den Betreiber keine Marken.
+        Query.isNull('erasedAt'),
         Query.orderDesc('$createdAt'),
         Query.limit(input.limit),
         ...(input.cursor ? [Query.cursorAfter(input.cursor)] : []),

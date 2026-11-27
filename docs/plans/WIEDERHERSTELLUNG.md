@@ -1,8 +1,8 @@
 # Gelöschtes zurückholen – Plan (WH1)
 
-> **Plan-Status (2026-11-21):** nicht gebaut ([OPEN-ITEMS](../OPEN-ITEMS.md) „WH1“).
+> **Plan-Status (2026-11-25):** teils gebaut — offen: Production-Migration `brand-028`, Datenschutztext einspielen, Lauf auf `apply` ([OPEN-ITEMS](../OPEN-ITEMS.md) „WH1“). Marken-Teil gebaut, Konten kommen mit PK1.
 
-Stand: 2026-11-15. Noch nicht gebaut. Offener Punkt: **WH1** in
+Stand: 2026-11-15, Marken-Teil gebaut am 2026-11-25 (Eintrag WH1 in [OPEN-ITEMS-COMPLETE](../OPEN-ITEMS-COMPLETE.md)). Offener Punkt: **WH1** in
 [OPEN-ITEMS](../OPEN-ITEMS.md). Was heute gilt, steht in
 [EXPORT-UND-LOESCHUNG.md](../referenz/EXPORT-UND-LOESCHUNG.md).
 

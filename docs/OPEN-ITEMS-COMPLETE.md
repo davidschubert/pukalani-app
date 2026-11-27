@@ -30,6 +30,60 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### WH1 — Papierkorb für Marken auf branding.supply (gebaut) ✅ 2026-11-25
+
+Davids Entscheidungen vom 2026-11-15 ([Plan](plans/WIEDERHERSTELLUNG.md)) sind
+gebaut; offen bleibt nur das Ausliefern (Zeile WH1 in OPEN-ITEMS).
+
+- **Kennzeichen:** Migration `brand-028` legt `brand_profiles.erasedAt` und den
+  Index `idx_erased` an. Die Regel „aktiv / im Papierkorb / fällig" steht pur in
+  `packages/brand/shared/brandProfileTrash.ts` (Frist = die 90 Tage der
+  Prüfergebnisse, ein Test hält beide gleich; ein unlesbarer Zeitpunkt
+  versteckt, löscht aber nie).
+- **Löschen = verstecken** (`trashBrandProfile`): Prüfergebnisse werden mit
+  DEMSELBEN Zeitpunkt wie die Marke versteckt, geteilte Links gelöscht, eine
+  Veröffentlichung zurückgezogen (Schnappschüsse leer, Adresse bleibt
+  reserviert). Ein zweiter Aufruf nach 502 versucht es erneut, ohne die Frist
+  zu verschieben.
+- **Zurückholen** (`POST …/[id]/restore`): nur in der Frist, sonst 409
+  `trash_expired`; holt genau die Prüfergebnisse zurück, deren Zeitpunkt gleich
+  dem der Marke ist. Links und Veröffentlichung kommen nicht zurück.
+- **Jetzt endgültig löschen** (`DELETE …/[id]/purge`, Vorschlag aus dem Plan
+  übernommen): nur nach frischer Anmeldung (`requireRecentAuth`), dieselbe
+  Kaskade wie früher (`purgeBrandProfile`).
+- **Lauf** `brand-profile-trash`: stündlich, Gerüst `rowRetention`, Schalter
+  `pukalani.brand.profileTrash` (Layer `off`, branding `count`), Hand-Route
+  `POST /api/brand/admin/profile-trash/run`. Der Takt bekommt ein Ereignis ohne
+  Anfrage (`brandDetachedEvent`), damit die Kaskade samt market-Mitläufer
+  unverändert bleibt.
+- **Jeder Leser** von `brand_profiles` hat eine Entscheidung
+  (`packages/brand/tests/brandProfileTrashReaders.test.ts`, 19 Dateien);
+  `loadOwnedProfile` meldet eine gelöschte Marke als 404. Die Kontolöschung und
+  die Auskunft lesen bewusst ohne Filter.
+- **Oberfläche:** „Löschen" im Menü der Karte mit Hinweis (`useConfirm`),
+  Abschnitt „Gelöschte Marken" als `UTable` unter dem Raster; Texte de+en,
+  Hinweis vor der Kontolöschung, vorläufiger Datenschutztext (Fassung vom
+  2026-11-25, Prüfsummen der alten Fassung eingetragen), Referenz
+  `EXPORT-UND-LOESCHUNG.md`.
+- **Beweise:** Regel-, Rollen- (`route-roles-profile-trash.test.ts`, 36 Fälle)
+  und Lösch-Tests (`brandUserDataStrict.test.ts`); lokal mit Wegwerf-Konto
+  geklickt: löschen ⇒ Liste leer, Link 404, Veröffentlichung `withdrawn`,
+  Prüfergebnis versteckt, Inhalt noch da; zurückholen ⇒ Marke und Score wieder
+  da, Link bleibt 404; Frist abgelaufen ⇒ nicht mehr gelistet, 409.
+
+Abweichung vom Ablauf: der Prototyp wurde nicht eigens zur Freigabe gezeigt,
+sondern auf Auftrag des Leitstands direkt gebaut; David nimmt die Oberfläche
+vor dem Ausliefern ab.
+
+**Gelernt:** Ein Zeit-Lauf, der eine Kaskade aus Anfrage-Funktionen fährt,
+braucht kein Umschreiben jeder Funktion auf „mit oder ohne Event": ein
+Ereignis ohne Anfrage mit `context.nitro.runtimeConfig` genügt, weil
+`useRuntimeConfig(event)` sonst an `event.context.nitro` scheitert. Und im
+Dev-Browser zählt der erste Klick nach dem Laden nicht — ohne Hydration öffnet
+kein Menü und kein Fehler steht in der Konsole.
+
+---
+
 ### LL1 (c) — Lange Läufe: die bekannten Grenzen ziehen in die Referenz ✅ 2026-11-25
 
 LL1 (c) war seit dem 2026-11-17 eine wachsende Sammlung von Sätzen der Art
@@ -1147,6 +1201,41 @@ in der Doku, sondern nur im Quelltext des Containers
 (`app/init/realtime/connection.php`). Und `users.createJWT` ohne `sessionId`
 bindet an die NEUESTE Sitzung des Kontos, nicht an die der Anfrage — wer ein
 JWT an eine Sitzung binden will, gibt sie ausdrücklich mit.
+
+---
+
+### KM1 c2 — Probe, Lese-Probe und branding.supply auf Haiku 5.5 ✅ 2026-11-25
+
+**Was.** Schritt 2 bis 4 des Plans
+[KI-TEXTMODELL-WECHSEL.md](plans/KI-TEXTMODELL-WECHSEL.md) für das erste
+Deployment. (2) Bezahlte Probe lokal mit dem Entwicklungs-Schlüssel,
+`--runs 10`, beide Modelle: 99 von 100 Aufgaben bestanden, zusammen 0,23 $.
+Haiku 5.5 „Denken aus" kostet je Aufruf rund ein Sechstel bis ein Achtel
+(DNA-Vorschlag 0,0010 $ statt 0,0062 $, Insights-Entwurf 0,0011 $ statt
+0,0082 $). Der eine Fehlschlag: ein DNA-Vorschlag von 5.5 mit kaputtem JSON
+(nicht abgeschnitten) — in der App ein misslungener Entwurf, der neu erzeugt
+wird. Haiku 4.5 brauchte die JSON-Reparatur bei DNA 10 von 10 Mal, 5.5 nie.
+Die Decke des Insights-Entwurfs (3.400) reicht: höchstens 2.029 genutzt,
+keine Neu-Eichung. (3) Lese-Probe: fünf erfundene Züge des Markenberaters
+(echter System- und Zug-Prompt), je Modell einmal, blind gemischt (0,02 $).
+5.5 schreibt etwa doppelt so lang und fragt öfter mehr als einmal; Davids
+Urteil am 2026-11-25: „5.5 passt". (4) Auf Davids Auftrag („stelle du das
+bitte um") `app_config.aiModel` auf branding.supply über dieselbe Route wie
+die Config-Seite (`PATCH /api/admin/config`) auf
+`anthropic/claude-haiku-5.5` gesetzt — Antwort `aiModelCheck: 'ok'`
+(EU-Endpunkte geprüft).
+
+**Beweis.** `GET /api/admin/config` danach: `aiModel`
+`anthropic/claude-haiku-5.5`; `https://branding.supply/api/health` `ok: true`,
+Build `85547fc5`, Schema `ok`. Rückweg: Feld leeren ⇒ Build-Vorgabe Haiku 4.5.
+Offen bleiben die übrigen Deployments (OPEN-ITEMS „KM1").
+
+**Gelernt:** Auf branding.supply zeigt die Config-Seite das Feld
+„KI-Modell (Laufzeit-Override)" gar nicht — es hängt an `pukalani.ai.enabled`,
+und das ist dort aus, obwohl Marke und Insights das Modell über
+`getEffectiveAiConfig` aus genau dieser Einstellung lesen. Wer dort umstellt,
+geht über die Route; ob das Feld an „irgendein Layer nutzt das Modell" statt
+am Core-Gate hängen soll, ist eine offene Frage für KM1.
 
 ---
 

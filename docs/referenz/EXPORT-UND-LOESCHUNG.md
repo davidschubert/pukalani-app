@@ -97,7 +97,8 @@ Einführung in jedem Lösch-Weg).
 | Private Nachricht | – | gelöscht; die Vorschau der Unterhaltung zeigt die letzte verbleibende Nachricht. Eine gemeldete Nachricht bleibt bis zu 90 Tage als Beleg |
 | Termin | – | abgesagt und geschwärzt wie durch die Moderation (`eventRedaction.ts`): Titel, Beschreibung, Ort, Link, Bild weg |
 | Kurs | – | bleibt (gehört der Community), ohne Namen und Konto-Id |
-| Prüfergebnis (Brand Check) | beim Löschen der Marke: sofort unsichtbar | sofort unsichtbar; nach 90 Tagen endgültig weg bzw. ohne Bezug zur Person |
+| Marke (branding.supply, WH1) | „Löschen“ an der Karte: sofort überall unsichtbar, 90 Tage im Papierkorb „Gelöschte Marken“ (zurückholen oder jetzt endgültig löschen, Letzteres nur nach frischer Anmeldung); geteilte Links sofort weg, Veröffentlichung zurückgezogen (kommt beim Zurückholen nicht wieder); nach 90 Tagen löscht der Lauf alles | sofort gelöscht, auch Marken im Papierkorb |
+| Prüfergebnis (Brand Check) | beim Löschen der Marke: sofort unsichtbar; beim Zurückholen wieder sichtbar (nur die, die dieses Löschen versteckt hat) | sofort unsichtbar; nach 90 Tagen endgültig weg bzw. ohne Bezug zur Person |
 | Stimmen, Reaktionen, Zusagen, Einschreibungen, Abzeichen | – | gelöscht |
 | Protokoll (`audit_logs`) | – | Name, IP und Zusatzangaben leer; die Konto-Id bleibt als Nachweis — bis der Eintrag 12 Monate nach dem Schreiben gelöscht wird (Frist unten) |
 
@@ -121,6 +122,7 @@ Die Listen-Route der Kommentare liefert für Gelöschtes nur noch die Struktur d
 | Beleg einer gemeldeten privaten Nachricht (`messages.reportedBody` und `reportedAt`) | 90 Tage nach der letzten Erledigung (ohne Meldungs-Zeile: ab der Meldung) | `messages/server/plugins/report-evidence-sweep.ts`, stündlich | `pukalani.messages.reportEvidenceSweep` (off / count / apply; platform und comments: `count`) | `messages.report_evidence_sweep` |
 | Profilbild ohne Profil (Bucket `avatars`: hochgeladen, aber nie oder nicht mehr im Profil eingetragen, oder das Konto gibt es nicht mehr) | 7 Tage nach dem Upload | `core/server/plugins/avatar-orphan-sweep.ts`, alle 6 Stunden, nur in Apps mit Avatars-Bucket; Regel `core/shared/avatarOrphan.ts` | `pukalani.storage.avatarOrphanSweep` (off / count / apply; control, platform, portfolio: `apply` seit 2026-11-17; branding.supply hat keinen Bucket für Profilbilder) | `retention.run` mit `job: avatar-orphan-sweep`, dazu `avatar_orphan.sweep` (Dateien ohne eindeutigen Besitzer, vor dem Löschen doch eingetragene) |
 | Warteliste von branding.supply (`brand_waitlist`) | nie bestätigt 30 Tage nach der letzten Anforderung eines Links, eingeladen oder abgelehnt 90 Tage nach dem letzten Schreiben, noch wartend 12 Monate ab dem Eintragen | `brand/server/plugins/brand-waitlist-retention.ts`, stündlich (Regel `brand/shared/brandWaitlistRetention.ts`) | `pukalani.brand.waitlistRetention` (off / count / apply; branding: `apply` seit 2026-11-17) | `retention.run` mit `job: brand-waitlist-retention`, Fehler `retention.incomplete` / `retention.failed` |
+| Marken im Papierkorb (`brand_profiles.erasedAt`, brand-028) mit allem, was an ihnen hängt | 90 Tage ab „Löschen“ | `brand/server/plugins/brand-profile-trash.ts`, stündlich (Regel `brand/shared/brandProfileTrash.ts`, Kaskade `purgeBrandProfile`) | `pukalani.brand.profileTrash` (off / count / apply; branding: `count` seit WH1, `apply` erst mit Davids Ja) | `retention.run` mit `job: brand-profile-trash`, Fehler `retention.incomplete` / `retention.failed` |
 | Gesprächsanfragen von branding.supply (`brand_intro_requests`), unabhängig vom Status, auch mit Konto | 12 Monate ab dem Eingang | `brand/server/plugins/brand-intro-retention.ts`, stündlich (Regel `brand/shared/brandIntroRetention.ts`) | `pukalani.brand.introRequestRetention` (off / count / apply; branding: `apply` seit 2026-11-17) | `retention.run` mit `job: brand-intro-retention`, Fehler `retention.incomplete` / `retention.failed` |
 | Gesprächsanfragen von pukalani.studio (`intro_requests`) | 12 Monate ab dem Eingang | `apps/portfolio/server/plugins/intro-request-retention.ts`, stündlich (Regel `apps/portfolio/shared/introRequestRetention.ts`; fehlt die Tabelle, ist nichts zu tun) | `pukalani.portfolio.introRequestRetention` (off / count / apply; ohne Wert `off`; portfolio: `apply` seit 2026-11-17) | `retention.run` mit `job: intro-request-retention`, Fehler `retention.incomplete` / `retention.failed` |
 | Konto-Protokoll (`audit_logs`), jeder Eintrag — auch über Handlungen des Betreibers (Davids Entscheidung 2026-11-17) | 12 Monate ab dem Schreiben | `core/server/plugins/audit-log-retention.ts`, stündlich, in jeder App mit Schalter (Regel `core/shared/auditLogRetention.ts`; fehlt die Tabelle, ist nichts zu tun) | `pukalani.audit.retention` (off / count / apply; control, platform, branding, portfolio: `apply` seit 2026-11-17; die Test-App comments: `count`) | `retention.run` mit `job: audit-log-retention`, Fehler `retention.incomplete` / `retention.failed` |
@@ -166,6 +168,8 @@ Hand, die ohne Angabe nur zählt:
   `{ apply: true }` und Schalter `apply`)
 - `POST /api/brand/admin/intro-retention/run` (Betreiber von branding.supply; löscht nur mit
   `{ apply: true }` und Schalter `apply`)
+- `POST /api/brand/admin/profile-trash/run` (Betreiber von branding.supply; löscht nur mit
+  `{ apply: true }` und Schalter `apply`)
 - `POST /api/admin/intro-requests/retention/run` (pukalani.studio, `users.manage`; löscht nur mit
   `{ apply: true }` und Schalter `apply`)
 - `POST /api/admin/audit-logs/retention/run` (`system.manage`; löscht nur mit `{ apply: true }` und
@@ -196,11 +200,11 @@ im Zähl-Modus und stehen seit demselben Tag in den ausgerollten Apps auf `apply
 gezählten Zahl (fällig war genau ein Profilbild, dessen Konto es nicht mehr gibt; alles andere 0).
 Die Test-App `apps/comments` bleibt auf `count`.
 
-**Zurückholen innerhalb der 90 Tage** geht nur von Hand und nur für Prüfergebnisse: in der
-Appwrite-Konsole das Feld `erasedAt` der Zeile leeren. Ein gelöschtes Konto und eine gelöschte Marke
-kommen nicht zurück. Geplant ist ein Papierkorb für Marken (Punkt WH1,
-[WIEDERHERSTELLUNG.md](../plans/WIEDERHERSTELLUNG.md)); Konten werden mit dem Pukalani-Konto
-entschieden.
+**Zurückholen innerhalb der 90 Tage:** eine gelöschte Marke holt die Person selbst unter
+„Gelöschte Marken“ zurück (WH1, [WIEDERHERSTELLUNG.md](../plans/WIEDERHERSTELLUNG.md)); mit ihr
+kommen genau die Prüfergebnisse wieder, die dieses Löschen versteckt hat. Andere Prüfergebnisse
+holt nur der Betreiber von Hand zurück (in der Appwrite-Konsole `erasedAt` der Zeile leeren). Ein
+gelöschtes Konto kommt nicht zurück; das wird mit dem Pukalani-Konto entschieden.
 
 ## Der Hinweis vor dem Löschen
 

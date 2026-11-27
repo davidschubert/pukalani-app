@@ -86,10 +86,18 @@ vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
 vi.stubGlobal('requireBrandAccess', async () => ({ userId: 'u1' }))
 vi.stubGlobal('assertBrandOwnerAccess', () => {})
 vi.stubGlobal('getRouterParam', (_event: H3Event, name: string) => routerParams[name] ?? '')
+let recentAuth = true
+vi.stubGlobal('requireRecentAuth', async () => {
+  if (!recentAuth) throw Object.assign(new Error('Recent sign-in required'), { status: 403, data: { code: 'reauth_required' } })
+})
 
 const { registerBrandProfileCascade } = await import('../server/utils/brandProfileCascade')
 const { brandDeleteUserData, brandExportUserData } = await import('../server/utils/brandUserData')
 const deleteRoute = (await import('../server/api/brand/profiles/[id]/index.delete')).default as unknown as
+  (event: H3Event) => Promise<unknown>
+const purgeRoute = (await import('../server/api/brand/profiles/[id]/purge.delete')).default as unknown as
+  (event: H3Event) => Promise<unknown>
+const restoreRoute = (await import('../server/api/brand/profiles/[id]/restore.post')).default as unknown as
   (event: H3Event) => Promise<unknown>
 
 const event = { context: {} } as unknown as H3Event
@@ -117,6 +125,7 @@ beforeEach(() => {
   cascadeError = undefined
   getUser = async () => ({ $id: 'u1', email: 'A@example.com', emailVerification: true })
   routerParams.id = 'p1'
+  recentAuth = true
   tablesDB.updateRow.mockClear()
 })
 
@@ -152,24 +161,78 @@ describe('brandDeleteUserData — die Adresse', () => {
   })
 })
 
-describe('DELETE /api/brand/profiles/:id — die Kaskade', () => {
-  it('Normalfall: das Profil ist weg', async () => {
+/**
+ * DER PAPIERKORB (WH1): „Marke löschen" versteckt, die Kaskade läuft erst
+ * beim endgültigen Löschen (`purge.delete.ts` und der Lauf nach 90 Tagen).
+ */
+describe('DELETE /api/brand/profiles/:id — in den Papierkorb', () => {
+  it('setzt erasedAt, löscht NICHTS am Inhalt', async () => {
+    await expect(deleteRoute(event)).resolves.toMatchObject({ trashed: true })
+    expect(tables.brand_profiles![0]!.erasedAt).toEqual(expect.any(String))
+    expect(deletedRows).toEqual([])
+  })
+
+  it('ein zweiter Aufruf verschiebt den Zeitpunkt nicht', async () => {
+    tables.brand_profiles![0]!.erasedAt = '2026-11-01T00:00:00.000Z'
+    await expect(deleteRoute(event)).resolves.toMatchObject({ erasedAt: '2026-11-01T00:00:00.000Z' })
+    expect(tables.brand_profiles![0]!.erasedAt).toBe('2026-11-01T00:00:00.000Z')
+  })
+
+  it('geteilte Links gehen sofort, die Veröffentlichung wird zurückgezogen', async () => {
+    tables.brand_shares = [row('sh1', { profileId: 'p1' })]
+    tables.brand_publications = [row('p1', { status: 'published', snapshot: 'S', pendingSnapshot: '' })]
     await deleteRoute(event)
+    expect(deletedRows).toEqual(['brand_shares/sh1'])
+    expect(tables.brand_publications[0]).toMatchObject({ status: 'withdrawn', snapshot: '' })
+  })
+})
+
+describe('DELETE /api/brand/profiles/:id/purge — die Kaskade', () => {
+  beforeEach(() => {
+    tables.brand_profiles![0]!.erasedAt = '2026-11-20T00:00:00.000Z'
+  })
+
+  it('Normalfall: das Profil ist weg', async () => {
+    await purgeRoute(event)
     expect(deletedRows).toContain('brand_profiles/p1')
+  })
+
+  it('eine lebende Marke ⇒ 404, nichts gelöscht', async () => {
+    tables.brand_profiles![0]!.erasedAt = null
+    await expect(purgeRoute(event)).rejects.toMatchObject({ status: 404 })
+    expect(deletedRows).toEqual([])
+  })
+
+  it('ohne frische Anmeldung ⇒ 403 reauth_required, nichts gelöscht', async () => {
+    recentAuth = false
+    await expect(purgeRoute(event)).rejects.toMatchObject({ status: 403 })
+    expect(deletedRows).toEqual([])
   })
 
   it('ein scheiternder Mitläufer ⇒ 502 profile_delete_incomplete, das Profil bleibt', async () => {
     cascadeError = new Error('market down')
-    await expect(deleteRoute(event)).rejects.toMatchObject({
+    await expect(purgeRoute(event)).rejects.toMatchObject({
       status: 502,
       data: { code: 'profile_delete_incomplete' },
     })
     expect(deletedRows).not.toContain('brand_profiles/p1')
-    // Wiederholbar: die eigenen Kinder sind schon weg, ein zweiter Lauf mit
-    // gesundem Mitläufer räumt den Rest ab.
     cascadeError = undefined
-    await deleteRoute(event)
+    await purgeRoute(event)
     expect(deletedRows).toContain('brand_profiles/p1')
+  })
+})
+
+describe('brandDeleteUserData — Marken im Papierkorb', () => {
+  it('die Kontolöschung nimmt auch Marken im Papierkorb sofort mit', async () => {
+    tables.brand_profiles![0]!.erasedAt = '2026-11-20T00:00:00.000Z'
+    await brandDeleteUserData(event, 'u1')
+    expect(deletedRows).toContain('brand_profiles/p1')
+  })
+
+  it('die Auskunft nennt Marken im Papierkorb', async () => {
+    tables.brand_profiles![0]!.erasedAt = '2026-11-20T00:00:00.000Z'
+    const exported = JSON.stringify(await brandExportUserData(event, 'u1'))
+    expect(exported).toContain('p1')
   })
 })
 
@@ -285,27 +348,52 @@ describe('DELETE /api/brand/profiles/:id — die Checks der Marke', () => {
       row('c-doc', { userId: '', profileId: '', urlKey: 'doc:p1', source: 'document' }),
       row('c-web', { userId: '', profileId: 'p1', urlKey: 'kailua.coffee' }),
       row('c-guest', { userId: '', profileId: '', urlKey: 'kailua.coffee' }),
+      // Von einem FRÜHEREN Löschen versteckt — das Zurückholen lässt sie liegen.
+      row('c-old', { userId: '', profileId: 'p1', urlKey: 'old.example', erasedAt: '2026-10-01T00:00:00.000+00:00' }),
     ]
   })
 
-  it('markiert die Checks über profileId UND den Dokument-Schlüssel', async () => {
+  it('markiert die Checks über profileId UND den Dokument-Schlüssel, mit dem Zeitpunkt der Marke', async () => {
     await deleteRoute(event)
-    expect(tables.brand_checks!.find(c => c.$id === 'c-doc')?.erasedAt).toEqual(expect.any(String))
-    expect(tables.brand_checks!.find(c => c.$id === 'c-web')?.erasedAt).toEqual(expect.any(String))
+    const at = tables.brand_profiles![0]!.erasedAt
+    expect(tables.brand_checks!.find(c => c.$id === 'c-doc')?.erasedAt).toBe(at)
+    expect(tables.brand_checks!.find(c => c.$id === 'c-web')?.erasedAt).toBe(at)
     expect(tables.brand_checks!.find(c => c.$id === 'c-guest')?.erasedAt).toBeUndefined()
-    expect(deletedRows).toContain('brand_profiles/p1')
   })
 
-  it('scheitert das Markieren ⇒ 502 profile_delete_incomplete, das Profil bleibt', async () => {
+  it('scheitert das Markieren ⇒ 502 profile_delete_incomplete, die Marke bleibt sichtbar', async () => {
     brokenWrites.add('brand_checks')
     await expect(deleteRoute(event)).rejects.toMatchObject({
       status: 502,
       data: { code: 'profile_delete_incomplete' },
     })
-    expect(deletedRows).not.toContain('brand_profiles/p1')
+    expect(tables.brand_profiles![0]!.erasedAt).toBeUndefined()
 
     brokenWrites.clear()
     await deleteRoute(event)
-    expect(deletedRows).toContain('brand_profiles/p1')
+    expect(tables.brand_profiles![0]!.erasedAt).toEqual(expect.any(String))
+  })
+
+  it('Zurückholen zeigt genau die Checks wieder, die DIESES Löschen versteckt hat', async () => {
+    await deleteRoute(event)
+    // Appwrite schreibt `+00:00`, wo `Z` geschickt wurde — verglichen wird der Zeitpunkt.
+    const at = String(tables.brand_profiles![0]!.erasedAt).replace('Z', '+00:00')
+    tables.brand_profiles![0]!.erasedAt = at
+    for (const check of tables.brand_checks!) if (check.erasedAt && check.$id !== 'c-old') check.erasedAt = at
+    await expect(restoreRoute(event)).resolves.toEqual({ restored: true })
+    expect(tables.brand_profiles![0]!.erasedAt).toBeNull()
+    expect(tables.brand_checks!.find(c => c.$id === 'c-doc')?.erasedAt).toBeNull()
+    expect(tables.brand_checks!.find(c => c.$id === 'c-web')?.erasedAt).toBeNull()
+    expect(tables.brand_checks!.find(c => c.$id === 'c-old')?.erasedAt).toBe('2026-10-01T00:00:00.000+00:00')
+  })
+
+  it('Zurückholen nach 90 Tagen ⇒ 409 trash_expired, nichts geändert', async () => {
+    tables.brand_profiles![0]!.erasedAt = '2020-01-01T00:00:00.000Z'
+    await expect(restoreRoute(event)).rejects.toMatchObject({ status: 409, data: { code: 'trash_expired' } })
+    expect(tables.brand_profiles![0]!.erasedAt).toBe('2020-01-01T00:00:00.000Z')
+  })
+
+  it('Zurückholen einer lebenden Marke ⇒ 404', async () => {
+    await expect(restoreRoute(event)).rejects.toMatchObject({ status: 404 })
   })
 })
