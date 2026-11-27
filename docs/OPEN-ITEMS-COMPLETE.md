@@ -30,6 +30,37 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BN1 — Nacht-Lauf rot seit dem 2026-11-26: der Beweis zählte den Payload mit ✅ 2026-11-27
+
+Der nächtliche Lauf „Bühne (Kundenpfad)" war ab dem 2026-11-26 (`99f562cc`)
+rot, mit genau einem Skript: `packages/brand/scripts/verify-brand-sessions.mjs`,
+391/394. Die drei roten Prüfungen zählen die Markierung „Aus der DNA" in der
+Werkstatt (Typografie genau 1, Zeichen genau 1, Bildsprache genau 3) und
+fanden 2, 2 und 4.
+
+- **Ursache: ein Fehler im Beweis, kein Produktfehler.** Seit TK1
+  (`3f5d145a`, i18n `experimental.preload`) legt der Server die beim Rendern
+  benutzten Texte zusätzlich in den Payload (`<script id="__NUXT_DATA__">`),
+  einmal je Schlüssel. Das Skript zählte im ganzen HTML. Die Zahlen gehen
+  genau auf: 1 + 1, 1 + 1, 3 + 1 (alle drei Bildsprache-Karten nutzen
+  denselben Schlüssel). Kein Vorschlag wird doppelt gespeichert oder
+  geliefert; WS1 (#612, #616) und WS2 (a) sind es nicht. Letzter grüner
+  Nacht-Lauf mit diesem Skript: 2026-11-25 auf `f883aa0e` (394/394), also vor
+  TK1. Die roten Läufe vom 2026-11-21 bis 11-25 hatten andere Ursachen
+  (Einladungs-Skript mit 401, `waitForLoadState`-Zeitüberschreitung).
+- **Fix:** `countInMarkup()` im Skript zählt nur im Markup ohne
+  `<script>`-Blöcke. Die Prüfungen bleiben so streng wie vorher (genau 1, 1,
+  3), sie lesen nur nicht mehr den Payload mit.
+- **Beweis lokal** (Appwrite 2.7.4, `apps/branding` mit gestellten Antworten
+  auf 3016): die alte Fassung aus `HEAD` ist rot wie nachts (391/394, 2×, 2×,
+  4×), die neue grün (394/394, frischer Server-Prozess).
+
+**Gelernt:** ein Beweis, der einen sichtbaren Text im SSR-HTML ZÄHLT, zählt
+seit TK1 den Payload mit. Bei „genau n" nur das Markup zählen oder an ein
+Attribut (`data-…`) haken; „kommt vor" bleibt davon unberührt. Ein zweiter
+Lauf gegen denselben Server-Prozess wird an den Tages-Deckeln rot (429),
+das ist kein Befund.
+
 ### BT1 (a) drei Skripte — drei Beweise mehr im automatischen Lauf, Nacht-Alarm schließt nur ein Nacht-Lauf ✅ 2026-11-27
 
 Von den elf Skripten, die noch von Hand liefen, laufen drei jetzt mit (79 von
