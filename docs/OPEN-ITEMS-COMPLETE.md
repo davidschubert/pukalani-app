@@ -76,6 +76,7 @@ ein Auszug von acht Zeilen). Und eine Testdatei ist erst richtig, wenn der
 Server sie liest: der erste Auszug hatte sechs statt sieben Spalten, der
 Server verwarf still jede Zeile — nur die Gegenprobe mit genau dieser Datei
 zeigte es.
+
 ### WS1 — die Werkstatt-Seite in Teile geschnitten: Session/Verlauf und Warteschlange (ARC-001) ✅ 2026-11-27
 
 **Was.** `packages/brand/app/pages/brand/[profileId]/[stepKey].vue`: 5.235
