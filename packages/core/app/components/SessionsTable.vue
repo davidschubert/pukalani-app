@@ -2,7 +2,7 @@
 import type { TableColumn } from '@nuxt/ui'
 import type { SessionRow } from '../../shared/types/session'
 import { formatSessionLocation } from '../../shared/sessionLocation'
-import { sessionMethodLabel } from '../../shared/sessionMethod'
+import { sessionMethodIcon, sessionMethodLabel, visibleSessionFactors } from '../../shared/sessionMethod'
 
 const props = defineProps<{ sessions: SessionRow[] }>()
 
@@ -79,12 +79,12 @@ const dbIpUrl = 'https://db-ip.com'
       <template #auth-cell="{ row }">
         <div class="flex flex-col gap-1">
           <UBadge color="neutral" variant="subtle" size="sm" class="w-fit">
-            <UIcon :name="row.original.provider === 'email' ? 'i-ph-envelope-simple' : 'i-ph-plugs-connected'" class="size-3.5" />
+            <UIcon :name="sessionMethodIcon(row.original.provider)" class="size-3.5" />
             {{ sessionMethodLabel(row.original.provider, t) }}
           </UBadge>
-          <UBadge v-if="row.original.factors.length" color="info" variant="subtle" size="sm" class="w-fit" :title="t('account.sessions.factors')">
+          <UBadge v-if="visibleSessionFactors(row.original.factors).length" color="info" variant="subtle" size="sm" class="w-fit" :title="t('account.sessions.factors')">
             <UIcon name="i-ph-shield-check" class="size-3.5" />
-            {{ row.original.factors.map(f => sessionMethodLabel(f, t)).join(', ') }}
+            {{ visibleSessionFactors(row.original.factors).map(f => sessionMethodLabel(f, t)).join(', ') }}
           </UBadge>
         </div>
       </template>

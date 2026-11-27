@@ -1106,6 +1106,19 @@ zeigte die vier noch veränderten Quellen.
 
 ---
 
+### PK1-EIN Befund 1, kleiner Teil — Seiten-Sitzungen heißen „Community-Seite" ✅ 2026-11-27
+
+**Was.** Die Sitzungsliste im Kundenbereich zeigte Sitzungen einer eigenen
+Domain wie jede andere. Appwrite stempelt eine Sitzung, die unser Server mit
+`users.createSession` anlegt, mit `provider: 'server'` und dem Faktor
+`server` (nachgelesen im Appwrite-2.7.4-Quelltext); das tut bei uns nur die
+Übergabe im Modus `write`. Davids Wahl: kleines Schild jetzt. Anmelde-Weg
+„Community-Seite" mit Globus (`core/shared/sessionMethod.ts`), der Faktor
+`server` wird nicht als zweiter Faktor gezeigt. WELCHE Seite, bleibt offen
+(großes Paket unter PK1-EIN).
+
+---
+
 ### PK1-EIN Befunde 2 und 3 — Widerruf richtig melden, Rückweg nach frischer Anmeldung ✅ 2026-11-27
 
 **Was.** Zwei der drei Befunde aus der Live-Probe (2026-11-25). (2) Wird eine

@@ -373,7 +373,8 @@
         "phone": "SMS",
         "totp": "Authenticator app",
         "anonymous": "Guest",
-        "token": "Code by email"
+        "token": "Code by email",
+        "server": "Community site"
       },
       "expiry": "Expires"
     },
