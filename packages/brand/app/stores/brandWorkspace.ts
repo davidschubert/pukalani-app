@@ -22,6 +22,7 @@ import type {
 import { isBrandDesignStep, isBrandKitStep, slotById } from '../../shared/slotRegistry'
 import {
   type BrandLocalSlotEdit,
+  type BrandSaveTarget,
   type BrandSlotPatch,
   type BrandSyncEvent,
   type BrandSyncState,
@@ -29,6 +30,7 @@ import {
   brandConflictNeedsDecision,
   brandEditReleasesConfirm,
   brandSlotDisplayValue,
+  brandSaveResponseIsCurrent,
   brandSlotIsConfirmed,
   diffBrandSlots,
   nextBrandSyncState,
@@ -191,6 +193,12 @@ const setup = () => {
   const journey = ref<BrandJourneyStep[]>([])
 
   const stepKey = ref<BrandStepKey | null>(null)
+  /**
+   * ZU WELCHEM BRANDING DAS GELADENE KAPITEL GEHÖRT (WS2 b) — `loadStep` setzt
+   * es zusammen mit `stepKey`. `profile` reicht dafür nicht: es kommt aus
+   * einem eigenen Abruf und kann einem anderen Stand gehören.
+   */
+  const stepProfileId = ref<string | null>(null)
   const serverSlots = ref<Record<string, BrandSlotView>>({})
   const localEdits = ref<Record<string, BrandLocalSlotEdit>>({})
   const revision = ref(0)
@@ -1103,8 +1111,19 @@ const setup = () => {
    */
   function applySaveResponse(
     response: BrandStepSaveResponse,
-    sentConfidence?: BrandConfidence,
-  ): void {
+    sentConfidence: BrandConfidence | undefined,
+    sent: BrandSaveTarget,
+  ): boolean {
+    /**
+     * VERSPÄTETE ANTWORT (WS2 b): ist die Werkstatt inzwischen in einem
+     * anderen Kapitel oder Branding, gehört diese Antwort nicht mehr hierher
+     * — sie überschriebe Slots und `revision` des frisch geladenen Kapitels.
+     * Gespeichert IST sie trotzdem; das neue Kapitel hat den Stand beim Laden
+     * schon vom Server gelesen.
+     */
+    if (!brandSaveResponseIsCurrent(sent, { profileId: stepProfileId.value, stepKey: stepKey.value })) {
+      return false
+    }
     serverSlots.value = response.slots
     revision.value = response.revision
     if (sentConfidence !== undefined) serverConfidence.value = sentConfidence
@@ -1118,6 +1137,7 @@ const setup = () => {
     // hat — und der Server prüfte ihn gegen eine andere Hülle.
     pendingImpactAck.value = ''
     mark('ok')
+    return true
   }
 
   /**
@@ -1229,6 +1249,7 @@ const setup = () => {
         `/api/brand/profiles/${profileId}/steps/${key}`,
       )
       applyStepDetail(detail)
+      stepProfileId.value = profileId
       return true
     }
     catch (error) {
@@ -1334,6 +1355,7 @@ const setup = () => {
     profile.value = null
     journey.value = []
     stepKey.value = null
+    stepProfileId.value = null
     serverSlots.value = {}
     generationMeta.value = []
     localEdits.value = {}
@@ -1365,6 +1387,7 @@ const setup = () => {
     profiles,
     journey,
     stepKey,
+    stepProfileId,
     serverSlots,
     localEdits,
     revision,

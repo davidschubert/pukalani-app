@@ -146,6 +146,9 @@ export function useBrandAutosave(profileId: MaybeRefOrGetter<string>) {
     // Konfidenz, und nur wer weiss, was er gesendet hat, kann sie hinterher
     // als gespeichert verbuchen (s. `applySaveResponse`).
     const sentConfidence = store.pendingConfidence
+    // WOHIN dieser Request ging (WS2 b): die Antwort gilt nur, solange die
+    // Werkstatt noch dieses Kapitel dieses Brandings zeigt.
+    const sent = { profileId: id, stepKey: store.stepKey }
     const body = {
       // Die GELESENE Fassung — nicht die, die gerade entsteht.
       revision: store.revision,
@@ -163,7 +166,7 @@ export function useBrandAutosave(profileId: MaybeRefOrGetter<string>) {
         `/api/brand/profiles/${id}/steps/${store.stepKey}`,
         { method: 'PATCH', body },
       )
-      store.applySaveResponse(response, sentConfidence)
+      const current = store.applySaveResponse(response, sentConfidence, sent)
       errorRetries = 0
       silentConflicts = 0
       /**
@@ -177,7 +180,7 @@ export function useBrandAutosave(profileId: MaybeRefOrGetter<string>) {
        * Tastendruck im Text löst keinen zweiten Abruf aus. `refreshStep` lässt
        * das Gespräch und die offene Eingabe stehen (Kopf im Store).
        */
-      if (store.stepKey && Object.values(body.slots).some(patch => patch.confirmed !== undefined)) {
+      if (current && store.stepKey && Object.values(body.slots).some(patch => patch.confirmed !== undefined)) {
         void store.refreshStep(id, store.stepKey)
       }
     }

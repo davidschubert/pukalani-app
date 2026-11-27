@@ -45,7 +45,7 @@ export function useBrandKitWorkshop(profileId: MaybeRefOrGetter<string>) {
   // `ssrTenantFetch.test.ts` verlangt es für jeden Abruf in `useAsyncData`:
   // im SSR reist sonst kein Host mit (main war damit rot, 2026-09-10).
   const requestFetch = useRequestFetch()
-  const { data, pending, refresh } = useAsyncData<BrandKitWorkshopResponse>(
+  const { data, status, refresh } = useAsyncData<BrandKitWorkshopResponse>(
     'brand-kit-workshop',
     () => requestFetch<BrandKitWorkshopResponse>(
       `/api/brand/profiles/${encodeURIComponent(toValue(profileId))}/kit/workshop`,
@@ -54,6 +54,17 @@ export function useBrandKitWorkshop(profileId: MaybeRefOrGetter<string>) {
   )
 
   const workshop = computed<BrandKitWorkshopResponse>(() => data.value ?? EMPTY)
+
+  /**
+   * „LÄDT" HEISST AUCH „NOCH NICHT ANGEFANGEN" (WS2 a). Mit `server: false`
+   * steht der Abruf beim Server-Rendern auf `idle` — `pending` war dort
+   * `false`, und die Panels zeigten „Die Vorlagen entstehen …" (leer). Im
+   * Browser lief der Abruf zur Hydration schon (`pending`), dort stand
+   * „Rechne die Vorlagen …": zwei Texte für denselben Knoten, ein
+   * Hydration-Unterschied. `idle` zählt deshalb als Laden: beide Seiten
+   * zeigen den Ladezustand, und „leer" sagt nur noch ein ERLEDIGTER Abruf.
+   */
+  const pending = computed(() => status.value === 'idle' || status.value === 'pending')
 
   return {
     workshop,
