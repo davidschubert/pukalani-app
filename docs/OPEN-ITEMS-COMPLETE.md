@@ -30,6 +30,41 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### WS2 — Werkstatt: Hydration im Vorlagen-Panel, verspätete Speicher-Antwort ✅ 2026-11-27
+
+Die zwei Nebenbefunde aus WS1, beide in `packages/brand`.
+
+- **(a) Hydration-Unterschied in `BwKitPromptsPanel`** („AI-Guidelines"
+  einer Marke ohne Vorlagen). `useBrandKitWorkshop` lädt mit `server: false`:
+  beim Server-Rendern steht der Abruf auf `idle`, `pending` war `false`, das
+  Panel zeigte „leer" („Die Vorlagen entstehen …"); im Browser lief der Abruf
+  zur Hydration schon, dort stand „Rechne die Vorlagen …". **Fix:** das
+  Composable meldet `pending` für `idle` UND `pending` — Server und Browser
+  zeigen den Ladezustand, „leer" sagt nur ein erledigter Abruf. Gilt für alle
+  vier Kit-Panels, die `pending` lesen. Das ausgelieferte HTML trägt weiter
+  keine Kit-Daten (`server: false` bleibt).
+- **(b) `applySaveResponse` prüft Profil und Kapitel.** Der Autosave hält fest,
+  wohin der PATCH ging (`{ profileId, stepKey }`); der Store kennt das Branding
+  des geladenen Kapitels (`stepProfileId`, gesetzt in `loadStep`). Passt eins
+  nicht, wird die Antwort verworfen (Rückgabe `false`, kein `mark('ok')`, kein
+  Nachladen nach einer Bestätigung). Die Regel ist pur:
+  `brandSaveResponseIsCurrent()` in `shared/brandAutosaveDiff.ts`.
+
+**Beweise.** Tests: `tests/brandAutosaveDiff.test.ts` (die Regel) und
+`tests/render/brandSaveResponse.test.ts` (der echte Store: verlassenes
+Kapitel, anderes Branding mit demselben Kapitel, passende Antwort). Alle
+brand-Tests (4.085), Typecheck branding, `pnpm check` (14/14). Im Browser:
+`packages/brand/scripts/verify-workshop-hydration.mjs` hat jetzt
+`--step=<kapitel>` (setzt für die Ableitung die Foundation server-seitig) —
+gegen einen Dev-Server aus dem Worktree mit `--step=aiguide` 9 grün, das Panel
+steht da. **Gegenprobe:** derselbe Lauf mit der alten `pending`-Regel ist rot
+mit genau dem Befund (Server „The templates appear once the guardrails
+stand.", Browser „Computing the templates …").
+
+**Gelernt:** `server: false` plus ein Ladezustand im Template ist eine
+Hydration-Falle: beim Server-Rendern ist der Abruf `idle`, nicht `pending`.
+Wer zwischen „lädt" und „leer" unterscheidet, zählt `idle` zum Laden.
+
 ### BN1 — Nacht-Lauf rot seit dem 2026-11-26: der Beweis zählte den Payload mit ✅ 2026-11-27
 
 Der nächtliche Lauf „Bühne (Kundenpfad)" war ab dem 2026-11-26 (`99f562cc`)

@@ -175,6 +175,32 @@ export function diffBrandSlots(
   return changed
 }
 
+/** Wohin ein Speichern ging bzw. was die Werkstatt gerade zeigt. */
+export interface BrandSaveTarget {
+  profileId: string | null
+  stepKey: string | null
+}
+
+/**
+ * GILT DIE ANTWORT NOCH FÜR DAS, WAS GERADE OFFEN IST? (WS2 b)
+ *
+ * Ein PATCH kann landen, nachdem der Mensch schon in ein anderes Kapitel oder
+ * ein anderes Branding gewechselt ist. Seine Slots und seine `revision`
+ * gehören dann zu einem Stand, den die Werkstatt nicht mehr zeigt — übernommen
+ * überschrieben sie das frisch geladene Kapitel (fremde Slots, falsche
+ * Revision ⇒ der nächste Tick läuft in einen Schein-Konflikt). Gültig ist
+ * eine Antwort nur, wenn BEIDES stimmt; ohne bekanntes Profil gilt sie nie.
+ */
+export function brandSaveResponseIsCurrent(
+  sent: Readonly<BrandSaveTarget>,
+  current: Readonly<BrandSaveTarget>,
+): boolean {
+  return sent.profileId !== null
+    && sent.stepKey !== null
+    && sent.profileId === current.profileId
+    && sent.stepKey === current.stepKey
+}
+
 /**
  * Lokale Eingaben, die der Server inzwischen so trägt — sie werden nach jeder
  * Antwort verworfen, damit der nächste Tick nicht dieselbe Änderung erneut

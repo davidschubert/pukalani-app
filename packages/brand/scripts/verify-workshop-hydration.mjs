@@ -23,6 +23,10 @@
  * NUR LOKAL (Ziel-Prüfung `assert-target.mjs`). Aus packages/brand, gegen
  * einen LAUFENDEN Dev-Server von apps/branding:
  *   node --env-file=../../apps/branding/.env scripts/verify-workshop-hydration.mjs http://localhost:3010
+ * Mit `--step=<kapitel>` (mehrfach erlaubt) lädt es zusätzlich weitere
+ * Kapitel einer FRISCHEN Marke — z. B. `--step=aiguide` (WS2 a: der
+ * Ladezustand von `BwKitPromptsPanel`; das Wegwerf-Konto hat eine
+ * `brand_access`-Zeile und ist damit Beta, die Ableitung also offen).
  * Mit `--screenshot=<datei.png>` legt es ein Bild des zweiten Besuchs ab
  * (Vorher/Nachher eines Schnitts; der Titel der Wegwerf-Marke enthält die Zeit).
  *
@@ -41,6 +45,7 @@ const { chromium } = await import(playwrightEntry.href).catch(() => {
 
 const screenshotArg = process.argv.slice(2).find(arg => arg.startsWith('--screenshot='))
 const screenshotPath = screenshotArg ? screenshotArg.slice('--screenshot='.length) : null
+const extraSteps = process.argv.slice(2).filter(arg => arg.startsWith('--step=')).map(arg => arg.slice('--step='.length))
 const positional = process.argv.slice(2).find(arg => !arg.startsWith('--'))
 const base = (positional ?? process.env.BRANDING_URL ?? `http://localhost:${process.env.BRANDING_PORT ?? 3010}`).replace(/\/$/, '')
 const port = Number(new URL(base).port || 80)
@@ -144,7 +149,27 @@ try {
   })
 
   // Nur das offene Kapitel: gesperrte Kapitel zeigen keine Werkstatt.
-  const visits = [journey[0], journey[0]]
+  // Weitere Kapitel nur auf Wunsch (`--step=`) und nur, wenn die Reise sie kennt.
+  // Die Ableitung (z. B. `aiguide`) öffnet erst mit fertiger Foundation: sie
+  // wird hier server-seitig gesetzt, wie in `verify-brand-kit.mjs`
+  // (`completeFoundation`) — der WEG dorthin ist nicht Gegenstand dieser Probe.
+  if (extraSteps.length > 0) {
+    const seed = async (stepKey, values) => {
+      const rowId = `${profileId}_${stepKey}`
+      const row = await tablesDB.getRow({ databaseId, tableId: 'brand_steps', rowId })
+      const slots = JSON.parse(row.slots || '{}')
+      for (const [slotId, value] of Object.entries(values)) slots[slotId] = { ...slots[slotId], latestDraft: value, confirmed: value }
+      await tablesDB.updateRow({ databaseId, tableId: 'brand_steps', rowId, data: { slots: JSON.stringify(slots), revision: (row.revision ?? 0) + 1 } })
+    }
+    await seed('values', { 'c.final': '- Clarity\n- Craft\n- Care' })
+    await seed('archetype', { 'd.primary': 'sage', 'd.toneWords': '- calm\n- grounded\n- warm' })
+    await seed('result', { 'result.direction': 'warm-editorial' })
+    await tablesDB.updateRow({ databaseId, tableId: 'brand_steps', rowId: `${profileId}_result`, data: { state: 'done' } })
+  }
+  for (const stepKey of extraSteps) {
+    check(`${stepKey}: steht in der Reise`, journey.includes(stepKey), journey.join(', '))
+  }
+  const visits = [journey[0], journey[0], ...extraSteps.filter(stepKey => journey.includes(stepKey))]
   for (const [index, stepKey] of visits.entries()) {
     const href = `/brand/${profileId}/${stepKey}`
     let status = 0
@@ -163,9 +188,14 @@ try {
         if (attempt === 3) throw new Error(`${href}: ${error instanceof Error ? error.message.split('\n')[0] : error}`, { cause: error })
       }
     }
-    const label = index === visits.length - 1 ? `${stepKey} (zweiter Besuch)` : stepKey
+    const label = index === 1 ? `${stepKey} (zweiter Besuch)` : stepKey
     check(`${label}: Server antwortet 200`, status === 200, `HTTP ${status}`)
     check(`${label}: keine Abweichung zwischen Server und Browser`, messages.length === 0, messages.join('\n    '))
+    // WS2 a: im Kapitel AI-Guidelines muss das Vorlagen-Panel auch WIRKLICH
+    // dastehen — sonst wäre „keine Abweichung" ein Beweis über nichts.
+    if (stepKey === 'aiguide') {
+      check(`${label}: Vorlagen-Panel steht da`, await page.locator('[data-brand-kit-prompts]').count() === 1)
+    }
   }
   // Optional ein Bild des zweiten Besuchs — für Vorher/Nachher eines Schnitts.
   if (screenshotPath) {

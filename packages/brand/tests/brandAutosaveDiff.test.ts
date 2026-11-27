@@ -5,6 +5,7 @@ import {
   brandConflictNeedsDecision,
   brandDiscardEdit,
   brandEditReleasesConfirm,
+  brandSaveResponseIsCurrent,
   brandSlotDisplayValue,
   brandSlotIsConfirmed,
   diffBrandSlots,
@@ -327,5 +328,21 @@ describe('brandDiscardEdit', () => {
       'a.origin': { value: restore.value, confirmed: restore.confirmed },
     })['a.origin']
     expect(patch).toEqual({ value: 'steht', confirmed: true })
+  })
+})
+
+describe('brandSaveResponseIsCurrent (WS2 b)', () => {
+  const here = { profileId: 'p1', stepKey: 'context' }
+
+  it('gilt nur, wenn Profil UND Kapitel stimmen', () => {
+    expect(brandSaveResponseIsCurrent(here, { ...here })).toBe(true)
+    expect(brandSaveResponseIsCurrent(here, { profileId: 'p1', stepKey: 'pvm' })).toBe(false)
+    expect(brandSaveResponseIsCurrent(here, { profileId: 'p2', stepKey: 'context' })).toBe(false)
+  })
+
+  it('gilt nie ohne bekanntes Ziel', () => {
+    expect(brandSaveResponseIsCurrent({ profileId: null, stepKey: 'context' }, { profileId: null, stepKey: 'context' })).toBe(false)
+    expect(brandSaveResponseIsCurrent({ profileId: 'p1', stepKey: null }, { profileId: 'p1', stepKey: null })).toBe(false)
+    expect(brandSaveResponseIsCurrent(here, { profileId: null, stepKey: null })).toBe(false)
   })
 })
