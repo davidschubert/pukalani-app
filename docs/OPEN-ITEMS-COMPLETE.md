@@ -30,6 +30,31 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AR1 (d) — Kleinigkeiten: Grenze der Bezahlt-Prüfung am Code, Playwright-Browser beschrieben ✅ 2026-11-28
+
+**Bezahlt-Prüfung.** `createPaymentCheckoutSession`
+(`packages/billing/server/utils/fulfillment.ts`) liest vor einem Kauf mit
+Bereich die 100 jüngsten abgeschlossenen Stripe-Sessions, ohne Zeitfenster.
+Das ist richtig, solange ein bezahlter Kauf für immer gilt; ein
+Erstattungsweg mit Rücknahme existiert nicht (`charge.refunded` steht nicht
+in der Webhook-Liste, ein Test hält das). Statt den Punkt in der Liste auf
+einen Bau warten zu lassen, steht die Grenze jetzt an beiden Stellen, an
+denen ein Erstattungsweg vorbeikommt: als „GRENZE (AR1 d)" an der Abfrage
+und als Hinweis an der Test-Zeile `charge.refunded`.
+
+**Playwright lokal.** Der Browser-Download ist kein offener Punkt: einmalig
+`npx playwright install chromium` steht in `.claude/rules/tests.md`
+(E2E-Fallen 3), und auf Davids Mac liegen die Chromium-Ausgaben schon.
+
+**Bleibt offen (Grund im Plan AR1):** die Dateien auf dem Datenbank-Server
+(Production, mit BU1 d) und der Name eines UptimeRobot-Monitors (nur Davids
+Anmeldung). (e) nachgesehen am 2026-11-28: keine neue Ausgabe, die einen
+Hinweis schließt.
+
+**Gelernt:** Ein Punkt der Form „sobald es X gibt, muss Y nachgezogen
+werden" gehört an die Stelle, an der X gebaut wird (Kommentar, Test) — in
+der Liste wartet er nur, und wer X baut, liest die Liste nicht.
+
 ### WS2 — Werkstatt: Hydration im Vorlagen-Panel, verspätete Speicher-Antwort ✅ 2026-11-27
 
 Die zwei Nebenbefunde aus WS1, beide in `packages/brand`.
