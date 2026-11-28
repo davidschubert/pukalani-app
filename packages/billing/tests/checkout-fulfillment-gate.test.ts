@@ -74,6 +74,8 @@ describe('WEBHOOK_ALLOWLIST', () => {
 
   it('bleibt sonst eng (kein Sammelbecken)', () => {
     expect(WEBHOOK_ALLOWLIST.has('payment_intent.succeeded')).toBe(false)
+    // Wer `charge.refunded` aufnimmt (Erstattung mit Rücknahme), zieht die
+    // Bezahlt-Prüfung in createPaymentCheckoutSession nach (AR1 d, „GRENZE").
     expect(WEBHOOK_ALLOWLIST.has('charge.refunded')).toBe(false)
   })
 })
