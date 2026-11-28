@@ -228,8 +228,8 @@ paths:
   die Dateien aus `apps/portfolio/e2e/` (neue Datei dort ⇒ Zeile in
   `E2E_AUF_DER_BUEHNE`, der Test `packages/core/tests/buehneE2e.test.ts` ist
   sonst rot).
-- IM BROWSER AM ELEMENT WARTEN: `networkidle` nie als Bedingung (mit
-  Live-Verbindung wird das Netz nie still) — handeln, an der Wirkung prüfen
+- IM BROWSER AM ELEMENT WARTEN: auf Seiten mit Live-Verbindung wird das Netz
+  nie still, `networkidle` hängt — handeln, an der Wirkung prüfen
   (`packages/posts/scripts/lib/hydrationWaits.mjs`, BT1 d).
 - AUFRÄUM-REGISTER BRAUCHT DAS SCHEMA: ohne `tables.read` findet es keine
   Zeile, die an einem Konto hängt, und zählt trotzdem „nichts übrig".

@@ -29,7 +29,13 @@ test.describe('Login & Auth-Guards', () => {
       errors.push(text)
     })
     await page.goto('/login')
-    await page.waitForLoadState('networkidle')
+    // Am ELEMENT warten, nicht auf `networkidle`: mit offener Live-Verbindung
+    // wird das Netz nie still, der Test lief nachts in seine 30 s (BT1 d,
+    // 2026-11-28). Erst die Hydration (Vue hat die Seite übernommen und den
+    // Knopf), dann eine kurze Ruhe für späte Konsolen-Meldungen.
+    await page.waitForFunction(() => Boolean((document.querySelector('#__nuxt') as { __vue_app__?: unknown } | null)?.__vue_app__))
+    await expect(page.getByRole('button', { name: /sign in|log in|anmelden/i })).toBeVisible()
+    await page.waitForTimeout(1500)
     expect(errors, errors.join('\n')).toEqual([])
   })
 })
