@@ -296,11 +296,11 @@ ohne Secret.
   privaten Stellen: in einer eigenen Mail „Betroffene Kundendomains" an die
   Alarm-Adresse, wenn ein Alarm neu aufgeht (Job `kundendomains-namen`), und
   von Hand am eigenen Rechner (`--namen`, siehe „Kundendomain rot").
-- **Erst zählen, dann Alarm.** Im Job steht `PUKALANI_CUSTOMER_HOSTS_MODE:
-  count`: alle Hosts der Route werden geprüft, ein Befund ist eine Zeile „Nur
-  gezählt", rot wird nichts. Scharf stellen heißt, dort `alarm` einzutragen —
-  dann prüft der Job nur, was die feste Liste nicht schon kennt, und ein
-  Befund ist rot (OPEN-ITEMS „WA1").
+- **Scharf seit 2026-11-28.** Im Job steht `PUKALANI_CUSTOMER_HOSTS_MODE:
+  alarm`: geprüft wird nur, was die feste Liste nicht schon kennt, und ein
+  Befund ist rot. Davor lief der Job eine Woche mit `count` (alle Hosts der
+  Route, ein Befund nur eine Zeile „Nur gezählt") ohne einen einzigen Befund
+  (COMPLETE „WA1"). Wird er ohne echten Grund rot: dort zurück auf `count`.
 - **Probealarm:** `gh workflow run production-watch.yml -f kunden_drill=true`
   — tut so, als wäre das Zertifikat der ersten Kundendomain abgelaufen, und
   prüft die Kette samt der Mail mit dem Namen. Braucht das Geheimnis; ohne es
@@ -867,9 +867,11 @@ erledigt; an einigen hängt etwas, das ein Kunde merkt:
 jede Zeile trägt Pfad, Methode und Status. Häuft sich EIN Pfad, ist es eine
 Route (zuletzt ausgeliefert? dann zurückstellen, s. o.); sind es viele Pfade,
 darunter `/api/health` mit 502, ist es die Datenbank — dann ist auch der
-Health-Blick rot. Unter „Nur gezählt" stehen die Apps ohne scharfe Schwelle
-und die Fehler aus dem Browser: kein Alarm, aber die Zahl, an der sich die
-Schwelle später ausrichtet.
+Health-Blick rot. Schwellen (seit 2026-11-28 auf allen Apps scharf):
+platform 25, die übrigen fünf 10 in 25 Stunden — Messung und Begründung in
+`scripts/ops/app-signals-rules.mjs`. Darunter steht die Zahl als Zeile mit
+der Schwelle. Unter „Nur gezählt" stehen die Fehler aus dem Browser: kein
+Alarm, aber die Zahl, an der sich eine Schwelle später ausrichten kann.
 
 **KI fällt aus.** Status 402: bei OpenRouter ist das Guthaben aufgebraucht
 oder das Monats-Limit eines Schlüssels erreicht — jeder bezahlte Aufruf

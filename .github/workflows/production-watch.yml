@@ -221,11 +221,12 @@
 #      heißt er „Kundendomain 3/5". Den Namen bekommt nur die Alarm-Adresse,
 #      in einer eigenen Mail, wenn ein Alarm neu aufgeht (Job
 #      `kundendomains-namen`), oder man liest ihn von Hand am eigenen Rechner
-#      (`--namen`). ERST ZÄHLEN, DANN ALARM: `PUKALANI_CUSTOMER_HOSTS_MODE`
-#      steht auf `count` — alle Hosts der Route werden geprüft, ein Befund ist
-#      eine Zeile „Nur gezählt". Scharf wird der Blick mit `alarm` (eine Zeile
-#      im Job; dann prüft er nur, was die feste Liste nicht kennt, und ein
-#      Befund ist rot). Probealarm: `-f kunden_drill=true` (tut so, als wäre
+#      (`--namen`). ERST GEZÄHLT, SEIT 2026-11-28 SCHARF (WA1 d): 266 Läufe
+#      vom 23. bis 28.11. mit `count` lasen die Route jedes Mal und fanden
+#      keinen Befund. `PUKALANI_CUSTOMER_HOSTS_MODE` steht deshalb auf
+#      `alarm` — der Job prüft nur, was die feste Liste nicht kennt, und ein
+#      Befund ist rot. Zurück auf `count`, wenn der Blick ohne Grund rot wird
+#      (eine Zeile im Job). Probealarm: `-f kunden_drill=true` (tut so, als wäre
 #      das Zertifikat der ersten Kundendomain abgelaufen).
 #      Regeln: `scripts/ops/customer-hosts.mjs`.
 #
@@ -550,9 +551,10 @@ jobs:
       # Ausgang: GitHub druckt das `env:` jedes Schritts ins Protokoll.
       nummern: ${{ steps.befunde.outputs.nummern }}
     env:
-      # ERST ZÄHLEN, DANN ALARM (s. Kopf, Blick 17): `count` = Befunde nur
-      # gezählt, der Job bleibt grün. Scharf stellen: hier `alarm` eintragen.
-      PUKALANI_CUSTOMER_HOSTS_MODE: count
+      # SCHARF seit 2026-11-28 (s. Kopf, Blick 17): `alarm` = ein Befund ist
+      # rot, geprüft wird nur, was die feste Liste nicht kennt. `count` = nur
+      # gezählt, der Job bleibt grün.
+      PUKALANI_CUSTOMER_HOSTS_MODE: alarm
       PUKALANI_CUSTOMER_HOSTS_DRILL: ${{ inputs.kunden_drill && '1' || '0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

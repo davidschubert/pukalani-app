@@ -48,6 +48,14 @@ module.exports = {
       // Alter Worker bekommt nach dem Listening des neuen 8 s für offene
       // Requests, dann SIGKILL.
       kill_timeout: 8000,
+      // SPEICHERGRENZE (WA1 c, 2026-11-28): pm2 startet den Prozess neu,
+      // wenn er darüber liegt. Höchster Wert der täglichen Wächter-Läufe
+      // vom 23. bis 28.11.: 563 MB — die Grenze liegt bei etwa dem
+      // Doppelten, weil ein zu knapper Wert schon einmal eine Seite im
+      // Kreis neu gestartet hat. Wirkt beim nächsten Ausliefern
+      // (`pm2 startOrReload … --update-env` übernimmt sie). Höher setzen,
+      // wenn der tägliche Lauf Neustarts ohne Ausliefern zeigt.
+      max_memory_restart: '1200M',
       env: {
         ...parseEnvFile(ENV_FILE),
         PORT: 3004,
