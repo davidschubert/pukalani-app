@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { E2E_AUF_DER_BUEHNE, e2eEnv, summarizeReport } from '../../../scripts/buehne/e2e.mjs'
@@ -42,6 +42,13 @@ describe('Variablen aus dem Stand der Bühne', () => {
       PW_POOL_OWNER_B_USER_ID: 'u-b',
     })
     expect(env.control).toEqual({ PW_EXTERNAL_SERVER: '1', PW_BASE_URL: 'http://localhost:3004' })
+    // Ohne Port steht die Studio-Site nicht: keine Variablen, ihre Dateien laufen nicht.
+    expect(env).not.toHaveProperty('portfolio')
+  })
+
+  it('Studio-Site (BT1 a): nur mit Port, eigener Server auf localhost, ohne Pool-Variablen', () => {
+    const env = e2eEnv({ state, platformEnv, controlPort: 3004, portfolioPort: 3005, clientAddress: '10.28.1.2' })
+    expect(env.portfolio).toEqual({ PW_EXTERNAL_SERVER: '1', PW_BASE_URL: 'http://localhost:3005' })
   })
 
   it('eine Aufrufer-Adresse geht nur an die Pool-Spec, und nur wenn es eine gibt', () => {
@@ -117,7 +124,14 @@ describe('Die Dateien passen zum Repo', () => {
     expect([...read].sort()).toEqual(provided)
   })
 
-  it('beide Playwright-Konfigurationen starten mit PW_EXTERNAL_SERVER keinen eigenen Server', () => {
+  it('die sechs Dateien der Studio-Site stehen alle drin, gegen ihren eigenen Server', () => {
+    const portfolio = E2E_AUF_DER_BUEHNE.filter(entry => entry.app === 'portfolio')
+    expect(portfolio.every(entry => entry.server === 'portfolio')).toBe(true)
+    const inRepo = readdirSync(join(REPO, 'apps/portfolio/e2e')).filter(name => name.endsWith('.spec.ts')).map(name => `e2e/${name}`).sort()
+    expect(portfolio.map(entry => entry.datei).sort()).toEqual(inRepo)
+  })
+
+  it('jede Playwright-Konfiguration startet mit PW_EXTERNAL_SERVER keinen eigenen Server', () => {
     for (const app of new Set(E2E_AUF_DER_BUEHNE.map(entry => entry.app))) {
       const config = readFileSync(join(REPO, 'apps', app, 'playwright.config.ts'), 'utf8')
       expect(config, app).toMatch(/webServer:\s*process\.env\.PW_EXTERNAL_SERVER\s*\?\s*undefined/)
