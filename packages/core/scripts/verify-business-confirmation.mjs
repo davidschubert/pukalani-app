@@ -156,7 +156,8 @@ async function restoreRegistration(project) {
 }
 
 const DE_LABEL = 'Ich handle als Unternehmer/in oder Selbstständige/r, nicht als Verbraucher/in'
-const DE_NOTICE = 'Unser Angebot richtet sich ausschliesslich an Unternehmen und Selbstständige'
+// Seit Q16 (2026-11-21) mit „ß" — die erste Nacht auf der Bühne war daran rot.
+const DE_NOTICE = 'Unser Angebot richtet sich ausschließlich an Unternehmen und Selbstständige'
 const EN_LABEL = 'I am acting as a business or self-employed person, not as a consumer'
 const EN_NOTICE = 'Our offer is intended for businesses and self-employed people only'
 
