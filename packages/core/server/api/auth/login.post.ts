@@ -2,7 +2,8 @@ import { createAdminClient, createSessionClient, setSessionCookie } from '../../
 import { isCentralLoginHost } from '../../utils/centralLogin'
 import { freshSignInCard } from '../../utils/requestSession'
 import { loginSchema } from '../../../schemas/auth'
-import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage } from '../../../shared/authFailure'
+import { AUTH_UNAVAILABLE_CODE, appwriteAbuseResetInMs, isAuthBackendOutage, isAuthBackendRateLimited } from '../../../shared/authFailure'
+import { tooManyRequests } from '../../utils/rateLimited'
 import { secondFactorPending } from '../../../shared/mfa'
 import type { LoginResponse } from '../../../shared/types/auth-responses'
 
@@ -24,6 +25,16 @@ export default defineEventHandler(async (event): Promise<LoginResponse> => {
      * Log-Zeile, und der Versuch zählt nicht auf das Konto. Die Anmeldeseite
      * sagt dann „Server nicht erreichbar" statt „Passwort prüfen".
      */
+    /**
+     * APPWRITE BREMST (AW30 b): das Geheimnis wurde gar nicht geprüft. Unsere
+     * eigene 429 mit Wartezeit statt „ungültig" — und kein Fehlversuch auf
+     * das Konto. Keine Appwrite-Details nach außen, nur der Grund.
+     */
+    if (isAuthBackendRateLimited(error)) {
+      skipAccountAttempt(event)
+      logEvent('warn', 'auth.backend_rate_limited', { method: 'password' })
+      tooManyRequests(event, appwriteAbuseResetInMs())
+    }
     if (isAuthBackendOutage(error)) {
       skipAccountAttempt(event)
       logEvent('error', 'auth.login_unavailable', { method: 'password' })

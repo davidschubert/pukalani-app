@@ -2,7 +2,8 @@ import { Query } from 'node-appwrite'
 import { createAdminClient, createSessionClient, setSessionCookie } from '../../../lib/appwrite'
 import { freshSignInCard } from '../../../utils/requestSession'
 import { otpVerifySchema } from '../../../../schemas/auth'
-import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage } from '../../../../shared/authFailure'
+import { AUTH_UNAVAILABLE_CODE, appwriteAbuseResetInMs, isAuthBackendOutage, isAuthBackendRateLimited } from '../../../../shared/authFailure'
+import { tooManyRequests } from '../../../utils/rateLimited'
 import { secondFactorPending } from '../../../../shared/mfa'
 import type { OtpVerifyResponse } from '../../../../shared/types/auth-responses'
 import { softFail } from '../../../utils/softFail'
@@ -31,6 +32,16 @@ export default defineEventHandler(async (event): Promise<OtpVerifyResponse> => {
    * Grund, eine Log-Zeile, und der Versuch zählt nicht auf das Konto.
    */
   const session = await account.createSession({ userId, secret: code }).catch((error: unknown) => {
+    /**
+     * APPWRITE BREMST (AW30 b): das Geheimnis wurde gar nicht geprüft. Unsere
+     * eigene 429 mit Wartezeit statt „ungültig" — und kein Fehlversuch auf
+     * das Konto. Keine Appwrite-Details nach außen, nur der Grund.
+     */
+    if (isAuthBackendRateLimited(error)) {
+      skipAccountAttempt(event)
+      logEvent('warn', 'auth.backend_rate_limited', { method: 'otp' })
+      tooManyRequests(event, appwriteAbuseResetInMs())
+    }
     if (isAuthBackendOutage(error)) {
       skipAccountAttempt(event)
       logEvent('error', 'auth.login_unavailable', { method: 'otp' })

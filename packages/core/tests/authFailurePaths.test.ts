@@ -1,7 +1,14 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryRateLimitStore } from '../server/utils/rateLimitStore'
 import type { RateLimitStore } from '../server/utils/rateLimitStore'
-import { AUTH_UNAVAILABLE_CODE, isAuthBackendOutage, unexpectedRecoveryFailure } from '../shared/authFailure'
+import {
+  APPWRITE_ABUSE_WINDOW_MS,
+  AUTH_UNAVAILABLE_CODE,
+  appwriteAbuseResetInMs,
+  isAuthBackendOutage,
+  isAuthBackendRateLimited,
+  unexpectedRecoveryFailure,
+} from '../shared/authFailure'
 import { isAuthUnavailable } from '../app/utils/fetchError'
 
 /**
@@ -37,6 +44,24 @@ describe('isAuthBackendOutage', () => {
     expect(isAuthBackendOutage(appwriteError(0, ''))).toBe(true)
     expect(isAuthBackendOutage(undefined)).toBe(true)
     expect(isAuthBackendOutage('kaputt')).toBe(true)
+  })
+})
+
+describe('isAuthBackendRateLimited + appwriteAbuseResetInMs (AW30 b)', () => {
+  it('nur Appwrites 429 ist „Appwrite bremst"', () => {
+    expect(isAuthBackendRateLimited(appwriteError(429, 'general_rate_limit_exceeded'))).toBe(true)
+    expect(isAuthBackendRateLimited(appwriteError(401, 'user_invalid_token'))).toBe(false)
+    expect(isAuthBackendRateLimited(appwriteError(500, 'general_unknown'))).toBe(false)
+    expect(isAuthBackendRateLimited(new TypeError('fetch failed'))).toBe(false)
+    expect(isAuthBackendRateLimited(null)).toBe(false)
+  })
+
+  it('das Fenster endet zur vollen Stunde (UTC), mindestens eine Sekunde', () => {
+    // Erwartungen von Hand ausgeschrieben, nicht aus der Funktion abgeleitet.
+    expect(APPWRITE_ABUSE_WINDOW_MS).toBe(3_600_000)
+    expect(appwriteAbuseResetInMs(Date.UTC(2026, 10, 28, 14, 45, 0))).toBe(15 * 60_000)
+    expect(appwriteAbuseResetInMs(Date.UTC(2026, 10, 28, 14, 0, 0))).toBe(3_600_000)
+    expect(appwriteAbuseResetInMs(Date.UTC(2026, 10, 28, 14, 59, 59, 800))).toBe(1000)
   })
 })
 
@@ -232,6 +257,35 @@ describe.each([
     }
     // Der Deckel ist erreicht: die Bremse steht VOR der Prüfung, auch im Ausfall.
     expect(await run(handler(), body)).toEqual({ status: 429, code: 'rate_limited' })
+  })
+
+  it('Appwrite bremst (429): unsere 429 mit Grund und Wartezeit bis zur vollen Stunde, ohne Appwrite-Details, zählt nicht (AW30 b)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.UTC(2026, 10, 28, 14, 50, 0))
+    try {
+      secretCheck = async () => {
+        throw appwriteError(429, 'general_rate_limit_exceeded')
+      }
+      const event = fakeEvent(body)
+      const thrown = await handler()(event).then(() => null, (error: unknown) => error as Thrown)
+      expect(thrown?.status).toBe(429)
+      expect(thrown?.data).toEqual({ code: 'rate_limited' })
+      expect(thrown?.message).not.toContain('Appwrite')
+      expect(event.headers['Retry-After']).toBe(600)
+      expect(logEvent).toHaveBeenCalledWith('warn', 'auth.backend_rate_limited', { method })
+      expect(logEvent).not.toHaveBeenCalledWith('error', 'auth.login_unavailable', expect.anything())
+
+      // Viele gebremste Versuche füllen den EIGENEN Konto-Zähler nicht: sobald
+      // Appwrite wieder prüft, ist der richtige Code sofort gültig.
+      for (let i = 0; i < attempts.ACCOUNT_ATTEMPT_MAX + 3; i++) {
+        expect(await run(handler(), body)).toEqual({ status: 429, code: 'rate_limited' })
+      }
+      secretCheck = async () => ({ secret: 's', expire: '2099-01-01T00:00:00.000Z', userId: 'user-1' })
+      expect((await run(handler(), body)).status).toBe(200)
+    }
+    finally {
+      vi.useRealTimers()
+    }
   })
 })
 
