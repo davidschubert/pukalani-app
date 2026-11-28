@@ -427,6 +427,12 @@ täglichen Teil nicht betreffen (`alarm_drill`, `schema_drill`,
 `signals_drill`, `config_drill`, auch `realtime_drill`, der beide Teile rot
 macht) bleibt sonst bis zum Tageslauf um 04:17 UTC offen.
 
+**Erst aufräumen, wenn der Probelauf FERTIG ist** (`gh run watch <id>`, Issue
+offen, Mail da). Alle Läufe von Hand teilen sich eine Concurrency-Gruppe mit
+`cancel-in-progress`: ein Aufräum-Lauf, der zu früh startet, bricht den
+Probelauf ab, bevor `alarm` und `kundendomains-namen` laufen (2026-11-28,
+WA1 d) — der rote Blick ist dann bewiesen, der Alarmweg nicht.
+
 **Nach einer Änderung am Alarmweg selbst** (Job `alarm`,
 `scripts/ops/alarm-issue.mjs`) beide Teile proben: erst
 `-f signals_drill=true`, einen Halbstunden-Lauf abwarten (das Issue muss
