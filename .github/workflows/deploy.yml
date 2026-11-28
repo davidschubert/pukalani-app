@@ -100,16 +100,10 @@ concurrency:
 env:
   SERVER: 49.13.211.173
   SERVER_HOSTKEY: '49.13.211.173 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVud82T4BSPvg5wH84jnRuP+JdG2hP52FAf+h9ckcCe'
-  # WAS ausgeliefert wird: der Commit des auslösenden Prüflaufs, beim
-  # manuellen Start die Eingabe `sha`, sonst die Spitze des Zweigs.
-  EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.sha || github.sha }}
-  # WIE DER SERVER GEBAUT IST (App-Liste, ops/, TLS-Liste): derselbe Commit —
-  # AUSSER beim manuellen Start mit einem älteren `sha`. Dann kommt nur das
-  # PROGRAMM vom alten Commit; Site-Namen, Prozessnamen und Ecosystem-Dateien
-  # kommen von der Spitze von main. Ein alter Commit kennt womöglich noch
-  # einen Prozess, den es nicht mehr gibt — pm2 startete ihn DANEBEN (zwei
-  # Prozesse, ein Port). Genau so war der Rückweg schon einmal abgehängt.
-  OPS_REF: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+  # WAS ausgeliefert wird (EXPECTED_SHA) und WIE DER SERVER GEBAUT IST
+  # (OPS_REF: App-Liste, ops/, TLS-Liste) entscheidet seit CW1 (c) der Job
+  # `gate` im Schritt „Neuesten grünen Commit wählen" — beide stehen als
+  # Ausgabe von `gate` bzw. `plan` an jedem Job, der sie braucht.
   COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
   # DAS FESTE SKRIPT AUF DEM SERVER (CI1 b, 2026-11-18): Quelle
   # `ops/app-release.sh`, von Hand eingespielt (docs/runbooks/
@@ -148,9 +142,11 @@ jobs:
   # das hier idempotent und deployt trotzdem nur EINMAL.
   gate:
     runs-on: ubuntu-latest
-    # Nur lesen, was die ANDEREN Workflows desselben Commits ergeben haben.
+    # Nur lesen: was die ANDEREN Workflows ergeben haben (actions), und ob ein
+    # neuerer Commit Nachfahre des auslösenden ist (contents, Vergleich).
     permissions:
       actions: read
+      contents: read
     # ÖFFENTLICHES REPO (seit 2026-08-03): `workflow_run` feuert AUCH für
     # Prüfläufe fremder Pull Requests, und der Filter `branches: [main]` greift
     # dabei auf den HEAD-Branch des Auslösers — ein Fork, dessen Branch „main"
@@ -164,6 +160,8 @@ jobs:
        github.event.workflow_run.event == 'push')
     outputs:
       go: ${{ steps.check.outputs.go }}
+      sha: ${{ steps.pick.outputs.sha }}
+      ops_ref: ${{ steps.pick.outputs.ops_ref }}
     steps:
       - name: Sind Test, Lint, Typecheck UND E2E grün?
         id: check
@@ -216,6 +214,68 @@ jobs:
           fi
           echo "go=$go" >> "$GITHUB_OUTPUT"
 
+      # DER NEUESTE GRÜNE COMMIT VON MAIN, NICHT NUR DER AUSLÖSER (CW1 c,
+      # 2026-11-28). Die concurrency-Gruppe hält EINEN laufenden und EINEN
+      # wartenden Lauf; ein neuer Lauf verdrängt den wartenden. Meist ist das
+      # gut (der neuere Commit enthält den älteren). Endet aber die Prüfung
+      # eines ÄLTEREN Commits zuletzt (langsamer E2E, Re-run), verdrängt dessen
+      # Lauf den wartenden des NEUEREN — der ältere findet sich live und
+      # überspringt, der neuere bliebe liegen bis zum nächsten Merge. Deshalb
+      # liefert jeder Lauf den neuesten main-Commit aus, dessen vier Prüfungen
+      # grün sind und der Nachfahre des Auslösers ist; dessen eigener Lauf
+      # findet ihn später live und überspringt. Ein laufendes Ausliefern wird
+      # weiter nie abgebrochen. Kann die Liste nicht gelesen werden, bleibt es
+      # beim Auslöser (wie vor CW1 c). Test:
+      # packages/core/tests/deployPick.test.ts
+      - name: Neuesten grünen Commit wählen
+        id: pick
+        if: steps.check.outputs.go == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.sha }}
+          BRANCH_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          if [ "$EVENT" != "workflow_run" ]; then
+            # Manueller Start: genau die Eingabe (der Rückweg auf einen älteren
+            # Stand), sonst die Spitze des Zweigs. ops/ und die App-Liste kommen
+            # immer von der Spitze des Zweigs: ein alter Commit kennt womöglich
+            # noch einen Prozess, den es nicht mehr gibt — pm2 startete ihn
+            # DANEBEN (zwei Prozesse, ein Port).
+            echo "Manueller Start — ausgeliefert wird ${INPUT_SHA:-$BRANCH_SHA}."
+            echo "sha=${INPUT_SHA:-$BRANCH_SHA}" >> "$GITHUB_OUTPUT"
+            echo "ops_ref=$BRANCH_SHA" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          PICK="$TRIGGER_SHA"
+          # Commits mit grünen Prüfungen aus main-Pushes dieses Repos, der
+          # zuletzt gepushte zuerst. Je Commit zählt je Workflow der letzte Lauf.
+          GREEN=$(gh api "repos/$REPO/actions/runs?branch=main&event=push&per_page=100" --jq '
+            [.workflow_runs[]
+             | select(.head_repository.full_name == env.REPO and .event == "push" and .head_branch == "main")
+             | select(.name == "Test" or .name == "Lint" or .name == "Typecheck" or .name == "E2E (Appwrite)")]
+            | group_by(.head_sha)
+            | map({sha: .[0].head_sha,
+                   pushed: (map(.created_at) | min),
+                   green: ([group_by(.name)[] | sort_by(.created_at) | last | .conclusion == "success"]
+                           | length == 4 and all)})
+            | map(select(.green)) | sort_by(.pushed) | reverse | .[].sha') || GREEN=''
+          for c in $GREEN; do
+            [ "$c" = "$TRIGGER_SHA" ] && break
+            # Nur ein NACHFAHRE des Auslösers (ahead) — nie ein Seitenzweig.
+            STATUS=$(gh api "repos/$REPO/compare/$TRIGGER_SHA...$c" --jq '.status') || STATUS=''
+            if [ "$STATUS" = "ahead" ]; then PICK="$c"; break; fi
+          done
+          if [ "$PICK" != "$TRIGGER_SHA" ]; then
+            echo "Gebündelt: $PICK ist neuer als der Auslöser $TRIGGER_SHA und schon grün — er wird ausgeliefert (enthält den Auslöser)."
+          else
+            echo "Ausgeliefert wird der Auslöser $PICK (kein neuerer grüner Commit auf main)."
+          fi
+          echo "sha=$PICK" >> "$GITHUB_OUTPUT"
+          echo "ops_ref=$PICK" >> "$GITHUB_OUTPUT"
+
   # ── Plan: gehört der Commit zu main, und gibt es etwas auszuliefern? ─────
   # Ohne Secret. Entscheidet für ALLE folgenden Jobs, ob sie laufen.
   plan:
@@ -224,9 +284,15 @@ jobs:
       contents: read
     needs: gate
     if: needs.gate.outputs.go == 'true'
+    env:
+      EXPECTED_SHA: ${{ needs.gate.outputs.sha }}
+      OPS_REF: ${{ needs.gate.outputs.ops_ref }}
     outputs:
       skip: ${{ steps.changes.outputs.skip }}
       app_hosts: ${{ steps.apps.outputs.app_hosts }}
+      # Für build, deliver und tls (die `gate` nicht direkt kennen).
+      sha: ${{ needs.gate.outputs.sha }}
+      ops_ref: ${{ needs.gate.outputs.ops_ref }}
     steps:
       # VOR dem Checkout: die Eingabe ist freier Text. Nur ein vollständiger
       # Commit kommt weiter — kein Zweigname, kein Kürzel (die Build-Kennung
@@ -273,7 +339,7 @@ jobs:
           done
 
       # DIE EINE APP-LISTE (ops/apps.conf, je Zeile `<app> <site>`) → Paare
-      # `app=site`. Gelesen aus OPS_REF (s. Kopf), nicht aus dem Arbeitsbaum:
+      # `app=site`. Gelesen aus OPS_REF (Ausgabe von `gate`), nicht aus dem Arbeitsbaum:
       # beim Ausliefern eines älteren Commits gilt die Liste von HEUTE.
       - name: App-Liste lesen (ops/apps.conf)
         id: apps
@@ -499,6 +565,8 @@ jobs:
     if: needs.plan.outputs.skip != 'true'
     env:
       APP_HOSTS: ${{ needs.plan.outputs.app_hosts }}
+      EXPECTED_SHA: ${{ needs.plan.outputs.sha }}
+      OPS_REF: ${{ needs.plan.outputs.ops_ref }}
     steps:
       # Ohne `fetch-depth: 0`: der Build liest nur `git rev-parse HEAD` (die
       # Build-Kennung in /api/health), und HEAD ist genau dieser Commit.
@@ -584,10 +652,12 @@ jobs:
     environment: production
     env:
       APP_HOSTS: ${{ needs.plan.outputs.app_hosts }}
+      EXPECTED_SHA: ${{ needs.plan.outputs.sha }}
+      OPS_REF: ${{ needs.plan.outputs.ops_ref }}
     steps:
       # Nur `ops/` (Ecosystem-Dateien, pm2-heal.sh) — aus git, nicht aus dem
       # Build-Artefakt: was auf dem Server AUSGEFÜHRT wird, kommt nicht durch
-      # den Job, der fremden Code laufen lässt. Aus OPS_REF (s. Kopf): beim
+      # den Job, der fremden Code laufen lässt. Aus OPS_REF (Ausgabe von `gate`): beim
       # Ausliefern eines älteren Commits bleiben die Ecosystem-Dateien die
       # von heute.
       - name: ops/ auschecken
@@ -868,8 +938,10 @@ jobs:
       contents: read
     needs: [plan, deliver]
     if: always() && needs.plan.result == 'success' && needs.plan.outputs.skip != 'true'
+    env:
+      OPS_REF: ${{ needs.plan.outputs.ops_ref }}
     steps:
-      # Aus OPS_REF (s. Kopf): die Host-Liste des TLS-Wächters ist die von heute.
+      # Aus OPS_REF (Ausgabe von `gate`): die Host-Liste des TLS-Wächters ist die von heute.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.OPS_REF }}

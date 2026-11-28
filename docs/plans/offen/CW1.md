@@ -27,28 +27,14 @@ getan ist, in OPEN-ITEMS-COMPLETE unter „MG1“.)
   als Issue `geheimnis-alarm`. Vor dem ersten Push eines Zweigs weiter lokal
   prüfen: `gitleaks git --no-banner --redact --exit-code 1
   --log-opts="origin/main..HEAD" .`
-- **(c) Dichte Merges schieben das Ausliefern vor sich her.** Ein laufender
-  Lauf wird nie abgebrochen, aber es wartet immer nur EINER: jeder weitere
-  Merge verdrängt den wartenden Lauf, und ein roter Test auf `main` hält
-  alles auf: drei Merges der Gruppe N13 waren erst nach 28, 32 und 40 Minuten
-  live. Empfehlung für Tage mit mehreren Gruppen: Merges bündeln. Verloren
-  geht dabei nichts — der nächste Lauf liefert alles seit dem ältesten
-  lebenden Build aus.
-- **(d) Erledigt am 2026-11-24 (COMPLETE „CW1 (a)(d)").** Eine App ohne Antwort: ein älterer Commit wird trotzdem
-  ausgeliefert.** Seit dem 2026-11-21 überspringt der Schritt „Deploy nötig?"
-  einen Commit, den `main` überholt hat (COMPLETE „N20"). Eine Lücke bleibt:
-  meldet eine App keinen Build (502, Zeitüberschreitung), liefert der Lauf
-  wie bisher sicherheitshalber aus — auch dann, wenn sein Commit älter ist
-  als die Spitze von `main`. Das braucht zwei Dinge zugleich (eine tote App
-  und eine neu gestartete Prüfung auf einem älteren Commit). Möglicher Weg:
-  in diesem Fall nur ausliefern, wenn der Commit die Spitze von `main` ist,
-  sonst mit Warnung überspringen. Ein neuer Fall in
-  `packages/core/tests/deployDecision.test.ts` gehört dazu.
-- **(e) Die zwei Sperren sind noch in keinem echten Lauf gesehen.** Geprüft
-  sind sie nur im Test. Beim nächsten Lauf, der „Überholt" meldet: im
-  Protokoll des Schritts „Deploy nötig?" nachlesen, ob die Meldung stimmt,
-  und den Live-Build mit der Spitze von `main` vergleichen. Kein Bauen, nur
-  Hinsehen.
+- **(c) Erledigt am 2026-11-28 (COMPLETE „CW1 (c)(e)").** Jeder Deploy-Lauf
+  liefert jetzt den neuesten grünen Commit von `main` aus, nicht nur seinen
+  Auslöser. Gemessen seit dem 2026-11-24: Merges mit App-Änderung waren nach
+  12 bis 26 Minuten live (Median 18).
+- **(e) Erledigt am 2026-11-28 (COMPLETE „CW1 (c)(e)").** Vom 2026-11-21 bis
+  zum 2026-11-28 meldete kein Deploy-Lauf „Überholt"; alle sechs Apps liefen
+  am 2026-11-28 auf der Spitze von `main`. Die Sperren bleiben nur im Test
+  gesehen.
 - **(f) Statistik-Seite: einmal eine Abweichung zwischen Server und
   Browser.** Gemessen am 2026-11-24: seit dem 2026-11-18 liefen 104
   E2E-Läufe auf `main`, einer war rot (2026-11-21, Commit `121276a3`):
