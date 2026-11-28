@@ -447,6 +447,7 @@ jobs:
       # main) kein `--einzel-port`, `--branding-port`, `--portfolio-port`: die
       # Beweise dieser drei Server stehen ohnehin nur auf `nacht`.
       - name: Beweise auf der Bühne (Einteilung aus scripts/buehne/beweise.mjs)
+        id: beweise
         # Nachts MUSS die Karte im Modus write laufen: verify-site-card ist
         # dann rot statt „übersprungen", wenn sie es nicht tut (PK1 E1c).
         env:
@@ -483,8 +484,11 @@ jobs:
       # übersprungener Test macht diesen Schritt ROT — deshalb erst die
       # Platzhalter-Seiten anlegen (Wegwerf-Datenbank). Dazu die sechs Dateien
       # der Studio-Site (seit 2026-11-28) gegen den fünften Server.
+      # Läuft auch nach einem ROTEN Beweise-Schritt (die Server stehen dann
+      # noch): sonst verschluckte ein einziges rotes Skript alle Browser-Tests
+      # der Nacht — so am 2026-11-28 auf dem Zweig von BT1 a.
       - name: Browser-Tests auf der Bühne (nur nachts)
-        if: env.LAUF == 'nacht'
+        if: env.LAUF == 'nacht' && (success() || steps.beweise.outcome == 'failure')
         run: |
           node --env-file=apps/control/.env packages/pages/scripts/seed-demo.mjs --single-tenant
           node scripts/buehne/buehne.mjs e2e --control-port "$CONTROL_PORT" ${PORTFOLIO_READY:+--portfolio-port "$PORTFOLIO_PORT"}
