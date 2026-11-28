@@ -54,3 +54,31 @@ export function unexpectedRecoveryFailure(error: unknown): { type: string, code:
     code: typeof code === 'number' ? code : null,
   }
 }
+
+/**
+ * APPWRITE BREMST SELBST (AW30 b). Seit 2.7.2 zählt Appwrite Anmelde- und
+ * Code-Versuche auch bei Aufrufen mit Schlüssel (10 je Konto und Stunde). Bis
+ * 2026-11-28 fiel diese 429 in die allgemeine Ablehnung: nach zehn falschen
+ * Codes hieß auch der RICHTIGE für den Rest der Stunde „ungültig oder
+ * abgelaufen". Die Route antwortet jetzt mit unserer eigenen 429
+ * (`rate_limited`), der Versuch zählt nicht auf das Konto — Appwrite hat das
+ * Geheimnis gar nicht geprüft.
+ */
+export function isAuthBackendRateLimited(error: unknown): boolean {
+  return failureOf(error).code === 429
+}
+
+/** Fenster von Appwrites Bremse (`abuse-time` 3600 s an den Anmelde-Routen). */
+export const APPWRITE_ABUSE_WINDOW_MS = 3_600_000
+
+/**
+ * Wie lange noch bis zum Ende von Appwrites Fenster? Appwrite zählt in FESTEN
+ * Fenstern, die an der Epoche ausgerichtet sind (utopia-php/abuse `TimeLimit`:
+ * `floor(time / 3600) * 3600`) — das Fenster endet also zur vollen Stunde
+ * (UTC). Der SDK-Fehler trägt den Kopf `X-RateLimit-Reset` nicht, deshalb
+ * wird hier gerechnet statt gelesen; lokal gegen die echte Instanz geprüft
+ * (COMPLETE „AW30 (b)"). Mindestens eine Sekunde.
+ */
+export function appwriteAbuseResetInMs(now: number = Date.now()): number {
+  return Math.max(1000, APPWRITE_ABUSE_WINDOW_MS - (now % APPWRITE_ABUSE_WINDOW_MS))
+}

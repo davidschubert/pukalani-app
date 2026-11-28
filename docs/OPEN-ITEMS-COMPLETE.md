@@ -30,6 +30,43 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### AW30 (b) — Ehrliche Meldung, wenn Appwrite Code-Versuche bremst ✅ 2026-11-28
+
+Seit 2.7.2 zählt Appwrite Anmelde- und Code-Versuche auch bei Aufrufen mit
+Schlüssel (10 je Konto und Stunde). Bis heute fiel diese 429 in die
+allgemeine Ablehnung: nach zehn falschen Codes hieß auch der RICHTIGE für den
+Rest der Stunde „ungültig oder abgelaufen".
+
+- `packages/core/shared/authFailure.ts`: `isAuthBackendRateLimited()` (Status
+  429) und `appwriteAbuseResetInMs()` — Appwrite zählt in festen, an der
+  Epoche ausgerichteten Fenstern, das Fenster endet zur vollen Stunde (UTC).
+- `otp/verify.post.ts` und `login.post.ts`: Appwrites 429 wird unsere eigene
+  429 über `tooManyRequests()` — `data: { code: 'rate_limited' }` → `reason`,
+  `Retry-After` bis zur vollen Stunde, eine Zeile `auth.backend_rate_limited`,
+  und der Versuch zählt nicht auf den eigenen Konto-Zähler
+  (`skipAccountAttempt`). Keine Appwrite-Details nach außen. Die Formulare
+  kannten `rate_limited` schon (`useAuthErrorMessage`, „Zu viele Versuche.
+  Warte noch N Minuten …", de+en vorhanden) — keine neuen Texte.
+- Test: `packages/core/tests/authFailurePaths.test.ts` (beide Routen: 429 mit
+  Grund und `Retry-After` 600 um 14:50 UTC, Log-Zeile, 13 gebremste Versuche
+  füllen den Konto-Zähler nicht, danach geht der richtige Code sofort).
+- Beweis lokal (Appwrite 2.7.4, OrbStack): `X-Ratelimit-Reset` 1795831200 =
+  genau volle Stunde, auch für Aufrufe mit Schlüssel (10 × 401, dann 429
+  `general_rate_limit_exceeded`). Danach im Browser auf
+  `/de/login/code` (Worktree-Dev-Server, Port 3091) mit dem RICHTIGEN Code aus
+  Mailpit: „Zu viele Versuche. Warte noch 5 Minuten und versuch es dann noch
+  einmal." (277 s bis zum Fenster-Ende), Antwort `429`, `retry-after: 269`,
+  Körper `{"ok":false,"code":"RATE_LIMITED","message":"Too Many Requests","reason":"rate_limited"}`,
+  Log-Zeile `auth.backend_rate_limited` `otp`. Wegwerf-Konto gelöscht (204,
+  Gegenprobe 404).
+- Nicht gebaut: `mfa`-Challenge und Reset-Anforderung — dort fragt Appwrite
+  ebenfalls mit Bremse, der Fall ist aber bisher nicht gemeldet.
+
+**Gelernt:** Der SDK-Fehler trägt die Kopfzeilen nicht (`AppwriteException`
+hat nur `code`, `type`, `response`) — die Wartezeit lässt sich nur aus Appwrites
+fester Fenster-Regel rechnen; die Regel wurde deshalb gegen den echten
+`X-Ratelimit-Reset` geprüft, nicht angenommen.
+
 ### AR1 (d) — Kleinigkeiten: Grenze der Bezahlt-Prüfung am Code, Playwright-Browser beschrieben ✅ 2026-11-28
 
 **Bezahlt-Prüfung.** `createPaymentCheckoutSession`
