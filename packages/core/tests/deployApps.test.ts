@@ -50,6 +50,16 @@ describe('ops/apps.conf — die eine App-Liste', () => {
     expect(ecosystem).toContain(`const CURRENT = '/home/ploi/releases/${app}/current'`)
   })
 
+  // WA1 c (2026-11-28): jede Ecosystem-Datei nennt eine Speichergrenze, und
+  // keine liegt unter 512 MB. Ein zu knapper Wert hat schon einmal eine Seite
+  // im Kreis neu gestartet; gemessen wurden 263 bis 563 MB je Prozess.
+  it.each(apps)('$app: Speichergrenze gesetzt und nicht zu knapp', ({ app }) => {
+    const ecosystem = read('ops', `ecosystem-${app}.config.cjs`)
+    const limit = ecosystem.match(/^\s*max_memory_restart: '(\d+)M',$/m)
+    expect(limit, `ops/ecosystem-${app}.config.cjs ohne max_memory_restart in MB`).not.toBeNull()
+    expect(Number(limit?.[1])).toBeGreaterThanOrEqual(512)
+  })
+
   it('kennt jede Ecosystem-Datei unter ops/', () => {
     const files = readdirSync(join(REPO, 'ops')).filter(file => /^ecosystem-.+\.config\.cjs$/.test(file))
     expect(files.sort()).toEqual(apps.map(a => `ecosystem-${a.app}.config.cjs`).sort())

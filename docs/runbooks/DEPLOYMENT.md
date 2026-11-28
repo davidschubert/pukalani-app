@@ -670,6 +670,16 @@ NUXT_PUBLIC_TURNSTILE_SITE_KEY=<Turnstile-Site-Key> # IMMER zusammen mit dem Sec
 > --update-env` (Site und App aus `ops/apps.conf`; das Beispiel von damals
 > nannte die gelöschte Site `comments`) (downtime-frei; ein `pm2 restart` ginge auch, reißt aber
 > eine Lücke).
+>
+> **Speichergrenze je Prozess (seit 2026-11-28, WA1 c):** jede
+> `ops/ecosystem-*.config.cjs` nennt `max_memory_restart` (etwa das Doppelte
+> des höchsten gemessenen Werts; Messung und Grenze stehen als Kommentar in
+> der Datei). pm2 übernimmt die Grenze beim `pm2 startOrReload … --update-env`
+> jedes Auslieferns — kein Handgriff auf dem Server. Prüfen von Hand:
+> `pm2 describe <prozess>` zeigt `max memory restart`. Ein Neustart wegen
+> der Grenze steht in `~/.pm2/pm2.log` („exceeds --max-memory-restart");
+> häufen sie sich, die Grenze heben, nicht senken. Der tägliche Wächter
+> berichtet den Speicher je Prozess („In die App hinein").
 
 ## 4. Deploy auslösen
 

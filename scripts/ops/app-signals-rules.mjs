@@ -21,8 +21,8 @@
  *     erzeugen im gesunden Betrieb keine Zeile (sie bekommen 404, und 4xx wird
  *     nicht geschrieben).
  *   · Gescheiterte Zeit-Läufe und KI-Ausfälle an einem normalen Tag: 0.
- *   · Für die fünf anderen Apps gibt es noch keine Zahlen — das Protokoll ist
- *     dort erst seit dem 2026-11-16 an.
+ *   · Für die fünf anderen Apps: Zahlen seit dem 2026-11-16, ausgewertet am
+ *     2026-11-28 (WA1 a, s. `serverErrors`).
  */
 
 /** Muss zu `VERSION` in ops/app-watch-counts.mjs passen (ein Test hält beide zusammen). */
@@ -57,19 +57,26 @@ export const RULES = {
    */
   missingAfterUpMin: 20,
   /**
-   * SERVER-FEHLER (5xx) je App in 25 Stunden. Eine Zahl = scharf. `null` =
-   * zählt nur (noch keine Messung). platform: Normaltag 0, Ausfall > 2.000 —
-   * 25 liegt sicher dazwischen und lässt einem einzelnen Stolperer Raum.
-   * SCHARF STELLEN: nach einer Woche die berichteten Zahlen ansehen
-   * (Runbook, „Fehler in der App"), dann hier eine Zahl eintragen.
+   * SERVER-FEHLER (5xx) je App in 25 Stunden. Eine Zahl = scharf, `null` =
+   * zählt nur. platform: Normaltag 0, Ausfall > 2.000 — 25 liegt sicher
+   * dazwischen und lässt einem einzelnen Stolperer Raum.
+   * Die fünf anderen (WA1 a, 2026-11-28): die sieben Tagesläufe vom 23. bis
+   * 28.11. zählten auf JEDER App 0 Server-Fehler, auch keine Zeile mit
+   * `source: process` (sie steckt in derselben Zahl), und keiner meldete eine
+   * verkürzte Reichweite (kein Node-Heben in der Woche). Diese Apps haben
+   * weniger Besuch als platform; ein Ausfall trifft aber auch dort JEDE
+   * Anfrage, und Suchmaschinen fragen rund um die Uhr. 10 liegt weit über dem
+   * gemessenen Normaltag und lässt einem Stolperer (Neustart, ein Wackler der
+   * Datenbank) Raum. Wird eine App wiederholt knapp darunter berichtet: die
+   * Zeilen lesen, nicht die Schwelle heben.
    */
   serverErrors: {
     platform: 25,
-    control: null,
-    branding: null,
-    portfolio: null,
-    marketing: null,
-    help: null,
+    control: 10,
+    branding: 10,
+    portfolio: 10,
+    marketing: 10,
+    help: 10,
   },
   /**
    * BROWSER-FEHLER: zählt nur, überall. Die Annahme ist öffentlich; was dort

@@ -32,6 +32,14 @@ module.exports = {
       exec_mode: 'cluster',
       instances: 1,
       kill_timeout: 8000,
+      // SPEICHERGRENZE (WA1 c, 2026-11-28): pm2 startet den Prozess neu,
+      // wenn er darüber liegt. Höchster Wert der täglichen Wächter-Läufe
+      // vom 23. bis 28.11.: 294 MB — die Grenze liegt bei etwa dem
+      // Doppelten, weil ein zu knapper Wert schon einmal eine Seite im
+      // Kreis neu gestartet hat. Wirkt beim nächsten Ausliefern
+      // (`pm2 startOrReload … --update-env` übernimmt sie). Höher setzen,
+      // wenn der tägliche Lauf Neustarts ohne Ausliefern zeigt.
+      max_memory_restart: '600M',
       env: {
         ...parseEnvFile(ENV_FILE),
         PORT: 3005,

@@ -30,6 +30,51 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### WA1 (a), (c), (d) — Fehler-Schwellen scharf, Speichergrenze je Prozess, Kundendomains scharf ✅ 2026-11-28
+
+Ausgewertet wurden die Läufe des Produktions-Wächters vom 23. bis 28.11.,
+nur lesend aus den Protokollen bei GitHub (`gh run view --log`): sieben
+Tagesläufe für „In die App hinein" und alle 266 Halbstunden-Läufe für den
+Job `kundendomains`.
+
+- **(a) Server-Fehler auf allen Apps scharf.** Alle sieben Tagesläufe zählten
+  auf JEDER App 0 Server-Fehler (5xx), also auch keine Zeile mit
+  `source: process` (sie steckt in derselben Zahl), und keiner meldete eine
+  verkürzte Reichweite — in der Woche wurde Node nicht gehoben. Neue
+  Schwellen in `scripts/ops/app-signals-rules.mjs` (`RULES.serverErrors`):
+  admin (control), branding, portfolio, Landing und Hilfe je 10 in 25
+  Stunden; platform bleibt 25. Begründung an der Stelle: weit über dem
+  gemessenen Normaltag, Raum für einen Stolperer, ein Ausfall trifft jede
+  Anfrage. Der Test schreibt die sechs Zahlen aus und prüft je App knapp
+  darunter (Zeile mit Schwelle) und genau darauf (rot). Weiter nur gezählt:
+  Fehler aus dem Browser (0 bis 3 am Tag, nur platform, portfolio,
+  branding) und übrige KI-Ausfälle (0).
+- **(c) Speichergrenze je Prozess.** Höchstwerte der Woche: platform 563 MB
+  (24.11.), branding.supply 522, admin 383, portfolio 303, Landing 294,
+  Hilfe 263. `max_memory_restart` in jeder `ops/ecosystem-*.config.cjs` bei
+  etwa dem Doppelten: 1200M, 1100M, 800M, 640M, 600M, 600M. Ein Test in
+  `packages/core/tests/deployApps.test.ts` verlangt die Grenze in jeder
+  Datei und nie unter 512 MB. Kein Handgriff auf dem Server: jedes
+  Ausliefern ruft `pm2 startOrReload <ecosystem> --update-env`, und pm2
+  übernimmt dabei die ganze App-Einstellung (im pm2-Code nachgelesen:
+  `extendExtraConfig` in `lib/God/Reload.js`); eine Änderung unter `ops/`
+  löst das Ausliefern aller Apps aus. Runbook: `docs/runbooks/DEPLOYMENT.md`,
+  „Speichergrenze je Prozess".
+- **(d) Kundendomains scharf.** 266 Läufe mit `count`: jedes Mal 4
+  Kundendomains aus dem Control Plane gelesen, nie „nicht gelesen", kein
+  einziger Befund. `PUKALANI_CUSTOMER_HOSTS_MODE` steht jetzt auf `alarm`
+  (prüft nur, was die feste Liste nicht kennt; heute stehen alle vier dort,
+  der Nutzen kommt mit der nächsten Kundendomain). Offen für David: einmal
+  `gh workflow run production-watch.yml -f kunden_drill=true` und danach
+  einen Lauf ohne Schalter zum Aufräumen.
+
+**Gelernt:** Die Zahl „Neustarts" aus `pm2 jlist` taugt nicht, um einen
+Neustart wegen der Speichergrenze zu erkennen — jedes Ausliefern (`reload`)
+zählt dort mit. Der Beweis für einen Speicher-Neustart ist die Zeile
+„exceeds --max-memory-restart" in `~/.pm2/pm2.log`. Und ob eine Einstellung
+der Ecosystem-Datei beim `reload` wirkt, steht nicht in der pm2-Doku, sondern
+im Code (`current_conf` → `extendExtraConfig`) — dort nachlesen statt raten.
+
 ### BT1 (a) Studio-Site, (d) — fünfter Server im Nacht-Lauf, Browser warten am Element ✅ 2026-11-28
 
 Die Studio-Site (`apps/portfolio`) steht nachts als fünfter Server auf der
