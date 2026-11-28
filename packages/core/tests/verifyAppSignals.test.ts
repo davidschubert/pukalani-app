@@ -271,18 +271,23 @@ describe('die Zählung reicht nicht über das ganze Fenster zurück — zählt n
 })
 
 describe('Regeln — Fehler und KI', () => {
-  it('Server-Fehler sind nur dort scharf, wo es eine gemessene Schwelle gibt', () => {
-    const limit = RULES.serverErrors.platform
-    expect(limit).toBe(25)
-    expect(evaluate(countsText({ server: limit - 1 }), [], 'platform').red).toEqual([])
-    expect(evaluate(countsText({ server: limit }), [], 'platform').red[0]).toContain(`${limit} Server-Fehler (5xx)`)
-    // Die fünf anderen Apps zählen nur — auch bei sehr vielen Zeilen.
-    for (const app of ['control', 'branding', 'portfolio', 'marketing', 'help']) {
-      expect(RULES.serverErrors[app as keyof typeof RULES.serverErrors], app).toBeNull()
-      const result = evaluate(countsText({ server: 5000 }), [], app)
-      expect(result.red, app).toEqual([])
-      expect(result.notes[0]).toContain('zählt nur')
+  it('Server-Fehler sind auf jeder App scharf, mit der gemessenen Schwelle', () => {
+    // Erwartet AUSGESCHRIEBEN (WA1 a, 2026-11-28), nicht aus RULES gelesen:
+    // platform 25, die übrigen fünf 10.
+    const expected = { platform: 25, control: 10, branding: 10, portfolio: 10, marketing: 10, help: 10 }
+    expect(RULES.serverErrors).toEqual(expected)
+    for (const [app, limit] of Object.entries(expected)) {
+      const below = evaluate(countsText({ server: limit - 1 }), [], app)
+      expect(below.red, app).toEqual([])
+      expect(below.notes.join(' '), app).toContain(`Schwelle ${limit}`)
+      expect(evaluate(countsText({ server: limit }), [], app).red[0], app).toContain(`${limit} Server-Fehler (5xx)`)
     }
+  })
+
+  it('eine App ohne Eintrag zählt nur', () => {
+    const result = evaluate(countsText({ server: 5000 }), [], 'unbekannt')
+    expect(result.red).toEqual([])
+    expect(result.notes.join(' ')).toContain('zählt nur')
   })
 
   it('Fehler aus dem Browser zählen nur', () => {
