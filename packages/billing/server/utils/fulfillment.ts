@@ -218,6 +218,12 @@ export async function createPaymentCheckoutSession(event: H3Event, input: {
   // eine bezahlte Session? ⇒ 409 `already_paid`. Nur mit Bereich — der sagt,
   // dass es den Kauf je Konto nur einmal gibt. Kann Stripe nicht antworten,
   // lehnen wir ab (toStripeSafeError), statt ungeprüft zu verkaufen.
+  // GRENZE (AR1 d): gelesen werden die 100 jüngsten abgeschlossenen
+  // Sessions, ohne Zeitfenster. Das genügt, solange ein bezahlter Kauf für
+  // immer gilt. Kommt eine ERSTATTUNG MIT RÜCKNAHME (z. B. Ticket entzogen
+  // nach `charge.refunded`), sperrt die alte bezahlte Session den Neukauf
+  // für immer — dann hier ein Zeitfenster (`created`) oder den
+  // Erstattungs-Stand der Session mitprüfen.
   if (input.idempotencyScope) {
     const { data: completed } = await stripe.checkout.sessions.list({
       customer: customer.stripeCustomerId,

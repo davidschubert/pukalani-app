@@ -192,6 +192,12 @@ Der Lauf beendet sie: für jedes Konto im Projekt `account`
      druckt: dieselbe Stichzeit, `--apply --expect <Zahl>`. Der Lauf zählt
      neu und bricht ohne Löschen ab, wenn die Zahl jetzt GRÖSSER ist; am Ende
      zählt er nach (vor der Stichzeit muss 0 übrig sein).
+- **Schlüssel:** der Migrations-Schlüssel aus der Env-Datei von `account`
+  reicht NICHT (kein `users.read`, Zählversuch 2026-11-27 ⇒ 401, nichts
+  geändert). Nötig ist ein eigener, kurzlebiger Schlüssel mit `users.read` +
+  `sessions.write` in einer eigenen Env-Datei
+  (`NUXT_PUBLIC_APPWRITE_ENDPOINT`, `NUXT_PUBLIC_APPWRITE_PROJECT_ID=account`,
+  `NUXT_APPWRITE_KEY`), nach dem Lauf löschen.
 - **Welche Stichzeit:** Empfehlung ist der Zeitpunkt, ab dem `write` auf
   ALLEN Apps stand (B2/B3 am 2026-11-24, genaue Uhrzeit aus dem Log des
   Neuladens). Davor angelegte Sitzungen können kopiert worden sein, spätere
