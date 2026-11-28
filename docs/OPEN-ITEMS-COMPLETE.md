@@ -101,9 +101,12 @@ Job `kundendomains`.
   Kundendomains aus dem Control Plane gelesen, nie „nicht gelesen", kein
   einziger Befund. `PUKALANI_CUSTOMER_HOSTS_MODE` steht jetzt auf `alarm`
   (prüft nur, was die feste Liste nicht kennt; heute stehen alle vier dort,
-  der Nutzen kommt mit der nächsten Kundendomain). Offen für David: einmal
-  `gh workflow run production-watch.yml -f kunden_drill=true` und danach
-  einen Lauf ohne Schalter zum Aufräumen.
+  der Nutzen kommt mit der nächsten Kundendomain). Probealarm
+  `-f kunden_drill=true` (Lauf 46145388645): `kundendomains` rot, Issue #629
+  mit `alarm:kundendomains` und nur „Kundendomain 1/4" im Text, Job
+  `kundendomains-namen` grün; der Lauf ohne Schalter (46145629568) schloss es.
+  Ein erster Versuch brach ab: der Aufräum-Lauf startete 18 s später und
+  beendete den Probelauf über die Concurrency-Gruppe (Runbook-Hinweis).
 
 **Gelernt:** Die Zahl „Neustarts" aus `pm2 jlist` taugt nicht, um einen
 Neustart wegen der Speichergrenze zu erkennen — jedes Ausliefern (`reload`)

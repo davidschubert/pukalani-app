@@ -10,9 +10,8 @@
 - **(a), (c), (d) erledigt am 2026-11-28** (COMPLETE „WA1 (a), (c), (d)"):
   Server-Fehler auf allen Apps scharf (platform 25, die übrigen 10),
   `max_memory_restart` in jeder Ecosystem-Datei, Kundendomains auf `alarm`.
-  Offen daraus nur für David: einmal
-  `gh workflow run production-watch.yml -f kunden_drill=true`, danach ein
-  Lauf ohne Schalter zum Aufräumen (Runbook PRODUKTIONS-ALARM, „Kundendomains").
+  Der Probealarm `-f kunden_drill=true` lief am selben Tag durch (Issue mit
+  `alarm:kundendomains`, Namens-Mail, Aufräumen schloss es).
 - **(b) erledigt am 2026-11-17** (`NUXT_REDIS_URL` auf branding.supply, COMPLETE
   „N02").
 - **(e) Kleinigkeiten.** Erledigt am 2026-11-17 (COMPLETE „N09"): die Zeilen
