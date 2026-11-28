@@ -30,6 +30,52 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### BT1 (a) Studio-Site, (d) — fünfter Server im Nacht-Lauf, Browser warten am Element ✅ 2026-11-28
+
+Die Studio-Site (`apps/portfolio`) steht nachts als fünfter Server auf der
+Bühne; damit laufen 80 von 87 Beweis-Skripten von selbst, dazu sechs
+E2E-Dateien, die vorher in keinem Workflow liefen.
+
+- **Server:** `scripts/ci/buehne-setup.mjs --portfolio-port` legt das Projekt
+  `portfolio` aus derselben Console-Sitzung an (die Console lässt nur einen
+  Account zu), `.env` ohne Schlüssel für KI, Stripe, Statistik. In
+  `.github/workflows/buehne.yml` (nur `nacht`) Bootstrap und Anmelde-Regeln,
+  dann Start IM HINTERGRUND: der Server kompiliert, während die übrigen vier
+  hochfahren, und stand im Schritt „Studio-Site bereit" nach 2 s.
+- **Browser-Tests:** `pnpm buehne e2e --portfolio-port 3005` fährt alle sechs
+  Dateien aus `apps/portfolio/e2e/` (28 Tests, rund 90 s);
+  `apps/portfolio/playwright.config.ts` startet mit `PW_EXTERNAL_SERVER`
+  keinen eigenen Server. Der Test `packages/core/tests/buehneE2e.test.ts`
+  verlangt, dass jede Datei dort in `E2E_AUF_DER_BUEHNE` steht.
+- **Skript:** `verify-business-confirmation` von `hand` auf `nacht` (neuer
+  optionaler Dienst `portfolio` im Läufer; das Skript nimmt `BRANDING_PORT`,
+  `PORTFOLIO_PORT`, `PORTFOLIO_ENV_FILE`). Seine erste Nacht war rot: es
+  prüfte den deutschen Begründungstext noch mit „ss", Q16 hatte am 2026-11-21
+  „ß" daraus gemacht — veraltetes Skript, kein Produkt-Fehler.
+- **Browser-Tests auch nach rotem Beweis:** vorher verschluckte EIN rotes
+  Skript alle Browser-Tests der Nacht (Schritt übersprungen) — so blieben im
+  ersten Lauf auf dem Zweig alle Studio-Dateien ungeprüft. Der Schritt läuft
+  jetzt auch bei `steps.beweise.outcome == 'failure'`.
+- **Laufzeit:** Nacht-Lauf auf dem Zweig 42 und 39 min, ganz grün im Lauf 46101872848 (davor am 2026-11-27 rund 37
+  min, aber ohne die Browser-Tests, die dort übersprungen wurden): die
+  Studio-Site kostet rund 2 min. Grenze des Jobs: 60 min.
+- **(d):** `verify-handles-mentions` und `verify-mention-menu` warten nicht
+  mehr auf `networkidle`, sondern klicken und prüfen die Wirkung, mit
+  Neuversuch (`packages/posts/scripts/lib/hydrationWaits.mjs`); auf dem Zweig
+  grün in 53 s und 39 s. Dieselbe Falle traf in derselben Nacht die
+  Login-Probe von `apps/control/e2e/smoke.spec.ts` (30 s Zeitgrenze) — dort
+  wird jetzt auf die Hydration und den Knopf gewartet. `verify-trial-notice`
+  scheiterte am 2026-11-22 NICHT an `networkidle`, sondern an einem Import
+  ohne `.ts` (schon behoben). `verify-custom-domain` steht jetzt unter (a); der
+  einmalige Exit 141 von `rollbackScript.test.ts` ist keine Aufgabe mehr
+  (kehrt er wieder, nennt der Test die Zeile, COMPLETE „N14").
+
+**Gelernt:** Eine Wackel-Stelle steht selten nur an einer Stelle: wer
+`networkidle` an einer Seite mit Live-Verbindung ersetzt, sucht dieselbe
+Zeile in den übrigen Browser-Tests der Bühne — der nächste Nacht-Lauf fand
+sie sonst. Und eine Fehler-Ursache aus einer Zusammenfassung („scheitert an
+networkidle") gegen das Protokoll des Laufs prüfen, bevor man sie behebt.
+
 ### WS2 — Werkstatt: Hydration im Vorlagen-Panel, verspätete Speicher-Antwort ✅ 2026-11-27
 
 Die zwei Nebenbefunde aus WS1, beide in `packages/brand`.

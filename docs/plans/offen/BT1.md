@@ -53,7 +53,8 @@ die Erwähnungs-Beweise warten am Element statt auf `networkidle`.
   Sitzungen testen selbst gegen den neuesten Stand (CLAUDE.md, Abschnitt Git).
   Der nächtliche Lauf dauert rund 32 Minuten (gemessen am 2026-11-19 mit 67
   Skripten: 31 min 35 s; davor mit 64 Skripten 29 min 37 s und 31 min 28 s;
-  mit drei Servern rund 23, mit zweien 16).
+  mit drei Servern rund 23, mit zweien 16). Mit fünf Servern und allen
+  Browser-Tests am 2026-11-28 auf dem Zweig von BT1 (a): 39 bis 42 min.
   **Zwischenstand für die Entscheidung (gezählt am 2026-11-25):** Nacht-Läufe
   18.–20.11. grün, 21.–24.11. viermal rot — alle vier lagen am SKRIPT, keiner
   am Programm: 21.11. neue Browser-Test-Datei ungeprüft auf `main` (f),
