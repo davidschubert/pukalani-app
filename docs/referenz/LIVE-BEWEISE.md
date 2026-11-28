@@ -183,6 +183,15 @@ brand_steps +3"); (3) Zeilen, die die App selbst anlegt (Kapitel, Ereignisse,
 Lauf-Zeilen, der Brand-Check eines Mitbewerbers), räumt das Skript über
 `removeProbeRows` nach Spalte ab, nicht über eine feste Liste.
 
+**Die Studio-Site im Läufer (seit 2026-11-28, BT1 a):** nachts steht
+`apps/portfolio` (Projekt `portfolio`, Port 3005) als fünfter Server. Mit
+`--portfolio-port` bekommt jedes Skript `PORTFOLIO_PORT`, `PORTFOLIO_URL` und
+`PORTFOLIO_ENV_FILE` (`--env-portfolio`); ein Skript mit
+`braucht: [..., 'portfolio']` ist ohne den Port „übersprungen". Ihr einziges
+Skript ist `verify-business-confirmation` (B2B-App branding.supply gegen die
+Studio-Site als Gegenprobe). Ihre sechs E2E-Dateien laufen über
+`pnpm buehne e2e --portfolio-port 3005`.
+
 **Die Design-Vorlage der drei Design-Skripte (seit 2026-11-19):**
 `verify-brand-kit`, `verify-brand-design` und `verify-brand-sessions`
 schreiben einen fertigen DNA-Mix direkt in die Ablage. Er steht an EINER
@@ -203,14 +212,11 @@ EIGENE Aufrufer-Adresse (`scripts/buehne/client-address.mjs` hängt
 laufen alle Skripte in dieselben Bremsen. Rot auf `main` oder nachts öffnet
 das Issue `buehne-alarm` (docs/runbooks/PRODUKTIONS-ALARM.md, Abschnitt 1b).
 
-**Von Hand bleiben** (Stand 2026-11-27, acht von 87; der Grund steht je
+**Von Hand bleiben** (Stand 2026-11-28, sieben von 87; der Grund steht je
 Skript in der Liste): zwei Skripte der Einzel-Instanz, die sie EIGENS
 eingestellt brauchen (`verify-silo-domain`: Trockenlauf-Betreiber-App, Naht,
 portfolio gegen eine tote Naht; `verify-domain-settle`: beschnittener
-Schlüssel); `verify-business-confirmation` (braucht branding.supply UND die
-Studio-Site nebeneinander, jede mit eigenem Projekt — die Bühne hat keinen
-Server der Studio-Site; das Skript selbst ist seit dem 2026-11-19 nachgezogen
-und liest das Projekt der Gegenprobe aus `PLAIN_ENV_FILE`);
+Schlüssel);
 `verify-custom-domain` (Trockenlauf-Betreiber-App mit eigenem Namens-Server,
 dazu echte öffentliche DNS-Einträge); die mit Fremddiensten oder Dateien, die
 nicht im Repo liegen (`verify-brand-context` und `verify-ugc-translation`:

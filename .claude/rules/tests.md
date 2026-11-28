@@ -53,7 +53,7 @@ paths:
 
 ### Unit und E2E
 - Unit: `pnpm -r test`. Playwright-E2E in `apps/comments` (CI `e2e.yml`),
-  `apps/control` (nachts auf der Bühne) und `apps/portfolio` (nur lokal);
+  `apps/control` und `apps/portfolio` (beide nachts auf der Bühne);
   Base-URL je App per `PW_BASE_URL` überschreibbar (parallele Sitzungen).
 - RENDER-TESTS (Q21): eine Seite aufbauen nur im EIGENEN Vitest-Projekt
   `render` (`@nuxt/test-utils`, `happy-dom`; Vorbild
@@ -222,6 +222,15 @@ paths:
   (`removeProbeRows`), nie über eine feste Liste; (4) Tages-Deckel zählen je
   PROZESS — bei mehrfachen lokalen Läufen den Server dazwischen neu starten
   (429 `market_instance_limit` ist sonst kein roter Beweis).
+- STUDIO-SITE (BT1 a): nachts startet `buehne.yml` auch `apps/portfolio`
+  (Projekt `portfolio`); `--portfolio-port` gibt jedem Skript
+  `PORTFOLIO_PORT`/`PORTFOLIO_URL`/`PORTFOLIO_ENV_FILE` und `pnpm buehne e2e`
+  die Dateien aus `apps/portfolio/e2e/` (neue Datei dort ⇒ Zeile in
+  `E2E_AUF_DER_BUEHNE`, der Test `packages/core/tests/buehneE2e.test.ts` ist
+  sonst rot).
+- IM BROWSER AM ELEMENT WARTEN: `networkidle` nie als Bedingung (mit
+  Live-Verbindung wird das Netz nie still) — handeln, an der Wirkung prüfen
+  (`packages/posts/scripts/lib/hydrationWaits.mjs`, BT1 d).
 - AUFRÄUM-REGISTER BRAUCHT DAS SCHEMA: ohne `tables.read` findet es keine
   Zeile, die an einem Konto hängt, und zählt trotzdem „nichts übrig".
   `createEinzelCleanup` liest das Schema mit dem Migrations-Schlüssel, wenn die
