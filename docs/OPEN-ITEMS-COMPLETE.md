@@ -30,6 +30,43 @@ nicht auf Anhieb funktionierte, steht am Ende des Eintrags eine Zeile
 
 ---
 
+### CW1 (c)(e) — Jeder Deploy liefert den neuesten grünen Commit, „Überholt" nie gesehen ✅ 2026-11-28
+
+- **(e) nur hingesehen.** Vom 2026-11-21 bis zum 2026-11-28 liefen 303
+  Deploy-Läufe (208 grün, 86 verdrängt, 7 ohne Ausliefern wegen roter
+  Prüfung, 2 rot im Build). In den 107 Läufen, die nach dem Schritt
+  „Deploy nötig?" nichts auslieferten, stand nie „Überholt" — 52× „Keine
+  Datei-Änderungen", 51× „Nur Doku", 2× ein roter Build. Auch die Warnung
+  aus CW1 (d) kam nie. Am 2026-11-28 liefen alle sechs Apps auf der Spitze
+  von `main` (`8ba7e307`, von außen über `/api/health`). Die zwei Sperren
+  sind also weiter nur im Test gesehen.
+- **(c) gemessen.** Seit dem 2026-11-24 waren die 30 Merges mit
+  App-Änderung nach 12 bis 26 Minuten live (Median 18): Prüfungen bis E2E
+  rund 8–10 Minuten, davon wartet die Vorprüfung im Median 4, Bauen 6,
+  Ausliefern 3. Verdrängt wurde dabei immer ein älterer wartender Lauf von
+  einem neueren — das bündelt von selbst. Dass ein ÄLTERER Lauf einen
+  wartenden NEUEREN verdrängte, kam nicht vor. Die 28–40 Minuten vom
+  2026-11-18 kamen von einem roten Test auf `main`, nicht von dichten
+  Merges.
+- **(c) gebaut: die eine Lücke geschlossen.** Endet die Prüfung eines
+  älteren Commits zuletzt (langsamer E2E, Re-run), verdrängt dessen
+  Deploy-Lauf den wartenden des neueren; der ältere findet sich live und
+  überspringt — der neuere blieb liegen bis zum nächsten Merge. Jetzt wählt
+  der Job `gate` im Schritt „Neuesten grünen Commit wählen" den zuletzt
+  gepushten main-Commit, dessen vier Prüfungen grün sind und der Nachfahre
+  des Auslösers ist (Zeile „Gebündelt:" im Protokoll); `plan`, `build`,
+  `deliver` und `tls` lesen den Commit aus den Ausgaben von `gate`/`plan`
+  statt aus dem Auslöser. Manueller Start (Rückweg) unverändert. Ist die
+  Liste nicht lesbar, bleibt es beim Auslöser. 13 Fälle in
+  `packages/core/tests/deployPick.test.ts` (der echte Schritt, `gh` als
+  Attrappe, der echte `jq`-Ausdruck). Keine Regel in der Doku nötig: Merges
+  muss niemand von Hand bündeln.
+
+**Gelernt:** Erst messen, dann bauen — die Klage „dichte Merges halten das
+Ausliefern auf" stimmte nach den Zahlen nicht mehr; geblieben war nur eine
+seltene Reihenfolge, in der etwas liegen bleibt. Die kleinste wirksame
+Änderung schließt genau diese, statt die Warteschlange umzubauen.
+
 ### BT1 (a) Studio-Site, (d) — fünfter Server im Nacht-Lauf, Browser warten am Element ✅ 2026-11-28
 
 Die Studio-Site (`apps/portfolio`) steht nachts als fünfter Server auf der

@@ -97,10 +97,15 @@ Zurückgestellt wird nicht von selbst — dann gilt Abschnitt A3.
 **Der Beweis, dass etwas live ist,** ist nie der grüne Lauf, sondern
 `curl https://<host>/api/health` → `.build` (der vollständige Commit) und
 `ok`. Der Deploy startet je Push zweimal (einmal je Auslöser); einer der
-Läufe endet „cancelled“ oder findet nichts mehr zu tun.
+Läufe endet „cancelled“ oder findet nichts mehr zu tun. Seit dem 2026-11-28
+(CW1 c) liefert jeder Lauf den NEUESTEN Commit von `main` aus, dessen vier
+Prüfungen schon grün sind — nicht nur den Commit, der ihn ausgelöst hat
+(Schritt „Neuesten grünen Commit wählen“ im Job `gate`, Zeile „Gebündelt:“
+im Protokoll). Dichte Merges muss deshalb niemand von Hand bündeln.
 
 **Eine rote Prüfung neu starten löst das Ausliefern von selbst aus** — für
-den Commit dieser Prüfung, nicht für die Spitze von `main`. Deshalb eine rote
+den neuesten grünen Commit ab dieser Prüfung, nicht zwingend für die Spitze
+von `main`. Deshalb eine rote
 Prüfung nur neu starten, solange ihr Commit die Spitze von `main` ist. Ist
 `main` schon weiter, bringt der neuere Commit sein eigenes Ausliefern mit;
 der ältere muss nicht mehr grün werden. Zwei Sperren im Schritt „Deploy

@@ -115,7 +115,7 @@ Fehler, die heute auftreten, auch wenn sie zu einem Produkt gehören.
 
 | # | Was (einfach erklärt) | Prio | Aufwand | Wer | Bereich | Braucht David? | Details / Wartet auf |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| CW1 | **Wackler in CI und Ausliefern.** Erledigt am 2026-11-24 (COMPLETE „CW1 (a)(d)"): kein Server-Hänger mehr seit dem 2026-11-18, und ein älterer Commit wird bei einer App ohne Antwort nicht mehr ausgeliefert. Offen: (c) dichte Merges schieben das Ausliefern vor sich her — Merges bündeln. (e) Die Sperren gegen überholte Commits sind noch in keinem echten Lauf gesehen — nur hinsehen. (f) Die Statistik-Seite zeigte einmal (1 von 104 E2E-Läufen auf `main`) eine Abweichung zwischen Server und Browser. **Wartet auf:** (f) den nächsten roten Lauf mit diesem Fall. | Niedrig | S je Teil | Session | Betrieb | Nein | [Einzelheiten](plans/offen/CW1.md) |
+| CW1 | **Wackler in CI und Ausliefern.** (a)(d) erledigt am 2026-11-24, (c)(e) am 2026-11-28 (COMPLETE). Offen: (f) die Statistik-Seite zeigte einmal (1 von 104 E2E-Läufen auf `main`) eine Abweichung zwischen Server und Browser. **Wartet auf:** den nächsten roten Lauf mit diesem Fall. | Niedrig | S | Session | Betrieb | Nein | [Einzelheiten](plans/offen/CW1.md) |
 
 Verweise: Die Nacht-Probe der Bühne, die nachts rot wird: BT1 (f), unter Projekt & Kern.
 
