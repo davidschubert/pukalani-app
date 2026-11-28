@@ -183,6 +183,15 @@ brand_steps +3"); (3) Zeilen, die die App selbst anlegt (Kapitel, Ereignisse,
 Lauf-Zeilen, der Brand-Check eines Mitbewerbers), räumt das Skript über
 `removeProbeRows` nach Spalte ab, nicht über eine feste Liste.
 
+**Die Studio-Site im Läufer (seit 2026-11-28, BT1 a):** nachts steht
+`apps/portfolio` (Projekt `portfolio`, Port 3005) als fünfter Server. Mit
+`--portfolio-port` bekommt jedes Skript `PORTFOLIO_PORT`, `PORTFOLIO_URL` und
+`PORTFOLIO_ENV_FILE` (`--env-portfolio`); ein Skript mit
+`braucht: [..., 'portfolio']` ist ohne den Port „übersprungen". Ihr einziges
+Skript ist `verify-business-confirmation` (B2B-App branding.supply gegen die
+Studio-Site als Gegenprobe). Ihre sechs E2E-Dateien laufen über
+`pnpm buehne e2e --portfolio-port 3005`.
+
 **Die Design-Vorlage der drei Design-Skripte (seit 2026-11-19):**
 `verify-brand-kit`, `verify-brand-design` und `verify-brand-sessions`
 schreiben einen fertigen DNA-Mix direkt in die Ablage. Er steht an EINER
@@ -203,14 +212,11 @@ EIGENE Aufrufer-Adresse (`scripts/buehne/client-address.mjs` hängt
 laufen alle Skripte in dieselben Bremsen. Rot auf `main` oder nachts öffnet
 das Issue `buehne-alarm` (docs/runbooks/PRODUKTIONS-ALARM.md, Abschnitt 1b).
 
-**Von Hand bleiben** (Stand 2026-11-27, acht von 87; der Grund steht je
+**Von Hand bleiben** (Stand 2026-11-28, sieben von 87; der Grund steht je
 Skript in der Liste): zwei Skripte der Einzel-Instanz, die sie EIGENS
 eingestellt brauchen (`verify-silo-domain`: Trockenlauf-Betreiber-App, Naht,
 portfolio gegen eine tote Naht; `verify-domain-settle`: beschnittener
-Schlüssel); `verify-business-confirmation` (braucht branding.supply UND die
-Studio-Site nebeneinander, jede mit eigenem Projekt — die Bühne hat keinen
-Server der Studio-Site; das Skript selbst ist seit dem 2026-11-19 nachgezogen
-und liest das Projekt der Gegenprobe aus `PLAIN_ENV_FILE`);
+Schlüssel);
 `verify-custom-domain` (Trockenlauf-Betreiber-App mit eigenem Namens-Server,
 dazu echte öffentliche DNS-Einträge); die mit Fremddiensten oder Dateien, die
 nicht im Repo liegen (`verify-brand-context` und `verify-ugc-translation`:
@@ -250,7 +256,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-87 Beweis-Skripte im Repo: 6 E2E-Lauf, 36 Bühne (jeder Lauf), 37 Bühne (nachts), 8 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+87 Beweis-Skripte im Repo: 6 E2E-Lauf, 36 Bühne (jeder Lauf), 38 Bühne (nachts), 7 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -274,7 +280,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/control/scripts/verify-invite-stock.mjs` | Beweis für Vorrat + Zuweisung MIT echter Betreiber-Session (control-017). | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-onboarding.mjs` | Beweis für O2 — die Provisionierungs-Route des Control Plane. | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-silo-domain.mjs` | Beweis: eigene Domains für SILO-Apps (control-036, 2026-08-07). | von Hand: Braucht drei eigens eingestellte Server: die Betreiber-App im Trockenlauf mit eigenem Namens-Server, die Einzel-Instanz mit Naht zum Control Plane und portfolio gegen eine tote Naht — der nächtliche Lauf startet keinen davon so. |
-| `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | von Hand: Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site, jede mit eigenem Projekt), und die Bühne hat keinen Server der Studio-Site. Das Skript selbst ist seit dem 2026-11-19 nachgezogen (27 von 27 lokal) — es kann einziehen, sobald die Studio-Site auf der Bühne steht. |
+| `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | Bühne (nachts), branding.supply |
 | `packages/core/scripts/verify-geo-cities.mjs` | Beweis: der Orts-Picker im Profil — Suche, Länder-Filter und der Standort am KONTO (Mitglieder-Karte, Etappe 1). | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-handle-search-boundary.mjs` | Beweis: die Handle-Grenze einer Community hält — beim LESEN und beim NEHMEN. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-mfa.mjs` | Beweis für den Zweitfaktor (U15 Teil 4). | Bühne (nachts), Einzel-Instanz |

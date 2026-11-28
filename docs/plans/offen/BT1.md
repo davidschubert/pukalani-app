@@ -17,20 +17,17 @@ Tages-Fenster für `verify-trust-perks` und die Spur im Rückweg-Test.
 Erledigt am 2026-11-27 (COMPLETE „BT1 (a) drei Skripte"): `verify-geo-cities`,
 `verify-notification-mail-links` und `verify-composer-editor` laufen mit; ein
 Nacht-Alarm schließt nur noch ein grüner Nacht-Lauf.
+Erledigt am 2026-11-28 (COMPLETE „BT1 (a) Studio-Site, (d)"): die Studio-Site
+als fünfter Server im Nacht-Lauf (sechs E2E-Dateien, `verify-business-confirmation`),
+die Erwähnungs-Beweise warten am Element statt auf `networkidle`.
 
-- **(a) Skripte, die noch von Hand laufen (8 von 87).** Seit dem 2026-11-27
-  laufen 79 von 87 von selbst (`docs/referenz/LIVE-BEWEISE.md`). Offen:
-  - **Die fünf E2E-Dateien von `apps/portfolio`** und
-    **`verify-business-confirmation`** brauchen einen fünften Server mit
-    eigenem Projekt `portfolio`. Das Skript selbst ist seit dem 2026-11-19
-    nachgezogen (lokal 27 von 27, COMPLETE „N17"). Empfehlung: nach demselben
-    Muster wie der vierte Server bauen (`--portfolio-port` im Setup, Start nur
-    nachts, die Dateien über `pnpm buehne e2e`), aber erst nach der
-    Entscheidung in (c) — der nächtliche Lauf dauert schon rund 32 Minuten
-    (seit dem 2026-11-27 rund zwei Minuten mehr: `verify-composer-editor`).
+- **(a) Skripte, die noch von Hand laufen (7 von 87).** Seit dem 2026-11-28
+  laufen 80 von 87 von selbst (`docs/referenz/LIVE-BEWEISE.md`). Offen:
   - Zwei Skripte der Einzel-Instanz brauchen eigens eingestellte Server
     (`verify-silo-domain`, `verify-domain-settle`), `verify-custom-domain`
-    eine Betreiber-App im Trockenlauf und echte öffentliche DNS-Einträge.
+    eine Betreiber-App im Trockenlauf mit eigenem Namens-Server und echte
+    öffentliche DNS-Einträge (die Freigabe durch den Betreiber kennt das
+    Skript noch nicht).
     Bewusst von Hand bleiben vier mit Fremddiensten oder fremden Dateien
     (`verify-brand-context`, `verify-ugc-translation`: bezahlte KI;
     `verify-brand-tokens`: Werkzeug aus dem Netz; `verify-session-ip`:
@@ -56,7 +53,8 @@ Nacht-Alarm schließt nur noch ein grüner Nacht-Lauf.
   Sitzungen testen selbst gegen den neuesten Stand (CLAUDE.md, Abschnitt Git).
   Der nächtliche Lauf dauert rund 32 Minuten (gemessen am 2026-11-19 mit 67
   Skripten: 31 min 35 s; davor mit 64 Skripten 29 min 37 s und 31 min 28 s;
-  mit drei Servern rund 23, mit zweien 16).
+  mit drei Servern rund 23, mit zweien 16). Mit fünf Servern und allen
+  Browser-Tests am 2026-11-28 auf dem Zweig von BT1 (a): 39 bis 42 min.
   **Zwischenstand für die Entscheidung (gezählt am 2026-11-25):** Nacht-Läufe
   18.–20.11. grün, 21.–24.11. viermal rot — alle vier lagen am SKRIPT, keiner
   am Programm: 21.11. neue Browser-Test-Datei ungeprüft auf `main` (f),
@@ -79,18 +77,10 @@ Nacht-Alarm schließt nur noch ein grüner Nacht-Lauf.
   (Modus ohne Browser-Tests): seit dem 20.11. 229 + 142 grün, 3 rot (alle am
   21.11.), der Rest abgebrochen. Rohzählung: `gh run list --workflow
   buehne.yml --limit 400`.
-- **(d) Kleinigkeiten.** `verify-custom-domain` braucht eine Betreiber-App im
-  Trockenlauf mit eigenem Namens-Server und kennt die Freigabe durch den
-  Betreiber noch nicht. Der Test `packages/core/tests/rollbackScript.test.ts`
-  scheiterte am 2026-11-17 einmal in der CI mit Exit 141; die Ursache ist
-  nicht gefunden (das verdächtige Muster ließ sich in je 3.000 Läufen auf
-  macOS und Linux nicht nachstellen, das Skript ist seitdem umgebaut). Seit
-  dem 2026-11-18 hält der Test bei einem Fehlschlag die Spur des Skripts
-  fest — wird er wieder rot, steht die Zeile da (COMPLETE „N14").
-  Wackelig im Nacht-Lauf: `verify-handles-mentions` (und am 22.11.
-  `verify-trial-notice`) scheitern ab und zu an
-  `page.waitForLoadState('networkidle')` (30 s) — mit offener Live-Verbindung
-  wird das Netz nie ganz still. Besser auf ein Element der Seite warten.
+- **(d) erledigt am 2026-11-28** (COMPLETE „BT1 (a) Studio-Site, (d)"):
+  `networkidle` in den Erwähnungs-Beweisen ersetzt; `verify-custom-domain`
+  steht unter (a); der einmalige Exit 141 von `rollbackScript.test.ts` ist
+  keine Aufgabe mehr (kehrt er wieder, nennt der Test die Zeile).
 - **(e) erledigt am 2026-11-22** (COMPLETE „BT1 (e)"): Übersicht und
   Statistik einer Pool-Community sieht über den Not-Zugang nur der Betreiber.
 - **(f) Reste aus dem roten Nacht-Lauf vom 2026-11-21** (COMPLETE „N21": ein
@@ -146,6 +136,7 @@ Nacht-Alarm schließt nur noch ein grüner Nacht-Lauf.
   (brand), `insights/radar` (insights). Zu tun: denselben Lauf
   (`apps/comments/e2e/support/hydration.ts`) in die E2E-Datei der Betreiber-App
   aufnehmen (braucht dort ein Betreiber-Konto) und für branding.supply
-  ergänzen, sobald dessen Server in den Browser-Tests steht (hängt an (a)).
+  ergänzen (der Server steht nachts schon auf der Bühne, die Browser-Tests
+  laufen dort; es fehlt nur der Lauf in einer E2E-Datei für branding.supply).
   Außerdem läuft der Test nur gegen den Dev-Server; der Production-Build ist
   einmal von Hand gemessen.

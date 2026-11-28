@@ -71,11 +71,15 @@ describe('Selbsttest der Erkennung', () => {
     expect(manifestProblems({ scripts: [ok.skript], beweise: [noService], runsInE2e: runsNowhere }).join('\n')).toContain('env „branding" braucht')
     const everyRun = { ...branding, lauf: 'buehne' as const }
     expect(manifestProblems({ scripts: [ok.skript], beweise: [everyRun], runsInE2e: runsNowhere }).join('\n')).toContain('branding.supply steht nur im nächtlichen Lauf')
+    const studioEveryRun = { skript: ok.skript, lauf: 'buehne' as const, env: 'control' as const, braucht: ['appwrite' as const, 'portfolio' as const] }
+    expect(manifestProblems({ scripts: [ok.skript], beweise: [studioEveryRun], runsInE2e: runsNowhere }).join('\n')).toContain('Studio-Site steht nur im nächtlichen Lauf')
   })
 
   it('kein Skript mit env „branding" ruft eine echte KI, Stripe oder eine fremde Website — die Einteilung sagt es, der Nacht-Lauf stellt die Antworten', () => {
     const nightly = BEWEISE.filter(entry => entry.env === 'branding' && entry.lauf === 'nacht')
-    // Zwölf der dreizehn Skripte von branding.supply laufen nachts; ausgeschrieben, damit ein neues bewusst dazukommt.
+    // Zwölf der dreizehn Skripte von branding.supply laufen nachts, dazu die
+    // Gegenprobe aus core (B2B-App gegen die Studio-Site, BT1 a); ausgeschrieben,
+    // damit ein neues bewusst dazukommt.
     expect(nightly.map(entry => entry.skript.split('/').at(-1)).sort()).toEqual([
       'verify-brand-check-robots.mjs',
       'verify-brand-design.mjs',
@@ -84,6 +88,7 @@ describe('Selbsttest der Erkennung', () => {
       'verify-brand-kit.mjs',
       'verify-brand-sessions.mjs',
       'verify-brand-share.mjs',
+      'verify-business-confirmation.mjs',
       'verify-market-fetch.mjs',
       'verify-market-report.mjs',
       'verify-market-retention.mjs',
@@ -100,6 +105,10 @@ describe('Selbsttest der Erkennung', () => {
     const block = setup.slice(setup.indexOf("writeEnv('apps/branding'"), setup.indexOf('Bühnen-Setup fertig'))
     expect(block).toContain('NUXT_PUBLIC_APPWRITE_PROJECT_ID')
     expect(block).not.toMatch(/NUXT_AI_KEY|OPENROUTER|STRIPE|RESEND/)
+    // Dasselbe für die Studio-Site (fünfter Server, BT1 a).
+    const portfolioBlock = setup.slice(setup.indexOf("writeEnv('apps/portfolio'"), setup.indexOf('Bühnen-Setup fertig'))
+    expect(portfolioBlock).toContain('NUXT_PUBLIC_APPWRITE_PROJECT_ID')
+    expect(portfolioBlock).not.toMatch(/NUXT_AI_KEY|OPENROUTER|STRIPE|RESEND|ANALYTICS/)
   })
 
   it('„e2e" muss in e2e.yml stehen, und was dort steht, muss „e2e" sein', () => {
@@ -151,6 +160,9 @@ describe('Selbsttest des Läufers', () => {
     expect(missingServices(branding, [])).toEqual(['branding'])
     expect(missingServices(branding, ['einzel'])).toEqual(['branding'])
     expect(missingServices(branding, ['einzel', 'branding'])).toEqual([])
+    const beide = { ...branding, braucht: ['appwrite' as const, 'branding' as const, 'portfolio' as const] }
+    expect(missingServices(beide, ['branding'])).toEqual(['portfolio'])
+    expect(missingServices(beide, ['branding', 'portfolio'])).toEqual([])
     expect(missingServices(list[0]!, [])).toEqual([])
   })
 

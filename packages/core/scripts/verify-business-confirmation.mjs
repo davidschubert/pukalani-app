@@ -55,8 +55,9 @@
  * Social-Login-Fläche, und die Sperre daran ist dann nicht prüfbar (der Lauf
  * sagt es dann und zählt sie nicht mit).
  *
- * B2B_PORT / PLAIN_PORT überschreiben die Ports. Bleibt von Hand
- * (`scripts/buehne/beweise.mjs`): die Bühne hat keinen Server der Studio-Site.
+ * B2B_PORT / PLAIN_PORT überschreiben die Ports. Läuft seit dem 2026-11-28
+ * nachts auf der Bühne (`scripts/buehne/beweise.mjs`, BT1 a): dort stehen
+ * branding.supply und die Studio-Site als vierter und fünfter Server.
  */
 import '../../../scripts/lib/assert-target.mjs'
 import { resolve } from 'node:path'
@@ -73,11 +74,13 @@ import {
 } from '../../../scripts/lib/probe-stage.mjs'
 
 const SCRIPT = 'verify-business-confirmation'
-const B2B_PORT = Number(process.env.B2B_PORT || 3021)
-const PLAIN_PORT = Number(process.env.PLAIN_PORT || 3020)
+// Auf der Bühne (nachts, BT1 a) setzt der Läufer BRANDING_PORT und
+// PORTFOLIO_PORT / PORTFOLIO_ENV_FILE; von Hand gelten B2B_PORT / PLAIN_PORT.
+const B2B_PORT = Number(process.env.B2B_PORT || process.env.BRANDING_PORT || 3021)
+const PLAIN_PORT = Number(process.env.PLAIN_PORT || process.env.PORTFOLIO_PORT || 3020)
 const HOST = process.env.VERIFY_HOST || 'localhost'
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..')
-const PLAIN_ENV_FILE = resolve(ROOT, process.env.PLAIN_ENV_FILE || 'apps/portfolio/.env')
+const PLAIN_ENV_FILE = resolve(ROOT, process.env.PLAIN_ENV_FILE || process.env.PORTFOLIO_ENV_FILE || 'apps/portfolio/.env')
 
 /** Die Fassung der AGB, die `apps/branding/app/app.config.ts` nennt (`termsVersion`). */
 const B2B_TERMS_VERSION = '2026-09-draft-1'
@@ -153,7 +156,8 @@ async function restoreRegistration(project) {
 }
 
 const DE_LABEL = 'Ich handle als Unternehmer/in oder Selbstständige/r, nicht als Verbraucher/in'
-const DE_NOTICE = 'Unser Angebot richtet sich ausschliesslich an Unternehmen und Selbstständige'
+// Seit Q16 (2026-11-21) mit „ß" — die erste Nacht auf der Bühne war daran rot.
+const DE_NOTICE = 'Unser Angebot richtet sich ausschließlich an Unternehmen und Selbstständige'
 const EN_LABEL = 'I am acting as a business or self-employed person, not as a consumer'
 const EN_NOTICE = 'Our offer is intended for businesses and self-employed people only'
 

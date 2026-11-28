@@ -22,6 +22,12 @@
 # Probe-Seiten selbst aus). Kein KI-Schlüssel, kein Stripe-Schlüssel in der
 # `.env` — ein echter Aufruf wäre ohne Schlüssel gar nicht möglich.
 #
+# UND EIN FÜNFTES (seit 2026-11-28, BT1 a): `portfolio` mit `apps/portfolio`
+# (die Studio-Site) auf Port 3005 — für ihre E2E-Dateien (`pnpm buehne e2e
+# --portfolio-port`) und als Gegenprobe von `verify-business-confirmation`.
+# Sie startet im Hintergrund, während die übrigen Server hochfahren; ohne
+# Schlüssel für KI, Stripe oder Statistik.
+#
 # KEIN TOR FÜRS AUSLIEFERN: `deploy.yml` hört auf „Test" und „E2E (Appwrite)",
 # nicht auf diesen Lauf, und er ist keine Pflicht-Prüfung am Pull Request (das
 # wäre eine GitHub-Einstellung). Er läuft NEBEN den Pflicht-Prüfungen, ein
@@ -94,6 +100,8 @@ jobs:
       EINZEL_PORT: '3001'
       # branding.supply (nur nachts): der Port aus den Köpfen der Beweis-Skripte.
       BRANDING_PORT: '3016'
+      # Die Studio-Site (nur nachts): ihr gewohnter Port aus `playwright.config.ts`.
+      PORTFOLIO_PORT: '3005'
       CONTROL_HOST: app.localhost
       SMTP_PORT: '1025'
       # Zeitplan ⇒ nacht; von Hand ⇒ die Eingabe; sonst (Pull Request, Push) ⇒ buehne.
@@ -178,7 +186,7 @@ jobs:
 
       # Zwei Projekte, zwei .env-Dateien, ein Naht-Geheimnis je Lauf. Die
       # Ausgabe nennt nur Schritte und Zahlen — das Protokoll ist öffentlich.
-      - name: Bühnen-Setup (Projekte admin + account, nachts auch comments + branding)
+      - name: Bühnen-Setup (Projekte admin + account, nachts auch comments + branding + portfolio)
         run: >
           node scripts/ci/buehne-setup.mjs
           --endpoint http://localhost:8080/v1
@@ -186,7 +194,7 @@ jobs:
           --platform-port "$PLATFORM_PORT"
           --control-host "$CONTROL_HOST"
           --smtp-port "$SMTP_PORT"
-          ${{ env.LAUF == 'nacht' && '--einzel-port "$EINZEL_PORT" --branding-port "$BRANDING_PORT"' || '' }}
+          ${{ env.LAUF == 'nacht' && '--einzel-port "$EINZEL_PORT" --branding-port "$BRANDING_PORT" --portfolio-port "$PORTFOLIO_PORT"' || '' }}
 
       # Beide Datenbanken NEBENEINANDER: verschiedene Projekte, dieselbe
       # Instanz. Die Protokolle wandern in Dateien und werden nacheinander
@@ -243,6 +251,20 @@ jobs:
         run: |
           node --env-file=apps/branding/.env scripts/bootstrap.mjs --app branding
           node --env-file=apps/branding/.env scripts/ops/appwrite-auth-policies.mjs --apply
+
+      # ── DIE STUDIO-SITE (nur nachts, BT1 a) ─────────────────────────────
+      # Das FÜNFTE Projekt: `portfolio` (die Id ist nicht frei, s. o.). Keine
+      # Demo-Daten — die Inhalte stehen im Code (`app/data/*.ts`), und die
+      # Gegenprobe legt ihr Konto selbst an und räumt es ab. Der Server
+      # startet GLEICH im Hintergrund: er kompiliert, während Betreiber-App,
+      # Platform-Server, Einzel-Instanz und branding.supply hochfahren; auf
+      # ihn gewartet wird erst vor den Beweisen (Schritt „Studio-Site bereit").
+      - name: Studio-Site — Bootstrap, Anmelde-Regeln, Start im Hintergrund
+        if: env.LAUF == 'nacht'
+        run: |
+          node --env-file=apps/portfolio/.env scripts/bootstrap.mjs --app portfolio
+          node --env-file=apps/portfolio/.env scripts/ops/appwrite-auth-policies.mjs --apply
+          (cd apps/portfolio && nohup pnpm exec nuxi dev --port "$PORTFOLIO_PORT" > "$RUNNER_TEMP/portfolio.log" 2>&1 &)
 
       # ZWEI ENTWICKLUNGS-SERVER aus dem Checkout. Gewartet wird auf
       # `/api/health` — die Betreiber-App antwortet mit 200, der
@@ -363,6 +385,32 @@ jobs:
           curl -s -m 5 "http://localhost:$BRANDING_PORT/api/health" || true
           exit 1
 
+      # Fünfter Entwicklungs-Server (gestartet oben, nach seinem Bootstrap):
+      # warten, dann die Seiten vorwärmen, die die Gegenprobe und die
+      # Browser-Tests zuerst brauchen. Erst dann sagt PORTFOLIO_READY dem
+      # Läufer und den Browser-Tests, dass sie `--portfolio-port` bekommen.
+      - name: Studio-Site bereit (apps/portfolio)
+        if: env.LAUF == 'nacht'
+        run: |
+          ready() {
+            curl -s -m 5 "http://localhost:$PORTFOLIO_PORT/api/health" | tr -d ' \n' | grep -q '"ok":true.*"state":"ok"'
+          }
+          for i in $(seq 1 240); do
+            if ready; then
+              echo "Studio-Site bereit nach ${i}s (seit diesem Schritt)."
+              for page in / /de /erstgespraech /de/register /ux-audit; do
+                code=$(curl -s -o /dev/null -m 180 -H 'accept: text/html' -w '%{http_code}' "http://localhost:$PORTFOLIO_PORT$page" || true)
+                echo "  vorgewärmt: $page → $code"
+              done
+              echo 'PORTFOLIO_READY=1' >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo '::error::Die Studio-Site ist nach 240s nicht bereit'
+          curl -s -m 5 "http://localhost:$PORTFOLIO_PORT/api/health" || true
+          exit 1
+
       # Zwei Beweise der Einzel-Instanz tippen in einem echten Browser
       # (Erwähnungen), und die Browser-Tests auf der Bühne (`buehne.mjs e2e`,
       # weiter unten) brauchen ihn auch. Dieselben drei Schritte wie in
@@ -395,15 +443,16 @@ jobs:
       # aufklappbare Gruppe im Protokoll; die Tabelle (Skript, Ergebnis,
       # Zählung, Dauer) steht in der Zusammenfassung des Laufs. Ein roter
       # Beweis hält die übrigen nicht auf, der Schritt endet dann rot.
-      # Ohne EINZEL_READY bzw. BRANDING_READY (Pull Request, main) kein
-      # `--einzel-port` und kein `--branding-port`: die Beweise dieser zwei
-      # Server stehen ohnehin nur auf `nacht`.
+      # Ohne EINZEL_READY, BRANDING_READY bzw. PORTFOLIO_READY (Pull Request,
+      # main) kein `--einzel-port`, `--branding-port`, `--portfolio-port`: die
+      # Beweise dieser drei Server stehen ohnehin nur auf `nacht`.
       - name: Beweise auf der Bühne (Einteilung aus scripts/buehne/beweise.mjs)
+        id: beweise
         # Nachts MUSS die Karte im Modus write laufen: verify-site-card ist
         # dann rot statt „übersprungen", wenn sie es nicht tut (PK1 E1c).
         env:
           EXPECT_SITE_CARD: ${{ env.LAUF == 'nacht' && 'write' || '' }}
-        run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT" ${EINZEL_READY:+--einzel-port "$EINZEL_PORT"} ${BRANDING_READY:+--branding-port "$BRANDING_PORT"}
+        run: node scripts/buehne/buehne.mjs run --lauf "$LAUF" --control-port "$CONTROL_PORT" ${EINZEL_READY:+--einzel-port "$EINZEL_PORT"} ${BRANDING_READY:+--branding-port "$BRANDING_PORT"} ${PORTFOLIO_READY:+--portfolio-port "$PORTFOLIO_PORT"}
 
       # Acht Test-Dateien prüfen die Trennung der Communities gegen eine
       # ECHTE Datenbank und werden ohne sie übersprungen — in `test.yml` also
@@ -433,12 +482,16 @@ jobs:
       # Rechtsseiten der Betreiber-App sind auf der leeren Datenbank nicht
       # da; ohne sie überspränge sich die Hälfte der Smoke-Datei, und ein
       # übersprungener Test macht diesen Schritt ROT — deshalb erst die
-      # Platzhalter-Seiten anlegen (Wegwerf-Datenbank).
+      # Platzhalter-Seiten anlegen (Wegwerf-Datenbank). Dazu die sechs Dateien
+      # der Studio-Site (seit 2026-11-28) gegen den fünften Server.
+      # Läuft auch nach einem ROTEN Beweise-Schritt (die Server stehen dann
+      # noch): sonst verschluckte ein einziges rotes Skript alle Browser-Tests
+      # der Nacht — so am 2026-11-28 auf dem Zweig von BT1 a.
       - name: Browser-Tests auf der Bühne (nur nachts)
-        if: env.LAUF == 'nacht'
+        if: env.LAUF == 'nacht' && (success() || steps.beweise.outcome == 'failure')
         run: |
           node --env-file=apps/control/.env packages/pages/scripts/seed-demo.mjs --single-tenant
-          node scripts/buehne/buehne.mjs e2e --control-port "$CONTROL_PORT"
+          node scripts/buehne/buehne.mjs e2e --control-port "$CONTROL_PORT" ${PORTFOLIO_READY:+--portfolio-port "$PORTFOLIO_PORT"}
 
       # Abbau mit Nachzählen: bleibt eine Zeile oder ein Konto der Bühne
       # übrig, endet der Schritt rot. Läuft auch nach einem roten Beweis.
@@ -458,6 +511,7 @@ jobs:
           echo '── Platform-Server'; tail -n 60 "$RUNNER_TEMP/platform.log" || true
           if [ -f "$RUNNER_TEMP/einzel.log" ]; then echo '── Einzel-Instanz'; tail -n 60 "$RUNNER_TEMP/einzel.log" || true; fi
           if [ -f "$RUNNER_TEMP/branding.log" ]; then echo '── branding.supply'; tail -n 60 "$RUNNER_TEMP/branding.log" || true; fi
+          if [ -f "$RUNNER_TEMP/portfolio.log" ]; then echo '── Studio-Site'; tail -n 60 "$RUNNER_TEMP/portfolio.log" || true; fi
           docker compose --env-file ci/appwrite/ci.env --project-name appwrite-ci -f ci/appwrite/docker-compose.yml logs --tail 80 appwrite appwrite-worker mariadb || true
 
   # ── ALARM ───────────────────────────────────────────────────────────────

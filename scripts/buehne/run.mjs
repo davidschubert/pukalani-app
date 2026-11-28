@@ -10,7 +10,8 @@
  * `--platform-port N` (Standard: aus dem Stand der Bühne), `--control-host H`,
  * `--env-platform` / `--env-control` (wie bei den übrigen Befehlen),
  * `--einzel-port N` und `--env-einzel <datei>` (Standard apps/comments/.env),
- * `--branding-port N` und `--env-branding <datei>` (Standard apps/branding/.env).
+ * `--branding-port N` und `--env-branding <datei>` (Standard apps/branding/.env),
+ * `--portfolio-port N` und `--env-portfolio <datei>` (Standard apps/portfolio/.env).
  *
  * DIE EINZEL-INSTANZ (`apps/comments`, eigenes Projekt, ohne Mandanten) steht
  * nur, wenn `--einzel-port` gesetzt ist — in der CI nur im nächtlichen Lauf.
@@ -29,6 +30,12 @@
  * `BRAND_SITE_FETCH_ALLOW_LOOPBACK` — die Zeile steht in `buehne.yml` und in
  * `docs/referenz/LIVE-BEWEISE.md`): kein Skript der Einteilung ruft eine
  * echte KI, Stripe oder eine fremde Website.
+ *
+ * DIE STUDIO-SITE (`apps/portfolio`, eigenes Projekt `portfolio`, BT1 a) steht
+ * nur, wenn `--portfolio-port` gesetzt ist — in der CI nur im nächtlichen
+ * Lauf. Dieselbe Regel; mit ihr bekommt JEDES Skript `PORTFOLIO_PORT` /
+ * `PORTFOLIO_URL` / `PORTFOLIO_ENV_FILE` (sie hat kein eigenes `env`: ihr
+ * Skript ist die Gegenprobe zu branding.supply und läuft mit dessen Datei).
  *
  * NACHZÄHLEN BEI BRANDING.SUPPLY: vor und nach jedem Skript mit
  * `env: 'branding'` zählt der Läufer die Zeilen JEDER Tabelle und die Konten
@@ -86,7 +93,7 @@ const MIN_TIMEOUT_S = 60
 const TAIL_LINES = 40
 
 /** Wie ein Dienst, der nicht in jedem Lauf steht, in der Tabelle heißt. */
-const SERVICE_NAMES = { einzel: 'Einzel-Instanz', branding: 'branding.supply' }
+const SERVICE_NAMES = { einzel: 'Einzel-Instanz', branding: 'branding.supply', portfolio: 'Studio-Site' }
 
 /** Importiert ein Skript eine `.ts`-Datei? Dann braucht Node `--experimental-strip-types`. */
 const IMPORTS_TS = /(?:\bfrom\s*|\bimport\s*\(\s*)['"][^'"]+\.ts['"]/
@@ -376,7 +383,25 @@ export async function runCommand({ root, opts, state, stageEnv }) {
       BRANDING_ENV_FILE: brandingPath,
     }
   }
-  const available = [...(einzelPort ? ['einzel'] : []), ...(brandingPort ? ['branding'] : [])]
+  // Die Studio-Site: dieselbe Regel. Nur Zeiger — die Datei liest das Skript selbst.
+  const portfolioPort = opts['portfolio-port'] ? Number(opts['portfolio-port']) : null
+  /** @type {Record<string, string>} */
+  let portfolioVars = {}
+  if (portfolioPort) {
+    const portfolioPath = resolve(root, String(opts['env-portfolio'] ?? 'apps/portfolio/.env'))
+    if (!existsSync(portfolioPath)) {
+      console.error(`✗ --portfolio-port ist gesetzt, aber die Env-Datei fehlt: ${portfolioPath.replace(`${root}/`, '')}`)
+      return 1
+    }
+    const portfolioEnv = readEnvFile(portfolioPath)
+    assertTarget({ script: 'buehne run', endpoint: portfolioEnv.NUXT_PUBLIC_APPWRITE_ENDPOINT, projectId: portfolioEnv.NUXT_PUBLIC_APPWRITE_PROJECT_ID })
+    portfolioVars = {
+      PORTFOLIO_PORT: String(portfolioPort),
+      PORTFOLIO_URL: `http://localhost:${portfolioPort}`,
+      PORTFOLIO_ENV_FILE: portfolioPath,
+    }
+  }
+  const available = [...(einzelPort ? ['einzel'] : []), ...(brandingPort ? ['branding'] : []), ...(portfolioPort ? ['portfolio'] : [])]
   // Zwei Zugänge fürs Nachzählen bei branding.supply: das Schema liest der
   // Migrations-Schlüssel (lokal darf der Laufzeit-Schlüssel das nicht), Zeilen
   // und Konten der Laufzeit-Schlüssel. In der CI ist es derselbe.
@@ -424,7 +449,7 @@ export async function runCommand({ root, opts, state, stageEnv }) {
   /** @type {Array<{ skript: string, ok: boolean, skipped?: boolean, result: string, pass: number, fail: number, seconds: number }>} */
   const results = []
 
-  console.log(`Läufer: ${selected.length} Skript(e) · Platform-Port ${stageEnv.PLATFORM_PORT} · Betreiber-App ${shared.CONTROL_URL} · Kontroll-Host ${controlHost} · Einzel-Instanz ${einzelPort ? `http://localhost:${einzelPort}` : 'keine'} · branding.supply ${brandingPort ? `http://localhost:${brandingPort}` : 'keine'}`)
+  console.log(`Läufer: ${selected.length} Skript(e) · Platform-Port ${stageEnv.PLATFORM_PORT} · Betreiber-App ${shared.CONTROL_URL} · Kontroll-Host ${controlHost} · Einzel-Instanz ${einzelPort ? `http://localhost:${einzelPort}` : 'keine'} · branding.supply ${brandingPort ? `http://localhost:${brandingPort}` : 'keine'} · Studio-Site ${portfolioPort ? `http://localhost:${portfolioPort}` : 'keine'}`)
   for (const [index, entry] of selected.entries()) {
     const missing = missingServices(entry, available)
     if (missing.length) {
@@ -446,6 +471,7 @@ export async function runCommand({ root, opts, state, stageEnv }) {
       ...process.env,
       ...envFiles[entry.env ?? 'keine'],
       ...shared,
+      ...portfolioVars,
       BUEHNE_CLIENT_ADDRESS: clientAddress(runByte, index),
       ...(entry.vars ?? {}),
     }

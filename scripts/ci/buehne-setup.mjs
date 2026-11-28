@@ -6,9 +6,10 @@
  *
  *   node scripts/ci/buehne-setup.mjs --endpoint http://localhost:8080/v1
  *
- * Nur nachts kommen zwei weitere Projekte dazu: `--einzel-port N` (Projekt
- * `comments`, die Einzel-Instanz) und `--branding-port N` (Projekt `branding`,
- * branding.supply).
+ * Nur nachts kommen drei weitere Projekte dazu: `--einzel-port N` (Projekt
+ * `comments`, die Einzel-Instanz), `--branding-port N` (Projekt `branding`,
+ * branding.supply) und `--portfolio-port N` (Projekt `portfolio`, die
+ * Studio-Site).
  *
  * Die Projekt-Ids sind NICHT frei wählbar: der Migrations-Runner vergleicht
  * sie mit `appwriteProjects` im `site.manifest.ts` der App (`apps/control`
@@ -52,6 +53,9 @@ const einzelPort = arg('einzel-port', '')
 // NUR NACHTS: branding.supply (`apps/branding`) als viertes Projekt — aus
 // derselben Console-Sitzung wie die anderen (s. o.).
 const brandingPort = arg('branding-port', '')
+// NUR NACHTS: die Studio-Site (`apps/portfolio`) als fünftes Projekt (BT1 a) —
+// ihre Browser-Tests und die Gegenprobe von `verify-business-confirmation`.
+const portfolioPort = arg('portfolio-port', '')
 
 const CONTROL_PROJECT = 'admin'
 const POOL_PROJECT = 'account'
@@ -59,6 +63,8 @@ const POOL_PROJECT = 'account'
 const EINZEL_PROJECT = 'comments'
 // Nicht frei: `apps/branding/site.manifest.ts` lässt nur `branding` zu.
 const BRANDING_PROJECT = 'branding'
+// Nicht frei: `apps/portfolio/site.manifest.ts` lässt nur `portfolio` zu.
+const PORTFOLIO_PROJECT = 'portfolio'
 
 // Wegwerf-Instanz: lokal durch, alles andere nur mit ausdrücklicher
 // Bestätigung (OPS-002). Beide Projekte liegen auf demselben Endpunkt.
@@ -68,7 +74,7 @@ assertTarget({ script: 'ci/buehne-setup', endpoint, projectId: CONTROL_PROJECT }
 // liegen dort die Zugänge der lokalen Instanz; dieses Skript ist für die CI,
 // wo es die Dateien noch nicht gibt. Geprüft wird VOR dem ersten Schritt an
 // der Console — sonst entstünden Projekt und Schlüssel, bevor der Abbruch kommt.
-for (const appDir of ['apps/control', 'apps/platform', ...(einzelPort ? ['apps/comments'] : []), ...(brandingPort ? ['apps/branding'] : [])]) {
+for (const appDir of ['apps/control', 'apps/platform', ...(einzelPort ? ['apps/comments'] : []), ...(brandingPort ? ['apps/branding'] : []), ...(portfolioPort ? ['apps/portfolio'] : [])]) {
   if (existsSync(resolve(appDir, '.env'))) {
     console.error(`✗ ${appDir}/.env gibt es schon — dieses Skript schreibt nur auf einer frischen CI-Instanz.`)
     console.error('  Lokal gilt die vorhandene `.env`; die Bühne baut dort `pnpm buehne up` auf.')
@@ -81,6 +87,7 @@ const controlKey = await consoleSteps.provisionProject(CONTROL_PROJECT)
 const poolKey = await consoleSteps.provisionProject(POOL_PROJECT)
 const einzelKey = einzelPort ? await consoleSteps.provisionProject(EINZEL_PROJECT) : ''
 const brandingKey = brandingPort ? await consoleSteps.provisionProject(BRANDING_PROJECT) : ''
+const portfolioKey = portfolioPort ? await consoleSteps.provisionProject(PORTFOLIO_PROJECT) : ''
 
 // Das Naht-Geheimnis zwischen Platform-Server und Betreiber-App: je Lauf neu.
 const seamSecret = randomBytes(32).toString('hex')
@@ -172,6 +179,23 @@ if (brandingPort) {
     'NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET=avatars',
     'NUXT_PUBLIC_APPWRITE_GDPR_BUCKET=gdpr-exports',
     `NUXT_PUBLIC_APP_URL=http://localhost:${brandingPort}`,
+    ...smtp,
+  ])
+}
+
+// Die Studio-Site: ein Projekt ohne Mandanten und ohne Naht zum Control
+// Plane. Kein Schlüssel für Statistik, KI oder Stripe. Mails (Registrierung der Gegenprobe) an den lokalen Briefkasten.
+if (portfolioPort) {
+  writeEnv('apps/portfolio', [
+    '# Von scripts/ci/buehne-setup.mjs generiert (CI-Wegwerf-Instanz, Studio-Site auf der Bühne)',
+    `NUXT_APPWRITE_KEY=${portfolioKey}`,
+    `NUXT_APPWRITE_MIGRATIONS_KEY=${portfolioKey}`,
+    `NUXT_PUBLIC_APPWRITE_ENDPOINT=${endpoint}`,
+    `NUXT_PUBLIC_APPWRITE_PROJECT_ID=${PORTFOLIO_PROJECT}`,
+    'NUXT_PUBLIC_APPWRITE_DATABASE_ID=main',
+    'NUXT_PUBLIC_APPWRITE_AVATARS_BUCKET=avatars',
+    'NUXT_PUBLIC_APPWRITE_GDPR_BUCKET=gdpr-exports',
+    `NUXT_PUBLIC_APP_URL=http://localhost:${portfolioPort}`,
     ...smtp,
   ])
 }
