@@ -11,8 +11,8 @@
  *   pnpm buehne env    # Zeilen NAME=wert für ein Beweis-Skript, ohne Geheimnisse
  *   pnpm buehne smoke  # Rauchtest gegen den laufenden Platform-Server
  *   pnpm buehne down
- *   pnpm buehne run    --lauf <buehne|nacht> | --only <teil> [--liste] [--control-port 3004] [--einzel-port 3001] [--branding-port 3016]
- *   pnpm buehne e2e    [--control-port 3004]  # die Browser-Tests gegen die Bühne
+ *   pnpm buehne run    --lauf <buehne|nacht> | --only <teil> [--liste] [--control-port 3004] [--einzel-port 3001] [--branding-port 3016] [--portfolio-port 3005]
+ *   pnpm buehne e2e    [--control-port 3004] [--portfolio-port 3005]  # die Browser-Tests gegen die Bühne
  *
  * `run` fährt die Beweis-Skripte laut Einteilung `scripts/buehne/beweise.mjs`
  * gegen die stehende Bühne — Einzelheiten im Kopf von `scripts/buehne/run.mjs`.
@@ -101,6 +101,9 @@ const { values: opts, positionals } = parseArgs({
     'env-einzel': { type: 'string', default: 'apps/comments/.env' },
     'branding-port': { type: 'string' },
     'env-branding': { type: 'string', default: 'apps/branding/.env' },
+    // `run` und `e2e`: die Studio-Site (BT1 a)
+    'portfolio-port': { type: 'string' },
+    'env-portfolio': { type: 'string', default: 'apps/portfolio/.env' },
   },
 })
 const command = positionals[0]

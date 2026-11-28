@@ -38,12 +38,19 @@
  * echte KI, Stripe oder eine fremde Website (je Skript vor dem Einzug
  * geprüft; die Schalter stehen in `.github/workflows/buehne.yml`).
  *
+ * DIE STUDIO-SITE (`braucht: ['portfolio']`, seit 2026-11-28, BT1 a):
+ * `apps/portfolio` als fünfter Server mit eigenem Projekt `portfolio`, nur im
+ * nächtlichen Lauf und lokal nur mit `--portfolio-port`; fehlt sie, ist das
+ * Skript „übersprungen". Jedes Skript bekommt dann `PORTFOLIO_PORT` /
+ * `PORTFOLIO_URL` / `PORTFOLIO_ENV_FILE` dazu (ein eigenes `env` hat sie
+ * nicht: ihr einziges Skript ist eine Gegenprobe zu branding.supply).
+ *
  * Wer ein Skript von `hand` nach `buehne`/`nacht` zieht, hat es vorher auf der
  * Bühne grün gesehen (`pnpm buehne run --only <name>`) und trägt die Dauer ein.
  */
 
 /**
- * @typedef {'appwrite' | 'platform' | 'control' | 'mailpit' | 'einzel' | 'branding' | 'browser'} Dienst
+ * @typedef {'appwrite' | 'platform' | 'control' | 'mailpit' | 'einzel' | 'branding' | 'portfolio' | 'browser'} Dienst
  * @typedef {{
  *   skript: string,
  *   lauf: 'e2e' | 'buehne' | 'nacht' | 'hand',
@@ -64,6 +71,8 @@ const E2E = 'läuft als eigener Schritt in .github/workflows/e2e.yml'
 // scripts/buehne/fixtures/geo-cities.tsv, von buehne-setup.mjs eingetragen),
 // `verify-notification-mail-links` (der Server stößt denselben Sammel-Lauf ohnehin
 // zwei Minuten nach dem Start selbst an) und nachts `verify-composer-editor` mit.
+// Seit dem 2026-11-28 (BT1 a) steht nachts die Studio-Site als fünfter Server;
+// damit läuft `verify-business-confirmation` mit (B2B-App und Gegenprobe).
 
 /** @type {Beweis[]} */
 export const BEWEISE = [
@@ -96,7 +105,7 @@ export const BEWEISE = [
   { skript: 'packages/control/scripts/verify-silo-domain.mjs', lauf: 'hand', grund: 'Braucht drei eigens eingestellte Server: die Betreiber-App im Trockenlauf mit eigenem Namens-Server, die Einzel-Instanz mit Naht zum Control Plane und portfolio gegen eine tote Naht — der nächtliche Lauf startet keinen davon so.' },
 
   // ── core ──
-  { skript: 'packages/core/scripts/verify-business-confirmation.mjs', lauf: 'hand', grund: 'Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site, jede mit eigenem Projekt), und die Bühne hat keinen Server der Studio-Site. Das Skript selbst ist seit dem 2026-11-19 nachgezogen (27 von 27 lokal) — es kann einziehen, sobald die Studio-Site auf der Bühne steht.' },
+  { skript: 'packages/core/scripts/verify-business-confirmation.mjs', lauf: 'nacht', env: 'branding', dauer: 30, braucht: ['appwrite', 'branding', 'portfolio', 'mailpit'] },
   { skript: 'packages/core/scripts/verify-geo-cities.mjs', lauf: 'buehne', env: 'platform', dauer: 5, braucht: ['appwrite', 'platform'] },
   { skript: 'packages/core/scripts/verify-handle-search-boundary.mjs', lauf: 'buehne', env: 'control', dauer: 4, braucht: ['appwrite', 'platform', 'control'] },
   { skript: 'packages/core/scripts/verify-mfa.mjs', lauf: 'nacht', env: 'einzel', dauer: 120, braucht: ['appwrite', 'einzel', 'mailpit'] },
@@ -198,10 +207,10 @@ export const LAEUFE = /** @type {const} */ ({
   hand: 'von Hand',
 })
 
-export const DIENSTE = ['appwrite', 'platform', 'control', 'mailpit', 'einzel', 'branding', 'browser']
+export const DIENSTE = ['appwrite', 'platform', 'control', 'mailpit', 'einzel', 'branding', 'portfolio', 'browser']
 export const ENVS = ['platform', 'control', 'einzel', 'branding', 'keine']
 /** Die Dienste, die nicht in jedem Lauf stehen — ohne sie wird übersprungen. */
-export const OPTIONALE_DIENSTE = ['einzel', 'branding']
+export const OPTIONALE_DIENSTE = ['einzel', 'branding', 'portfolio']
 /** Mindestlänge eines Grundes — ein ganzer Satz, kein Stichwort. */
 export const GRUND_MIN = 30
 
@@ -257,6 +266,9 @@ export function manifestProblems({ scripts, beweise, runsInE2e }) {
     }
     if (entry.lauf === 'buehne' && (entry.braucht ?? []).includes('branding')) {
       problems.push(`${skript}: branding.supply steht nur im nächtlichen Lauf — lauf „nacht" eintragen.`)
+    }
+    if (entry.lauf === 'buehne' && (entry.braucht ?? []).includes('portfolio')) {
+      problems.push(`${skript}: die Studio-Site steht nur im nächtlichen Lauf — lauf „nacht" eintragen.`)
     }
     if (entry.dauer !== undefined && !(Number.isFinite(entry.dauer) && entry.dauer >= 0)) {
       problems.push(`${skript}: dauer muss eine Zahl in Sekunden sein.`)

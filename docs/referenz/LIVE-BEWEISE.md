@@ -250,7 +250,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 
 <!-- ERZEUGT:ANFANG — nicht von Hand ändern, `pnpm live-beweise` schreibt diesen Abschnitt -->
 
-87 Beweis-Skripte im Repo: 6 E2E-Lauf, 36 Bühne (jeder Lauf), 37 Bühne (nachts), 8 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
+87 Beweis-Skripte im Repo: 6 E2E-Lauf, 36 Bühne (jeder Lauf), 38 Bühne (nachts), 7 von Hand (Einteilung: `scripts/buehne/beweise.mjs`, Läufer: `pnpm buehne run`).
 
 | Skript | Beweist (erster Absatz seines Kopfes) | Läuft |
 | --- | --- | --- |
@@ -274,7 +274,7 @@ Production (`scripts/ops/verify-*.mjs`) stehen nicht hier, sondern in
 | `packages/control/scripts/verify-invite-stock.mjs` | Beweis für Vorrat + Zuweisung MIT echter Betreiber-Session (control-017). | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-onboarding.mjs` | Beweis für O2 — die Provisionierungs-Route des Control Plane. | Bühne (jeder Lauf) |
 | `packages/control/scripts/verify-silo-domain.mjs` | Beweis: eigene Domains für SILO-Apps (control-036, 2026-08-07). | von Hand: Braucht drei eigens eingestellte Server: die Betreiber-App im Trockenlauf mit eigenem Namens-Server, die Einzel-Instanz mit Naht zum Control Plane und portfolio gegen eine tote Naht — der nächtliche Lauf startet keinen davon so. |
-| `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | von Hand: Braucht ZWEI Apps nebeneinander (branding.supply und die Studio-Site, jede mit eigenem Projekt), und die Bühne hat keinen Server der Studio-Site. Das Skript selbst ist seit dem 2026-11-19 nachgezogen (27 von 27 lokal) — es kann einziehen, sobald die Studio-Site auf der Bühne steht. |
+| `packages/core/scripts/verify-business-confirmation.mjs` | BEWEIS FÜR BS1 R1c — DIE UNTERNEHMER-BESTÄTIGUNG IST EINE TATSACHE AM KONTO, KEINE FORMULARVALIDIERUNG (Davids Entscheidung vom 2026-09-08: branding.supply nimmt nur Unternehmen und Selbstständige auf, B2B). | Bühne (nachts), branding.supply |
 | `packages/core/scripts/verify-geo-cities.mjs` | Beweis: der Orts-Picker im Profil — Suche, Länder-Filter und der Standort am KONTO (Mitglieder-Karte, Etappe 1). | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-handle-search-boundary.mjs` | Beweis: die Handle-Grenze einer Community hält — beim LESEN und beim NEHMEN. | Bühne (jeder Lauf) |
 | `packages/core/scripts/verify-mfa.mjs` | Beweis für den Zweitfaktor (U15 Teil 4). | Bühne (nachts), Einzel-Instanz |

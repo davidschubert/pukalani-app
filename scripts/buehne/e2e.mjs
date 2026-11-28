@@ -2,7 +2,7 @@
  * Browser-Tests auf der Bühne (OPS-009, BT1 a): E2E-Dateien, die den Pool oder
  * die Betreiber-App brauchen, gegen die stehende Bühne.
  *
- *   pnpm buehne e2e [--control-port 3004] [--platform-port N]
+ *   pnpm buehne e2e [--control-port 3004] [--platform-port N] [--portfolio-port 3005]
  *
  * WELCHE DATEIEN, steht in `E2E_AUF_DER_BUEHNE` unten:
  *   - `apps/comments/e2e/community-removed.spec.ts` — die entfernte Person der
@@ -16,7 +16,11 @@
  *   - `apps/comments/e2e/list-states-pool.spec.ts` — Mitglieder und
  *     Vertrauensstufen zeigen bei gestörtem Abruf „Fehler" mit funktionierendem
  *     „Noch einmal versuchen" und bei leerer Antwort „leer" (Q14, Community B);
- *   - `apps/control/e2e/smoke.spec.ts` — die eine E2E-Datei der Betreiber-App.
+ *   - `apps/control/e2e/smoke.spec.ts` — die eine E2E-Datei der Betreiber-App;
+ *   - die sechs E2E-Dateien der Studio-Site (`apps/portfolio/e2e/`, seit
+ *     2026-11-28) — nur mit `--portfolio-port` (in der CI nachts der fünfte
+ *     Server). Ohne den Port sagt eine Zeile, dass sie nicht liefen; die
+ *     übrigen Dateien brauchen ihn nicht.
  *
  * Die Variablen kommen aus dem Stand der Bühne (`.buehne/state.json`) und der
  * Env-Datei der Platform-App — dieselbe Herleitung lokal und in der CI. Die
@@ -52,7 +56,7 @@ import { assertTarget } from '../lib/target.mjs'
 import { checkStageBaseline, RESOLVER_SETTLE_MS } from './baseline.mjs'
 
 /**
- * @typedef {{ app: 'comments' | 'control', datei: string, server: 'platform' | 'control' }} E2eDatei
+ * @typedef {{ app: 'comments' | 'control' | 'portfolio', datei: string, server: 'platform' | 'control' | 'portfolio' }} E2eDatei
  */
 
 /** @type {E2eDatei[]} */
@@ -62,6 +66,13 @@ export const E2E_AUF_DER_BUEHNE = [
   { app: 'comments', datei: 'e2e/dashboard-hydration-pool.spec.ts', server: 'platform' },
   { app: 'comments', datei: 'e2e/list-states-pool.spec.ts', server: 'platform' },
   { app: 'control', datei: 'e2e/smoke.spec.ts', server: 'control' },
+  // Die Studio-Site (BT1 a): öffentliche Seiten ohne Anmeldung, ihr eigenes Projekt.
+  { app: 'portfolio', datei: 'e2e/smoke.spec.ts', server: 'portfolio' },
+  { app: 'portfolio', datei: 'e2e/pages.spec.ts', server: 'portfolio' },
+  { app: 'portfolio', datei: 'e2e/wizard.spec.ts', server: 'portfolio' },
+  { app: 'portfolio', datei: 'e2e/redirects.spec.ts', server: 'portfolio' },
+  { app: 'portfolio', datei: 'e2e/seo-routes.spec.ts', server: 'portfolio' },
+  { app: 'portfolio', datei: 'e2e/realtime-guest.spec.ts', server: 'portfolio' },
 ]
 
 /** Zeitgrenze je Datei — Playwrights eigene Grenzen greifen vorher; das hier fängt einen hängenden Prozess. */
@@ -75,11 +86,12 @@ const GUARD_S = 900
  *   platformEnv: Record<string, string>,
  *   platformPort?: number | string,
  *   controlPort: number | string,
+ *   portfolioPort?: number | string | null,
  *   clientAddress?: string,
  * }} input
- * @returns {Record<E2eDatei['app'], Record<string, string>>}
+ * @returns {{ comments: Record<string, string>, control: Record<string, string>, portfolio?: Record<string, string> }}
  */
-export function e2eEnv({ state, platformEnv, platformPort, controlPort, clientAddress }) {
+export function e2eEnv({ state, platformEnv, platformPort, controlPort, portfolioPort, clientAddress }) {
   const a = state.communities?.a
   const removed = a?.accounts?.removed?.userId
   if (!a?.host || !removed) throw new Error('Der Stand der Bühne hat keine Community A mit dem entfernten Konto.')
@@ -115,6 +127,10 @@ export function e2eEnv({ state, platformEnv, platformPort, controlPort, clientAd
       PW_EXTERNAL_SERVER: '1',
       PW_BASE_URL: `http://localhost:${controlPort}`,
     },
+    // Ohne Port steht die Studio-Site nicht — ihre Dateien laufen dann nicht.
+    ...(portfolioPort
+      ? { portfolio: { PW_EXTERNAL_SERVER: '1', PW_BASE_URL: `http://localhost:${portfolioPort}` } }
+      : {}),
   }
 }
 
@@ -213,24 +229,32 @@ export async function e2eCommand({ root, opts, state }) {
 
   const controlPort = Number(opts['control-port'] ?? 3004)
   const platformPort = Number(opts['platform-port'] ?? state.platformPort)
+  const portfolioPort = opts['portfolio-port'] ? Number(opts['portfolio-port']) : null
   /** @type {Record<string, Record<string, string>>} */
   let envs
   try {
-    envs = e2eEnv({ state, platformEnv, platformPort, controlPort, clientAddress: randomClientAddress() })
+    envs = e2eEnv({ state, platformEnv, platformPort, controlPort, portfolioPort, clientAddress: randomClientAddress() })
   }
   catch (error) {
     console.error(`✗ ${error instanceof Error ? error.message : String(error)}`)
     return 1
   }
 
-  // Beide Server müssen stehen — sonst misst Playwright nur „nicht erreichbar".
-  const health = { platform: `http://localhost:${platformPort}/api/health`, control: `http://localhost:${controlPort}/api/health` }
+  // Die Server müssen stehen — sonst misst Playwright nur „nicht erreichbar".
+  const health = {
+    'Platform-Server': `http://localhost:${platformPort}/api/health`,
+    'Betreiber-App': `http://localhost:${controlPort}/api/health`,
+    ...(portfolioPort ? { 'Studio-Site': `http://localhost:${portfolioPort}/api/health` } : {}),
+  }
   for (const [name, url] of Object.entries(health)) {
     if (!(await answers(url))) {
-      console.error(`✗ ${name === 'platform' ? 'Platform-Server' : 'Betreiber-App'} antwortet nicht (${url}).`)
+      console.error(`✗ ${name} antwortet nicht (${url}).`)
       return 1
     }
   }
+  const files = E2E_AUF_DER_BUEHNE.filter(entry => entry.server !== 'portfolio' || portfolioPort)
+  const notRun = E2E_AUF_DER_BUEHNE.length - files.length
+  if (notRun) console.log(`… ${notRun} Datei(en) der Studio-Site laufen nicht: ohne \`--portfolio-port\` steht ihr Server nicht.`)
 
   // Der Soll-Stand der Bühne (s. Kopf): zurückstellen, bevor ein Test misst.
   const controlPath = resolve(root, String(opts['env-control'] ?? 'apps/control/.env'))
@@ -261,11 +285,11 @@ export async function e2eCommand({ root, opts, state }) {
   /** @type {Array<{ datei: string, ok: boolean, result: string, counts: string, seconds: number, problems: string[] }>} */
   const results = []
   try {
-    for (const [index, entry] of E2E_AUF_DER_BUEHNE.entries()) {
+    for (const [index, entry] of files.entries()) {
       const path = `apps/${entry.app}/${entry.datei}`
       const reportFile = join(scratch, `${entry.app}.json`)
       const env = { ...process.env, ...envs[entry.app], PLAYWRIGHT_JSON_OUTPUT_NAME: reportFile }
-      const title = `${path} (${index + 1}/${E2E_AUF_DER_BUEHNE.length})`
+      const title = `${path} (${index + 1}/${files.length})`
       console.log(inActions ? `::group::${title}` : `\n── ${title} ${'─'.repeat(Math.max(3, 66 - title.length))}`)
       console.log(`  Variablen: ${Object.keys(envs[entry.app]).join(', ')}`)
       const run = await runPlaywright({ cwd: join(root, 'apps', entry.app), file: entry.datei, env })
