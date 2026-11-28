@@ -35,6 +35,7 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
+import { openComposerEditor } from './lib/hydrationWaits.mjs'
 
 /** Playwright wohnt in apps/comments — absoluter Pfad, siehe verify-composer-editor.mjs. */
 const playwrightEntry = new URL('../../../apps/comments/node_modules/@playwright/test/index.mjs', import.meta.url)
@@ -176,17 +177,14 @@ try {
   })
 
   await page.goto('/feed', { waitUntil: 'domcontentloaded' })
-  await page.waitForSelector('[data-composer-body] textarea', { timeout: 90_000 })
   // Erst HYDRIEREN lassen. Der Wechsel auf den Editor hängt an `@focusin`
   // (PostBodyField) — ein Klick VOR der Hydration fokussiert zwar, findet aber
   // noch keinen Vue-Handler vor, und der Editor käme nie. Genau daran ist der
   // erste Lauf dieses Skripts gescheitert, zweimal, mit 30 s und mit 120 s
-  // Wartezeit: es sah nach „zu langsam" aus und war „zu früh".
-  await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(1200)
-  await page.locator('[data-composer-body] textarea').click()
-  await page.waitForSelector('[data-composer-body] [contenteditable="true"]', { timeout: 120_000 })
-  await page.waitForTimeout(600)
+  // Wartezeit: es sah nach „zu langsam" aus und war „zu früh". Gewartet wird
+  // am ERGEBNIS (der Editor erscheint), nicht an Netz-Ruhe — die kommt mit
+  // offener Live-Verbindung nie (BT1 d, Nacht-Lauf 25.11.).
+  await openComposerEditor(page)
 
   const mentionText = `Hallo @${targetHandle} und @niemand-gibt-es schau mal her`
   await page.keyboard.type(mentionText, { delay: 6 })

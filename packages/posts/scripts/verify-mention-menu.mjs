@@ -36,6 +36,7 @@
 import '../../../scripts/lib/assert-target.mjs'
 import { Client, ID, Query, TablesDB, Users } from 'node-appwrite'
 import { createEinzelCleanup, einzelBaseUrl } from '../../../scripts/lib/probe-stage.mjs'
+import { openComposerEditor, openMenuItem } from './lib/hydrationWaits.mjs'
 
 /** Playwright wohnt in apps/comments — absoluter Pfad, siehe verify-handles-mentions.mjs. */
 const playwrightEntry = new URL('../../../apps/comments/node_modules/@playwright/test/index.mjs', import.meta.url)
@@ -89,14 +90,9 @@ async function contextFor(user) {
   return context
 }
 
-/** Der Composer ist erst nach der HYDRATION bedienbar — siehe verify-handles-mentions.mjs. */
+/** Der Composer ist erst nach der HYDRATION bedienbar — gewartet wird am Editor selbst (`lib/hydrationWaits.mjs`). */
 async function openEditor(page) {
-  await page.waitForSelector('[data-composer-body] textarea', { timeout: 90_000 })
-  await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(1200)
-  await page.locator('[data-composer-body] textarea').click()
-  await page.waitForSelector('[data-composer-body] [contenteditable="true"]', { timeout: 120_000 })
-  await page.waitForTimeout(600)
+  await openComposerEditor(page)
 }
 
 try {
@@ -321,8 +317,6 @@ try {
 
   await page.goto('/feed', { waitUntil: 'domcontentloaded' })
   await page.waitForSelector('[data-post-card]', { timeout: 60_000 })
-  await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(1200)
 
   // „Bearbeiten" hängt im Aktionen-Menü der Karte (UDropdownMenu), und das
   // rendert seinen Inhalt in einem Portal — also über Playwright-Locator
@@ -333,11 +327,11 @@ try {
     editOpened = 'kein-beitrag'
   }
   else {
-    await legacyCard.first().locator('button[aria-label="Actions"]').click()
-    await page.waitForTimeout(400)
-    const editItem = page.getByRole('menuitem', { name: 'Edit' })
-    if (await editItem.count() === 0) editOpened = 'kein-knopf'
-    else await editItem.first().click()
+    // Vor der Hydration öffnet der Knopf nichts — es wird geklickt, bis der
+    // Eintrag erscheint (statt auf Netz-Ruhe zu warten, BT1 d).
+    const editItem = await openMenuItem(page, legacyCard.first().locator('button[aria-label="Actions"]'), 'Edit')
+    if (!editItem) editOpened = 'kein-knopf'
+    else await editItem.click()
   }
 
   if (editOpened !== 'ok') {
