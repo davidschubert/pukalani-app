@@ -13,17 +13,19 @@ SDK-Versionen aus dem Katalog.
 Erledigt am 2026-11-21 (COMPLETE „N22"): der DNS-Eintrag
 `changelog.pukalani.app` ist bei Cloudflare gelöscht.
 
-- **(d) Kleinigkeiten.** Ticket-Kauf (lebt nur in der Test-App): die
-  Rückkehr-Adressen kommen seit SE1 f nicht mehr aus dem Host der Anfrage,
-  und seit dem 2026-11-25 liest die Route den Termin über die Datentür
-  (COMPLETE „AR1 (d) — Ticket-Kauf"). Offen: die Prüfung „schon bezahlt"
-  liest die 100 jüngsten Sitzungen und braucht ein Zeitfenster, sobald es
-  eine Erstattung mit Rücknahme des Tickets gibt.
-  Auf dem Datenbank-Server liegen fünf Upgrade-Protokolle im Heimatordner
-  (bewusst behalten) und vier Sicherheitskopien aus dem Backup-Paket
-  (`*.vorher-p11*`, gehören zu BU1 d). Der lokale Lauf der Playwright-Suite
-  braucht einen Browser-Download. Ein UptimeRobot-Monitor heißt vielleicht
-  noch „studio…" (nur der Name, nicht nachgesehen).
+Erledigt am 2026-11-28 (COMPLETE „AR1 (d) — Kleinigkeiten"): die Grenze der
+Prüfung „schon bezahlt" steht am Code, der lokale Playwright-Browser ist
+in `.claude/rules/tests.md` beschrieben.
+
+- **(d) Kleinigkeiten — was bleibt, und warum nicht in einer Session.**
+  - Auf dem Datenbank-Server liegen fünf Upgrade-Protokolle im Heimatordner
+    (bewusst behalten) und vier Sicherheitskopien aus dem Backup-Paket
+    (`*.vorher-p11*`, gehören zu BU1 d). **Grund:** Production — Löschen
+    nur mit Davids Ja, zusammen mit BU1 d.
+  - Ein UptimeRobot-Monitor heißt vielleicht noch „studio…" (nur der Name,
+    nicht nachgesehen). **Grund:** UptimeRobot hat nur Davids Anmeldung
+    (`docs/runbooks/PRODUKTIONS-ALARM.md`, Klickliste); ein Blick dort
+    genügt, Umbenennen ändert nichts am Alarm.
 - **(e) Abhängigkeiten: was nach der Update-Runde vom 2026-11-20 offen
   bleibt** (gemessen mit `pnpm audit`, dem Lockfile und `npm view`; die Runde
   selbst steht in der [Erledigt-Liste](../../OPEN-ITEMS-COMPLETE.md), „N19"). Keine
@@ -61,6 +63,15 @@ Erledigt am 2026-11-21 (COMPLETE „N22"): der DNS-Eintrag
     die Vote-Probe aus); `node-appwrite` 32.0.0 (neue Hauptversion, ändert
     die Parameter-Reihenfolge von `functions.update`; kein Issue, eigener
     Schritt).
+  - **Stand 2026-11-28 (nachgesehen mit `npm view` und Docker Hub):** noch
+    nichts, was einen Punkt schließt. `archiver` steht bei 8.0.0;
+    `nitropack` 2.14.0 (2026-11-23) verlangt weiter `archiver` ^8, der
+    minimatch-Weg bleibt. `@nuxt/content` steht bei 3.17.0 mit zod ^3. Das
+    Image `mariadb:10.11.20` gibt es noch nicht (`10.11` zuletzt am
+    2026-11-20 neu gebaut). Neu seit der Runde: `@nuxt/ui` 4.13.1
+    (2026-11-23, für die eigene esbuild-Runde), `node-appwrite` 32.4.0
+    (2026-11-26, weiter eigener Schritt), `@vercel/nft` bis 1.11.16
+    (2026-11-27, kommt mit dem nächsten Neuauflösen).
   - **Redis und MariaDB außerhalb der CI (braucht Davids Ja).** Der
     CI-Verbund fährt seit dem 2026-11-20 Redis 7.4.12; die
     Entwicklungs-Instanz und Production stehen laut Compose-Vorlage bei

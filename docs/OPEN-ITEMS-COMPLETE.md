@@ -76,6 +76,68 @@ Zeile in den übrigen Browser-Tests der Bühne — der nächste Nacht-Lauf fand
 sie sonst. Und eine Fehler-Ursache aus einer Zusammenfassung („scheitert an
 networkidle") gegen das Protokoll des Laufs prüfen, bevor man sie behebt.
 
+### AW30 (b) — Ehrliche Meldung, wenn Appwrite Code-Versuche bremst ✅ 2026-11-28
+
+Seit 2.7.2 zählt Appwrite Anmelde- und Code-Versuche auch bei Aufrufen mit
+Schlüssel (10 je Konto und Stunde). Bis heute fiel diese 429 in die
+allgemeine Ablehnung: nach zehn falschen Codes hieß auch der RICHTIGE für den
+Rest der Stunde „ungültig oder abgelaufen".
+
+- `packages/core/shared/authFailure.ts`: `isAuthBackendRateLimited()` (Status
+  429) und `appwriteAbuseResetInMs()` — Appwrite zählt in festen, an der
+  Epoche ausgerichteten Fenstern, das Fenster endet zur vollen Stunde (UTC).
+- `otp/verify.post.ts` und `login.post.ts`: Appwrites 429 wird unsere eigene
+  429 über `tooManyRequests()` — `data: { code: 'rate_limited' }` → `reason`,
+  `Retry-After` bis zur vollen Stunde, eine Zeile `auth.backend_rate_limited`,
+  und der Versuch zählt nicht auf den eigenen Konto-Zähler
+  (`skipAccountAttempt`). Keine Appwrite-Details nach außen. Die Formulare
+  kannten `rate_limited` schon (`useAuthErrorMessage`, „Zu viele Versuche.
+  Warte noch N Minuten …", de+en vorhanden) — keine neuen Texte.
+- Test: `packages/core/tests/authFailurePaths.test.ts` (beide Routen: 429 mit
+  Grund und `Retry-After` 600 um 14:50 UTC, Log-Zeile, 13 gebremste Versuche
+  füllen den Konto-Zähler nicht, danach geht der richtige Code sofort).
+- Beweis lokal (Appwrite 2.7.4, OrbStack): `X-Ratelimit-Reset` 1795831200 =
+  genau volle Stunde, auch für Aufrufe mit Schlüssel (10 × 401, dann 429
+  `general_rate_limit_exceeded`). Danach im Browser auf
+  `/de/login/code` (Worktree-Dev-Server, Port 3091) mit dem RICHTIGEN Code aus
+  Mailpit: „Zu viele Versuche. Warte noch 5 Minuten und versuch es dann noch
+  einmal." (277 s bis zum Fenster-Ende), Antwort `429`, `retry-after: 269`,
+  Körper `{"ok":false,"code":"RATE_LIMITED","message":"Too Many Requests","reason":"rate_limited"}`,
+  Log-Zeile `auth.backend_rate_limited` `otp`. Wegwerf-Konto gelöscht (204,
+  Gegenprobe 404).
+- Nicht gebaut: `mfa`-Challenge und Reset-Anforderung — dort fragt Appwrite
+  ebenfalls mit Bremse, der Fall ist aber bisher nicht gemeldet.
+
+**Gelernt:** Der SDK-Fehler trägt die Kopfzeilen nicht (`AppwriteException`
+hat nur `code`, `type`, `response`) — die Wartezeit lässt sich nur aus Appwrites
+fester Fenster-Regel rechnen; die Regel wurde deshalb gegen den echten
+`X-Ratelimit-Reset` geprüft, nicht angenommen.
+
+### AR1 (d) — Kleinigkeiten: Grenze der Bezahlt-Prüfung am Code, Playwright-Browser beschrieben ✅ 2026-11-28
+
+**Bezahlt-Prüfung.** `createPaymentCheckoutSession`
+(`packages/billing/server/utils/fulfillment.ts`) liest vor einem Kauf mit
+Bereich die 100 jüngsten abgeschlossenen Stripe-Sessions, ohne Zeitfenster.
+Das ist richtig, solange ein bezahlter Kauf für immer gilt; ein
+Erstattungsweg mit Rücknahme existiert nicht (`charge.refunded` steht nicht
+in der Webhook-Liste, ein Test hält das). Statt den Punkt in der Liste auf
+einen Bau warten zu lassen, steht die Grenze jetzt an beiden Stellen, an
+denen ein Erstattungsweg vorbeikommt: als „GRENZE (AR1 d)" an der Abfrage
+und als Hinweis an der Test-Zeile `charge.refunded`.
+
+**Playwright lokal.** Der Browser-Download ist kein offener Punkt: einmalig
+`npx playwright install chromium` steht in `.claude/rules/tests.md`
+(E2E-Fallen 3), und auf Davids Mac liegen die Chromium-Ausgaben schon.
+
+**Bleibt offen (Grund im Plan AR1):** die Dateien auf dem Datenbank-Server
+(Production, mit BU1 d) und der Name eines UptimeRobot-Monitors (nur Davids
+Anmeldung). (e) nachgesehen am 2026-11-28: keine neue Ausgabe, die einen
+Hinweis schließt.
+
+**Gelernt:** Ein Punkt der Form „sobald es X gibt, muss Y nachgezogen
+werden" gehört an die Stelle, an der X gebaut wird (Kommentar, Test) — in
+der Liste wartet er nur, und wer X baut, liest die Liste nicht.
+
 ### WS2 — Werkstatt: Hydration im Vorlagen-Panel, verspätete Speicher-Antwort ✅ 2026-11-27
 
 Die zwei Nebenbefunde aus WS1, beide in `packages/brand`.
